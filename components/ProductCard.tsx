@@ -2,7 +2,6 @@ import React from 'react';
 import { Product } from '../types';
 import { StarIcon } from './Icons';
 
-// FIX: Define props interface for ProductCard component.
 interface ProductCardProps {
     product: Product;
     onAddToCart: (product: Product) => void;
@@ -15,20 +14,37 @@ const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart }) => {
         <button
             onClick={() => onAddToCart(product)}
             disabled={outOfStock}
-            className={`bg-white border border-slate-200 rounded-lg p-3 text-center flex flex-col justify-between transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary relative group ${outOfStock ? 'opacity-50 cursor-not-allowed' : 'transform hover:scale-105 hover:shadow-lg hover:border-primary-light'}`}
+            className={`
+                relative bg-white rounded-2xl p-4 text-left flex flex-col justify-between h-32 md:h-40
+                transition-all duration-200 border border-transparent
+                ${outOfStock 
+                    ? 'opacity-60 cursor-not-allowed bg-slate-50' 
+                    : 'shadow-sm hover:shadow-md hover:border-primary/30 hover:-translate-y-1 active:scale-95'
+                }
+            `}
         >
             {product.isFavorite && (
-                 <StarIcon filled className="absolute top-2 right-2 h-5 w-5 text-amber-400" />
+                 <div className="absolute top-3 right-3 text-amber-400 drop-shadow-sm">
+                     <StarIcon filled className="h-5 w-5" />
+                 </div>
             )}
+            
             {outOfStock && (
-                <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-full z-10">ESAURITO</span>
+                <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] rounded-2xl flex items-center justify-center z-10">
+                    <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider shadow-sm">Esaurito</span>
+                </div>
             )}
-            <div className="flex-grow flex flex-col justify-center min-h-[4rem]">
-                <h3 className="font-semibold text-slate-700 text-base">{product.name}</h3>
+
+            <div className="flex-grow pr-4">
+                <h3 className="font-bold text-slate-700 text-sm md:text-base leading-tight mb-1">{product.name}</h3>
+                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">{product.category}</p>
             </div>
-            <div>
-                 <p className="text-primary-dark font-bold text-lg mt-2">€{product.price.toFixed(2)}</p>
-                 <p className="text-xs text-slate-400 mt-2">Disponibili: {product.stock}</p>
+
+            <div className="flex justify-between items-end mt-2">
+                 <p className="text-lg md:text-xl font-extrabold text-primary">€{product.price.toFixed(2)}</p>
+                 <span className={`text-xs font-medium px-2 py-0.5 rounded-md ${product.stock < 10 ? 'bg-red-50 text-red-500' : 'bg-slate-100 text-slate-500'}`}>
+                    {product.stock} pz
+                 </span>
             </div>
         </button>
     );

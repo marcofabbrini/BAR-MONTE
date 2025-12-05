@@ -4,7 +4,9 @@ import { EditIcon, TrashIcon, PlusIcon, SaveIcon, StarIcon } from './Icons';
 
 interface ProductManagementProps {
     products: Product[];
-    onUpdateProducts: (products: Product[]) => void;
+    onAddProduct: (productData: Omit<Product, 'id'>) => Promise<void>;
+    onUpdateProduct: (product: Product) => Promise<void>;
+    onDeleteProduct: (productId: string) => Promise<void>;
 }
 
 const emptyProduct: Omit<Product, 'id'> = {
@@ -16,7 +18,7 @@ const emptyProduct: Omit<Product, 'id'> = {
     isFavorite: false,
 };
 
-const ProductManagement: React.FC<ProductManagementProps> = ({ products, onUpdateProducts }) => {
+const ProductManagement: React.FC<ProductManagementProps> = ({ products, onAddProduct, onUpdateProduct, onDeleteProduct }) => {
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [formData, setFormData] = useState<Omit<Product, 'id'>>(emptyProduct);
 
@@ -26,7 +28,8 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ products, onUpdat
         if (isEditing) {
             const productToEdit = products.find(p => p.id === isEditing);
             if (productToEdit) {
-                setFormData(productToEdit);
+                const { id, ...productData } = productToEdit;
+                setFormData(productData);
             }
         } else {
             setFormData(emptyProduct);
@@ -46,18 +49,22 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ products, onUpdat
         setFormData(prev => ({ ...prev, category: e.target.value }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name.trim() || !formData.category.trim()) return;
 
-        if (isEditing) {
-            onUpdateProducts(products.map(p => p.id === isEditing ? { id: isEditing, ...formData } : p));
-        } else {
-            const newProduct: Product = { id: new Date().toISOString(), ...formData };
-            onUpdateProducts([...products, newProduct]);
+        try {
+            if (isEditing) {
+                await onUpdateProduct({ id: isEditing, ...formData });
+            } else {
+                await onAddProduct(formData);
+            }
+            setIsEditing(null);
+            setFormData(emptyProduct);
+        } catch (error) {
+            console.error("Error saving product:", error);
+            alert("Errore nel salvataggio del prodotto.");
         }
-        setIsEditing(null);
-        setFormData(emptyProduct);
     };
 
     const handleEdit = (id: string) => {
@@ -65,14 +72,27 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ products, onUpdat
         window.scrollTo(0, 0);
     };
     
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (window.confirm('Sei sicuro di voler eliminare questo prodotto?')) {
-            onUpdateProducts(products.filter(p => p.id !== id));
+            try {
+                await onDeleteProduct(id);
+            } catch (error) {
+                console.error("Error deleting product:", error);
+                alert("Errore nell'eliminazione del prodotto.");
+            }
         }
     };
     
-    const toggleFavorite = (id: string) => {
-        onUpdateProducts(products.map(p => p.id === id ? { ...p, isFavorite: !p.isFavorite } : p));
+    const toggleFavorite = async (id: string) => {
+        const product = products.find(p => p.id === id);
+        if (product) {
+            try {
+                await onUpdateProduct({ ...product, isFavorite: !product.isFavorite });
+            } catch (error) {
+                console.error("Error updating favorite status:", error);
+                alert("Errore nell'aggiornamento dello stato preferito.");
+            }
+        }
     };
 
     const handleCancelEdit = () => {

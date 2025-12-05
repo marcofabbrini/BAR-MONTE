@@ -9,13 +9,12 @@ interface TillViewProps {
     till: Till;
     onGoBack: () => void;
     products: Product[];
-    onUpdateProducts: (products: Product[]) => void;
     allStaff: StaffMember[];
     allOrders: Order[];
-    onCompleteOrder: (newOrder: Order) => void;
+    onCompleteOrder: (newOrder: Omit<Order, 'id'>) => Promise<void>;
 }
 
-const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, onUpdateProducts, allStaff, allOrders, onCompleteOrder }) => {
+const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder }) => {
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
@@ -71,89 +70,127 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, onUpdateP
         setCurrentOrder([]);
     }, []);
 
-    const completeOrder = useCallback(() => {
+    const completeOrder = useCallback(async () => {
         if (currentOrder.length === 0 || !selectedStaffId) return;
 
         const total = currentOrder.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-        const newOrder: Order = {
-            id: new Date().toISOString(),
-            items: currentOrder,
+        
+        const newOrder: Omit<Order, 'id'> = {
+            items: currentOrder.map(item => ({
+                product: {
+                    id: item.product.id,
+                    name: item.product.name,
+                    price: item.product.price,
+                    category: item.product.category,
+                    description: item.product.description,
+                    stock: item.product.stock,
+                    isFavorite: item.product.isFavorite
+                },
+                quantity: item.quantity
+            })),
             total,
             timestamp: new Date().toISOString(),
             staffId: selectedStaffId,
             staffName: selectedStaffMember?.name,
             tillId: till.id,
         };
-        onCompleteOrder(newOrder);
 
-        const updatedProducts = products.map(p => {
-            const itemInOrder = currentOrder.find(item => item.product.id === p.id);
-            if (itemInOrder) {
-                const newStock = p.stock - itemInOrder.quantity;
-                return { ...p, stock: newStock < 0 ? 0 : newStock };
-            }
-            return p;
-        });
-        onUpdateProducts(updatedProducts);
-
-        clearOrder();
-    }, [currentOrder, clearOrder, products, onUpdateProducts, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder]);
+        try {
+            await onCompleteOrder(newOrder);
+            clearOrder();
+        } catch (error) {
+            console.error("Error completing order: ", error);
+            alert("Errore nel completamento dell'ordine. Riprova.");
+        }
+        
+    }, [currentOrder, clearOrder, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder]);
 
     return (
-        <div className="flex flex-col min-h-screen bg-slate-50">
-            <header className="bg-white shadow-md p-4 flex justify-between items-center z-10 border-b border-slate-200 sticky top-0">
-                 <button
-                    onClick={onGoBack}
-                    className="w-10 h-10 flex items-center justify-center rounded-full text-slate-600 hover:bg-slate-200 hover:text-primary transition-colors duration-200"
-                    aria-label="Torna alla selezione casse"
-                >
-                    <BackArrowIcon className="h-6 w-6" />
-                </button>
-                <h1 className="text-2xl font-bold text-slate-800">{till.name}</h1>
-                <div className="w-40 text-right">
-                    <span className="text-sm text-slate-500">Turno: {till.shift.toUpperCase()}</span>
+        <div className="flex flex-col h-screen overflow-hidden bg-slate-50">
+            {/* Header Minimale */}
+            <header className="bg-white px-6 py-3 flex justify-between items-center shadow-sm z-20 shrink-0">
+                 <div className="flex items-center gap-4">
+                     <button
+                        onClick={onGoBack}
+                        className="group flex items-center gap-2 text-slate-500 hover:text-primary transition-colors"
+                    >
+                        <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-orange-50 flex items-center justify-center transition-colors">
+                            <BackArrowIcon className="h-5 w-5" />
+                        </div>
+                        <span className="text-sm font-medium hidden md:block">Indietro</span>
+                    </button>
+                    <div className="h-6 w-px bg-slate-200 mx-2"></div>
+                    <h1 className="text-xl font-bold text-slate-800 tracking-tight">{till.name}</h1>
+                </div>
+                
+                <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">Turno {till.shift}</span>
                 </div>
             </header>
             
-            <div className="flex-grow flex md:flex-row flex-col-reverse">
-                <main className="flex-grow p-4 md:p-6">
-                     <div className="flex items-center mb-6 border-b border-slate-200">
-                        <button onClick={() => setActiveTab('order')} className={`px-6 py-3 text-lg font-medium transition-colors duration-200 ${activeTab === 'order' ? 'border-b-2 border-primary text-primary' : 'text-slate-500 hover:text-slate-800'}`}>
-                            Nuovo Ordine
-                        </button>
-                        <button onClick={() => setActiveTab('history')} className={`px-6 py-3 text-lg font-medium transition-colors duration-200 ${activeTab === 'history' ? 'border-b-2 border-primary text-primary' : 'text-slate-500 hover:text-slate-800'}`}>
-                            Storico Ordini
-                        </button>
+            <div className="flex flex-grow overflow-hidden relative">
+                {/* Main Content Area */}
+                <main className="flex-grow flex flex-col h-full overflow-hidden relative">
+                    {/* Tab Navigation pill style */}
+                    <div className="px-6 py-4 flex-shrink-0">
+                         <div className="bg-white p-1 rounded-xl shadow-sm inline-flex border border-slate-100">
+                            <button 
+                                onClick={() => setActiveTab('order')} 
+                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === 'order' ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+                            >
+                                Nuovo Ordine
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('history')} 
+                                className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === 'history' ? 'bg-primary text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}
+                            >
+                                Storico
+                            </button>
+                        </div>
                     </div>
 
-                    {activeTab === 'order' && (
-                        <div>
-                            <div className="mb-6">
-                                <label htmlFor="staff-select" className="block text-sm font-medium text-slate-700 mb-2">Seleziona Operatore:</label>
-                                <select 
-                                    id="staff-select"
-                                    value={selectedStaffId}
-                                    onChange={(e) => setSelectedStaffId(e.target.value)}
-                                    className="w-full max-w-sm p-2 border border-slate-300 rounded-md shadow-sm focus:ring-primary focus:border-primary"
-                                >
-                                    <option value="" disabled>-- Seleziona un operatore --</option>
-                                    {staffForShift.map(staff => (
-                                        <option key={staff.id} value={staff.id}>{staff.name}</option>
+                    <div className="flex-grow overflow-y-auto px-6 pb-20 md:pb-6 scroll-smooth">
+                        {activeTab === 'order' && (
+                            <div className="animate-fade-in-up">
+                                <div className="mb-6 max-w-md">
+                                    <label htmlFor="staff-select" className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Operatore Attuale</label>
+                                    <div className="relative">
+                                        <select 
+                                            id="staff-select"
+                                            value={selectedStaffId}
+                                            onChange={(e) => setSelectedStaffId(e.target.value)}
+                                            className="w-full appearance-none bg-white border border-slate-200 text-slate-700 py-3 px-4 pr-8 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-medium"
+                                        >
+                                            <option value="" disabled>Seleziona chi sta usando la cassa</option>
+                                            {staffForShift.map(staff => (
+                                                <option key={staff.id} value={staff.id}>{staff.name}</option>
+                                            ))}
+                                        </select>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
+                                            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                                    {sortedProducts.map(product => (
+                                        <ProductCard key={product.id} product={product} onAddToCart={addToOrder} />
                                     ))}
-                                </select>
+                                </div>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                                {sortedProducts.map(product => (
-                                    <ProductCard key={product.id} product={product} onAddToCart={addToOrder} />
-                                ))}
+                        )}
+                        
+                        {activeTab === 'history' && (
+                            <div className="max-w-2xl">
+                                <OrderHistory orders={ordersForThisTill} />
                             </div>
-                        </div>
-                    )}
-                    
-                    {activeTab === 'history' && <OrderHistory orders={ordersForThisTill} />}
+                        )}
+                    </div>
                 </main>
 
-                <aside className="w-full md:w-96 lg:w-1/3 bg-white p-4 flex flex-col shadow-lg border-l border-slate-200 md:sticky md:top-[72px] md:h-[calc(100vh-72px)]">
+                {/* Sidebar / Bottom Sheet for Order Summary */}
+                {/* On Mobile: Fixed at bottom. On Desktop: Fixed at right. */}
+                <aside className="fixed bottom-0 left-0 w-full md:static md:w-96 lg:w-[400px] bg-white shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] md:shadow-none border-t md:border-l border-slate-200 z-30 h-[45vh] md:h-full flex flex-col transition-all duration-300">
                     <OrderSummary 
                         orderItems={currentOrder}
                         onUpdateQuantity={updateQuantity}

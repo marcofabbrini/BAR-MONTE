@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { Order, Product, StaffMember } from '../types';
 
 interface InsightsViewProps {
@@ -26,11 +25,6 @@ const InsightsView: React.FC<InsightsViewProps> = ({ filteredOrders, products, s
         setAnalysis(null);
 
         try {
-            if (!process.env.API_KEY) {
-                throw new Error("API key non trovata. Assicurati che sia configurata correttamente.");
-            }
-            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
             const dataSummary = `
                 Dati di vendita disponibili:
                 - Numero totale di ordini: ${filteredOrders.length}
@@ -47,7 +41,7 @@ const InsightsView: React.FC<InsightsViewProps> = ({ filteredOrders, products, s
                 items: o.items.map(i => `${i.quantity}x ${i.product.name}`).join(', ')
             }));
             
-            const prompt = `
+            const fullPrompt = `
 Sei un analista aziendale esperto specializzato nel settore della ristorazione. Il tuo compito è analizzare i dati di vendita di un bar e fornire approfondimenti chiari, concisi e utili in lingua italiana.
 
 Ecco un riepilogo dei dati che stai analizzando:
@@ -61,13 +55,23 @@ La richiesta dell'utente è: "${userQuery}"
 Per favore, rispondi alla richiesta dell'utente basandoti ESCLUSIVAMENTE sui dati forniti. Sii breve, professionale e vai dritto al punto. Se i dati non sono sufficienti per rispondere, indicalo chiaramente. Formatta la tua risposta in modo chiaro e leggibile.
 `;
             
-            const response = await ai.models.generateContent({
-              model: 'gemini-2.5-flash',
-              contents: prompt,
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ prompt: fullPrompt }),
             });
 
-            if (response.text) {
-                setAnalysis(response.text);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Errore del server: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.analysis) {
+                setAnalysis(data.analysis);
             } else {
                 throw new Error("La risposta dell'API era vuota.");
             }

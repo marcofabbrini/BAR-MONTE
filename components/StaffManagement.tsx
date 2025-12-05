@@ -4,10 +4,12 @@ import { EditIcon, TrashIcon, PlusIcon, SaveIcon } from './Icons';
 
 interface StaffManagementProps {
     staff: StaffMember[];
-    onUpdateStaff: (staff: StaffMember[]) => void;
+    onAddStaff: (staffData: Omit<StaffMember, 'id'>) => Promise<void>;
+    onUpdateStaff: (staffMember: StaffMember) => Promise<void>;
+    onDeleteStaff: (staffId: string) => Promise<void>;
 }
 
-const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onUpdateStaff }) => {
+const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, onUpdateStaff, onDeleteStaff }) => {
     const [name, setName] = useState('');
     const [shift, setShift] = useState<Shift>('a');
     const [isEditing, setIsEditing] = useState<string | null>(null);
@@ -26,24 +28,24 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onUpdateStaff 
     }, [isEditing, staff]);
 
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name.trim()) return;
-
-        if (isEditing) {
-            onUpdateStaff(staff.map(member => 
-                member.id === isEditing ? { ...member, name: name.trim(), shift } : member
-            ));
-        } else {
-            const newStaffMember: StaffMember = {
-                id: new Date().toISOString(),
-                name: name.trim(),
-                shift,
-            };
-            onUpdateStaff([...staff, newStaffMember]);
-        }
         
-        handleCancel();
+        try {
+            if (isEditing) {
+                const memberToUpdate = staff.find(m => m.id === isEditing);
+                if (memberToUpdate) {
+                    await onUpdateStaff({ ...memberToUpdate, name: name.trim(), shift });
+                }
+            } else {
+                await onAddStaff({ name: name.trim(), shift });
+            }
+            handleCancel();
+        } catch (error) {
+            console.error("Error saving staff member:", error);
+            alert("Errore nel salvataggio del membro dello staff.");
+        }
     };
     
     const handleEdit = (member: StaffMember) => {
@@ -56,9 +58,14 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onUpdateStaff 
         setShift('a');
     };
 
-    const handleDeleteStaff = (id: string) => {
+    const handleDeleteStaff = async (id: string) => {
         if (window.confirm('Sei sicuro di voler eliminare questo membro del personale?')) {
-            onUpdateStaff(staff.filter(member => member.id !== id));
+            try {
+                await onDeleteStaff(id);
+            } catch (error) {
+                console.error("Error deleting staff member:", error);
+                alert("Errore nell'eliminazione del membro dello staff.");
+            }
         }
     };
 

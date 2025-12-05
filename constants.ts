@@ -40,8 +40,8 @@ export const INITIAL_MENU_ITEMS: Product[] = [
 
 // Dati iniziali per il personale
 export const INITIAL_STAFF_MEMBERS: StaffMember[] = [
-    { id: 'staff-1', name: 'Utente 1', shift: 'a' },
-    { id: 'staff-2', name: 'Utente 2', shift: 'b' },
-    { id: 'staff-3', name: 'Utente 3', shift: 'c' },
-    { id: 'staff-4', name: 'Utente 4', shift: 'd' },
+    { id: 'staff-1', name: 'Mario Rossi', shift: 'a' },
+    { id: 'staff-2', name: 'Laura Bianchi', shift: 'b' },
+    { id: 'staff-3', name: 'Paolo Verdi', shift: 'c' },
+    { id: 'staff-4', name: 'Anna Neri', shift: 'd' },
 ];

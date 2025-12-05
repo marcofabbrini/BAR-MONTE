@@ -9,12 +9,14 @@ import { BackArrowIcon, InventoryIcon, StaffIcon, StatsIcon, LightbulbIcon } fro
 interface ReportsViewProps {
     onGoBack: () => void;
     products: Product[];
-    onUpdateProducts: (products: Product[]) => void;
     staff: StaffMember[];
-    onUpdateStaff: (staff: StaffMember[]) => void;
     orders: Order[];
-    allProducts: Product[];
-    allStaff: StaffMember[];
+    onAddProduct: (productData: Omit<Product, 'id'>) => Promise<void>;
+    onUpdateProduct: (product: Product) => Promise<void>;
+    onDeleteProduct: (productId: string) => Promise<void>;
+    onAddStaff: (staffData: Omit<StaffMember, 'id'>) => Promise<void>;
+    onUpdateStaff: (staffMember: StaffMember) => Promise<void>;
+    onDeleteStaff: (staffId: string) => Promise<void>;
 }
 
 type ReportTab = 'inventory' | 'staff' | 'statistics' | 'insights';
@@ -22,16 +24,17 @@ type ReportTab = 'inventory' | 'staff' | 'statistics' | 'insights';
 const ReportsView: React.FC<ReportsViewProps> = ({ 
     onGoBack, 
     products, 
-    onUpdateProducts, 
     staff, 
-    onUpdateStaff, 
     orders,
-    allProducts,
-    allStaff
+    onAddProduct,
+    onUpdateProduct,
+    onDeleteProduct,
+    onAddStaff,
+    onUpdateStaff,
+    onDeleteStaff
 }) => {
     const [activeTab, setActiveTab] = useState<ReportTab>('statistics');
     
-    // Filtri
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [selectedShift, setSelectedShift] = useState<Shift | 'all'>('all');
@@ -44,7 +47,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({
 
         return orders.filter(order => {
             const orderTimestamp = new Date(order.timestamp).getTime();
-            const staffMember = allStaff.find(s => s.id === order.staffId);
+            const staffMember = staff.find(s => s.id === order.staffId);
 
             const dateMatch = orderTimestamp >= start && orderTimestamp <= end;
             const shiftMatch = selectedShift === 'all' || (staffMember && staffMember.shift === selectedShift);
@@ -53,15 +56,26 @@ const ReportsView: React.FC<ReportsViewProps> = ({
 
             return dateMatch && shiftMatch && staffMatch && productMatch;
         });
-    }, [orders, startDate, endDate, selectedShift, selectedStaffId, selectedProductId, allStaff]);
+    }, [orders, startDate, endDate, selectedShift, selectedStaffId, selectedProductId, staff]);
 
 
     const TabButton = ({ tab, label, icon }: { tab: ReportTab, label: string, icon: React.ReactNode }) => (
         <button 
             onClick={() => setActiveTab(tab)} 
-            className={`flex items-center gap-2 px-4 py-3 text-base font-medium transition-colors duration-200 ${activeTab === tab ? 'border-b-2 border-secondary text-secondary' : 'text-slate-500 hover:text-slate-800'}`}
+            className={`
+                flex items-center gap-3 px-6 py-4 text-sm font-bold transition-all duration-200 border-b-2 whitespace-nowrap
+                ${activeTab === tab 
+                    ? 'border-primary text-primary bg-orange-50/50' 
+                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                }
+            `}
         >
-            {icon}
+            <div className={`
+                p-1.5 rounded-lg 
+                ${activeTab === tab ? 'bg-white shadow-sm text-primary' : 'bg-slate-100 text-slate-400'}
+            `}>
+                {icon}
+            </div>
             {label}
         </button>
     );
@@ -69,22 +83,32 @@ const ReportsView: React.FC<ReportsViewProps> = ({
     const renderTabContent = () => {
         switch (activeTab) {
             case 'inventory':
-                return <ProductManagement products={products} onUpdateProducts={onUpdateProducts} />;
+                return <ProductManagement 
+                            products={products} 
+                            onAddProduct={onAddProduct}
+                            onUpdateProduct={onUpdateProduct}
+                            onDeleteProduct={onDeleteProduct}
+                        />;
             case 'staff':
-                return <StaffManagement staff={staff} onUpdateStaff={onUpdateStaff} />;
+                return <StaffManagement 
+                            staff={staff} 
+                            onAddStaff={onAddStaff}
+                            onUpdateStaff={onUpdateStaff}
+                            onDeleteStaff={onDeleteStaff}
+                        />;
             case 'statistics':
                 return <StatisticsView 
                             filteredOrders={filteredOrders}
-                            allProducts={allProducts}
-                            allStaff={allStaff}
+                            allProducts={products}
+                            allStaff={staff}
                             filters={{ startDate, endDate, selectedShift, selectedStaffId, selectedProductId }}
                             onSetFilters={{ setStartDate, setEndDate, setSelectedShift, setSelectedStaffId, setSelectedProductId }}
                         />;
             case 'insights':
                 return <InsightsView 
                             filteredOrders={filteredOrders}
-                            products={allProducts}
-                            staff={allStaff}
+                            products={products}
+                            staff={staff}
                         />;
             default:
                 return null;
@@ -93,25 +117,30 @@ const ReportsView: React.FC<ReportsViewProps> = ({
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50">
-            <header className="bg-white shadow-md p-4 flex justify-between items-center z-10 border-b border-slate-200 sticky top-0">
+            <header className="bg-white shadow-sm p-4 flex justify-between items-center z-10 sticky top-0">
                 <button
                     onClick={onGoBack}
-                    className="w-10 h-10 flex items-center justify-center rounded-full text-slate-600 hover:bg-slate-200 hover:text-primary transition-colors duration-200"
-                    aria-label="Torna alla selezione"
+                    className="flex items-center gap-2 px-4 py-2 rounded-full text-slate-500 hover:bg-slate-100 transition-colors"
                 >
-                    <BackArrowIcon className="h-6 w-6" />
+                    <BackArrowIcon className="h-5 w-5" />
+                    <span className="font-bold text-sm hidden md:block">Indietro</span>
                 </button>
-                <h1 className="text-2xl font-bold text-slate-800">Report e Gestione</h1>
-                <div className="w-10"></div>
+                
+                <h1 className="text-xl font-bold text-slate-800 tracking-tight">Report e Gestione</h1>
+                <div className="w-20"></div> {/* Spacer for balance */}
             </header>
+
             <main className="flex-grow flex flex-col">
-                <div className="flex items-center border-b border-slate-200 bg-white overflow-x-auto">
-                   <TabButton tab="statistics" label="Statistiche" icon={<StatsIcon className="h-5 w-5" />} />
-                   <TabButton tab="insights" label="Analisi Intelligente" icon={<LightbulbIcon className="h-5 w-5" />} />
-                   <TabButton tab="inventory" label="Gestione Prodotti" icon={<InventoryIcon className="h-5 w-5" />} />
-                   <TabButton tab="staff" label="Gestione Personale" icon={<StaffIcon className="h-5 w-5" />} />
+                <div className="bg-white border-b border-slate-200 overflow-x-auto shadow-sm">
+                   <div className="flex max-w-7xl mx-auto px-4">
+                       <TabButton tab="statistics" label="Statistiche" icon={<StatsIcon className="h-5 w-5" />} />
+                       <TabButton tab="insights" label="Analisi Intelligente" icon={<LightbulbIcon className="h-5 w-5" />} />
+                       <TabButton tab="inventory" label="Prodotti" icon={<InventoryIcon className="h-5 w-5" />} />
+                       <TabButton tab="staff" label="Personale" icon={<StaffIcon className="h-5 w-5" />} />
+                   </div>
                 </div>
-                <div className="flex-grow p-4 md:p-6">
+                
+                <div className="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full">
                     {renderTabContent()}
                 </div>
             </main>
