@@ -107,7 +107,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row">
-            <div className="flex-grow flex flex-col min-h-screen">
+            {/* Main Content Area - Allows natural scrolling */}
+            <div className="flex-grow flex flex-col w-full">
                 {/* Header Sticky */}
                 <header className="sticky top-0 bg-white px-6 py-3 flex justify-between items-center shadow-sm z-30 border-b border-slate-100">
                      <div className="flex items-center gap-4">
@@ -130,7 +131,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                     </div>
                 </header>
                 
-                <main className="flex-grow flex flex-col relative">
+                <main className="flex-grow flex flex-col relative w-full">
                     {/* Tab Navigation */}
                     <div className="px-6 py-4 bg-slate-50 z-20">
                          <div className="bg-white p-1 rounded-xl shadow-sm inline-flex border border-slate-100">
@@ -149,8 +150,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         </div>
                     </div>
 
-                    {/* Scrollable Content */}
-                    <div className="px-6 pb-40 md:pb-6">
+                    {/* Content */}
+                    <div className="px-6 pb-48 md:pb-8 w-full">
                         {activeTab === 'order' && (
                             <div className="animate-fade-in-up">
                                 <div className="mb-6 max-w-md">

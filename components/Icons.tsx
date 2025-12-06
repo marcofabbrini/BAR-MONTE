@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export const BackArrowIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -61,16 +62,20 @@ export const StarIcon = ({ filled, ...props }: { filled?: boolean } & React.SVGP
     </svg>
 );
 
+// Nuova icona tazzina di caffè
 export const LogoIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5c-2.32 0-4.43.9-6 2.36M12 7.5c2.32 0 4.43.9 6 2.36M12 7.5V3.75m0 3.75v3.75m0-3.75a3.75 3.75 0 100 7.5 3.75 3.75 0 000-7.5z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.5c0 4.142 3.358 7.5 7.5 7.5h.01c4.132 0 7.49-3.358 7.49-7.5V9.75A2.25 2.25 0 0015.75 7.5h-7.5A2.25 2.25 0 006 9.75v3.75z" />
-    </svg>
-);
-
-export const ModernCashRegisterIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h12A2.25 2.25 0 0020.25 14.25V3M3.75 21h16.5M3.75 3h16.5M5.25 6h13.5m-13.5 3h13.5m-13.5 3h6.75" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" className="hidden" />
+      {/* Corpo della tazzina */}
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 9v3.75a4.5 4.5 0 0 0 4.5 4.5h2.25a4.5 4.5 0 0 0 4.5-4.5V9" />
+      {/* Bordo superiore */}
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9H6" />
+      {/* Manico */}
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 11.25a2.25 2.25 0 0 0 2.25-2.25v-.75a2.25 2.25 0 0 0-2.25-2.25h-.375" />
+      {/* Fumo/Aroma */}
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5.25c0-.414.336-.75.75-.75s.75.336.75.75c0 .414-.336.75-.75.75s-.75-.336-.75-.75zm4.5 0c0-.414.336-.75.75-.75s.75.336.75.75c0 .414-.336.75-.75.75s-.75-.336-.75-.75z" />
+      {/* Piattino */}
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5h15" />
     </svg>
 );
 
