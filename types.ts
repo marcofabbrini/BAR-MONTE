@@ -53,3 +53,10 @@ export interface CashMovement {
     timestamp: string;
     type: 'withdrawal' | 'deposit';
 }
+
+export interface AdminUser {
+    id: string;
+    email: string;
+    addedBy: string;
+    timestamp: string;
+}

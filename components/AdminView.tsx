@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
-import { Order, Till, TillColors, Product, StaffMember, CashMovement } from '../types';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon } from './Icons';
+import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser } from '../types';
+import { User } from 'firebase/auth';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -26,19 +27,27 @@ interface AdminViewProps {
     onDeleteStaff: (id: string) => Promise<void>;
     onAddCashMovement: (m: Omit<CashMovement, 'id'>) => Promise<void>;
     onStockPurchase: (productId: string, quantity: number, unitCost: number) => Promise<void>;
+    
+    // Auth
+    isAuthenticated: boolean;
+    currentUser: User | null;
+    onLogin: () => void;
+    onLogout: () => void;
+    adminList: AdminUser[];
+    onAddAdmin: (email: string) => Promise<void>;
+    onRemoveAdmin: (id: string) => Promise<void>;
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings';
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins';
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
     onUpdateTillColors, onDeleteOrders, onUpdateOrder,
     onAddProduct, onUpdateProduct, onDeleteProduct,
     onAddStaff, onUpdateStaff, onDeleteStaff,
-    onAddCashMovement, onStockPurchase
+    onAddCashMovement, onStockPurchase,
+    isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin
 }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [password, setPassword] = useState('');
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     
     // States for Movements
@@ -48,19 +57,12 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     // States for Settings
     const [colors, setColors] = useState<TillColors>(tillColors);
+    
+    // States for Admin Mgmt
+    const [newAdminEmail, setNewAdminEmail] = useState('');
 
     const activeOrders = useMemo(() => orders.filter(o => !o.isDeleted), [orders]);
     const totalActiveRevenue = useMemo(() => activeOrders.reduce((sum, o) => sum + o.total, 0), [activeOrders]);
-
-    const handleLogin = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (password === '31.10.75') {
-            setIsAuthenticated(true);
-        } else {
-            alert('Password errata');
-            setPassword('');
-        }
-    };
 
     const toggleOrderSelection = (id: string) => {
         const newSet = new Set(selectedOrderIds);
@@ -82,6 +84,12 @@ const AdminView: React.FC<AdminViewProps> = ({
         if (window.confirm(`Sei sicuro di voler annullare ${selectedOrderIds.size} movimenti?`)) {
             await onDeleteOrders(Array.from(selectedOrderIds));
             setSelectedOrderIds(new Set());
+        }
+    };
+    
+    const handleSingleDelete = async (orderId: string) => {
+        if (window.confirm("Sei sicuro di voler annullare questo movimento?")) {
+            await onDeleteOrders([orderId]);
         }
     };
 
@@ -112,6 +120,13 @@ const AdminView: React.FC<AdminViewProps> = ({
         await onUpdateTillColors(colors);
         alert('Impostazioni salvate!');
     };
+    
+    const handleAddAdminSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if(!newAdminEmail.trim()) return;
+        await onAddAdmin(newAdminEmail.trim());
+        setNewAdminEmail('');
+    };
 
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
         <button 
@@ -136,13 +151,21 @@ const AdminView: React.FC<AdminViewProps> = ({
             <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 p-4">
                 <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
                     <h2 className="text-2xl font-bold mb-6 text-slate-800">Area Riservata</h2>
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="w-full p-4 border border-slate-200 rounded-xl text-center text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-primary" autoFocus />
-                        <div className="flex gap-2">
-                             <button type="button" onClick={onGoBack} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Annulla</button>
-                             <button type="submit" className="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary-dark">Accedi</button>
-                        </div>
-                    </form>
+                    <p className="text-slate-500 mb-6">Accedi per gestire il sistema</p>
+                    
+                    {currentUser ? (
+                         <div className="mb-4 text-red-500">
+                             Accesso negato. L'utente {currentUser.email} non è un amministratore.
+                             <button onClick={onLogout} className="block w-full mt-2 text-sm text-slate-400 underline">Logout</button>
+                         </div>
+                    ) : null}
+
+                    <div className="flex gap-2">
+                         <button type="button" onClick={onGoBack} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Indietro</button>
+                         <button type="button" onClick={onLogin} className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 shadow-sm">
+                            <GoogleIcon className="h-5 w-5" /> Accedi con Google
+                         </button>
+                    </div>
                 </div>
             </div>
         );
@@ -157,9 +180,12 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <button onClick={onGoBack} className="p-2 hover:bg-slate-700 rounded-full transition-colors"><BackArrowIcon className="h-6 w-6" /></button>
                             <h1 className="text-xl font-bold">Amministrazione</h1>
                         </div>
-                        <div className="text-right">
-                             <p className="text-xs text-slate-400 uppercase">Totale Attivo</p>
-                             <p className="text-xl font-mono font-bold text-green-400">€{totalActiveRevenue.toFixed(2)}</p>
+                        <div className="flex items-center gap-4">
+                             <div className="text-right hidden md:block">
+                                 <p className="text-xs text-slate-400 uppercase">Admin</p>
+                                 <p className="text-sm font-bold">{currentUser?.email}</p>
+                             </div>
+                             <button onClick={onLogout} className="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded-full">Esci</button>
                         </div>
                     </div>
                     
@@ -170,6 +196,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="staff" label="Personale" icon={<StaffIcon className="h-6 w-6" />} />
                         <TabButton tab="cash" label="Cassa" icon={<CashIcon className="h-6 w-6" />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-6 w-6" />} />
+                        <TabButton tab="admins" label="Gestione Admin" icon={<UserPlusIcon className="h-6 w-6" />} />
                     </div>
                 </div>
             </header>
@@ -178,14 +205,17 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'movements' && (
                     <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
                         <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h2 className="font-bold text-lg text-slate-700">Gestione Movimenti</h2>
+                            <div>
+                                <h2 className="font-bold text-lg text-slate-700">Gestione Movimenti</h2>
+                                <p className="text-xs text-slate-500">Totale Attivo: <span className="font-bold text-green-600">€{totalActiveRevenue.toFixed(2)}</span></p>
+                            </div>
                             {selectedOrderIds.size > 0 && (
                                 <button onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2"><TrashIcon className="h-4 w-4" /> Annulla ({selectedOrderIds.size})</button>
                             )}
                         </div>
                         <div className="overflow-x-auto max-h-[70vh]">
                             <table className="w-full text-left text-slate-600 text-sm">
-                                <thead className="bg-slate-100 text-slate-800 uppercase text-xs sticky top-0">
+                                <thead className="bg-slate-100 text-slate-800 uppercase text-xs sticky top-0 z-10">
                                     <tr>
                                         <th className="p-4 w-10"><input type="checkbox" checked={selectedOrderIds.size === orders.length && orders.length > 0} onChange={toggleAllSelection} className="w-4 h-4 rounded text-primary focus:ring-primary" /></th>
                                         <th className="p-4">Data/Ora</th>
@@ -220,7 +250,12 @@ const AdminView: React.FC<AdminViewProps> = ({
                                                         <button onClick={() => setEditingOrderId(null)} className="text-slate-400 hover:bg-slate-100 p-2 rounded-full">✕</button>
                                                     </>
                                                 ) : (
-                                                    !order.isDeleted && <button onClick={() => startEditOrder(order)} className="text-blue-500 hover:bg-blue-50 p-2 rounded-full"><EditIcon className="h-4 w-4" /></button>
+                                                    !order.isDeleted && (
+                                                        <>
+                                                            <button onClick={() => startEditOrder(order)} className="text-blue-500 hover:bg-blue-50 p-2 rounded-full" title="Modifica"><EditIcon className="h-4 w-4" /></button>
+                                                            <button onClick={() => handleSingleDelete(order.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-full" title="Annulla Movimento"><TrashIcon className="h-4 w-4" /></button>
+                                                        </>
+                                                    )
                                                 )}
                                             </td>
                                         </tr>
@@ -252,6 +287,32 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <button onClick={saveSettings} className="bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-xl shadow-lg flex items-center gap-2"><SaveIcon className="h-5 w-5" /> Salva Impostazioni</button>
                         </div>
                     </div>
+                )}
+                {activeTab === 'admins' && (
+                     <div className="max-w-3xl mx-auto">
+                        <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200 mb-6">
+                            <h2 className="text-xl font-bold text-slate-800 mb-4">Aggiungi Amministratore</h2>
+                            <form onSubmit={handleAddAdminSubmit} className="flex gap-4">
+                                <input type="email" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="email@gmail.com" className="flex-grow border rounded-lg p-3 bg-slate-50" required />
+                                <button type="submit" className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2"><UserPlusIcon className="h-5 w-5" /> Aggiungi</button>
+                            </form>
+                        </div>
+                        
+                        <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+                            <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b border-slate-200">Amministratori Abilitati</h3>
+                            <ul className="divide-y divide-slate-100">
+                                {adminList.map(admin => (
+                                    <li key={admin.id} className="p-4 flex justify-between items-center">
+                                        <div>
+                                            <p className="font-bold text-slate-700">{admin.email}</p>
+                                            <p className="text-xs text-slate-400">Aggiunto da: {admin.addedBy}</p>
+                                        </div>
+                                        <button onClick={() => onRemoveAdmin(admin.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg text-sm font-bold">Rimuovi</button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                     </div>
                 )}
             </main>
         </div>

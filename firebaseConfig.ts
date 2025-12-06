@@ -1,6 +1,7 @@
 
-import firebase from "firebase/compat/app";
-import "firebase/compat/firestore";
+import { initializeApp } from "firebase/app";
+import { getFirestore } from "firebase/firestore";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDVs7kbp_O6oMZ8AetE03S6Wu6cywL_ca0",
@@ -13,10 +14,13 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-// Utilizziamo un controllo per evitare di inizializzare l'app più volte durante l'hot-reload
-const app = !firebase.apps.length ? firebase.initializeApp(firebaseConfig) : firebase.app();
+const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore
-const db = app.firestore();
+const db = getFirestore(app);
 
-export { db };
+// Initialize Auth
+const auth = getAuth(app);
+const googleProvider = new GoogleAuthProvider();
+
+export { db, auth, googleProvider };

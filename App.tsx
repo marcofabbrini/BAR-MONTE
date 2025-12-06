@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { db } from './firebaseConfig';
-import { collection, onSnapshot, doc, getDocs, writeBatch, runTransaction, addDoc, updateDoc, deleteDoc, setDoc, orderBy, query, getDoc } from 'firebase/firestore';
+import { db, auth, googleProvider } from './firebaseConfig';
+import { collection, onSnapshot, doc, getDocs, writeBatch, runTransaction, addDoc, updateDoc, deleteDoc, setDoc, orderBy, query, getDoc, where } from 'firebase/firestore';
+import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
 import TillSelection from './components/TillSelection';
 import TillView from './components/TillView';
 import ReportsView from './components/ReportsView';
 import AdminView from './components/AdminView';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
-import { Till, Product, StaffMember, Order, TillColors, CashMovement } from './types';
+import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser } from './types';
 
 type View = 'selection' | 'till' | 'reports' | 'admin';
 
@@ -16,12 +17,48 @@ const App: React.FC = () => {
     const [selectedTillId, setSelectedTillId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     
+    // Auth State
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [adminList, setAdminList] = useState<AdminUser[]>([]);
+
     const [products, setProducts] = useState<Product[]>([]);
     const [staff, setStaff] = useState<StaffMember[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
     const [cashMovements, setCashMovements] = useState<CashMovement[]>([]);
     const [tillColors, setTillColors] = useState<TillColors>({});
 
+    // Auth Listener
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            setCurrentUser(user);
+            if (user && user.email) {
+                // Check if user is in admin whitelist or if db is empty (bootstrap)
+                const adminsRef = collection(db, 'admins');
+                const q = query(adminsRef, where("email", "==", user.email));
+                const querySnapshot = await getDocs(q);
+                
+                const adminsSnapshot = await getDocs(adminsRef);
+                
+                if (adminsSnapshot.empty) {
+                    // Bootstrap: First user becomes admin
+                    await addDoc(adminsRef, { 
+                        email: user.email, 
+                        addedBy: 'system', 
+                        timestamp: new Date().toISOString() 
+                    });
+                    setIsAdmin(true);
+                } else {
+                    setIsAdmin(!querySnapshot.empty);
+                }
+            } else {
+                setIsAdmin(false);
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Data Listeners
     useEffect(() => {
         setIsLoading(true);
         
@@ -47,6 +84,11 @@ const App: React.FC = () => {
              const cashData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as CashMovement));
              setCashMovements(cashData);
         });
+        
+        const unsubAdmins = onSnapshot(collection(db, 'admins'), (snapshot) => {
+             const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AdminUser));
+             setAdminList(data);
+        });
 
         const unsubSettings = onSnapshot(doc(db, 'settings', 'tillColors'), (docSnap) => {
             if (docSnap.exists()) {
@@ -59,6 +101,7 @@ const App: React.FC = () => {
             unsubStaff();
             unsubOrders();
             unsubCash();
+            unsubAdmins();
             unsubSettings();
         };
     }, []);
@@ -92,6 +135,40 @@ const App: React.FC = () => {
         seedDatabase();
     }, []);
 
+    // Auth Actions
+    const handleGoogleLogin = async () => {
+        try {
+            await signInWithPopup(auth, googleProvider);
+        } catch (error) {
+            console.error("Login failed", error);
+            alert("Errore durante il login.");
+        }
+    };
+
+    const handleLogout = async () => {
+        await signOut(auth);
+        setView('selection');
+    };
+
+    const handleAddAdmin = async (email: string) => {
+        if (!isAdmin) return;
+        await addDoc(collection(db, 'admins'), { 
+            email, 
+            addedBy: currentUser?.email, 
+            timestamp: new Date().toISOString() 
+        });
+    };
+
+    const handleRemoveAdmin = async (id: string) => {
+        if (!isAdmin) return;
+        // Prevenire che l'utente si cancelli da solo se è l'ultimo
+        if (adminList.length <= 1) {
+            alert("Impossibile eliminare l'unico amministratore.");
+            return;
+        }
+        await deleteDoc(doc(db, 'admins', id));
+    };
+
     const handleSelectTill = useCallback((tillId: string) => {
         setSelectedTillId(tillId);
         setView('till');
@@ -114,7 +191,8 @@ const App: React.FC = () => {
                     const item = newOrderData.items[index];
                     if (!docSnap.exists()) throw new Error(`Prodotto "${item.product.name}" non trovato.`);
                     const currentStock = docSnap.data().stock;
-                    if (currentStock < item.quantity) throw new Error(`Stock insufficiente per "${item.product.name}".`);
+                    // Opzionale: Permettere stock negativo o bloccare
+                    // if (currentStock < item.quantity) throw new Error(`Stock insufficiente per "${item.product.name}".`);
                 });
                 
                 const orderRef = doc(collection(db, 'orders'));
@@ -237,6 +315,14 @@ const App: React.FC = () => {
                             onDeleteStaff={deleteStaff}
                             onAddCashMovement={addCashMovement}
                             onStockPurchase={handleStockPurchase}
+                            // Auth Props
+                            isAuthenticated={isAdmin}
+                            currentUser={currentUser}
+                            onLogin={handleGoogleLogin}
+                            onLogout={handleLogout}
+                            adminList={adminList}
+                            onAddAdmin={handleAddAdmin}
+                            onRemoveAdmin={handleRemoveAdmin}
                         />;
             case 'selection':
             default:
