@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from './firebaseConfig';
 import TillSelection from './components/TillSelection';
@@ -23,22 +24,18 @@ const App: React.FC = () => {
         
         // Listen to Products
         const unsubProducts = db.collection('products').onSnapshot((snapshot: any) => {
-            // FIX: Spread ...doc.data() prima e sovrascrivi con id: doc.id
-            // Questo assicura che usiamo sempre l'ID reale del documento Firestore
             const productsData = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as Product));
             setProducts(productsData);
         }, (error: any) => console.error("Error fetching products:", error));
 
         // Listen to Staff
         const unsubStaff = db.collection('staff').onSnapshot((snapshot: any) => {
-            // FIX: Stessa correzione per lo staff
             const staffData = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as StaffMember));
             setStaff(staffData);
         }, (error: any) => console.error("Error fetching staff:", error));
 
         // Listen to Orders
         const unsubOrders = db.collection('orders').orderBy('timestamp', 'desc').onSnapshot((snapshot: any) => {
-            // FIX: Stessa correzione per gli ordini
             const ordersData = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as Order));
             setOrders(ordersData);
             setIsLoading(false); 
@@ -103,33 +100,54 @@ const App: React.FC = () => {
 
     const handleCompleteOrder = useCallback(async (newOrderData: Omit<Order, 'id'>) => {
         try {
-            const batch = db.batch();
+            // Usiamo una transazione per garantire che lo stock sia aggiornato correttamente
+            // e che non ci siano conflitti se due casse vendono lo stesso prodotto contemporaneamente.
+            await db.runTransaction(async (transaction: any) => {
+                // 1. Riferimenti ai documenti dei prodotti
+                const productRefs = newOrderData.items.map(item => db.collection('products').doc(item.product.id));
+                
+                // 2. Leggi lo stato ATTUALE di tutti i prodotti dal database
+                const productDocs = await Promise.all(productRefs.map(ref => transaction.get(ref)));
 
-            // 1. Create Order
-            const orderRef = db.collection('orders').doc();
-            const newOrder: Order = {
-                ...newOrderData,
-                id: orderRef.id
-            };
-            batch.set(orderRef, newOrder);
+                // 3. Controlli di validità
+                productDocs.forEach((doc, index) => {
+                    const item = newOrderData.items[index];
+                    
+                    if (!doc.exists) {
+                        throw new Error(`Il prodotto "${item.product.name}" non esiste più nel database.`);
+                    }
 
-            // 2. Update Stock
-            newOrderData.items.forEach(item => {
-                const productRef = db.collection('products').doc(item.product.id);
-                // We calculate new stock based on current local state for optimistic update feeling
-                const currentProduct = products.find(p => p.id === item.product.id);
-                if (currentProduct) {
-                    const newStock = Math.max(0, currentProduct.stock - item.quantity);
-                    batch.update(productRef, { stock: newStock });
-                }
+                    const currentStock = doc.data().stock;
+                    if (currentStock < item.quantity) {
+                        throw new Error(`Stock insufficiente per "${item.product.name}". Disponibili: ${currentStock}, Richiesti: ${item.quantity}`);
+                    }
+                });
+
+                // 4. Se tutto ok, procedi con le scritture
+                
+                // A. Crea l'ordine
+                const orderRef = db.collection('orders').doc();
+                const newOrder: Order = {
+                    ...newOrderData,
+                    id: orderRef.id
+                };
+                transaction.set(orderRef, newOrder);
+
+                // B. Aggiorna lo stock per ogni prodotto
+                productDocs.forEach((doc, index) => {
+                    const item = newOrderData.items[index];
+                    const currentStock = doc.data().stock;
+                    const newStock = currentStock - item.quantity;
+                    transaction.update(doc.ref, { stock: newStock });
+                });
             });
 
-            await batch.commit();
         } catch (error) {
             console.error("Error completing order:", error);
+            // Rilanciamo l'errore per gestirlo nel componente UI (mostrare alert)
             throw error; 
         }
-    }, [products]);
+    }, []);
     
     const addProduct = async (productData: Omit<Product, 'id'>) => {
         await db.collection('products').add(productData);
