@@ -132,4 +132,3 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 };
 
 export default TillSelection;
-
