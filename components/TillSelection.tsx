@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { Till } from '../types';
-import { LogoIcon, ModernChartIcon } from './Icons';
+import { ModernChartIcon, LogoIcon } from './Icons';
 
 interface TillSelectionProps {
     tills: Till[];
@@ -12,10 +13,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-slate-50">
             <div className="mb-12 flex flex-col items-center animate-fade-in text-center">
-                <div className="p-5 bg-white rounded-3xl shadow-soft mb-6 border border-slate-100">
-                    {/* Nuova icona tazzina di caffè */}
-                    <LogoIcon className="h-20 w-20 text-primary" />
+                {/* Logo Tazzina Caffè */}
+                <div className="mb-6 transform hover:scale-105 transition-transform duration-300 ease-in-out">
+                    <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-lg border-4 border-primary/10">
+                        <LogoIcon className="h-20 w-20 text-primary" />
+                    </div>
                 </div>
+                
                 <h1 className="text-4xl md:text-5xl font-black text-slate-800 tracking-tight mb-2">Gestionale Bar</h1>
                 <p className="text-slate-500 font-medium text-lg">Seleziona la tua postazione per iniziare</p>
             </div>
