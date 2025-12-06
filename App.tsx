@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
 import { collection, onSnapshot, doc, getDocs, writeBatch, runTransaction, addDoc, updateDoc, deleteDoc, setDoc, orderBy, query, getDoc, where } from 'firebase/firestore';
@@ -114,24 +113,13 @@ const App: React.FC = () => {
         seedDatabase();
     }, []);
 
-    // Tombola Logic: Extraction Engine (Lazy)
+    // Tombola Logic: Extraction Engine (Lazy - Solo se ACTIVE)
     useEffect(() => {
         const runTombolaExtraction = async () => {
             if (!tombolaConfig || tombolaConfig.extractedNumbers.length >= 90) return;
 
-            // CHECK AVVIO:
-            // 1. Stato ACTIVE
-            // 2. OPPURE Stato PENDING ma vendite >= 50%
-            const ticketsSold = tombolaTickets.length;
-            const threshold = tombolaConfig.maxTickets / 2;
-            const shouldBeActive = tombolaConfig.status === 'active' || ticketsSold >= threshold;
-
-            if (!shouldBeActive) return; // Non estrarre se non attivo o soglia non raggiunta
-
-            // Se deve attivarsi ma è ancora pending, attivalo
-            if (tombolaConfig.status === 'pending' && ticketsSold >= threshold) {
-                await updateDoc(doc(db, 'tombola', 'config'), { status: 'active' });
-            }
+            // CHECK AVVIO RIGOROSO: Solo se status è ACTIVE (premuto START da admin)
+            if (tombolaConfig.status !== 'active') return;
 
             const now = new Date().getTime();
             const last = new Date(tombolaConfig.lastExtraction).getTime();
@@ -174,8 +162,7 @@ const App: React.FC = () => {
 
                         t.update(configRef, { 
                             lastExtraction: new Date().toISOString(),
-                            extractedNumbers: newExtracted,
-                            status: 'active' // Ensure active
+                            extractedNumbers: newExtracted
                         });
                     });
                 } catch (e) { console.error("Tombola extraction error", e); }
@@ -188,7 +175,7 @@ const App: React.FC = () => {
     // Auth Actions
     const handleGoogleLogin = async () => {
         try { await signInWithPopup(auth, googleProvider); } 
-        catch (error) { console.error(error); alert("Errore login. Verifica domini autorizzati."); }
+        catch (error) { console.error(error); alert("Errore login. Verifica domini autorizzati su Firebase."); }
     };
     const handleLogout = async () => { await signOut(auth); setView('selection'); };
     const handleAddAdmin = async (email: string) => { if (isAdmin) await addDoc(collection(db, 'admins'), { email, addedBy: currentUser?.email, timestamp: new Date().toISOString() }); };
@@ -220,7 +207,7 @@ const App: React.FC = () => {
         const staffMember = staff.find(s => s.id === staffId);
         if (!staffMember) return;
 
-        // Pricing Logic: 6 = 5€, altrimenti 1€ l'una
+        // Pricing Logic: 6 = 5€, altrimenti 1€ l'una (o config)
         let totalCost = 0;
         if (quantity === 6) {
             totalCost = tombolaConfig.ticketPriceBundle;
@@ -233,17 +220,27 @@ const App: React.FC = () => {
 
         try {
             await runTransaction(db, async (t) => {
-                // 1. Crea Tickets
+                // 1. Crea Tickets con numeri distribuiti per colonne (Decine)
                 for (let i = 0; i < quantity; i++) {
-                    const numbers = Array.from({length: 15}, () => Math.floor(Math.random() * 90) + 1).sort((a,b)=>a-b); 
+                    const numbers: number[] = [];
+                    // Genera numeri assicurando distribuzione per colonne se possibile, altrimenti random puro ordinato
+                    // Per semplicità qui usiamo random puro ordinato che verrà visualizzato in griglia
+                    const pool = Array.from({length: 90}, (_, i) => i + 1);
+                    for(let j=0; j<15; j++) {
+                        const idx = Math.floor(Math.random() * pool.length);
+                        numbers.push(pool[idx]);
+                        pool.splice(idx, 1);
+                    }
+                    numbers.sort((a,b)=>a-b);
+
                     const ticketRef = doc(collection(db, 'tombola_tickets'));
                     t.set(ticketRef, { playerId: staffId, playerName: staffMember.name, numbers, purchaseTime: new Date().toISOString() });
                 }
                 // 2. Aggiorna Config (Jackpot)
                 t.update(doc(db, 'tombola', 'config'), { jackpot: tombolaConfig.jackpot + jackpotAdd });
-                // 3. Versa quota al Bar
+                // 3. Versa quota al Bar (Categoria Tombola)
                 const cashRef = doc(collection(db, 'cash_movements'));
-                t.set(cashRef, { amount: revenue, reason: `Tombola: ${quantity} cartelle (${staffMember.name})`, timestamp: new Date().toISOString(), type: 'deposit' });
+                t.set(cashRef, { amount: revenue, reason: `Tombola: ${quantity} cartelle (${staffMember.name})`, timestamp: new Date().toISOString(), type: 'deposit', category: 'tombola' });
             });
         } catch (e) { console.error(e); throw e; }
     };
@@ -279,7 +276,7 @@ const App: React.FC = () => {
         const pSnap = await getDoc(pRef);
         if(pSnap.exists()) {
             await updateDoc(pRef, { stock: pSnap.data().stock + qty, costPrice: cost });
-            await addDoc(collection(db, 'cash_movements'), { amount: qty*cost, reason: `Acquisto Stock: ${pSnap.data().name}`, timestamp: new Date().toISOString(), type: 'withdrawal' });
+            await addDoc(collection(db, 'cash_movements'), { amount: qty*cost, reason: `Acquisto Stock: ${pSnap.data().name}`, timestamp: new Date().toISOString(), type: 'withdrawal', category: 'bar' });
         }
     };
     const handleStockCorrection = async (pid: string, stock: number) => { await updateDoc(doc(db, 'products', pid), { stock }); };

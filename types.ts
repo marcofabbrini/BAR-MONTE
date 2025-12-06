@@ -1,4 +1,3 @@
-
 export interface Product {
     id: string;
     name: string;
@@ -54,6 +53,7 @@ export interface CashMovement {
     reason: string;
     timestamp: string;
     type: 'withdrawal' | 'deposit';
+    category?: 'bar' | 'tombola'; // Distinzione contabile
 }
 
 export interface AdminUser {

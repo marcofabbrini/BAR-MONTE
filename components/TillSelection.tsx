@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Till, TillColors } from '../types';
 import { ModernChartIcon, LockIcon, TicketIcon } from './Icons';
@@ -104,22 +103,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
                 
                 {/* MENU FUNZIONI - COMPATTISSIMO */}
-                <div className="flex gap-2 w-full justify-center px-2 flex-wrap">
+                <div className="flex gap-2 w-full justify-center px-2 flex-wrap mb-3">
                     <button
                         onClick={onSelectReports}
                         className="bg-white w-16 h-12 rounded-xl shadow-md hover:shadow-lg border border-slate-100 text-slate-600 font-bold flex flex-col items-center justify-center gap-0.5 hover:bg-slate-50 transition-all active:scale-95"
                     >
                         <ModernChartIcon className="h-4 w-4 text-primary" />
                         <span className="text-[8px] uppercase">Report</span>
-                    </button>
-
-                    <button
-                        onClick={onSelectTombola}
-                        className="bg-gradient-to-br from-indigo-500 to-purple-600 w-24 h-12 rounded-xl shadow-md hover:shadow-lg border border-transparent text-white font-bold flex flex-col items-center justify-center gap-0.5 hover:scale-105 transition-all active:scale-95 relative overflow-hidden"
-                    >
-                        <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                        <TicketIcon className="h-4 w-4 relative z-10" />
-                        <span className="text-[8px] uppercase relative z-10">Tombola '25</span>
                     </button>
                     
                     <button
@@ -130,12 +120,27 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         <LockIcon className="h-4 w-4" />
                     </button>
                 </div>
+
+                {/* PULSANTE TOMBOLA - IN BASSO E LARGO - TEMA NATALIZIO */}
+                <div className="w-full px-4 max-w-xs">
+                    <button
+                        onClick={onSelectTombola}
+                        className="w-full bg-gradient-to-r from-red-600 to-red-800 border-2 border-yellow-400 rounded-xl shadow-lg p-3 flex items-center justify-center gap-3 hover:scale-105 transition-transform animate-bounce-slow relative overflow-hidden group"
+                    >
+                        <div className="absolute inset-0 bg-white/10 group-hover:bg-white/20 transition-colors"></div>
+                        <TicketIcon className="h-6 w-6 text-yellow-300 drop-shadow-md" />
+                        <div className="text-left">
+                            <p className="text-white font-black text-sm uppercase tracking-wider text-shadow-sm leading-none">Tombola 2025</p>
+                            <p className="text-[9px] text-yellow-200 font-bold">Gioca e Vinci!</p>
+                        </div>
+                    </button>
+                </div>
             </div>
 
             {/* FOOTER FISSO CHIARO */}
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 text-center z-50 shadow-lg">
                 <p className="text-[10px] text-slate-400 font-medium">
-                    Gestionale Bar v2.5 | <span className="font-bold text-slate-500">Fabbrini M.</span>
+                    Gestionale Bar v2.6 | <span className="font-bold text-slate-500">Fabbrini M.</span>
                 </p>
             </div>
         </div>

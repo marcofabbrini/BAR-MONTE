@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -78,15 +77,17 @@ body {
   font-weight: bold;
   border-radius: 9999px;
   font-size: 0.8rem;
+  transition: all 0.3s ease;
 }
 
 .tombola-cell.extracted {
   background-color: #ef4444;
   color: white;
-  animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @keyframes pop {
   0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.2); }
   100% { transform: scale(1); opacity: 1; }
 }

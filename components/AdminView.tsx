@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig } from '../types';
 import { User } from 'firebase/auth';
