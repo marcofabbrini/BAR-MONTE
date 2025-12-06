@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Order, Product, StaffMember } from '../types';
 
@@ -13,10 +14,10 @@ const InsightsView: React.FC<InsightsViewProps> = ({ filteredOrders, products, s
     const [error, setError] = useState<string | null>(null);
     const [analysis, setAnalysis] = useState<string | null>(null);
     const [suggestedQuestions] = useState([
-        "Qual è il prodotto più venduto in questo periodo?",
+        "Qual è il prodotto più venduto?",
         "Quale operatore ha generato più incassi?",
-        "Ci sono tendenze di vendita interessanti?",
-        "Dammi 3 suggerimenti per migliorare le vendite.",
+        "Ci sono tendenze di vendita?",
+        "Dammi 3 suggerimenti per migliorare.",
     ]);
 
     const handleQuery = async (userQuery: string) => {
@@ -65,6 +66,10 @@ Per favore, rispondi alla richiesta dell'utente basandoti ESCLUSIVAMENTE sui dat
 
             if (!response.ok) {
                 const errorData = await response.json();
+                // Gestione specifica per errore API Key
+                if (response.status === 500 && errorData.message && errorData.message.includes("API_KEY")) {
+                    throw new Error("CONFIGURAZIONE MANCANTE: La chiave API di Gemini non è impostata su Vercel. Vai su Settings > Environment Variables e aggiungi 'API_KEY'.");
+                }
                 throw new Error(errorData.message || `Errore del server: ${response.status}`);
             }
 
@@ -112,14 +117,14 @@ Per favore, rispondi alla richiesta dell'utente basandoti ESCLUSIVAMENTE sui dat
                         disabled={isLoading}
                     />
                     <button type="submit" disabled={isLoading || !query.trim()} className="bg-secondary text-white font-bold py-3 px-6 rounded-md hover:bg-secondary-dark disabled:bg-slate-300 transition-colors">
-                        {isLoading ? 'Analizzo...' : 'Chiedi'}
+                        {isLoading ? '...' : 'Chiedi'}
                     </button>
                 </form>
 
                 <div className="flex flex-wrap gap-2 mb-6">
                     <p className="text-sm font-semibold text-slate-500 mr-2">Suggerimenti:</p>
                     {suggestedQuestions.map(q => (
-                        <button key={q} onClick={() => handleSuggestedClick(q)} disabled={isLoading} className="text-sm bg-slate-200 text-slate-700 px-3 py-1 rounded-full hover:bg-secondary hover:text-white transition-colors disabled:opacity-50">
+                        <button key={q} onClick={() => handleSuggestedClick(q)} disabled={isLoading} className="text-xs bg-slate-200 text-slate-700 px-3 py-1 rounded-full hover:bg-secondary hover:text-white transition-colors disabled:opacity-50">
                             {q}
                         </button>
                     ))}
@@ -127,22 +132,22 @@ Per favore, rispondi alla richiesta dell'utente basandoti ESCLUSIVAMENTE sui dat
 
                 {isLoading && (
                     <div className="text-center py-10">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-                        <p className="mt-4 text-slate-600">Analisi in corso...</p>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                        <p className="mt-2 text-sm text-slate-600">Sto analizzando i dati...</p>
                     </div>
                 )}
 
                 {error && (
-                    <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md">
-                        <p className="font-bold">Errore</p>
+                    <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-md text-sm">
+                        <p className="font-bold">Attenzione</p>
                         <p>{error}</p>
                     </div>
                 )}
 
                 {analysis && (
-                    <div className="bg-slate-50 p-5 rounded-lg border border-slate-200">
-                        <h3 className="text-xl font-bold text-slate-800 mb-3">Risultati Analisi</h3>
-                        <div className="prose prose-slate max-w-none whitespace-pre-wrap">
+                    <div className="bg-slate-50 p-5 rounded-lg border border-slate-200 animate-fade-in">
+                        <h3 className="text-lg font-bold text-slate-800 mb-3">Risultati Analisi</h3>
+                        <div className="prose prose-sm prose-slate max-w-none whitespace-pre-wrap">
                             {analysis}
                         </div>
                     </div>
