@@ -106,7 +106,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     }, [currentOrder, clearOrder, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder]);
 
     return (
-        <div className="flex flex-col h-screen overflow-hidden bg-slate-50">
+        <div className="flex flex-col h-[100dvh] overflow-hidden bg-slate-50">
             {/* Header Minimale */}
             <header className="bg-white px-6 py-3 flex justify-between items-center shadow-sm z-20 shrink-0">
                  <div className="flex items-center gap-4">
@@ -150,7 +150,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         </div>
                     </div>
 
-                    <div className="flex-grow overflow-y-auto px-6 pb-20 md:pb-6 scroll-smooth">
+                    <div className="flex-grow overflow-y-auto px-6 pb-[48vh] md:pb-6 scroll-smooth">
                         {activeTab === 'order' && (
                             <div className="animate-fade-in-up">
                                 <div className="mb-6 max-w-md">
