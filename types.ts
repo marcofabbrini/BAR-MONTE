@@ -25,6 +25,8 @@ export interface Order {
     staffName?: string;
     tillId: string;
     isDeleted?: boolean; // Soft delete
+    deletedBy?: string;
+    deletedAt?: string;
 }
 
 export interface Till {

@@ -17,7 +17,8 @@ interface AdminViewProps {
     staff: StaffMember[];
     cashMovements: CashMovement[];
     onUpdateTillColors: (colors: TillColors) => Promise<void>;
-    onDeleteOrders: (orderIds: string[]) => Promise<void>;
+    onDeleteOrders: (orderIds: string[], adminEmail: string) => Promise<void>;
+    onPermanentDeleteOrder: (orderId: string) => Promise<void>;
     onUpdateOrder: (order: Order) => Promise<void>;
     onAddProduct: (p: Omit<Product, 'id'>) => Promise<void>;
     onUpdateProduct: (p: Product) => Promise<void>;
@@ -45,7 +46,7 @@ type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'setting
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
-    onUpdateTillColors, onDeleteOrders, onUpdateOrder,
+    onUpdateTillColors, onDeleteOrders, onPermanentDeleteOrder, onUpdateOrder,
     onAddProduct, onUpdateProduct, onDeleteProduct,
     onAddStaff, onUpdateStaff, onDeleteStaff,
     onAddCashMovement, onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
@@ -90,9 +91,6 @@ const AdminView: React.FC<AdminViewProps> = ({
         });
     }, [orders, movFilterDate, movFilterShift, staff]);
 
-    const activeOrders = useMemo(() => filteredOrders.filter(o => !o.isDeleted), [filteredOrders]);
-    
-    // Calcolo Saldo Totale (globale, non filtrato)
     const globalActiveOrders = useMemo(() => orders.filter(o => !o.isDeleted), [orders]);
     const totalRevenue = globalActiveOrders.reduce((sum, o) => sum + o.total, 0);
     const totalWithdrawals = cashMovements.reduce((sum, m) => sum + m.amount, 0);
@@ -116,14 +114,20 @@ const AdminView: React.FC<AdminViewProps> = ({
     const handleBulkDelete = async () => {
         if (selectedOrderIds.size === 0) return;
         if (window.confirm(`Sei sicuro di voler annullare ${selectedOrderIds.size} movimenti?`)) {
-            await onDeleteOrders(Array.from(selectedOrderIds));
+            await onDeleteOrders(Array.from(selectedOrderIds), currentUser?.email || 'Admin');
             setSelectedOrderIds(new Set());
         }
     };
     
     const handleSingleDelete = async (orderId: string) => {
         if (window.confirm("Sei sicuro di voler annullare questo movimento?")) {
-            await onDeleteOrders([orderId]);
+            await onDeleteOrders([orderId], currentUser?.email || 'Admin');
+        }
+    };
+
+    const handlePermanentDelete = async (orderId: string) => {
+        if (window.confirm("ELIMINAZIONE DEFINITIVA. Questa operazione non può essere annullata. Procedere?")) {
+            await onPermanentDeleteOrder(orderId);
         }
     };
 
@@ -173,14 +177,14 @@ const AdminView: React.FC<AdminViewProps> = ({
         <button 
             onClick={() => setActiveTab(tab)} 
             className={`
-                flex flex-col items-center justify-center p-2 rounded-lg transition-all w-20 h-16 text-[10px] font-bold gap-1
+                flex flex-col items-center justify-center p-2 rounded-lg transition-all w-16 h-14 md:w-20 md:h-16 text-[9px] md:text-[10px] font-bold gap-1
                 ${activeTab === tab 
-                    ? 'bg-red-500 text-white shadow-md' 
-                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-red-500'
+                    ? 'bg-red-500 text-white shadow-md scale-105' 
+                    : 'bg-white text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-100'
                 }
             `}
         >
-            <div className={`${activeTab === tab ? 'text-white' : 'text-current'} transform scale-75`}>
+            <div className={`${activeTab === tab ? 'text-white' : 'text-current'} transform scale-75 md:scale-90`}>
                 {icon}
             </div>
             <span className="text-center leading-tight">{label}</span>
@@ -190,8 +194,8 @@ const AdminView: React.FC<AdminViewProps> = ({
     if (!isAuthenticated) {
         return (
             <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 p-4">
-                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
-                    <h2 className="text-2xl font-bold mb-6 text-slate-800">Area Riservata</h2>
+                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-t-4 border-red-500">
+                    <h2 className="text-2xl font-bold mb-6 text-slate-800">Area Amministrativa</h2>
                     <div className="flex gap-2">
                          <button type="button" onClick={onGoBack} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Indietro</button>
                          <button type="button" onClick={onLogin} className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 shadow-sm">
@@ -205,27 +209,27 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-            <header className="bg-white border-b border-slate-200 p-4 sticky top-0 z-50">
-                <div className="flex flex-col gap-4 max-w-7xl mx-auto w-full">
+            <header className="bg-white border-b border-slate-200 p-3 sticky top-0 z-50">
+                <div className="flex flex-col gap-3 max-w-7xl mx-auto w-full">
                     
-                    {/* TOP BAR: Back, Balance, User */}
+                    {/* TOP BAR */}
                     <div className="flex items-center justify-between w-full">
-                         <button onClick={onGoBack} className="flex items-center text-slate-500 hover:text-slate-800 font-bold gap-2">
-                            <BackArrowIcon className="h-5 w-5" /> Esci
+                         <button onClick={onGoBack} className="flex items-center text-slate-500 hover:text-slate-800 font-bold gap-1 text-sm">
+                            <BackArrowIcon className="h-4 w-4" /> Esci
                         </button>
                         
-                        <div className="bg-slate-800 text-white px-6 py-2 rounded-full shadow-lg flex flex-col items-center">
-                            <span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Saldo Cassa</span>
-                            <span className="text-xl font-black">€{currentBalance.toFixed(2)}</span>
+                        <div className="bg-slate-800 text-white px-4 py-1.5 rounded-full shadow-lg flex flex-col items-center">
+                            <span className="text-[9px] uppercase text-slate-400 font-bold tracking-wider">Saldo Cassa</span>
+                            <span className="text-lg font-black leading-none">€{currentBalance.toFixed(2)}</span>
                         </div>
 
                         <div className="text-right">
-                             <p className="text-[10px] text-slate-400 uppercase font-bold">{isSuperAdmin ? 'Super Admin' : 'Admin'}</p>
-                             <button onClick={onLogout} className="text-xs text-red-500 font-bold hover:underline">Logout</button>
+                             <p className="text-[9px] text-slate-400 uppercase font-bold">{isSuperAdmin ? 'Super Admin' : 'Admin'}</p>
+                             <button onClick={onLogout} className="text-[10px] text-red-500 font-bold hover:underline">LOGOUT</button>
                         </div>
                     </div>
                     
-                    {/* NAVIGATION TABS */}
+                    {/* NAVIGATION TABS - GRID */}
                     <div className="flex flex-wrap justify-center gap-2 w-full">
                         <TabButton tab="movements" label="Movimenti" icon={<ListIcon className="h-6 w-6" />} />
                         <TabButton tab="stock" label="Stock" icon={<BoxIcon className="h-6 w-6" />} />
@@ -244,14 +248,14 @@ const AdminView: React.FC<AdminViewProps> = ({
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div className="p-4 border-b border-slate-100 bg-slate-50">
                             <div className="flex flex-wrap gap-4 items-end justify-between">
-                                <h2 className="font-bold text-lg text-slate-700">Movimenti Filtrati</h2>
+                                <h2 className="font-bold text-lg text-slate-700">Gestione Movimenti</h2>
                                 <div className="flex gap-2 items-center">
                                     <div>
-                                        <label className="text-[10px] uppercase font-bold text-slate-400 block">Data</label>
+                                        <label className="text-[9px] uppercase font-bold text-slate-400 block">Data</label>
                                         <input type="date" value={movFilterDate} onChange={e => setMovFilterDate(e.target.value)} className="border rounded px-2 py-1 text-sm bg-white" />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] uppercase font-bold text-slate-400 block">Turno</label>
+                                        <label className="text-[9px] uppercase font-bold text-slate-400 block">Turno</label>
                                         <select value={movFilterShift} onChange={e => setMovFilterShift(e.target.value as any)} className="border rounded px-2 py-1 text-sm bg-white">
                                             <option value="all">Tutti</option>
                                             <option value="a">A</option>
@@ -286,27 +290,33 @@ const AdminView: React.FC<AdminViewProps> = ({
                                                 {editingOrderId === order.id ? (
                                                     <div className="flex flex-col gap-1"><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="border rounded px-1" /><input type="time" value={editForm.time} onChange={e => setEditForm({...editForm, time: e.target.value})} className="border rounded px-1" /></div>
                                                 ) : new Date(order.timestamp).toLocaleString('it-IT')}
+                                                {order.deletedBy && (
+                                                    <div className="text-[9px] text-red-500 italic mt-1">Del: {order.deletedBy}</div>
+                                                )}
                                             </td>
                                             <td className="p-3">
-                                                <div className="text-xs font-bold text-slate-700">{order.staffName}</div>
+                                                <div className={`text-xs font-bold ${order.isDeleted ? 'text-red-800 line-through' : 'text-slate-700'}`}>{order.staffName}</div>
                                                 <div className="text-[10px] text-slate-400 uppercase">Cassa {order.tillId}</div>
                                             </td>
                                             <td className="p-3 text-right font-bold text-slate-800">
-                                                 {editingOrderId === order.id ? <input type="number" step="0.01" value={editForm.total} onChange={e => setEditForm({...editForm, total: parseFloat(e.target.value)})} className="border rounded px-1 w-20 text-right" /> : `€${order.total.toFixed(2)}`}
+                                                 {editingOrderId === order.id ? <input type="number" step="0.01" value={editForm.total} onChange={e => setEditForm({...editForm, total: parseFloat(e.target.value)})} className="border rounded px-1 w-20 text-right" /> : <span className={order.isDeleted ? 'line-through opacity-50' : ''}>€{order.total.toFixed(2)}</span>}
                                             </td>
                                             <td className="p-3 text-center">
-                                                {order.isDeleted ? <span className="text-red-500 font-bold text-[10px] uppercase">Annullato</span> : <span className="text-green-500 font-bold text-[10px] uppercase">OK</span>}
+                                                {order.isDeleted ? <span className="text-red-500 font-bold text-[10px] uppercase border border-red-200 bg-red-100 px-1 rounded">ANNULLATO</span> : <span className="text-green-500 font-bold text-[10px] uppercase">OK</span>}
                                             </td>
                                             <td className="p-3 flex justify-center gap-2">
                                                 {editingOrderId === order.id ? (
                                                     <button onClick={saveEditOrder}><SaveIcon className="h-5 w-5 text-green-600" /></button>
                                                 ) : (
-                                                    !order.isDeleted && (
-                                                        <>
-                                                            <button onClick={() => startEditOrder(order)}><EditIcon className="h-4 w-4 text-blue-400" /></button>
-                                                            <button onClick={() => handleSingleDelete(order.id)}><TrashIcon className="h-4 w-4 text-red-400" /></button>
-                                                        </>
-                                                    )
+                                                    <>
+                                                        {!order.isDeleted && <button onClick={() => startEditOrder(order)}><EditIcon className="h-4 w-4 text-blue-400" /></button>}
+                                                        
+                                                        {!order.isDeleted && <button onClick={() => handleSingleDelete(order.id)}><TrashIcon className="h-4 w-4 text-red-500" /></button>}
+                                                        
+                                                        {order.isDeleted && isSuperAdmin && (
+                                                            <button onClick={() => handlePermanentDelete(order.id)} title="Elimina Definitivamente"><TrashIcon className="h-4 w-4 text-slate-800" /></button>
+                                                        )}
+                                                    </>
                                                 )}
                                             </td>
                                         </tr>

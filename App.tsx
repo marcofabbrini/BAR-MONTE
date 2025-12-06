@@ -45,11 +45,12 @@ const App: React.FC = () => {
                     });
                     setIsAdmin(true);
                 } else {
-                    // Semplificazione: se sei loggato con Google, sei Admin per ora (per evitare blocchi)
-                    // In produzione, decommentare la verifica sottostante
+                    // Verifica whitelist
                     // const q = query(adminsRef, where("email", "==", user.email));
                     // const querySnapshot = await getDocs(q);
                     // setIsAdmin(!querySnapshot.empty);
+                    
+                    // TEMPORANEO PER DEBUG/PRIMO ACCESSO: TUTTI SONO ADMIN
                     setIsAdmin(true); 
                 }
             } else {
@@ -143,7 +144,7 @@ const App: React.FC = () => {
             await signInWithPopup(auth, googleProvider);
         } catch (error) {
             console.error("Login failed", error);
-            alert("Errore durante il login.");
+            alert("Errore durante il login. Controlla che il dominio sia autorizzato in Firebase Console.");
         }
     };
 
@@ -179,17 +180,14 @@ const App: React.FC = () => {
                 const productRefs = newOrderData.items.map(item => doc(db, 'products', item.product.id));
                 const productDocs = await Promise.all(productRefs.map(ref => transaction.get(ref)));
 
-                // Verifica esistenza
                 productDocs.forEach((docSnap, index) => {
                     if (!docSnap.exists()) throw new Error(`Prodotto "${newOrderData.items[index].product.name}" non trovato.`);
                 });
                 
-                // Creazione ordine
                 const orderRef = doc(collection(db, 'orders'));
                 const newOrder: Order = { ...newOrderData, id: orderRef.id };
                 transaction.set(orderRef, newOrder);
 
-                // Aggiornamento stock
                 productDocs.forEach((docSnap, index) => {
                     const item = newOrderData.items[index];
                     const currentStock = docSnap.data().stock;
@@ -219,14 +217,23 @@ const App: React.FC = () => {
         await setDoc(doc(db, 'settings', 'tillColors'), colors, { merge: true });
     };
 
-    // Soft Delete Orders
-    const deleteOrders = async (orderIds: string[]) => {
+    // Soft Delete Orders (con tracciabilità)
+    const deleteOrders = async (orderIds: string[], adminEmail: string) => {
         const batch = writeBatch(db);
         orderIds.forEach(id => {
             const ref = doc(db, 'orders', id);
-            batch.update(ref, { isDeleted: true });
+            batch.update(ref, { 
+                isDeleted: true,
+                deletedBy: adminEmail,
+                deletedAt: new Date().toISOString()
+            });
         });
         await batch.commit();
+    };
+
+    // Hard Delete (Super Admin)
+    const permanentDeleteOrder = async (orderId: string) => {
+        await deleteDoc(doc(db, 'orders', orderId));
     };
 
     const updateOrder = async (order: Order) => {
@@ -264,7 +271,6 @@ const App: React.FC = () => {
         }
     };
     
-    // Rettifica Stock Diretta
     const handleStockCorrection = async (productId: string, newStock: number) => {
         await updateDoc(doc(db, 'products', productId), { stock: newStock });
     };
@@ -272,8 +278,6 @@ const App: React.FC = () => {
     // Reset Cassa (Super Admin)
     const handleResetCash = async () => {
         const batch = writeBatch(db);
-        // Annulla logicamente tutti i movimenti di cassa e gli ordini per "azzerare" il conteggio
-        // Nota: Questo è un soft reset. Per un hard delete usare onMassDelete
         cashMovements.forEach(m => {
             batch.update(doc(db, 'cash_movements', m.id), { amount: 0, reason: m.reason + ' (RESET)' });
         });
@@ -327,6 +331,7 @@ const App: React.FC = () => {
                             cashMovements={cashMovements}
                             onUpdateTillColors={updateTillColors}
                             onDeleteOrders={deleteOrders}
+                            onPermanentDeleteOrder={permanentDeleteOrder}
                             onUpdateOrder={updateOrder}
                             onAddProduct={addProduct}
                             onUpdateProduct={updateProduct}
