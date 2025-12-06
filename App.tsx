@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from './firebaseConfig';
+import { collection, onSnapshot, doc, getDocs, writeBatch, runTransaction, addDoc, updateDoc, deleteDoc, setDoc, orderBy, query } from 'firebase/firestore';
 import TillSelection from './components/TillSelection';
 import TillView from './components/TillView';
 import ReportsView from './components/ReportsView';
-import AdminView from './components/AdminView'; // Importa la nuova vista
+import AdminView from './components/AdminView';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
-import { Till, Product, StaffMember, Order, TillColors } from './types';
+import { Till, Product, StaffMember, Order, TillColors, CashMovement } from './types';
 
 type View = 'selection' | 'till' | 'reports' | 'admin';
 
@@ -18,32 +19,38 @@ const App: React.FC = () => {
     const [products, setProducts] = useState<Product[]>([]);
     const [staff, setStaff] = useState<StaffMember[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
-    const [tillColors, setTillColors] = useState<TillColors>({}); // Stato per i colori
+    const [cashMovements, setCashMovements] = useState<CashMovement[]>([]);
+    const [tillColors, setTillColors] = useState<TillColors>({});
 
-    // Load data from Firestore
     useEffect(() => {
         setIsLoading(true);
         
-        const unsubProducts = db.collection('products').onSnapshot((snapshot: any) => {
-            const productsData = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as Product));
+        const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+            const productsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
             setProducts(productsData);
         });
 
-        const unsubStaff = db.collection('staff').onSnapshot((snapshot: any) => {
-            const staffData = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as StaffMember));
+        const unsubStaff = onSnapshot(collection(db, 'staff'), (snapshot) => {
+            const staffData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StaffMember));
             setStaff(staffData);
         });
 
-        const unsubOrders = db.collection('orders').orderBy('timestamp', 'desc').onSnapshot((snapshot: any) => {
-            const ordersData = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as Order));
+        const qOrders = query(collection(db, 'orders'), orderBy('timestamp', 'desc'));
+        const unsubOrders = onSnapshot(qOrders, (snapshot) => {
+            const ordersData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order));
             setOrders(ordersData);
             setIsLoading(false); 
         });
 
-        // Load Settings (Colors)
-        const unsubSettings = db.collection('settings').doc('tillColors').onSnapshot((doc: any) => {
-            if (doc.exists) {
-                setTillColors(doc.data());
+        const qCash = query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc'));
+        const unsubCash = onSnapshot(qCash, (snapshot) => {
+             const cashData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as CashMovement));
+             setCashMovements(cashData);
+        });
+
+        const unsubSettings = onSnapshot(doc(db, 'settings', 'tillColors'), (docSnap) => {
+            if (docSnap.exists()) {
+                setTillColors(docSnap.data() as TillColors);
             }
         });
 
@@ -51,29 +58,29 @@ const App: React.FC = () => {
             unsubProducts();
             unsubStaff();
             unsubOrders();
+            unsubCash();
             unsubSettings();
         };
     }, []);
 
-    // Seed Database
     useEffect(() => {
         const seedDatabase = async () => {
             try {
-                const productsSnap = await db.collection('products').get();
+                const productsSnap = await getDocs(collection(db, 'products'));
                 if (productsSnap.empty) {
-                    const batch = db.batch();
+                    const batch = writeBatch(db);
                     INITIAL_MENU_ITEMS.forEach(item => {
-                        const docRef = db.collection('products').doc(item.id);
+                        const docRef = doc(db, 'products', item.id);
                         batch.set(docRef, item);
                     });
                     await batch.commit();
                 }
 
-                const staffSnap = await db.collection('staff').get();
+                const staffSnap = await getDocs(collection(db, 'staff'));
                 if (staffSnap.empty) {
-                    const batch = db.batch();
+                    const batch = writeBatch(db);
                     INITIAL_STAFF_MEMBERS.forEach(member => {
-                         const docRef = db.collection('staff').doc(member.id);
+                         const docRef = doc(db, 'staff', member.id);
                          batch.set(docRef, member);
                     });
                     await batch.commit();
@@ -91,7 +98,7 @@ const App: React.FC = () => {
     }, []);
     
     const handleSelectReports = useCallback(() => setView('reports'), []);
-    const handleSelectAdmin = useCallback(() => setView('admin'), []); // Nuovo handler
+    const handleSelectAdmin = useCallback(() => setView('admin'), []);
     const handleGoBack = useCallback(() => {
         setSelectedTillId(null);
         setView('selection');
@@ -99,25 +106,25 @@ const App: React.FC = () => {
 
     const handleCompleteOrder = useCallback(async (newOrderData: Omit<Order, 'id'>) => {
         try {
-            await db.runTransaction(async (transaction: any) => {
-                const productRefs = newOrderData.items.map(item => db.collection('products').doc(item.product.id));
+            await runTransaction(db, async (transaction) => {
+                const productRefs = newOrderData.items.map(item => doc(db, 'products', item.product.id));
                 const productDocs = await Promise.all(productRefs.map(ref => transaction.get(ref)));
 
-                productDocs.forEach((doc, index) => {
+                productDocs.forEach((docSnap, index) => {
                     const item = newOrderData.items[index];
-                    if (!doc.exists) throw new Error(`Prodotto "${item.product.name}" non trovato.`);
-                    const currentStock = doc.data().stock;
+                    if (!docSnap.exists()) throw new Error(`Prodotto "${item.product.name}" non trovato.`);
+                    const currentStock = docSnap.data().stock;
                     if (currentStock < item.quantity) throw new Error(`Stock insufficiente per "${item.product.name}".`);
                 });
                 
-                const orderRef = db.collection('orders').doc();
+                const orderRef = doc(collection(db, 'orders'));
                 const newOrder: Order = { ...newOrderData, id: orderRef.id };
                 transaction.set(orderRef, newOrder);
 
-                productDocs.forEach((doc, index) => {
+                productDocs.forEach((docSnap, index) => {
                     const item = newOrderData.items[index];
-                    const newStock = doc.data().stock - item.quantity;
-                    transaction.update(doc.ref, { stock: newStock });
+                    const newStock = docSnap.data().stock - item.quantity;
+                    transaction.update(docSnap.ref, { stock: newStock });
                 });
             });
         } catch (error) {
@@ -126,25 +133,26 @@ const App: React.FC = () => {
         }
     }, []);
     
-    // CRUD Operations
-    // NOTA: Avvolgiamo le chiamate in { } per assicurarci che ritornino Promise<void> e non Promise<DocumentReference>
-    const addProduct = async (data: Omit<Product, 'id'>) => { await db.collection('products').add(data); };
-    const updateProduct = async (p: Product) => { const { id, ...data } = p; await db.collection('products').doc(id).update(data); };
-    const deleteProduct = async (id: string) => { await db.collection('products').doc(id).delete(); };
+    // CRUD Operations (Wrapped to return Promise<void>)
+    const addProduct = async (data: Omit<Product, 'id'>) => { await addDoc(collection(db, 'products'), data); };
+    const updateProduct = async (p: Product) => { const { id, ...data } = p; await updateDoc(doc(db, 'products', id), data); };
+    const deleteProduct = async (id: string) => { await deleteDoc(doc(db, 'products', id)); };
     
-    const addStaff = async (data: Omit<StaffMember, 'id'>) => { await db.collection('staff').add(data); };
-    const updateStaff = async (s: StaffMember) => { const { id, ...data } = s; await db.collection('staff').doc(id).update(data); };
-    const deleteStaff = async (id: string) => { await db.collection('staff').doc(id).delete(); };
+    const addStaff = async (data: Omit<StaffMember, 'id'>) => { await addDoc(collection(db, 'staff'), data); };
+    const updateStaff = async (s: StaffMember) => { const { id, ...data } = s; await updateDoc(doc(db, 'staff', id), data); };
+    const deleteStaff = async (id: string) => { await deleteDoc(doc(db, 'staff', id)); };
+
+    const addCashMovement = async (data: Omit<CashMovement, 'id'>) => { await addDoc(collection(db, 'cash_movements'), data); };
 
     // Admin Operations
     const updateTillColors = async (colors: TillColors) => {
-        await db.collection('settings').doc('tillColors').set(colors, { merge: true });
+        await setDoc(doc(db, 'settings', 'tillColors'), colors, { merge: true });
     };
 
     const deleteOrders = async (orderIds: string[]) => {
-        const batch = db.batch();
+        const batch = writeBatch(db);
         orderIds.forEach(id => {
-            const ref = db.collection('orders').doc(id);
+            const ref = doc(db, 'orders', id);
             batch.delete(ref);
         });
         await batch.commit();
@@ -152,7 +160,7 @@ const App: React.FC = () => {
 
     const updateOrder = async (order: Order) => {
         const { id, ...data } = order;
-        await db.collection('orders').doc(id).update(data);
+        await updateDoc(doc(db, 'orders', id), data);
     };
 
     const selectedTill = TILLS.find(t => t.id === selectedTillId);
@@ -169,24 +177,33 @@ const App: React.FC = () => {
                                         allStaff={staff} 
                                         allOrders={orders}
                                         onCompleteOrder={handleCompleteOrder}
-                                        tillColors={tillColors} // Pass colors
+                                        tillColors={tillColors}
                                       /> : null;
             case 'reports':
+                // ReportsView ora ha solo Statistiche e Analisi. Le CRUD sono rimosse da qui.
                 return <ReportsView 
                           onGoBack={handleGoBack} 
                           products={products} staff={staff} orders={orders}
-                          onAddProduct={addProduct} onUpdateProduct={updateProduct} onDeleteProduct={deleteProduct}
-                          onAddStaff={addStaff} onUpdateStaff={updateStaff} onDeleteStaff={deleteStaff}
                         />;
-            case 'admin': // Render AdminView
+            case 'admin': 
                 return <AdminView 
                             onGoBack={handleGoBack}
                             orders={orders}
                             tills={TILLS}
                             tillColors={tillColors}
+                            products={products}
+                            staff={staff}
+                            cashMovements={cashMovements}
                             onUpdateTillColors={updateTillColors}
                             onDeleteOrders={deleteOrders}
                             onUpdateOrder={updateOrder}
+                            onAddProduct={addProduct}
+                            onUpdateProduct={updateProduct}
+                            onDeleteProduct={deleteProduct}
+                            onAddStaff={addStaff}
+                            onUpdateStaff={updateStaff}
+                            onDeleteStaff={deleteStaff}
+                            onAddCashMovement={addCashMovement}
                         />;
             case 'selection':
             default:
@@ -194,8 +211,8 @@ const App: React.FC = () => {
                             tills={TILLS} 
                             onSelectTill={handleSelectTill} 
                             onSelectReports={handleSelectReports} 
-                            onSelectAdmin={handleSelectAdmin} // Pass new handler
-                            tillColors={tillColors} // Pass colors
+                            onSelectAdmin={handleSelectAdmin}
+                            tillColors={tillColors}
                         />;
         }
     };
@@ -204,4 +221,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-

@@ -13,7 +13,7 @@ interface TillViewProps {
     allStaff: StaffMember[];
     allOrders: Order[];
     onCompleteOrder: (newOrder: Omit<Order, 'id'>) => Promise<void>;
-    tillColors?: TillColors; // Nuovo prop
+    tillColors?: TillColors;
 }
 
 const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors }) => {
@@ -22,7 +22,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
     const [isCartOpen, setIsCartOpen] = useState(false);
 
-    // Recupera il colore personalizzato o usa il default
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
     const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift), [allStaff, till.shift]);
@@ -80,11 +79,23 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         }
     }, [currentOrder, cartTotal, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder, clearOrder]);
 
+    // Genera iniziali per utente
+    const getInitials = (name: string) => {
+        return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    };
+
     return (
-        <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row">
-            <div className="flex-grow flex flex-col w-full md:w-auto min-h-screen">
-                {/* Header con colore dinamico */}
-                <header className="sticky top-0 px-4 py-3 flex justify-between items-center shadow-sm z-30 border-b border-white/20 text-white transition-colors duration-300" style={{ backgroundColor: themeColor }}>
+        <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row relative overflow-hidden">
+             {/* WATERMARK SFONDO */}
+             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                <span className="text-[400px] md:text-[600px] font-black text-slate-200/40 select-none">
+                    {till.shift.toUpperCase()}
+                </span>
+            </div>
+
+            <div className="flex-grow flex flex-col w-full md:w-auto min-h-screen z-10">
+                {/* Header con colore dinamico e trasparenza */}
+                <header className="sticky top-0 px-4 py-3 flex justify-between items-center shadow-sm z-30 border-b border-white/20 text-white transition-colors duration-300 backdrop-blur-md bg-opacity-90" style={{ backgroundColor: themeColor + 'E6' }}>
                      <div className="flex items-center gap-3">
                          <button onClick={onGoBack} className="group flex items-center gap-2 text-white/80 hover:text-white transition-colors">
                             <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center transition-colors">
@@ -99,8 +110,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                 </header>
                 
                 <main className="flex-grow flex flex-col relative w-full pb-24 md:pb-8">
-                    <div className="px-4 py-3 bg-slate-50 z-20 sticky top-[60px]">
-                         <div className="bg-white p-1 rounded-xl shadow-sm inline-flex w-full md:w-auto border border-slate-100">
+                    <div className="px-4 py-3 z-20 sticky top-[60px]">
+                         <div className="bg-white/90 backdrop-blur p-1 rounded-xl shadow-sm inline-flex w-full md:w-auto border border-slate-100">
                             <button onClick={() => setActiveTab('order')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === 'order' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>Nuovo Ordine</button>
                             <button onClick={() => setActiveTab('history')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === 'history' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>Storico</button>
                         </div>
@@ -109,12 +120,32 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                     <div className="px-4 w-full max-w-7xl mx-auto flex-grow">
                         {activeTab === 'order' && (
                             <div className="animate-fade-in-up">
-                                <div className="mb-4">
-                                    <div className="relative">
-                                        <select value={selectedStaffId} onChange={(e) => setSelectedStaffId(e.target.value)} className="w-full appearance-none bg-white border border-slate-200 text-slate-700 py-3 px-4 pr-8 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-400 font-medium">
-                                            <option value="" disabled>Seleziona Utente</option>
-                                            {staffForShift.map(staff => <option key={staff.id} value={staff.id}>{staff.name}</option>)}
-                                        </select>
+                                <div className="mb-6">
+                                    <h3 className="text-sm font-bold text-slate-500 uppercase mb-3 px-1">Seleziona Utente</h3>
+                                    <div className="flex flex-wrap gap-4">
+                                        {staffForShift.map(staff => (
+                                            <button 
+                                                key={staff.id} 
+                                                onClick={() => setSelectedStaffId(staff.id)}
+                                                className={`
+                                                    group relative w-16 h-16 rounded-full flex items-center justify-center shadow-md border-2 transition-all duration-200
+                                                    ${selectedStaffId === staff.id 
+                                                        ? 'border-primary scale-110 opacity-100 ring-4 ring-primary/20' 
+                                                        : 'border-white bg-white opacity-80 hover:opacity-100 hover:scale-105'
+                                                    }
+                                                `}
+                                                title={staff.name}
+                                            >
+                                                <span className="text-2xl select-none">
+                                                    {staff.icon || getInitials(staff.name)}
+                                                </span>
+                                                {selectedStaffId === staff.id && (
+                                                    <span className="absolute -bottom-6 text-[10px] font-bold bg-slate-800 text-white px-2 py-0.5 rounded-full whitespace-nowrap z-20">
+                                                        {staff.name}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
@@ -123,15 +154,15 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                             </div>
                         )}
                         {activeTab === 'history' && (
-                            <div className="max-w-3xl mx-auto">
-                                <OrderHistory orders={ordersForThisTill} staff={allStaff} />
+                            <div className="max-w-3xl mx-auto bg-white/90 backdrop-blur rounded-2xl p-6 shadow-sm border border-slate-100">
+                                <OrderHistory orders={ordersForThisTill} staff={staffForShift} />
                             </div>
                         )}
                     </div>
                 </main>
             </div>
             
-            {/* Mobile Bar & Drawer (Omessi per brevità, identici a prima ma con colori aggiornati se necessario) */}
+            {/* Mobile Bar & Drawer */}
             <div className={`md:hidden fixed bottom-0 left-0 w-full bg-white shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] border-t border-slate-200 z-50 p-4 transition-transform duration-300 ${activeTab === 'order' ? 'translate-y-0' : 'translate-y-full'}`}>
                 <div className="flex justify-between items-center gap-4">
                     <div className="flex flex-col"><span className="text-xs text-slate-500 font-bold uppercase">{cartItemCount} Articoli</span><span className="text-2xl font-black text-slate-800">€{cartTotal.toFixed(2)}</span></div>

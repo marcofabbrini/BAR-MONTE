@@ -1,37 +1,24 @@
+
 import React, { useState, useMemo } from 'react';
 import { Product, StaffMember, Order, Shift } from '../types';
-import ProductManagement from './ProductManagement';
-import StaffManagement from './StaffManagement';
 import StatisticsView from './StatisticsView';
 import InsightsView from './InsightsView';
-import { BackArrowIcon, InventoryIcon, StaffIcon, StatsIcon, LightbulbIcon } from './Icons';
+import { BackArrowIcon, StatsIcon, LightbulbIcon } from './Icons';
 
 interface ReportsViewProps {
     onGoBack: () => void;
     products: Product[];
     staff: StaffMember[];
     orders: Order[];
-    onAddProduct: (productData: Omit<Product, 'id'>) => Promise<void>;
-    onUpdateProduct: (product: Product) => Promise<void>;
-    onDeleteProduct: (productId: string) => Promise<void>;
-    onAddStaff: (staffData: Omit<StaffMember, 'id'>) => Promise<void>;
-    onUpdateStaff: (staffMember: StaffMember) => Promise<void>;
-    onDeleteStaff: (staffId: string) => Promise<void>;
 }
 
-type ReportTab = 'inventory' | 'staff' | 'statistics' | 'insights';
+type ReportTab = 'statistics' | 'insights';
 
 const ReportsView: React.FC<ReportsViewProps> = ({ 
     onGoBack, 
     products, 
     staff, 
-    orders,
-    onAddProduct,
-    onUpdateProduct,
-    onDeleteProduct,
-    onAddStaff,
-    onUpdateStaff,
-    onDeleteStaff
+    orders
 }) => {
     const [activeTab, setActiveTab] = useState<ReportTab>('statistics');
     
@@ -80,41 +67,6 @@ const ReportsView: React.FC<ReportsViewProps> = ({
         </button>
     );
 
-    const renderTabContent = () => {
-        switch (activeTab) {
-            case 'inventory':
-                return <ProductManagement 
-                            products={products} 
-                            onAddProduct={onAddProduct}
-                            onUpdateProduct={onUpdateProduct}
-                            onDeleteProduct={onDeleteProduct}
-                        />;
-            case 'staff':
-                return <StaffManagement 
-                            staff={staff} 
-                            onAddStaff={onAddStaff}
-                            onUpdateStaff={onUpdateStaff}
-                            onDeleteStaff={onDeleteStaff}
-                        />;
-            case 'statistics':
-                return <StatisticsView 
-                            filteredOrders={filteredOrders}
-                            allProducts={products}
-                            allStaff={staff}
-                            filters={{ startDate, endDate, selectedShift, selectedStaffId, selectedProductId }}
-                            onSetFilters={{ setStartDate, setEndDate, setSelectedShift, setSelectedStaffId, setSelectedProductId }}
-                        />;
-            case 'insights':
-                return <InsightsView 
-                            filteredOrders={filteredOrders}
-                            products={products}
-                            staff={staff}
-                        />;
-            default:
-                return null;
-        }
-    };
-
     return (
         <div className="flex flex-col min-h-screen bg-slate-50">
             <header className="bg-white shadow-sm p-4 flex justify-between items-center z-10 sticky top-0">
@@ -126,8 +78,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({
                     <span className="font-bold text-sm hidden md:block">Indietro</span>
                 </button>
                 
-                <h1 className="text-xl font-bold text-slate-800 tracking-tight">Report e Gestione</h1>
-                <div className="w-20"></div> {/* Spacer for balance */}
+                <h1 className="text-xl font-bold text-slate-800 tracking-tight">Report e Statistiche</h1>
+                <div className="w-20"></div>
             </header>
 
             <main className="flex-grow flex flex-col">
@@ -135,13 +87,26 @@ const ReportsView: React.FC<ReportsViewProps> = ({
                    <div className="flex max-w-7xl mx-auto px-4">
                        <TabButton tab="statistics" label="Statistiche" icon={<StatsIcon className="h-5 w-5" />} />
                        <TabButton tab="insights" label="Analisi Intelligente" icon={<LightbulbIcon className="h-5 w-5" />} />
-                       <TabButton tab="inventory" label="Prodotti" icon={<InventoryIcon className="h-5 w-5" />} />
-                       <TabButton tab="staff" label="Personale" icon={<StaffIcon className="h-5 w-5" />} />
                    </div>
                 </div>
                 
                 <div className="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full">
-                    {renderTabContent()}
+                    {activeTab === 'statistics' && (
+                        <StatisticsView 
+                            filteredOrders={filteredOrders}
+                            allProducts={products}
+                            allStaff={staff}
+                            filters={{ startDate, endDate, selectedShift, selectedStaffId, selectedProductId }}
+                            onSetFilters={{ setStartDate, setEndDate, setSelectedShift, setSelectedStaffId, setSelectedProductId }}
+                        />
+                    )}
+                    {activeTab === 'insights' && (
+                        <InsightsView 
+                            filteredOrders={filteredOrders}
+                            products={products}
+                            staff={staff}
+                        />
+                    )}
                 </div>
             </main>
         </div>

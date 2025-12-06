@@ -15,17 +15,17 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     
     // Emoji randomica che cambia ad ogni refresh
     const randomEmoji = useMemo(() => {
-        const emojis = ['☕', '🥐', '🍰', '🍹', '🍦', '🥪', '🍩', '🍪', '🥃', '🍷'];
+        const emojis = ['☕', '🥐', '🍰', '🍹', '🍦', '🥪', '🍩', '🍪', '🥃', '🍷', '🍕', '🍔'];
         return emojis[Math.floor(Math.random() * emojis.length)];
     }, []);
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-slate-50 relative overflow-hidden">
             
-            <div className="flex flex-col items-center text-center z-10 mb-10">
+            <div className="flex flex-col items-center text-center z-10 mb-8">
                 {/* EMOJI GIGANTE SENZA CERCHIO */}
-                <div className="mb-6 transform hover:scale-110 transition-transform duration-500 cursor-default select-none animate-bounce-slow">
-                    <span className="text-[150px] leading-none filter drop-shadow-2xl">
+                <div className="mb-4 transform hover:scale-110 transition-transform duration-500 cursor-default select-none animate-bounce-slow">
+                    <span className="text-[160px] leading-none filter drop-shadow-2xl">
                         {randomEmoji}
                     </span>
                 </div>
@@ -49,7 +49,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             {/* GRIGLIA PULSANTI CASSE */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-5xl z-10 mb-12">
                 {tills.map((till) => {
-                    // Colore preso dalle impostazioni o default arancione
                     const bgColor = tillColors[till.id] || '#f97316';
                     
                     return (
@@ -83,7 +82,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     className="bg-white px-6 py-3 rounded-2xl shadow-md hover:shadow-lg border border-slate-100 text-slate-600 font-bold flex items-center gap-2 hover:bg-slate-50 transition-all active:scale-95"
                 >
                     <ModernChartIcon className="h-6 w-6 text-slate-400" />
-                    <span>Report e Gestione</span>
+                    <span>Report e Statistiche</span>
                 </button>
                 
                 {/* Pulsante Lucchetto (Admin) */}
@@ -100,4 +99,3 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 };
 
 export default TillSelection;
-

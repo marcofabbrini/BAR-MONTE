@@ -40,7 +40,14 @@ export interface StaffMember {
     icon?: string;
 }
 
-// Nuova interfaccia per i colori delle casse
 export interface TillColors {
-    [key: string]: string; // es. 'TA': '#ff0000'
+    [key: string]: string; 
+}
+
+export interface CashMovement {
+    id: string;
+    amount: number;
+    reason: string;
+    timestamp: string;
+    type: 'withdrawal' | 'deposit';
 }
