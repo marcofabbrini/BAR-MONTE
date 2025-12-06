@@ -1,3 +1,4 @@
+
 export interface Product {
     id: string;
     name: string;
@@ -6,6 +7,7 @@ export interface Product {
     description: string;
     stock: number;
     isFavorite: boolean;
+    icon?: string; // Nuova proprietà per l'icona (emoji)
 }
 
 export interface OrderItem {

@@ -1,3 +1,4 @@
+
 import { Product, Till, StaffMember } from './types';
 
 export const TILLS: Till[] = [
@@ -17,6 +18,7 @@ export const INITIAL_MENU_ITEMS: Product[] = [
         description: 'Caffè espresso classico',
         stock: 100,
         isFavorite: true,
+        icon: '☕'
     },
     {
         id: 'prod-2',
@@ -26,6 +28,7 @@ export const INITIAL_MENU_ITEMS: Product[] = [
         description: 'Cappuccino con latte fresco',
         stock: 50,
         isFavorite: true,
+        icon: '🥛'
     },
     {
         id: 'prod-3',
@@ -35,6 +38,7 @@ export const INITIAL_MENU_ITEMS: Product[] = [
         description: 'Cornetto vuoto o farcito',
         stock: 80,
         isFavorite: false,
+        icon: '🥐'
     }
 ];
 
