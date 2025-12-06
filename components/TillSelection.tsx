@@ -1,65 +1,82 @@
+
 import React, { useMemo } from 'react';
-import { Till } from '../types';
-import { ModernChartIcon } from './Icons';
+import { Till, TillColors } from '../types';
+import { ModernChartIcon, LockIcon } from './Icons';
 
 interface TillSelectionProps {
     tills: Till[];
     onSelectTill: (tillId: string) => void;
     onSelectReports: () => void;
+    onSelectAdmin: () => void; // Nuovo prop
+    tillColors: TillColors; // Nuovo prop per i colori
 }
 
-const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports }) => {
+const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, tillColors }) => {
     
-    // Genera un'emoji randomica a tema bar ogni volta che il componente viene montato
     const randomEmoji = useMemo(() => {
         const emojis = ['☕', '🥐', '🍰', '🍹', '🍦', '🥪', '🥗', '🍩', '🍪', '🧃'];
         return emojis[Math.floor(Math.random() * emojis.length)];
     }, []);
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-slate-50">
-            <div className="mb-12 flex flex-col items-center animate-fade-in text-center">
-                {/* Emoji Randomica */}
-                <div className="mb-6 transform hover:scale-110 transition-transform duration-300 ease-in-out cursor-default select-none">
-                    <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-lg border-4 border-primary/10">
-                        <span className="text-6xl filter drop-shadow-sm" role="img" aria-label="Bar Icon">
-                            {randomEmoji}
-                        </span>
-                    </div>
+        <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-slate-50 relative">
+            <div className="mb-12 flex flex-col items-center animate-fade-in text-center z-10">
+                {/* Emoji Gigante Libera */}
+                <div className="mb-8 transform hover:scale-125 transition-transform duration-500 ease-in-out cursor-default select-none animate-bounce-slow">
+                    <span className="text-9xl filter drop-shadow-xl" role="img" aria-label="Bar Icon">
+                        {randomEmoji}
+                    </span>
                 </div>
                 
-                <h1 className="text-4xl md:text-5xl font-black text-slate-800 tracking-tight mb-2">Gestionale Bar</h1>
-                <p className="text-slate-500 font-medium text-lg">Seleziona la tua postazione per iniziare</p>
+                {/* Nuovo Titolo */}
+                <h1 className="text-5xl md:text-7xl font-black text-slate-800 tracking-tight mb-2 leading-tight">
+                    BAR VVF<br/>
+                    <span className="text-primary text-3xl md:text-5xl font-extrabold block mt-2">Montepulciano</span>
+                </h1>
+                
+                {/* Nuovo Testo */}
+                <p className="text-slate-500 font-medium text-xl mt-6">Scegli il turno per iniziare</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
-                {tills.map((till) => (
-                    <button
-                        key={till.id}
-                        onClick={() => onSelectTill(till.id)}
-                        className="group bg-white rounded-3xl p-8 shadow-sm hover:shadow-xl border-2 border-transparent hover:border-primary/10 transition-all duration-300 ease-out flex flex-col items-center justify-center relative overflow-hidden h-64"
-                    >
-                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
-                        
-                        {/* Lettera del turno GRANDE */}
-                        <div className="w-32 h-32 bg-orange-50 rounded-full group-hover:bg-primary group-hover:text-white transition-all duration-300 mb-4 flex items-center justify-center">
-                            <span className="text-7xl font-black text-primary group-hover:text-white transition-colors select-none">
-                                {till.shift.toUpperCase()}
-                            </span>
-                        </div>
-                        
-                        <span className="text-2xl font-bold text-slate-800 group-hover:text-primary transition-colors">{till.name}</span>
-                    </button>
-                ))}
-                 <button
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl z-10">
+                {tills.map((till) => {
+                    // Colore dinamico o default
+                    const bgColor = tillColors[till.id] || '#f97316';
+                    
+                    return (
+                        <button
+                            key={till.id}
+                            onClick={() => onSelectTill(till.id)}
+                            className="group bg-white rounded-3xl p-6 shadow-md hover:shadow-2xl transition-all duration-300 ease-out flex flex-col items-center justify-center relative overflow-hidden h-64 border-2 border-transparent hover:border-slate-200"
+                        >
+                             <div className="w-32 h-32 rounded-full mb-6 flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform duration-300" style={{ backgroundColor: bgColor }}>
+                                <span className="text-7xl font-black text-white select-none">
+                                    {till.shift.toUpperCase()}
+                                </span>
+                            </div>
+                            <span className="text-2xl font-bold text-slate-800">{till.name}</span>
+                        </button>
+                    );
+                })}
+            </div>
+            
+            {/* Footer Buttons */}
+            <div className="mt-12 flex gap-4 z-10">
+                <button
                     onClick={onSelectReports}
-                    className="group bg-slate-100 rounded-3xl p-8 shadow-inner hover:shadow-xl hover:bg-white border-2 border-transparent hover:border-slate-200 transition-all duration-300 ease-out flex flex-col items-center justify-center relative overflow-hidden h-64"
+                    className="bg-white px-6 py-3 rounded-xl shadow-sm hover:shadow-md border border-slate-200 text-slate-600 font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors"
                 >
-                    <div className="w-24 h-24 bg-white rounded-full group-hover:bg-slate-800 transition-colors mb-4 flex items-center justify-center shadow-sm">
-                        <ModernChartIcon className="h-10 w-10 text-slate-600 group-hover:text-white transition-colors" />
-                    </div>
-                    <span className="text-xl font-bold text-slate-600 group-hover:text-slate-800 transition-colors">Report e Gestione</span>
-                    <span className="text-sm text-slate-400 mt-1 font-medium">Area Amministrativa</span>
+                    <ModernChartIcon className="h-5 w-5" />
+                    <span>Report e Gestione</span>
+                </button>
+                
+                {/* Pulsante Lucchetto per Admin */}
+                <button
+                    onClick={onSelectAdmin}
+                    className="bg-white p-3 rounded-xl shadow-sm hover:shadow-md border border-slate-200 text-slate-400 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+                    title="Area Riservata"
+                >
+                    <LockIcon className="h-5 w-5" />
                 </button>
             </div>
         </div>

@@ -66,15 +66,10 @@ export const StarIcon = ({ filled, ...props }: { filled?: boolean } & React.SVGP
 export const LogoIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" className="hidden" />
-      {/* Corpo della tazzina */}
       <path strokeLinecap="round" strokeLinejoin="round" d="M6 9v3.75a4.5 4.5 0 0 0 4.5 4.5h2.25a4.5 4.5 0 0 0 4.5-4.5V9" />
-      {/* Bordo superiore */}
       <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 9H6" />
-      {/* Manico */}
       <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 11.25a2.25 2.25 0 0 0 2.25-2.25v-.75a2.25 2.25 0 0 0-2.25-2.25h-.375" />
-      {/* Fumo/Aroma */}
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 5.25c0-.414.336-.75.75-.75s.75.336.75.75c0 .414-.336.75-.75.75s-.75-.336-.75-.75zm4.5 0c0-.414.336-.75.75-.75s.75.336.75.75c0 .414-.336.75-.75.75s-.75-.336-.75-.75z" />
-      {/* Piattino */}
       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5h15" />
     </svg>
 );
@@ -82,5 +77,17 @@ export const LogoIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export const ModernChartIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+    </svg>
+);
+
+export const LockIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+    </svg>
+);
+
+export const CheckIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
     </svg>
 );

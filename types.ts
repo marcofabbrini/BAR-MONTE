@@ -37,5 +37,10 @@ export interface StaffMember {
     id: string;
     name: string;
     shift: Shift;
-    icon?: string; // Nuova proprietà per l'icona (emoji)
+    icon?: string;
+}
+
+// Nuova interfaccia per i colori delle casse
+export interface TillColors {
+    [key: string]: string; // es. 'TA': '#ff0000'
 }

@@ -1,12 +1,14 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from './firebaseConfig';
 import TillSelection from './components/TillSelection';
 import TillView from './components/TillView';
 import ReportsView from './components/ReportsView';
+import AdminView from './components/AdminView'; // Importa la nuova vista
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
-import { Till, Product, StaffMember, Order } from './types';
+import { Till, Product, StaffMember, Order, TillColors } from './types';
 
-type View = 'selection' | 'till' | 'reports';
+type View = 'selection' | 'till' | 'reports' | 'admin';
 
 const App: React.FC = () => {
     const [view, setView] = useState<View>('selection');
@@ -16,47 +18,49 @@ const App: React.FC = () => {
     const [products, setProducts] = useState<Product[]>([]);
     const [staff, setStaff] = useState<StaffMember[]>([]);
     const [orders, setOrders] = useState<Order[]>([]);
+    const [tillColors, setTillColors] = useState<TillColors>({}); // Stato per i colori
 
     // Load data from Firestore
     useEffect(() => {
         setIsLoading(true);
         
-        // Listen to Products
         const unsubProducts = db.collection('products').onSnapshot((snapshot: any) => {
             const productsData = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as Product));
             setProducts(productsData);
-        }, (error: any) => console.error("Error fetching products:", error));
+        });
 
-        // Listen to Staff
         const unsubStaff = db.collection('staff').onSnapshot((snapshot: any) => {
             const staffData = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as StaffMember));
             setStaff(staffData);
-        }, (error: any) => console.error("Error fetching staff:", error));
+        });
 
-        // Listen to Orders
         const unsubOrders = db.collection('orders').orderBy('timestamp', 'desc').onSnapshot((snapshot: any) => {
             const ordersData = snapshot.docs.map((doc: any) => ({ ...doc.data(), id: doc.id } as Order));
             setOrders(ordersData);
             setIsLoading(false); 
-        }, (error: any) => {
-            console.error("Error fetching orders:", error);
-            setIsLoading(false);
+        });
+
+        // Load Settings (Colors)
+        const unsubSettings = db.collection('settings').doc('tillColors').onSnapshot((doc: any) => {
+            if (doc.exists) {
+                setTillColors(doc.data());
+            }
         });
 
         return () => {
             unsubProducts();
             unsubStaff();
             unsubOrders();
+            unsubSettings();
         };
     }, []);
 
-    // Seed Database if empty
+    // Seed Database
     useEffect(() => {
         const seedDatabase = async () => {
             try {
                 const productsSnap = await db.collection('products').get();
                 if (productsSnap.empty) {
-                    console.log("Seeding products...");
                     const batch = db.batch();
                     INITIAL_MENU_ITEMS.forEach(item => {
                         const docRef = db.collection('products').doc(item.id);
@@ -67,7 +71,6 @@ const App: React.FC = () => {
 
                 const staffSnap = await db.collection('staff').get();
                 if (staffSnap.empty) {
-                    console.log("Seeding staff...");
                     const batch = db.batch();
                     INITIAL_STAFF_MEMBERS.forEach(member => {
                          const docRef = db.collection('staff').doc(member.id);
@@ -79,7 +82,6 @@ const App: React.FC = () => {
                 console.error("Error seeding database:", error);
             }
         };
-
         seedDatabase();
     }, []);
 
@@ -88,10 +90,8 @@ const App: React.FC = () => {
         setView('till');
     }, []);
     
-    const handleSelectReports = useCallback(() => {
-        setView('reports');
-    }, []);
-
+    const handleSelectReports = useCallback(() => setView('reports'), []);
+    const handleSelectAdmin = useCallback(() => setView('admin'), []); // Nuovo handler
     const handleGoBack = useCallback(() => {
         setSelectedTillId(null);
         setView('selection');
@@ -99,92 +99,65 @@ const App: React.FC = () => {
 
     const handleCompleteOrder = useCallback(async (newOrderData: Omit<Order, 'id'>) => {
         try {
-            // Usiamo una transazione per garantire che lo stock sia aggiornato correttamente
-            // e che non ci siano conflitti se due casse vendono lo stesso prodotto contemporaneamente.
             await db.runTransaction(async (transaction: any) => {
-                // 1. Riferimenti ai documenti dei prodotti
                 const productRefs = newOrderData.items.map(item => db.collection('products').doc(item.product.id));
-                
-                // 2. Leggi lo stato ATTUALE di tutti i prodotti dal database
                 const productDocs = await Promise.all(productRefs.map(ref => transaction.get(ref)));
 
-                // 3. Controlli di validità
                 productDocs.forEach((doc, index) => {
                     const item = newOrderData.items[index];
-                    
-                    if (!doc.exists) {
-                        throw new Error(`Il prodotto "${item.product.name}" non esiste più nel database.`);
-                    }
-
+                    if (!doc.exists) throw new Error(`Prodotto "${item.product.name}" non trovato.`);
                     const currentStock = doc.data().stock;
-                    if (currentStock < item.quantity) {
-                        throw new Error(`Stock insufficiente per "${item.product.name}". Disponibili: ${currentStock}, Richiesti: ${item.quantity}`);
-                    }
+                    if (currentStock < item.quantity) throw new Error(`Stock insufficiente per "${item.product.name}".`);
                 });
-
-                // 4. Se tutto ok, procedi con le scritture
                 
-                // A. Crea l'ordine
                 const orderRef = db.collection('orders').doc();
-                const newOrder: Order = {
-                    ...newOrderData,
-                    id: orderRef.id
-                };
+                const newOrder: Order = { ...newOrderData, id: orderRef.id };
                 transaction.set(orderRef, newOrder);
 
-                // B. Aggiorna lo stock per ogni prodotto
                 productDocs.forEach((doc, index) => {
                     const item = newOrderData.items[index];
-                    const currentStock = doc.data().stock;
-                    const newStock = currentStock - item.quantity;
+                    const newStock = doc.data().stock - item.quantity;
                     transaction.update(doc.ref, { stock: newStock });
                 });
             });
-
         } catch (error) {
             console.error("Error completing order:", error);
-            // Rilanciamo l'errore per gestirlo nel componente UI (mostrare alert)
             throw error; 
         }
     }, []);
     
-    const addProduct = async (productData: Omit<Product, 'id'>) => {
-        await db.collection('products').add(productData);
+    // CRUD Operations
+    const addProduct = async (data: Omit<Product, 'id'>) => await db.collection('products').add(data);
+    const updateProduct = async (p: Product) => { const { id, ...data } = p; await db.collection('products').doc(id).update(data); };
+    const deleteProduct = async (id: string) => await db.collection('products').doc(id).delete();
+    
+    const addStaff = async (data: Omit<StaffMember, 'id'>) => await db.collection('staff').add(data);
+    const updateStaff = async (s: StaffMember) => { const { id, ...data } = s; await db.collection('staff').doc(id).update(data); };
+    const deleteStaff = async (id: string) => await db.collection('staff').doc(id).delete();
+
+    // Admin Operations
+    const updateTillColors = async (colors: TillColors) => {
+        await db.collection('settings').doc('tillColors').set(colors, { merge: true });
     };
 
-    const updateProduct = async (product: Product) => {
-        const { id, ...data } = product;
-        await db.collection('products').doc(id).update(data);
+    const deleteOrders = async (orderIds: string[]) => {
+        const batch = db.batch();
+        orderIds.forEach(id => {
+            const ref = db.collection('orders').doc(id);
+            batch.delete(ref);
+        });
+        await batch.commit();
     };
 
-    const deleteProduct = async (productId: string) => {
-        await db.collection('products').doc(productId).delete();
+    const updateOrder = async (order: Order) => {
+        const { id, ...data } = order;
+        await db.collection('orders').doc(id).update(data);
     };
-    
-    const addStaff = async (staffData: Omit<StaffMember, 'id'>) => {
-        await db.collection('staff').add(staffData);
-    };
-    
-    const updateStaff = async (staffMember: StaffMember) => {
-        const { id, ...data } = staffMember;
-        await db.collection('staff').doc(id).update(data);
-    };
-    
-    const deleteStaff = async (staffId: string) => {
-        await db.collection('staff').doc(staffId).delete();
-    };
-
 
     const selectedTill = TILLS.find(t => t.id === selectedTillId);
 
     const renderContent = () => {
-        if (isLoading) {
-            return (
-                <div className="flex items-center justify-center min-h-screen">
-                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
-                </div>
-            );
-        }
+        if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
 
         switch (view) {
             case 'till':
@@ -195,31 +168,38 @@ const App: React.FC = () => {
                                         allStaff={staff} 
                                         allOrders={orders}
                                         onCompleteOrder={handleCompleteOrder}
+                                        tillColors={tillColors} // Pass colors
                                       /> : null;
             case 'reports':
                 return <ReportsView 
                           onGoBack={handleGoBack} 
-                          products={products} 
-                          staff={staff} 
-                          orders={orders}
-                          onAddProduct={addProduct}
-                          onUpdateProduct={updateProduct}
-                          onDeleteProduct={deleteProduct}
-                          onAddStaff={addStaff}
-                          onUpdateStaff={updateStaff}
-                          onDeleteStaff={deleteStaff}
+                          products={products} staff={staff} orders={orders}
+                          onAddProduct={addProduct} onUpdateProduct={updateProduct} onDeleteProduct={deleteProduct}
+                          onAddStaff={addStaff} onUpdateStaff={updateStaff} onDeleteStaff={deleteStaff}
+                        />;
+            case 'admin': // Render AdminView
+                return <AdminView 
+                            onGoBack={handleGoBack}
+                            orders={orders}
+                            tills={TILLS}
+                            tillColors={tillColors}
+                            onUpdateTillColors={updateTillColors}
+                            onDeleteOrders={deleteOrders}
+                            onUpdateOrder={updateOrder}
                         />;
             case 'selection':
             default:
-                return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} />;
+                return <TillSelection 
+                            tills={TILLS} 
+                            onSelectTill={handleSelectTill} 
+                            onSelectReports={handleSelectReports} 
+                            onSelectAdmin={handleSelectAdmin} // Pass new handler
+                            tillColors={tillColors} // Pass colors
+                        />;
         }
     };
 
-    return (
-        <div className="min-h-screen bg-slate-100 text-slate-800 font-sans">
-            {renderContent()}
-        </div>
-    );
+    return <div className="min-h-screen bg-slate-100 text-slate-800 font-sans">{renderContent()}</div>;
 };
 
 export default App;
