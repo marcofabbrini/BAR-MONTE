@@ -154,8 +154,8 @@ const AdminView: React.FC<AdminViewProps> = ({
                     <p className="text-slate-500 mb-6">Accedi per gestire il sistema</p>
                     
                     {currentUser ? (
-                         <div className="mb-4 text-red-500">
-                             Accesso negato. L'utente {currentUser.email} non è un amministratore.
+                         <div className="mb-4 text-red-500 bg-red-50 p-3 rounded">
+                             <p>Accesso negato. L'utente <b>{currentUser.email}</b> non è un amministratore.</p>
                              <button onClick={onLogout} className="block w-full mt-2 text-sm text-slate-400 underline">Logout</button>
                          </div>
                     ) : null}

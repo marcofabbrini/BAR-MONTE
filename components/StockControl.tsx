@@ -31,7 +31,6 @@ const StockControl: React.FC<StockControlProps> = ({ products, onStockPurchase }
         setPurchaseForm({ quantity: 0, cost: 0 });
     };
 
-    // Calcoli in tempo reale
     const currentProduct = products.find(p => p.id === selectedProduct);
     const totalExpense = purchaseForm.quantity * purchaseForm.cost;
     const margin = currentProduct ? currentProduct.price - purchaseForm.cost : 0;
@@ -39,12 +38,10 @@ const StockControl: React.FC<StockControlProps> = ({ products, onStockPurchase }
 
     return (
         <div className="space-y-6">
-            {/* Barra ricerca */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                 <input type="text" placeholder="Cerca prodotto..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary" />
             </div>
 
-            {/* Modale Acquisto */}
             {selectedProduct && currentProduct && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full animate-fade-in-up">
@@ -82,7 +79,6 @@ const StockControl: React.FC<StockControlProps> = ({ products, onStockPurchase }
                 </div>
             )}
 
-            {/* Lista Prodotti */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredProducts.map(p => (
                     <div key={p.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex justify-between items-center group">

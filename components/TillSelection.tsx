@@ -13,7 +13,7 @@ interface TillSelectionProps {
 
 const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, tillColors }) => {
     
-    // Emoji randomica che cambia ad ogni refresh
+    // Emoji randomica
     const randomEmoji = useMemo(() => {
         const emojis = ['☕', '🥐', '🍰', '🍹', '🍦', '🥪', '🍩', '🍪', '🥃', '🍷', '🍕', '🍔'];
         return emojis[Math.floor(Math.random() * emojis.length)];
@@ -89,7 +89,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 <button
                     onClick={onSelectAdmin}
                     className="bg-white p-3 rounded-2xl shadow-md hover:shadow-lg border border-slate-100 text-slate-400 hover:text-slate-800 hover:bg-slate-50 transition-all active:scale-95"
-                    title="Area Riservata (Password: 31.10.75)"
+                    title="Area Riservata"
                 >
                     <LockIcon className="h-6 w-6" />
                 </button>

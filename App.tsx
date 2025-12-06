@@ -28,27 +28,26 @@ const App: React.FC = () => {
     const [cashMovements, setCashMovements] = useState<CashMovement[]>([]);
     const [tillColors, setTillColors] = useState<TillColors>({});
 
-    // Auth Listener
+    // Auth Listener & Admin Check
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
             if (user && user.email) {
-                // Check if user is in admin whitelist or if db is empty (bootstrap)
                 const adminsRef = collection(db, 'admins');
-                const q = query(adminsRef, where("email", "==", user.email));
-                const querySnapshot = await getDocs(q);
-                
                 const adminsSnapshot = await getDocs(adminsRef);
                 
                 if (adminsSnapshot.empty) {
-                    // Bootstrap: First user becomes admin
+                    // BOOTSTRAP: Se non ci sono admin, il primo che entra lo diventa
                     await addDoc(adminsRef, { 
                         email: user.email, 
-                        addedBy: 'system', 
+                        addedBy: 'SYSTEM_BOOTSTRAP', 
                         timestamp: new Date().toISOString() 
                     });
                     setIsAdmin(true);
                 } else {
+                    // Controllo normale
+                    const q = query(adminsRef, where("email", "==", user.email));
+                    const querySnapshot = await getDocs(q);
                     setIsAdmin(!querySnapshot.empty);
                 }
             } else {
@@ -106,6 +105,7 @@ const App: React.FC = () => {
         };
     }, []);
 
+    // Seeding iniziale se vuoto
     useEffect(() => {
         const seedDatabase = async () => {
             try {
@@ -161,7 +161,6 @@ const App: React.FC = () => {
 
     const handleRemoveAdmin = async (id: string) => {
         if (!isAdmin) return;
-        // Prevenire che l'utente si cancelli da solo se è l'ultimo
         if (adminList.length <= 1) {
             alert("Impossibile eliminare l'unico amministratore.");
             return;
@@ -169,18 +168,13 @@ const App: React.FC = () => {
         await deleteDoc(doc(db, 'admins', id));
     };
 
-    const handleSelectTill = useCallback((tillId: string) => {
-        setSelectedTillId(tillId);
-        setView('till');
-    }, []);
-    
+    // Navigation
+    const handleSelectTill = useCallback((tillId: string) => { setSelectedTillId(tillId); setView('till'); }, []);
     const handleSelectReports = useCallback(() => setView('reports'), []);
     const handleSelectAdmin = useCallback(() => setView('admin'), []);
-    const handleGoBack = useCallback(() => {
-        setSelectedTillId(null);
-        setView('selection');
-    }, []);
+    const handleGoBack = useCallback(() => { setSelectedTillId(null); setView('selection'); }, []);
 
+    // Order Completion (Transaction)
     const handleCompleteOrder = useCallback(async (newOrderData: Omit<Order, 'id'>) => {
         try {
             await runTransaction(db, async (transaction) => {
@@ -190,9 +184,7 @@ const App: React.FC = () => {
                 productDocs.forEach((docSnap, index) => {
                     const item = newOrderData.items[index];
                     if (!docSnap.exists()) throw new Error(`Prodotto "${item.product.name}" non trovato.`);
-                    const currentStock = docSnap.data().stock;
-                    // Opzionale: Permettere stock negativo o bloccare
-                    // if (currentStock < item.quantity) throw new Error(`Stock insufficiente per "${item.product.name}".`);
+                    // const currentStock = docSnap.data().stock;
                 });
                 
                 const orderRef = doc(collection(db, 'orders'));
@@ -227,12 +219,12 @@ const App: React.FC = () => {
         await setDoc(doc(db, 'settings', 'tillColors'), colors, { merge: true });
     };
 
-    // Soft Delete per gli ordini
+    // Soft Delete Orders
     const deleteOrders = async (orderIds: string[]) => {
         const batch = writeBatch(db);
         orderIds.forEach(id => {
             const ref = doc(db, 'orders', id);
-            batch.update(ref, { isDeleted: true }); // Segna come cancellato invece di eliminare
+            batch.update(ref, { isDeleted: true });
         });
         await batch.commit();
     };
@@ -242,7 +234,7 @@ const App: React.FC = () => {
         await updateDoc(doc(db, 'orders', id), data);
     };
 
-    // Gestione Acquisto Stock
+    // Stock Purchase Logic
     const handleStockPurchase = async (productId: string, quantity: number, unitCost: number) => {
         try {
             const productRef = doc(db, 'products', productId);
@@ -253,13 +245,11 @@ const App: React.FC = () => {
             const currentStock = productDocSnap.data().stock || 0;
             const productName = productDocSnap.data().name;
 
-            // 1. Aggiorna Stock e Costo Prodotto
             await updateDoc(productRef, {
                 stock: currentStock + quantity,
                 costPrice: unitCost
             });
 
-            // 2. Crea Movimento di Cassa (Spesa)
             const totalCost = quantity * unitCost;
             await addDoc(collection(db, 'cash_movements'), {
                 amount: totalCost,
@@ -315,7 +305,6 @@ const App: React.FC = () => {
                             onDeleteStaff={deleteStaff}
                             onAddCashMovement={addCashMovement}
                             onStockPurchase={handleStockPurchase}
-                            // Auth Props
                             isAuthenticated={isAdmin}
                             currentUser={currentUser}
                             onLogin={handleGoogleLogin}

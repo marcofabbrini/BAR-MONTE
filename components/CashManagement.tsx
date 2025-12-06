@@ -12,7 +12,7 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
     const [amount, setAmount] = useState('');
     const [reason, setReason] = useState('');
 
-    const totalSales = useMemo(() => orders.reduce((sum, o) => sum + o.total, 0), [orders]);
+    const totalSales = useMemo(() => orders.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.total, 0), [orders]);
     const totalWithdrawals = useMemo(() => movements.reduce((sum, m) => sum + m.amount, 0), [movements]);
     const currentBalance = totalSales - totalWithdrawals;
 
