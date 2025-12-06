@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig } from '../types';
 import { User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, TicketIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -42,8 +42,7 @@ interface AdminViewProps {
 
     // Tombola
     tombolaConfig?: TombolaConfig;
-    onUpdateTombolaConfig: (cfg: Partial<TombolaConfig>) => Promise<void>;
-    onNavigateToTombola: () => void;
+    onUpdateTombolaConfig: (cfg: TombolaConfig) => Promise<void>;
 }
 
 type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins';
@@ -55,7 +54,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     onAddStaff, onUpdateStaff, onDeleteStaff,
     onAddCashMovement, onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
     isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin,
-    tombolaConfig, onUpdateTombolaConfig, onNavigateToTombola
+    tombolaConfig, onUpdateTombolaConfig
 }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     
@@ -98,16 +97,9 @@ const AdminView: React.FC<AdminViewProps> = ({
     }, [orders, movFilterDate, movFilterShift, staff]);
 
     const globalActiveOrders = useMemo(() => orders.filter(o => !o.isDeleted), [orders]);
-    // FIX NAN: Aggiunto || 0 per sicurezza
-    const totalRevenue = globalActiveOrders.reduce((sum, o) => sum + o.total, 0) || 0;
-    
-    // Filtriamo solo i movimenti 'bar' per il saldo, escludendo quelli 'tombola'
-    const barMovements = cashMovements.filter(m => m.category === 'bar' || !m.category);
-    // FIX NAN: Aggiunto || 0
-    const totalWithdrawals = barMovements.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + m.amount, 0) || 0;
-    const totalDeposits = barMovements.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0) || 0;
-    
-    const currentBalance = totalRevenue + totalDeposits - totalWithdrawals;
+    const totalRevenue = globalActiveOrders.reduce((sum, o) => sum + o.total, 0);
+    const totalWithdrawals = cashMovements.reduce((sum, m) => sum + m.amount, 0);
+    const currentBalance = totalRevenue - totalWithdrawals;
 
     const toggleOrderSelection = (id: string) => {
         const newSet = new Set(selectedOrderIds);
@@ -188,7 +180,7 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     const handleUpdateTombolaPrice = async () => {
         if (!tombolaConfig) return;
-        await onUpdateTombolaConfig({ ticketPriceSingle: Number(tombolaPrice) });
+        await onUpdateTombolaConfig({ ...tombolaConfig, ticketPriceSingle: Number(tombolaPrice) });
         alert("Prezzo cartella aggiornato!");
     };
 
@@ -239,8 +231,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         
                         <div className="bg-slate-800 text-white px-4 py-1.5 rounded-full shadow-lg flex flex-col items-center">
                             <span className="text-[9px] uppercase text-slate-400 font-bold tracking-wider">Saldo Cassa</span>
-                            {/* FIX NAN: Aggiunto || 0 per sicurezza */}
-                            <span className="text-lg font-black leading-none">€{(currentBalance || 0).toFixed(2)}</span>
+                            <span className="text-lg font-black leading-none">€{currentBalance.toFixed(2)}</span>
                         </div>
 
                         <div className="text-right">
@@ -258,10 +249,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="cash" label="Cassa" icon={<CashIcon className="h-6 w-6" />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-6 w-6" />} />
                         <TabButton tab="admins" label="Admin" icon={<UserPlusIcon className="h-6 w-6" />} />
-                        <button onClick={onNavigateToTombola} className="flex flex-col items-center justify-center p-2 rounded-lg transition-all w-16 h-14 md:w-20 md:h-16 text-[9px] md:text-[10px] font-bold gap-1 bg-white text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-100">
-                            <TicketIcon className="h-6 w-6" />
-                            <span className="text-center leading-tight">Tombola</span>
-                        </button>
                     </div>
                 </div>
             </header>
