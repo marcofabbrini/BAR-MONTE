@@ -127,13 +127,14 @@ const App: React.FC = () => {
     }, []);
     
     // CRUD Operations
-    const addProduct = async (data: Omit<Product, 'id'>) => await db.collection('products').add(data);
+    // NOTA: Avvolgiamo le chiamate in { } per assicurarci che ritornino Promise<void> e non Promise<DocumentReference>
+    const addProduct = async (data: Omit<Product, 'id'>) => { await db.collection('products').add(data); };
     const updateProduct = async (p: Product) => { const { id, ...data } = p; await db.collection('products').doc(id).update(data); };
-    const deleteProduct = async (id: string) => await db.collection('products').doc(id).delete();
+    const deleteProduct = async (id: string) => { await db.collection('products').doc(id).delete(); };
     
-    const addStaff = async (data: Omit<StaffMember, 'id'>) => await db.collection('staff').add(data);
+    const addStaff = async (data: Omit<StaffMember, 'id'>) => { await db.collection('staff').add(data); };
     const updateStaff = async (s: StaffMember) => { const { id, ...data } = s; await db.collection('staff').doc(id).update(data); };
-    const deleteStaff = async (id: string) => await db.collection('staff').doc(id).delete();
+    const deleteStaff = async (id: string) => { await db.collection('staff').doc(id).delete(); };
 
     // Admin Operations
     const updateTillColors = async (colors: TillColors) => {
@@ -203,3 +204,4 @@ const App: React.FC = () => {
 };
 
 export default App;
+
