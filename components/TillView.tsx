@@ -122,7 +122,11 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                 </div>
                             </div>
                         )}
-                        {activeTab === 'history' && <div className="max-w-3xl mx-auto"><OrderHistory orders={ordersForThisTill} /></div>}
+                        {activeTab === 'history' && (
+                            <div className="max-w-3xl mx-auto">
+                                <OrderHistory orders={ordersForThisTill} staff={allStaff} />
+                            </div>
+                        )}
                     </div>
                 </main>
             </div>
