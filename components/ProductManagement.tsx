@@ -43,7 +43,7 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ products, onAddPr
         if (type === 'checkbox') {
              setFormData(prev => ({ ...prev, [(e.target as HTMLInputElement).name]: (e.target as HTMLInputElement).checked }));
         } else {
-            setFormData(prev => ({ ...prev, [name]: name === 'price' || name === 'stock' ? parseFloat(value) || 0 : value }));
+            setFormData(prev => ({ ...prev, [name]: name === 'price' ? parseFloat(value) || 0 : value }));
         }
     };
     
@@ -128,11 +128,6 @@ const ProductManagement: React.FC<ProductManagementProps> = ({ products, onAddPr
                         <datalist id="categories">
                             {categories.map(cat => <option key={cat} value={cat} />)}
                         </datalist>
-                    </div>
-
-                    <div>
-                         <label className="text-xs font-bold text-slate-500 uppercase">Quantità Stock</label>
-                        <input name="stock" type="number" value={formData.stock} onChange={handleChange} placeholder="0" className="w-full bg-slate-100 text-slate-800 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-secondary" required />
                     </div>
 
                     <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Descrizione breve (opzionale)" className="bg-slate-100 text-slate-800 rounded-md p-2 md:col-span-2 lg:col-span-4 focus:outline-none focus:ring-2 focus:ring-secondary" rows={1}></textarea>

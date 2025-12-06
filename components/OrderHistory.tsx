@@ -40,6 +40,9 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
         const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : Date.now() + 86400000;
 
         return orders.filter(order => {
+            // Nascondi ordini cancellati nella vista cassa
+            if (order.isDeleted) return false;
+
             const orderTimestamp = new Date(order.timestamp).getTime();
             const dateMatch = orderTimestamp >= start && orderTimestamp <= end;
             const staffMatch = filterStaffId === 'all' || order.staffId === filterStaffId;

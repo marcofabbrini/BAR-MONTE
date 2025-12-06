@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement } from '../types';
 import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon } from './Icons';
 import ProductManagement from './ProductManagement';
@@ -25,6 +25,7 @@ interface AdminViewProps {
     onUpdateStaff: (s: StaffMember) => Promise<void>;
     onDeleteStaff: (id: string) => Promise<void>;
     onAddCashMovement: (m: Omit<CashMovement, 'id'>) => Promise<void>;
+    onStockPurchase: (productId: string, quantity: number, unitCost: number) => Promise<void>;
 }
 
 type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings';
@@ -34,7 +35,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     onUpdateTillColors, onDeleteOrders, onUpdateOrder,
     onAddProduct, onUpdateProduct, onDeleteProduct,
     onAddStaff, onUpdateStaff, onDeleteStaff,
-    onAddCashMovement
+    onAddCashMovement, onStockPurchase
 }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [password, setPassword] = useState('');
@@ -48,6 +49,9 @@ const AdminView: React.FC<AdminViewProps> = ({
     // States for Settings
     const [colors, setColors] = useState<TillColors>(tillColors);
 
+    const activeOrders = useMemo(() => orders.filter(o => !o.isDeleted), [orders]);
+    const totalActiveRevenue = useMemo(() => activeOrders.reduce((sum, o) => sum + o.total, 0), [activeOrders]);
+
     const handleLogin = (e: React.FormEvent) => {
         e.preventDefault();
         if (password === '31.10.75') {
@@ -58,7 +62,6 @@ const AdminView: React.FC<AdminViewProps> = ({
         }
     };
 
-    // Movement Handlers
     const toggleOrderSelection = (id: string) => {
         const newSet = new Set(selectedOrderIds);
         if (newSet.has(id)) newSet.delete(id);
@@ -76,7 +79,7 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     const handleBulkDelete = async () => {
         if (selectedOrderIds.size === 0) return;
-        if (window.confirm(`Sei sicuro di voler eliminare ${selectedOrderIds.size} movimenti?`)) {
+        if (window.confirm(`Sei sicuro di voler annullare ${selectedOrderIds.size} movimenti?`)) {
             await onDeleteOrders(Array.from(selectedOrderIds));
             setSelectedOrderIds(new Set());
         }
@@ -154,13 +157,15 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <button onClick={onGoBack} className="p-2 hover:bg-slate-700 rounded-full transition-colors"><BackArrowIcon className="h-6 w-6" /></button>
                             <h1 className="text-xl font-bold">Amministrazione</h1>
                         </div>
-                        <span className="text-xs font-mono text-slate-500">v1.0</span>
+                        <div className="text-right">
+                             <p className="text-xs text-slate-400 uppercase">Totale Attivo</p>
+                             <p className="text-xl font-mono font-bold text-green-400">€{totalActiveRevenue.toFixed(2)}</p>
+                        </div>
                     </div>
                     
-                    {/* Menu a Griglia/Flex */}
                     <div className="flex flex-wrap justify-center gap-2 w-full">
                         <TabButton tab="movements" label="Movimenti" icon={<ListIcon className="h-6 w-6" />} />
-                        <TabButton tab="stock" label="Stock" icon={<BoxIcon className="h-6 w-6" />} />
+                        <TabButton tab="stock" label="Acquisto Mag." icon={<BoxIcon className="h-6 w-6" />} />
                         <TabButton tab="products" label="Prodotti" icon={<StarIcon className="h-6 w-6" />} />
                         <TabButton tab="staff" label="Personale" icon={<StaffIcon className="h-6 w-6" />} />
                         <TabButton tab="cash" label="Cassa" icon={<CashIcon className="h-6 w-6" />} />
@@ -173,9 +178,9 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'movements' && (
                     <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
                         <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h2 className="font-bold text-lg text-slate-700">Gestione Movimenti ({orders.length})</h2>
+                            <h2 className="font-bold text-lg text-slate-700">Gestione Movimenti</h2>
                             {selectedOrderIds.size > 0 && (
-                                <button onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2"><TrashIcon className="h-4 w-4" /> Elimina ({selectedOrderIds.size})</button>
+                                <button onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2"><TrashIcon className="h-4 w-4" /> Annulla ({selectedOrderIds.size})</button>
                             )}
                         </div>
                         <div className="overflow-x-auto max-h-[70vh]">
@@ -187,22 +192,26 @@ const AdminView: React.FC<AdminViewProps> = ({
                                         <th className="p-4">Cassa</th>
                                         <th className="p-4">Utente</th>
                                         <th className="p-4 text-right">Totale</th>
+                                        <th className="p-4 text-center">Stato</th>
                                         <th className="p-4 text-center">Azioni</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {orders.map(order => (
-                                        <tr key={order.id} className={`hover:bg-slate-50 ${selectedOrderIds.has(order.id) ? 'bg-orange-50' : ''}`}>
+                                        <tr key={order.id} className={`hover:bg-slate-50 ${selectedOrderIds.has(order.id) ? 'bg-orange-50' : ''} ${order.isDeleted ? 'bg-red-50 text-red-800' : ''}`}>
                                             <td className="p-4"><input type="checkbox" checked={selectedOrderIds.has(order.id)} onChange={() => toggleOrderSelection(order.id)} className="w-4 h-4 rounded text-primary focus:ring-primary" /></td>
-                                            <td className="p-4">
+                                            <td className={`p-4 ${order.isDeleted ? 'line-through opacity-50' : ''}`}>
                                                 {editingOrderId === order.id ? (
                                                     <div className="flex flex-col gap-1"><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="border rounded px-2 py-1 text-xs" /><input type="time" value={editForm.time} onChange={e => setEditForm({...editForm, time: e.target.value})} className="border rounded px-2 py-1 text-xs" /></div>
                                                 ) : <span>{new Date(order.timestamp).toLocaleString('it-IT')}</span>}
                                             </td>
-                                            <td className="p-4"><span className="font-mono bg-slate-100 px-2 py-1 rounded">{order.tillId}</span></td>
-                                            <td className="p-4">{order.staffName}</td>
-                                            <td className="p-4 text-right font-bold">
+                                            <td className={`p-4 ${order.isDeleted ? 'opacity-50' : ''}`}><span className="font-mono bg-slate-100 px-2 py-1 rounded">{order.tillId}</span></td>
+                                            <td className={`p-4 ${order.isDeleted ? 'opacity-50' : ''}`}>{order.staffName}</td>
+                                            <td className={`p-4 text-right font-bold ${order.isDeleted ? 'line-through opacity-50' : ''}`}>
                                                  {editingOrderId === order.id ? <input type="number" step="0.01" value={editForm.total} onChange={e => setEditForm({...editForm, total: parseFloat(e.target.value)})} className="border rounded px-2 py-1 text-right w-24" /> : `€${order.total.toFixed(2)}`}
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                {order.isDeleted ? <span className="bg-red-200 text-red-800 text-[10px] px-2 py-1 rounded-full font-bold uppercase">Annullato</span> : <span className="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase">Valido</span>}
                                             </td>
                                             <td className="p-4 flex justify-center gap-2">
                                                 {editingOrderId === order.id ? (
@@ -211,7 +220,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                                                         <button onClick={() => setEditingOrderId(null)} className="text-slate-400 hover:bg-slate-100 p-2 rounded-full">✕</button>
                                                     </>
                                                 ) : (
-                                                    <button onClick={() => startEditOrder(order)} className="text-blue-500 hover:bg-blue-50 p-2 rounded-full"><EditIcon className="h-4 w-4" /></button>
+                                                    !order.isDeleted && <button onClick={() => startEditOrder(order)} className="text-blue-500 hover:bg-blue-50 p-2 rounded-full"><EditIcon className="h-4 w-4" /></button>
                                                 )}
                                             </td>
                                         </tr>
@@ -221,7 +230,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         </div>
                     </div>
                 )}
-                {activeTab === 'stock' && <StockControl products={products} onUpdateProduct={onUpdateProduct} />}
+                {activeTab === 'stock' && <StockControl products={products} onStockPurchase={onStockPurchase} />}
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} />}

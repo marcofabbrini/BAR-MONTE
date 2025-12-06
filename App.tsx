@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from './firebaseConfig';
-import { collection, onSnapshot, doc, getDocs, writeBatch, runTransaction, addDoc, updateDoc, deleteDoc, setDoc, orderBy, query } from 'firebase/firestore';
+import { collection, onSnapshot, doc, getDocs, writeBatch, runTransaction, addDoc, updateDoc, deleteDoc, setDoc, orderBy, query, getDoc } from 'firebase/firestore';
 import TillSelection from './components/TillSelection';
 import TillView from './components/TillView';
 import ReportsView from './components/ReportsView';
@@ -133,7 +133,7 @@ const App: React.FC = () => {
         }
     }, []);
     
-    // CRUD Operations (Wrapped to return Promise<void>)
+    // CRUD Operations
     const addProduct = async (data: Omit<Product, 'id'>) => { await addDoc(collection(db, 'products'), data); };
     const updateProduct = async (p: Product) => { const { id, ...data } = p; await updateDoc(doc(db, 'products', id), data); };
     const deleteProduct = async (id: string) => { await deleteDoc(doc(db, 'products', id)); };
@@ -149,11 +149,12 @@ const App: React.FC = () => {
         await setDoc(doc(db, 'settings', 'tillColors'), colors, { merge: true });
     };
 
+    // Soft Delete per gli ordini
     const deleteOrders = async (orderIds: string[]) => {
         const batch = writeBatch(db);
         orderIds.forEach(id => {
             const ref = doc(db, 'orders', id);
-            batch.delete(ref);
+            batch.update(ref, { isDeleted: true }); // Segna come cancellato invece di eliminare
         });
         await batch.commit();
     };
@@ -161,6 +162,38 @@ const App: React.FC = () => {
     const updateOrder = async (order: Order) => {
         const { id, ...data } = order;
         await updateDoc(doc(db, 'orders', id), data);
+    };
+
+    // Gestione Acquisto Stock
+    const handleStockPurchase = async (productId: string, quantity: number, unitCost: number) => {
+        try {
+            const productRef = doc(db, 'products', productId);
+            const productDocSnap = await getDoc(productRef);
+            
+            if (!productDocSnap.exists()) throw new Error("Prodotto non trovato");
+            
+            const currentStock = productDocSnap.data().stock || 0;
+            const productName = productDocSnap.data().name;
+
+            // 1. Aggiorna Stock e Costo Prodotto
+            await updateDoc(productRef, {
+                stock: currentStock + quantity,
+                costPrice: unitCost
+            });
+
+            // 2. Crea Movimento di Cassa (Spesa)
+            const totalCost = quantity * unitCost;
+            await addDoc(collection(db, 'cash_movements'), {
+                amount: totalCost,
+                reason: `Acquisto Stock: ${productName} (${quantity}pz a €${unitCost.toFixed(2)})`,
+                timestamp: new Date().toISOString(),
+                type: 'withdrawal'
+            });
+
+        } catch (error) {
+            console.error("Errore acquisto stock:", error);
+            throw error;
+        }
     };
 
     const selectedTill = TILLS.find(t => t.id === selectedTillId);
@@ -180,7 +213,6 @@ const App: React.FC = () => {
                                         tillColors={tillColors}
                                       /> : null;
             case 'reports':
-                // ReportsView ora ha solo Statistiche e Analisi. Le CRUD sono rimosse da qui.
                 return <ReportsView 
                           onGoBack={handleGoBack} 
                           products={products} staff={staff} orders={orders}
@@ -204,6 +236,7 @@ const App: React.FC = () => {
                             onUpdateStaff={updateStaff}
                             onDeleteStaff={deleteStaff}
                             onAddCashMovement={addCashMovement}
+                            onStockPurchase={handleStockPurchase}
                         />;
             case 'selection':
             default:

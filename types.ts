@@ -8,6 +8,7 @@ export interface Product {
     stock: number;
     isFavorite: boolean;
     icon?: string;
+    costPrice?: number; // Prezzo di acquisto per calcolo margini
 }
 
 export interface OrderItem {
@@ -23,6 +24,7 @@ export interface Order {
     staffId?: string;
     staffName?: string;
     tillId: string;
+    isDeleted?: boolean; // Soft delete
 }
 
 export interface Till {
