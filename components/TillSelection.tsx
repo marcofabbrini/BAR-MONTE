@@ -49,6 +49,19 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
             <div className="flex-grow flex flex-col items-center justify-center p-4 z-10 w-full max-w-4xl mx-auto pb-16">
                 
+                {/* LOGO */}
+                <div className="mb-6 relative group">
+                    <img 
+                        src="/logo.png" 
+                        alt="Logo" 
+                        className="h-24 w-auto object-contain drop-shadow-md transition-transform duration-500 hover:scale-105"
+                        onError={(e) => {
+                            // Fallback se l'immagine non esiste: mostra un placeholder trasparente o nascondi
+                            (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                    />
+                </div>
+
                 <div className="text-center mb-8">
                     <h1 className="flex flex-col items-center leading-none">
                         <span className="text-4xl md:text-6xl font-black text-slate-800 tracking-tighter mb-1 drop-shadow-sm">
@@ -112,10 +125,11 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
             {/* FOOTER FISSO E CHIARO */}
             <div className="fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-sm border-t border-slate-200 text-slate-500 py-2 text-center text-[10px] md:text-xs z-50">
-                <p>Gestionale Bar v1.3 | © 2024 Fabbrini M.</p>
+                <p>Gestionale Bar v1.4 | © 2024 Fabbrini M.</p>
             </div>
         </div>
     );
 };
 
 export default TillSelection;
+
