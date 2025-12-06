@@ -15,24 +15,18 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
     const [miscAmount, setMiscAmount] = useState('');
     const [miscReason, setMiscReason] = useState('');
 
-    // CALCOLI SEPARATI PER CATEGORIA
-    // 1. BAR: Vendite + (Versamenti Tombola in entrata se categorizzati) - Uscite Bar
     const activeOrders = useMemo(() => orders.filter(o => !o.isDeleted), [orders]);
-    // FIX NAN: Aggiunto || 0
     const salesRevenue = activeOrders.reduce((sum, o) => sum + o.total, 0) || 0;
     
-    // Filtra movimenti "BAR" (default o esplicito bar)
+    // Filtra movimenti "BAR"
     const cashMovementsBar = useMemo(() => movements.filter(m => m.category === 'bar' || !m.category), [movements]);
-    
     const deposits = cashMovementsBar.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0) || 0;
     const withdrawals = cashMovementsBar.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + m.amount, 0) || 0;
-    
     const operationalBalance = salesRevenue + deposits - withdrawals;
 
     // FONDO GIOCO
     const cashMovementsTombola = useMemo(() => movements.filter(m => m.category === 'tombola'), [movements]);
     const depositsTombola = cashMovementsTombola.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0) || 0;
-    // Il fondo gioco è l'80% degli incassi tombola
     const jackpotFund = depositsTombola * 0.8; 
 
     const handleSubmitWithdrawal = async (e: React.FormEvent) => {
@@ -51,15 +45,10 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
         setMiscAmount(''); setMiscReason('');
     };
 
-    const handleReset = async () => {
-        if(window.confirm("SEI SICURO? Questo azzererà il conteggio della cassa.")) {
-            await onResetCash();
-        }
-    };
+    const handleReset = async () => { if(window.confirm("SEI SICURO? Questo azzererà il conteggio della cassa.")) await onResetCash(); };
 
     return (
         <div className="max-w-4xl mx-auto space-y-8">
-            {/* DASHBOARD SALDI */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-slate-800 p-6 rounded-xl text-white relative overflow-hidden shadow-lg">
                     <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Saldo Operativo Bar</p>
@@ -68,9 +57,7 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
                         <span>Vendite: +€{(salesRevenue || 0).toFixed(2)}</span>
                         <span>Spese: -€{(withdrawals || 0).toFixed(2)}</span>
                     </div>
-                    {isSuperAdmin && (
-                        <button onClick={handleReset} className="absolute top-4 right-4 text-[10px] bg-red-600 px-2 py-1 rounded hover:bg-red-500 font-bold">RESET</button>
-                    )}
+                    {isSuperAdmin && <button onClick={handleReset} className="absolute top-4 right-4 text-[10px] bg-red-600 px-2 py-1 rounded hover:bg-red-500 font-bold">RESET</button>}
                 </div>
                 
                 <div className="bg-indigo-700 p-6 rounded-xl text-white shadow-lg">
@@ -81,7 +68,6 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Prelievo Banca/Cassa */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <h3 className="font-bold text-slate-800 mb-4 border-b pb-2 flex items-center gap-2"><span className="text-red-500">▼</span> Prelievo / Versamento</h3>
                     <form onSubmit={handleSubmitWithdrawal} className="flex flex-col gap-3">
@@ -91,7 +77,6 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
                     </form>
                 </div>
 
-                {/* Acquisti Vari */}
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                     <h3 className="font-bold text-slate-800 mb-4 border-b pb-2 flex items-center gap-2"><span className="text-orange-500">▼</span> Acquisti Vari</h3>
                     <form onSubmit={handleSubmitMisc} className="flex flex-col gap-3">
@@ -102,7 +87,6 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
                 </div>
             </div>
 
-            {/* Storico Completo */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b border-slate-200">Storico Movimenti Completo</h3>
                 <div className="max-h-80 overflow-y-auto">

@@ -57,16 +57,6 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
     const selectedStaffMember = staff.find(s => s.id === selectedStaffId);
 
     // LOGICA VISUALIZZAZIONE CARTELLA 3x9 REALISTICA
-    const renderTicketRow = (rowNumbers: (number | null)[]) => (
-        <div className="grid grid-cols-9 gap-0.5 bg-white border border-slate-300 p-1 mb-0.5 last:mb-0">
-            {rowNumbers.map((num, idx) => (
-                <div key={idx} className={`aspect-square flex items-center justify-center text-[10px] font-bold rounded-sm border border-slate-100 ${num ? (config.extractedNumbers.includes(num) ? 'bg-red-500 text-white' : 'bg-slate-50 text-slate-700') : 'bg-transparent'}`}>
-                    {num || ''}
-                </div>
-            ))}
-        </div>
-    );
-
     // Helper per distribuire i numeri in 3 righe x 9 colonne (decadi)
     const formatTicketToGrid = (numbers: number[]) => {
         const grid: (number | null)[][] = [[], [], []];

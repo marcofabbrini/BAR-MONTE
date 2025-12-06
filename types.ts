@@ -7,7 +7,7 @@ export interface Product {
     stock: number;
     isFavorite: boolean;
     icon?: string;
-    costPrice?: number; // Prezzo di acquisto per calcolo margini
+    costPrice?: number;
 }
 
 export interface OrderItem {
@@ -23,7 +23,7 @@ export interface Order {
     staffId?: string;
     staffName?: string;
     tillId: string;
-    isDeleted?: boolean; // Soft delete
+    isDeleted?: boolean;
     deletedBy?: string;
     deletedAt?: string;
 }
@@ -53,7 +53,7 @@ export interface CashMovement {
     reason: string;
     timestamp: string;
     type: 'withdrawal' | 'deposit';
-    category?: 'bar' | 'tombola'; // Distinzione contabile
+    category?: 'bar' | 'tombola';
 }
 
 export interface AdminUser {
@@ -63,22 +63,21 @@ export interface AdminUser {
     timestamp: string;
 }
 
-// TOMBOLA TYPES
 export interface TombolaConfig {
     status: 'pending' | 'active' | 'completed';
-    maxTickets: number; // Totale cartelle disponibili (es. 90)
-    ticketPriceSingle: number; // 1€
-    ticketPriceBundle: number; // 5€ per 6 cartelle
-    jackpot: number; // 80% degli incassi
+    maxTickets: number;
+    ticketPriceSingle: number;
+    ticketPriceBundle: number;
+    jackpot: number;
     lastExtraction: string;
     extractedNumbers: number[];
 }
 
 export interface TombolaTicket {
     id: string;
-    playerId: string; // ID dello staff
+    playerId: string;
     playerName: string;
-    numbers: number[]; // 15 numeri
+    numbers: number[];
     purchaseTime: string;
 }
 
@@ -87,6 +86,6 @@ export interface TombolaWin {
     ticketId: string;
     playerName: string;
     type: 'Ambo' | 'Terno' | 'Quaterna' | 'Cinquina' | 'Tombola';
-    numbers: number[]; // I numeri vincenti
+    numbers: number[];
     timestamp: string;
 }
