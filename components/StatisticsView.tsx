@@ -70,7 +70,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({
             return;
         }
 
-        const headers = ['ID Ordine', 'Data', 'Ora', 'Cassa', 'Operatore', 'Turno', 'Totale', 'Prodotti'];
+        const headers = ['ID Ordine', 'Data', 'Ora', 'Cassa', 'Utente', 'Turno', 'Totale', 'Prodotti'];
         const rows = filteredOrders.map(order => {
             const date = new Date(order.timestamp);
             const staffMember = allStaff.find(s => s.id === order.staffId);
@@ -104,17 +104,29 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
                     {/* Filtri Data */}
                     <div>
-                        <label htmlFor="start-date" className="block text-sm font-medium text-slate-700 mb-1">Data Inizio</label>
-                        <input type="date" id="start-date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full bg-slate-100 text-slate-800 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-secondary" />
+                        <label htmlFor="start-date" className="block text-xs font-bold text-slate-500 uppercase mb-1">Data Inizio</label>
+                        <input 
+                            type="date" 
+                            id="start-date" 
+                            value={startDate} 
+                            onChange={e => setStartDate(e.target.value)} 
+                            className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-700 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
+                        />
                     </div>
                     <div>
-                        <label htmlFor="end-date" className="block text-sm font-medium text-slate-700 mb-1">Data Fine</label>
-                        <input type="date" id="end-date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full bg-slate-100 text-slate-800 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-secondary" />
+                        <label htmlFor="end-date" className="block text-xs font-bold text-slate-500 uppercase mb-1">Data Fine</label>
+                        <input 
+                            type="date" 
+                            id="end-date" 
+                            value={endDate} 
+                            onChange={e => setEndDate(e.target.value)} 
+                            className="w-full appearance-none bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-700 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" 
+                        />
                     </div>
                      {/* Filtri Turno, Personale, Prodotto */}
                     <div>
-                         <label htmlFor="shift-filter" className="block text-sm font-medium text-slate-700 mb-1">Turno</label>
-                        <select id="shift-filter" value={selectedShift} onChange={e => setSelectedShift(e.target.value as Shift | 'all')} className="w-full bg-slate-100 text-slate-800 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-secondary">
+                         <label htmlFor="shift-filter" className="block text-xs font-bold text-slate-500 uppercase mb-1">Turno</label>
+                        <select id="shift-filter" value={selectedShift} onChange={e => setSelectedShift(e.target.value as Shift | 'all')} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-700 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                             <option value="all">Tutti i turni</option>
                             <option value="a">Turno A</option>
                             <option value="b">Turno B</option>
@@ -123,15 +135,15 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({
                         </select>
                     </div>
                      <div>
-                         <label htmlFor="staff-filter" className="block text-sm font-medium text-slate-700 mb-1">Operatore</label>
-                        <select id="staff-filter" value={selectedStaffId} onChange={e => setSelectedStaffId(e.target.value)} className="w-full bg-slate-100 text-slate-800 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-secondary">
-                            <option value="all">Tutti gli operatori</option>
+                         <label htmlFor="staff-filter" className="block text-xs font-bold text-slate-500 uppercase mb-1">Utente</label>
+                        <select id="staff-filter" value={selectedStaffId} onChange={e => setSelectedStaffId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-700 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <option value="all">Tutti gli utenti</option>
                             {allStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                     </div>
                      <div>
-                         <label htmlFor="product-filter" className="block text-sm font-medium text-slate-700 mb-1">Prodotto</label>
-                        <select id="product-filter" value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} className="w-full bg-slate-100 text-slate-800 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-secondary">
+                         <label htmlFor="product-filter" className="block text-xs font-bold text-slate-500 uppercase mb-1">Prodotto</label>
+                        <select id="product-filter" value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-700 font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
                             <option value="all">Tutti i prodotti</option>
                             {allProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
@@ -142,7 +154,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({
             {/* Grafici */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
-                    <h3 className="text-xl font-bold text-slate-800 mb-4">Vendite per Operatore</h3>
+                    <h3 className="text-xl font-bold text-slate-800 mb-4">Vendite per Utente</h3>
                     {salesByStaff.length > 0 ? <BarChart data={salesByStaff} format="currency" /> : <p className="text-slate-500 text-center py-8">Nessun dato disponibile.</p>}
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
@@ -177,7 +189,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({
                             <tr>
                                 <th className="p-3">Data</th>
                                 <th className="p-3">Cassa</th>
-                                <th className="p-3">Operatore</th>
+                                <th className="p-3">Utente</th>
                                 <th className="p-3">Prodotti</th>
                                 <th className="p-3 text-right">Totale</th>
                             </tr>

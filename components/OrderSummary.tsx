@@ -26,7 +26,7 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ orderItems, onUpdateQuantit
 
     return (
         <div className="flex flex-col h-full bg-white md:bg-transparent">
-            {/* Handle for mobile dragging (visual only) */}
+            {/* Handle for mobile */}
             <div className="md:hidden w-full flex justify-center pt-3 pb-1">
                 <div className="w-12 h-1.5 bg-slate-200 rounded-full"></div>
             </div>
@@ -37,11 +37,11 @@ const OrderSummary: React.FC<OrderSummaryProps> = ({ orderItems, onUpdateQuantit
                     <span className="w-2 h-2 rounded-full bg-slate-300"></span>
                     {selectedStaff ? (
                          <p className="text-xs font-medium text-slate-600">
-                            Operatore: <span className="text-primary font-bold">{selectedStaff.name}</span>
+                            Utente: <span className="text-primary font-bold">{selectedStaff.name}</span>
                          </p>
                     ) : (
                         <p className="text-xs font-bold text-red-500 animate-pulse">
-                            Seleziona un operatore
+                            Seleziona un utente
                         </p>
                     )}
                 </div>

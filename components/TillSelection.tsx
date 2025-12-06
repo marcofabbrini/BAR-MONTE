@@ -1,7 +1,6 @@
-
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Till } from '../types';
-import { ModernChartIcon, LogoIcon } from './Icons';
+import { ModernChartIcon } from './Icons';
 
 interface TillSelectionProps {
     tills: Till[];
@@ -10,13 +9,22 @@ interface TillSelectionProps {
 }
 
 const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports }) => {
+    
+    // Genera un'emoji randomica a tema bar ogni volta che il componente viene montato
+    const randomEmoji = useMemo(() => {
+        const emojis = ['☕', '🥐', '🍰', '🍹', '🍦', '🥪', '🥗', '🍩', '🍪', '🧃'];
+        return emojis[Math.floor(Math.random() * emojis.length)];
+    }, []);
+
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-slate-50">
             <div className="mb-12 flex flex-col items-center animate-fade-in text-center">
-                {/* Logo Tazzina Caffè */}
-                <div className="mb-6 transform hover:scale-105 transition-transform duration-300 ease-in-out">
+                {/* Emoji Randomica */}
+                <div className="mb-6 transform hover:scale-110 transition-transform duration-300 ease-in-out cursor-default select-none">
                     <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-lg border-4 border-primary/10">
-                        <LogoIcon className="h-20 w-20 text-primary" />
+                        <span className="text-6xl filter drop-shadow-sm" role="img" aria-label="Bar Icon">
+                            {randomEmoji}
+                        </span>
                     </div>
                 </div>
                 
@@ -35,7 +43,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         
                         {/* Lettera del turno GRANDE */}
                         <div className="w-32 h-32 bg-orange-50 rounded-full group-hover:bg-primary group-hover:text-white transition-all duration-300 mb-4 flex items-center justify-center">
-                            <span className="text-7xl font-black text-primary group-hover:text-white transition-colors">
+                            <span className="text-7xl font-black text-primary group-hover:text-white transition-colors select-none">
                                 {till.shift.toUpperCase()}
                             </span>
                         </div>

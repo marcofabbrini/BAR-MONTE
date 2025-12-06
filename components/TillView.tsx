@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo } from 'react';
 import { Order, OrderItem, Till, Product, StaffMember } from '../types';
 import OrderSummary from './OrderSummary';
@@ -19,7 +18,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
-    const [isCartOpen, setIsCartOpen] = useState(false); // Mobile cart modal state
+    const [isCartOpen, setIsCartOpen] = useState(false);
 
     const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift), [allStaff, till.shift]);
     const selectedStaffMember = useMemo(() => allStaff.find(s => s.id === selectedStaffId), [allStaff, selectedStaffId]);
@@ -112,9 +111,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row">
-            {/* Main Content Area */}
-            <div className="flex-grow flex flex-col w-full md:w-auto">
-                {/* Header */}
+            {/* Main Content */}
+            <div className="flex-grow flex flex-col w-full md:w-auto min-h-screen">
                 <header className="sticky top-0 bg-white/95 backdrop-blur-sm px-4 py-3 flex justify-between items-center shadow-sm z-30 border-b border-slate-100">
                      <div className="flex items-center gap-3">
                          <button
@@ -135,8 +133,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                     </div>
                 </header>
                 
-                <main className="flex-grow flex flex-col relative w-full">
-                    {/* Navigation Buttons */}
+                <main className="flex-grow flex flex-col relative w-full pb-24 md:pb-8">
+                    {/* Tabs */}
                     <div className="px-4 py-3 bg-slate-50 z-20 sticky top-[60px]">
                          <div className="bg-white p-1 rounded-xl shadow-sm inline-flex w-full md:w-auto border border-slate-100">
                             <button 
@@ -154,8 +152,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="px-4 pb-24 md:pb-8 w-full max-w-7xl mx-auto">
+                    <div className="px-4 w-full max-w-7xl mx-auto flex-grow">
                         {activeTab === 'order' && (
                             <div className="animate-fade-in-up">
                                 <div className="mb-4">
@@ -165,7 +162,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                             onChange={(e) => setSelectedStaffId(e.target.value)}
                                             className="w-full appearance-none bg-white border border-slate-200 text-slate-700 py-3 px-4 pr-8 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent font-medium"
                                         >
-                                            <option value="" disabled>Seleziona Operatore</option>
+                                            <option value="" disabled>Seleziona Utente</option>
                                             {staffForShift.map(staff => (
                                                 <option key={staff.id} value={staff.id}>{staff.name}</option>
                                             ))}
@@ -176,7 +173,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                     </div>
                                     {!selectedStaffId && (
                                         <p className="text-xs text-red-500 mt-1 font-bold ml-1 animate-pulse">
-                                            ⚠ Seleziona un operatore per procedere
+                                            ⚠ Seleziona un utente per procedere
                                         </p>
                                     )}
                                 </div>
@@ -215,7 +212,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                 </div>
             </div>
 
-            {/* MOBILE: Cart Modal Overlay */}
+            {/* MOBILE: Cart Modal */}
             {isCartOpen && (
                 <div className="md:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-center items-end animate-fade-in">
                     <div className="bg-slate-50 w-full h-[85vh] rounded-t-3xl shadow-2xl flex flex-col overflow-hidden animate-slide-up">

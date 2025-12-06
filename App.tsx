@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from './firebaseConfig';
 import TillSelection from './components/TillSelection';
