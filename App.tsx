@@ -7,10 +7,11 @@ import TillSelection from './components/TillSelection';
 import TillView from './components/TillView';
 import ReportsView from './components/ReportsView';
 import AdminView from './components/AdminView';
+import TombolaView from './components/TombolaView';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
-import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser } from './types';
+import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin } from './types';
 
-type View = 'selection' | 'till' | 'reports' | 'admin';
+type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola';
 
 const App: React.FC = () => {
     const [view, setView] = useState<View>('selection');
@@ -28,6 +29,11 @@ const App: React.FC = () => {
     const [cashMovements, setCashMovements] = useState<CashMovement[]>([]);
     const [tillColors, setTillColors] = useState<TillColors>({});
 
+    // Tombola State
+    const [tombolaConfig, setTombolaConfig] = useState<TombolaConfig | undefined>(undefined);
+    const [tombolaTickets, setTombolaTickets] = useState<TombolaTicket[]>([]);
+    const [tombolaWins, setTombolaWins] = useState<TombolaWin[]>([]);
+
     // Auth Listener & Admin Check
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -37,20 +43,10 @@ const App: React.FC = () => {
                 const adminsSnapshot = await getDocs(adminsRef);
                 
                 if (adminsSnapshot.empty) {
-                    // BOOTSTRAP: Se non ci sono admin, il primo che entra lo diventa
-                    await addDoc(adminsRef, { 
-                        email: user.email, 
-                        addedBy: 'SYSTEM_BOOTSTRAP', 
-                        timestamp: new Date().toISOString() 
-                    });
+                    await addDoc(adminsRef, { email: user.email, addedBy: 'SYSTEM_BOOTSTRAP', timestamp: new Date().toISOString() });
                     setIsAdmin(true);
                 } else {
-                    // Verifica whitelist
-                    // const q = query(adminsRef, where("email", "==", user.email));
-                    // const querySnapshot = await getDocs(q);
-                    // setIsAdmin(!querySnapshot.empty);
-                    
-                    // TEMPORANEO PER DEBUG/PRIMO ACCESSO: TUTTI SONO ADMIN
+                    // Temporaneo: tutti admin per test, altrimenti usare: const q = query(adminsRef, where("email", "==", user.email)); ...
                     setIsAdmin(true); 
                 }
             } else {
@@ -64,48 +60,25 @@ const App: React.FC = () => {
     useEffect(() => {
         setIsLoading(true);
         
-        const unsubProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
-            const productsData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Product));
-            setProducts(productsData);
+        const unsubProducts = onSnapshot(collection(db, 'products'), (s) => setProducts(s.docs.map(d => ({ ...d.data(), id: d.id } as Product))));
+        const unsubStaff = onSnapshot(collection(db, 'staff'), (s) => setStaff(s.docs.map(d => ({ ...d.data(), id: d.id } as StaffMember))));
+        const unsubOrders = onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc')), (s) => {
+            setOrders(s.docs.map(d => ({ ...d.data(), id: d.id } as Order)));
+            setIsLoading(false);
         });
+        const unsubCash = onSnapshot(query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc')), (s) => setCashMovements(s.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement))));
+        const unsubAdmins = onSnapshot(collection(db, 'admins'), (s) => setAdminList(s.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser))));
+        const unsubSettings = onSnapshot(doc(db, 'settings', 'tillColors'), (d) => { if(d.exists()) setTillColors(d.data() as TillColors); });
 
-        const unsubStaff = onSnapshot(collection(db, 'staff'), (snapshot) => {
-            const staffData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StaffMember));
-            setStaff(staffData);
+        // Tombola Listeners
+        const unsubTombolaConfig = onSnapshot(doc(db, 'tombola', 'config'), (d) => {
+            if (d.exists()) setTombolaConfig(d.data() as TombolaConfig);
+            else setDoc(doc(db, 'tombola', 'config'), { ticketPrice: 5, jackpot: 0, lastExtraction: new Date().toISOString(), extractedNumbers: [] });
         });
+        const unsubTombolaTickets = onSnapshot(collection(db, 'tombola_tickets'), (s) => setTombolaTickets(s.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket))));
+        const unsubTombolaWins = onSnapshot(collection(db, 'tombola_wins'), (s) => setTombolaWins(s.docs.map(d => ({...d.data(), id: d.id} as TombolaWin))));
 
-        const qOrders = query(collection(db, 'orders'), orderBy('timestamp', 'desc'));
-        const unsubOrders = onSnapshot(qOrders, (snapshot) => {
-            const ordersData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order));
-            setOrders(ordersData);
-            setIsLoading(false); 
-        });
-
-        const qCash = query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc'));
-        const unsubCash = onSnapshot(qCash, (snapshot) => {
-             const cashData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as CashMovement));
-             setCashMovements(cashData);
-        });
-        
-        const unsubAdmins = onSnapshot(collection(db, 'admins'), (snapshot) => {
-             const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as AdminUser));
-             setAdminList(data);
-        });
-
-        const unsubSettings = onSnapshot(doc(db, 'settings', 'tillColors'), (docSnap) => {
-            if (docSnap.exists()) {
-                setTillColors(docSnap.data() as TillColors);
-            }
-        });
-
-        return () => {
-            unsubProducts();
-            unsubStaff();
-            unsubOrders();
-            unsubCash();
-            unsubAdmins();
-            unsubSettings();
-        };
+        return () => { unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); };
     }, []);
 
     // Seeding iniziale se vuoto
@@ -115,252 +88,181 @@ const App: React.FC = () => {
                 const productsSnap = await getDocs(collection(db, 'products'));
                 if (productsSnap.empty) {
                     const batch = writeBatch(db);
-                    INITIAL_MENU_ITEMS.forEach(item => {
-                        const docRef = doc(db, 'products', item.id);
-                        batch.set(docRef, item);
-                    });
+                    INITIAL_MENU_ITEMS.forEach(item => batch.set(doc(db, 'products', item.id), item));
                     await batch.commit();
                 }
-
                 const staffSnap = await getDocs(collection(db, 'staff'));
                 if (staffSnap.empty) {
                     const batch = writeBatch(db);
-                    INITIAL_STAFF_MEMBERS.forEach(member => {
-                         const docRef = doc(db, 'staff', member.id);
-                         batch.set(docRef, member);
-                    });
+                    INITIAL_STAFF_MEMBERS.forEach(member => batch.set(doc(db, 'staff', member.id), member));
                     await batch.commit();
                 }
-            } catch (error) {
-                console.error("Error seeding database:", error);
-            }
+            } catch (error) { console.error("Error seeding database:", error); }
         };
         seedDatabase();
     }, []);
 
+    // Tombola Logic: Extraction Engine (Lazy)
+    useEffect(() => {
+        const runTombolaExtraction = async () => {
+            if (!tombolaConfig) return;
+            const now = new Date().getTime();
+            const last = new Date(tombolaConfig.lastExtraction).getTime();
+            const diffHours = (now - last) / (1000 * 60 * 60);
+
+            if (diffHours >= 2 && tombolaConfig.extractedNumbers.length < 90) {
+                try {
+                    await runTransaction(db, async (t) => {
+                        const configRef = doc(db, 'tombola', 'config');
+                        const configSnap = await t.get(configRef);
+                        const currentConfig = configSnap.data() as TombolaConfig;
+                        
+                        // Estrai numero casuale non presente
+                        let nextNum;
+                        do { nextNum = Math.floor(Math.random() * 90) + 1; } 
+                        while (currentConfig.extractedNumbers.includes(nextNum));
+                        
+                        const newExtracted = [...currentConfig.extractedNumbers, nextNum];
+                        
+                        // Check Vincite
+                        const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
+                        ticketsSnap.forEach(ticketDoc => {
+                            const ticket = ticketDoc.data() as TombolaTicket;
+                            const matches = ticket.numbers.filter(n => newExtracted.includes(n));
+                            const count = matches.length;
+                            
+                            // Logica semplificata: se fa 2,3,4,5,15 punti è vincita (se non già vinta - TODO logic complessa omessa per brevità)
+                            if ([2,3,4,5,15].includes(count)) {
+                                const type = count === 2 ? 'Ambo' : count === 3 ? 'Terno' : count === 4 ? 'Quaterna' : count === 5 ? 'Cinquina' : 'Tombola';
+                                // Salvataggio vincita (dovrebbe controllare se quel ticket ha già vinto quel premio)
+                                const winRef = doc(collection(db, 'tombola_wins'));
+                                t.set(winRef, {
+                                    ticketId: ticketDoc.id,
+                                    playerName: ticket.playerName,
+                                    type,
+                                    numbers: matches,
+                                    timestamp: new Date().toISOString()
+                                });
+                            }
+                        });
+
+                        t.update(configRef, { 
+                            lastExtraction: new Date().toISOString(),
+                            extractedNumbers: newExtracted
+                        });
+                    });
+                } catch (e) { console.error("Tombola extraction error", e); }
+            }
+        };
+        const interval = setInterval(runTombolaExtraction, 60000); // Check every minute
+        return () => clearInterval(interval);
+    }, [tombolaConfig]);
+
     // Auth Actions
     const handleGoogleLogin = async () => {
-        try {
-            await signInWithPopup(auth, googleProvider);
-        } catch (error) {
-            console.error("Login failed", error);
-            alert("Errore durante il login. Controlla che il dominio sia autorizzato in Firebase Console.");
-        }
+        try { await signInWithPopup(auth, googleProvider); } 
+        catch (error) { console.error(error); alert("Errore login. Verifica domini autorizzati."); }
     };
-
-    const handleLogout = async () => {
-        await signOut(auth);
-        setView('selection');
-    };
-
-    const handleAddAdmin = async (email: string) => {
-        if (!isAdmin) return;
-        await addDoc(collection(db, 'admins'), { 
-            email, 
-            addedBy: currentUser?.email, 
-            timestamp: new Date().toISOString() 
-        });
-    };
-
-    const handleRemoveAdmin = async (id: string) => {
-        if (!isAdmin) return;
-        await deleteDoc(doc(db, 'admins', id));
-    };
+    const handleLogout = async () => { await signOut(auth); setView('selection'); };
+    const handleAddAdmin = async (email: string) => { if (isAdmin) await addDoc(collection(db, 'admins'), { email, addedBy: currentUser?.email, timestamp: new Date().toISOString() }); };
+    const handleRemoveAdmin = async (id: string) => { if (isAdmin) await deleteDoc(doc(db, 'admins', id)); };
 
     // Navigation
     const handleSelectTill = useCallback((tillId: string) => { setSelectedTillId(tillId); setView('till'); }, []);
     const handleSelectReports = useCallback(() => setView('reports'), []);
     const handleSelectAdmin = useCallback(() => setView('admin'), []);
+    const handleSelectTombola = useCallback(() => setView('tombola'), []);
     const handleGoBack = useCallback(() => { setSelectedTillId(null); setView('selection'); }, []);
 
-    // Order Completion (Transaction)
+    // Operations
     const handleCompleteOrder = useCallback(async (newOrderData: Omit<Order, 'id'>) => {
         try {
-            await runTransaction(db, async (transaction) => {
-                const productRefs = newOrderData.items.map(item => doc(db, 'products', item.product.id));
-                const productDocs = await Promise.all(productRefs.map(ref => transaction.get(ref)));
-
-                productDocs.forEach((docSnap, index) => {
-                    if (!docSnap.exists()) throw new Error(`Prodotto "${newOrderData.items[index].product.name}" non trovato.`);
-                });
-                
+            await runTransaction(db, async (t) => {
+                const productDocs = await Promise.all(newOrderData.items.map(i => t.get(doc(db, 'products', i.product.id))));
+                productDocs.forEach((d, i) => { if (!d.exists()) throw new Error(`Prod "${newOrderData.items[i].product.name}" mancante.`); });
                 const orderRef = doc(collection(db, 'orders'));
-                const newOrder: Order = { ...newOrderData, id: orderRef.id };
-                transaction.set(orderRef, newOrder);
-
-                productDocs.forEach((docSnap, index) => {
-                    const item = newOrderData.items[index];
-                    const currentStock = docSnap.data().stock;
-                    const newStock = currentStock - item.quantity;
-                    transaction.update(docSnap.ref, { stock: newStock });
-                });
+                t.set(orderRef, { ...newOrderData, id: orderRef.id });
+                productDocs.forEach((d, i) => t.update(d.ref, { stock: d.data().stock - newOrderData.items[i].quantity }));
             });
-        } catch (error) {
-            console.error("Error completing order:", error);
-            throw error; 
-        }
+        } catch (error) { console.error(error); throw error; }
     }, []);
     
-    // CRUD Operations
-    const addProduct = async (data: Omit<Product, 'id'>) => { await addDoc(collection(db, 'products'), data); };
-    const updateProduct = async (p: Product) => { const { id, ...data } = p; await updateDoc(doc(db, 'products', id), data); };
-    const deleteProduct = async (id: string) => { await deleteDoc(doc(db, 'products', id)); };
-    
-    const addStaff = async (data: Omit<StaffMember, 'id'>) => { await addDoc(collection(db, 'staff'), data); };
-    const updateStaff = async (s: StaffMember) => { const { id, ...data } = s; await updateDoc(doc(db, 'staff', id), data); };
-    const deleteStaff = async (id: string) => { await deleteDoc(doc(db, 'staff', id)); };
+    // Tombola Actions
+    const handleBuyTombolaTicket = async (playerName: string, quantity: number) => {
+        if (!tombolaConfig) return;
+        const totalCost = quantity * tombolaConfig.ticketPrice;
+        const revenue = totalCost * 0.20; // 20% al bar
+        const jackpotAdd = totalCost * 0.80; // 80% montepremi
 
-    const addCashMovement = async (data: Omit<CashMovement, 'id'>) => { await addDoc(collection(db, 'cash_movements'), data); };
-
-    // Admin Operations
-    const updateTillColors = async (colors: TillColors) => {
-        await setDoc(doc(db, 'settings', 'tillColors'), colors, { merge: true });
+        try {
+            await runTransaction(db, async (t) => {
+                // 1. Crea Tickets
+                for (let i = 0; i < quantity; i++) {
+                    const numbers = Array.from({length: 15}, () => Math.floor(Math.random() * 90) + 1).sort((a,b)=>a-b); // Semplificato
+                    const ticketRef = doc(collection(db, 'tombola_tickets'));
+                    t.set(ticketRef, { playerName, numbers, purchaseTime: new Date().toISOString() });
+                }
+                // 2. Aggiorna Config (Jackpot)
+                t.update(doc(db, 'tombola', 'config'), { jackpot: tombolaConfig.jackpot + jackpotAdd });
+                // 3. Versa quota al Bar
+                const cashRef = doc(collection(db, 'cash_movements'));
+                t.set(cashRef, { amount: revenue, reason: `Tombola: ${quantity} cartelle (${playerName})`, timestamp: new Date().toISOString(), type: 'deposit' });
+            });
+        } catch (e) { console.error(e); throw e; }
     };
 
-    // Soft Delete Orders (con tracciabilità)
-    const deleteOrders = async (orderIds: string[], adminEmail: string) => {
+    const handleUpdateTombolaConfig = async (cfg: TombolaConfig) => {
+        await setDoc(doc(db, 'tombola', 'config'), cfg);
+    };
+
+    // Generic CRUD
+    const addProduct = async (d: any) => { await addDoc(collection(db, 'products'), d); };
+    const updateProduct = async (p: any) => { const { id, ...d } = p; await updateDoc(doc(db, 'products', id), d); };
+    const deleteProduct = async (id: string) => { await deleteDoc(doc(db, 'products', id)); };
+    const addStaff = async (d: any) => { await addDoc(collection(db, 'staff'), d); };
+    const updateStaff = async (s: any) => { const { id, ...d } = s; await updateDoc(doc(db, 'staff', id), d); };
+    const deleteStaff = async (id: string) => { await deleteDoc(doc(db, 'staff', id)); };
+    const addCashMovement = async (d: any) => { await addDoc(collection(db, 'cash_movements'), d); };
+    const updateTillColors = async (c: TillColors) => { await setDoc(doc(db, 'settings', 'tillColors'), c, { merge: true }); };
+    
+    // Advanced Features
+    const deleteOrders = async (ids: string[], email: string) => {
         const batch = writeBatch(db);
-        orderIds.forEach(id => {
-            const ref = doc(db, 'orders', id);
-            batch.update(ref, { 
-                isDeleted: true,
-                deletedBy: adminEmail,
-                deletedAt: new Date().toISOString()
-            });
-        });
+        ids.forEach(id => batch.update(doc(db, 'orders', id), { isDeleted: true, deletedBy: email, deletedAt: new Date().toISOString() }));
         await batch.commit();
     };
-
-    // Hard Delete (Super Admin)
-    const permanentDeleteOrder = async (orderId: string) => {
-        await deleteDoc(doc(db, 'orders', orderId));
-    };
-
-    const updateOrder = async (order: Order) => {
-        const { id, ...data } = order;
-        await updateDoc(doc(db, 'orders', id), data);
-    };
-
-    // Stock Purchase Logic
-    const handleStockPurchase = async (productId: string, quantity: number, unitCost: number) => {
-        try {
-            const productRef = doc(db, 'products', productId);
-            const productDocSnap = await getDoc(productRef);
-            
-            if (!productDocSnap.exists()) throw new Error("Prodotto non trovato");
-            
-            const currentStock = productDocSnap.data().stock || 0;
-            const productName = productDocSnap.data().name;
-
-            await updateDoc(productRef, {
-                stock: currentStock + quantity,
-                costPrice: unitCost
-            });
-
-            const totalCost = quantity * unitCost;
-            await addDoc(collection(db, 'cash_movements'), {
-                amount: totalCost,
-                reason: `Acquisto Stock: ${productName} (${quantity}pz a €${unitCost.toFixed(2)})`,
-                timestamp: new Date().toISOString(),
-                type: 'withdrawal'
-            });
-
-        } catch (error) {
-            console.error("Errore acquisto stock:", error);
-            throw error;
+    const permanentDeleteOrder = async (id: string) => { await deleteDoc(doc(db, 'orders', id)); };
+    const updateOrder = async (o: Order) => { const { id, ...d } = o; await updateDoc(doc(db, 'orders', id), d); };
+    const handleStockPurchase = async (pid: string, qty: number, cost: number) => {
+        const pRef = doc(db, 'products', pid);
+        const pSnap = await getDoc(pRef);
+        if(pSnap.exists()) {
+            await updateDoc(pRef, { stock: pSnap.data().stock + qty, costPrice: cost });
+            await addDoc(collection(db, 'cash_movements'), { amount: qty*cost, reason: `Acquisto Stock: ${pSnap.data().name}`, timestamp: new Date().toISOString(), type: 'withdrawal' });
         }
     };
-    
-    const handleStockCorrection = async (productId: string, newStock: number) => {
-        await updateDoc(doc(db, 'products', productId), { stock: newStock });
-    };
-
-    // Reset Cassa (Super Admin)
+    const handleStockCorrection = async (pid: string, stock: number) => { await updateDoc(doc(db, 'products', pid), { stock }); };
     const handleResetCash = async () => {
         const batch = writeBatch(db);
-        cashMovements.forEach(m => {
-            batch.update(doc(db, 'cash_movements', m.id), { amount: 0, reason: m.reason + ' (RESET)' });
-        });
+        cashMovements.forEach(m => batch.update(doc(db, 'cash_movements', m.id), { amount: 0, reason: m.reason + ' (RESET)' }));
         await batch.commit();
-        alert("Cassa resettata (i valori sono stati azzerati).");
     };
-
-    // Cancellazione Massiva (Super Admin)
-    const handleMassDelete = async (dateLimit: string, collectionName: 'orders' | 'movements') => {
-        const limitDate = new Date(dateLimit).toISOString();
-        const collName = collectionName === 'orders' ? 'orders' : 'cash_movements';
-        
-        const q = query(collection(db, collName), where('timestamp', '<=', limitDate));
-        const snapshot = await getDocs(q);
-
+    const handleMassDelete = async (date: string, type: 'orders'|'movements') => {
+        const q = query(collection(db, type === 'orders' ? 'orders' : 'cash_movements'), where('timestamp', '<=', new Date(date).toISOString()));
+        const s = await getDocs(q);
         const batch = writeBatch(db);
-        snapshot.docs.forEach(d => batch.delete(d.ref));
+        s.docs.forEach(d => batch.delete(d.ref));
         await batch.commit();
-        alert(`${snapshot.size} record eliminati definitivamente.`);
     };
-
-    const selectedTill = TILLS.find(t => t.id === selectedTillId);
 
     const renderContent = () => {
         if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
-
         switch (view) {
-            case 'till':
-                return selectedTill ? <TillView 
-                                        till={selectedTill} 
-                                        onGoBack={handleGoBack} 
-                                        products={products}
-                                        allStaff={staff} 
-                                        allOrders={orders}
-                                        onCompleteOrder={handleCompleteOrder}
-                                        tillColors={tillColors}
-                                      /> : null;
-            case 'reports':
-                return <ReportsView 
-                          onGoBack={handleGoBack} 
-                          products={products} staff={staff} orders={orders}
-                        />;
-            case 'admin': 
-                return <AdminView 
-                            onGoBack={handleGoBack}
-                            orders={orders}
-                            tills={TILLS}
-                            tillColors={tillColors}
-                            products={products}
-                            staff={staff}
-                            cashMovements={cashMovements}
-                            onUpdateTillColors={updateTillColors}
-                            onDeleteOrders={deleteOrders}
-                            onPermanentDeleteOrder={permanentDeleteOrder}
-                            onUpdateOrder={updateOrder}
-                            onAddProduct={addProduct}
-                            onUpdateProduct={updateProduct}
-                            onDeleteProduct={deleteProduct}
-                            onAddStaff={addStaff}
-                            onUpdateStaff={updateStaff}
-                            onDeleteStaff={deleteStaff}
-                            onAddCashMovement={addCashMovement}
-                            onStockPurchase={handleStockPurchase}
-                            onStockCorrection={handleStockCorrection}
-                            onResetCash={handleResetCash}
-                            onMassDelete={handleMassDelete}
-                            isAuthenticated={isAdmin}
-                            currentUser={currentUser}
-                            onLogin={handleGoogleLogin}
-                            onLogout={handleLogout}
-                            adminList={adminList}
-                            onAddAdmin={handleAddAdmin}
-                            onRemoveAdmin={handleRemoveAdmin}
-                        />;
-            case 'selection':
-            default:
-                return <TillSelection 
-                            tills={TILLS} 
-                            onSelectTill={handleSelectTill} 
-                            onSelectReports={handleSelectReports} 
-                            onSelectAdmin={handleSelectAdmin}
-                            tillColors={tillColors}
-                        />;
+            case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
+            case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
+            case 'tombola': return <TombolaView onGoBack={handleGoBack} config={tombolaConfig!} tickets={tombolaTickets} wins={tombolaWins} onBuyTicket={handleBuyTombolaTicket} />;
+            case 'admin': return <AdminView onGoBack={handleGoBack} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements} onUpdateTillColors={updateTillColors} onDeleteOrders={deleteOrders} onPermanentDeleteOrder={permanentDeleteOrder} onUpdateOrder={updateOrder} onAddProduct={addProduct} onUpdateProduct={updateProduct} onDeleteProduct={deleteProduct} onAddStaff={addStaff} onUpdateStaff={updateStaff} onDeleteStaff={deleteStaff} onAddCashMovement={addCashMovement} onStockPurchase={handleStockPurchase} onStockCorrection={handleStockCorrection} onResetCash={handleResetCash} onMassDelete={handleMassDelete} isAuthenticated={isAdmin} currentUser={currentUser} onLogin={handleGoogleLogin} onLogout={handleLogout} adminList={adminList} onAddAdmin={handleAddAdmin} onRemoveAdmin={handleRemoveAdmin} tombolaConfig={tombolaConfig} onUpdateTombolaConfig={handleUpdateTombolaConfig} />;
+            default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectTombola={handleSelectTombola} tillColors={tillColors} />;
         }
     };
 

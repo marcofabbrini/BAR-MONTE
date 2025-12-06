@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift } from '../types';
+import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig } from '../types';
 import { User } from 'firebase/auth';
 import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon } from './Icons';
 import ProductManagement from './ProductManagement';
@@ -40,6 +40,10 @@ interface AdminViewProps {
     adminList: AdminUser[];
     onAddAdmin: (email: string) => Promise<void>;
     onRemoveAdmin: (id: string) => Promise<void>;
+
+    // Tombola
+    tombolaConfig?: TombolaConfig;
+    onUpdateTombolaConfig: (cfg: TombolaConfig) => Promise<void>;
 }
 
 type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins';
@@ -50,7 +54,8 @@ const AdminView: React.FC<AdminViewProps> = ({
     onAddProduct, onUpdateProduct, onDeleteProduct,
     onAddStaff, onUpdateStaff, onDeleteStaff,
     onAddCashMovement, onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
-    isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin
+    isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin,
+    tombolaConfig, onUpdateTombolaConfig
 }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     
@@ -71,6 +76,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     
     // States for Admin Mgmt
     const [newAdminEmail, setNewAdminEmail] = useState('');
+    const [tombolaPrice, setTombolaPrice] = useState(tombolaConfig?.ticketPrice || 5);
 
     // Calcolo Super Admin (il primo in lista è il Super Admin)
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
@@ -173,6 +179,12 @@ const AdminView: React.FC<AdminViewProps> = ({
         }
     };
 
+    const handleUpdateTombolaPrice = async () => {
+        if (!tombolaConfig) return;
+        await onUpdateTombolaConfig({ ...tombolaConfig, ticketPrice: Number(tombolaPrice) });
+        alert("Prezzo cartella aggiornato!");
+    };
+
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
         <button 
             onClick={() => setActiveTab(tab)} 
@@ -243,7 +255,6 @@ const AdminView: React.FC<AdminViewProps> = ({
             </header>
 
             <main className="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
-                
                 {activeTab === 'movements' && (
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div className="p-4 border-b border-slate-100 bg-slate-50">
@@ -365,8 +376,8 @@ const AdminView: React.FC<AdminViewProps> = ({
                 )}
                 
                 {activeTab === 'admins' && (
-                     <div className="max-w-2xl mx-auto">
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6">
+                     <div className="max-w-2xl mx-auto space-y-6">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <h2 className="text-lg font-bold text-slate-800 mb-4">Nuovo Admin</h2>
                             <form onSubmit={handleAddAdminSubmit} className="flex gap-2">
                                 <input type="email" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="email@gmail.com" className="flex-grow border rounded-lg p-2 bg-slate-50" required />
@@ -389,6 +400,20 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 ))}
                             </ul>
                         </div>
+
+                        {/* CONFIGURAZIONE VARIE (TOMBOLA) - Solo Super Admin */}
+                        {isSuperAdmin && tombolaConfig && (
+                            <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
+                                <h2 className="text-lg font-bold text-indigo-800 mb-4">Configurazione Varie</h2>
+                                <div>
+                                    <label className="text-xs font-bold text-indigo-600 uppercase">Prezzo Cartella Tombola (€)</label>
+                                    <div className="flex gap-2 mt-1">
+                                        <input type="number" step="0.5" value={tombolaPrice} onChange={e => setTombolaPrice(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" />
+                                        <button onClick={handleUpdateTombolaPrice} className="bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700">Salva</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                      </div>
                 )}
             </main>

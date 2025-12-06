@@ -62,3 +62,27 @@ export interface AdminUser {
     addedBy: string;
     timestamp: string;
 }
+
+// TOMBOLA TYPES
+export interface TombolaConfig {
+    ticketPrice: number;
+    jackpot: number; // 80% degli incassi
+    lastExtraction: string;
+    extractedNumbers: number[];
+}
+
+export interface TombolaTicket {
+    id: string;
+    playerName: string;
+    numbers: number[]; // 15 numeri
+    purchaseTime: string;
+}
+
+export interface TombolaWin {
+    id: string;
+    ticketId: string;
+    playerName: string;
+    type: 'Ambo' | 'Terno' | 'Quaterna' | 'Cinquina' | 'Tombola';
+    numbers: number[]; // I numeri vincenti
+    timestamp: string;
+}
