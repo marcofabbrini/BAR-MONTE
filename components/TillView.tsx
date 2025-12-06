@@ -21,6 +21,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const [isAnimatingSelection, setIsAnimatingSelection] = useState(false);
 
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
@@ -79,16 +80,28 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         }
     }, [currentOrder, cartTotal, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder, clearOrder]);
 
+    const handleStaffSelection = (id: string) => {
+        setIsAnimatingSelection(true);
+        setTimeout(() => {
+            setSelectedStaffId(id);
+            setIsAnimatingSelection(false);
+        }, 300);
+    };
+
+    const handleStaffDeselection = () => {
+        setSelectedStaffId('');
+    };
+
     // Genera iniziali per utente
     const getInitials = (name: string) => {
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row relative overflow-hidden">
+        <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row relative">
              {/* WATERMARK SFONDO */}
-             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                <span className="text-[400px] md:text-[600px] font-black text-slate-200/40 select-none">
+             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 fixed">
+                <span className="text-[400px] md:text-[600px] font-black text-slate-200/50 select-none">
                     {till.shift.toUpperCase()}
                 </span>
             </div>
@@ -104,15 +117,30 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         </button>
                         <h1 className="text-lg font-bold tracking-tight">{till.name}</h1>
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full">
-                        <span className="text-xs font-bold uppercase tracking-wide">Turno {till.shift}</span>
+                    
+                    <div className="flex items-center gap-4">
+                        {/* Utente selezionato nell'header */}
+                        {selectedStaffId && selectedStaffMember && (
+                            <button 
+                                onClick={handleStaffDeselection}
+                                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-full pr-4 pl-1 py-1 transition-all animate-fade-in"
+                            >
+                                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-sm shadow-sm text-slate-800">
+                                    {selectedStaffMember.icon || getInitials(selectedStaffMember.name)}
+                                </div>
+                                <span className="font-bold text-sm">{selectedStaffMember.name}</span>
+                            </button>
+                        )}
+                        <div className="flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full">
+                            <span className="text-xs font-bold uppercase tracking-wide">Turno {till.shift}</span>
+                        </div>
                     </div>
                 </header>
                 
                 <main className="flex-grow flex flex-col relative w-full pb-24 md:pb-8">
                     <div className="px-4 py-3 z-20 sticky top-[60px]">
                          <div className="bg-white/90 backdrop-blur p-1 rounded-xl shadow-sm inline-flex w-full md:w-auto border border-slate-100">
-                            <button onClick={() => setActiveTab('order')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === 'order' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>Nuovo Ordine</button>
+                            <button onClick={() => setActiveTab('order')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === 'order' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>Acquista</button>
                             <button onClick={() => setActiveTab('history')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all duration-200 ${activeTab === 'history' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>Storico</button>
                         </div>
                     </div>
@@ -120,34 +148,27 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                     <div className="px-4 w-full max-w-7xl mx-auto flex-grow">
                         {activeTab === 'order' && (
                             <div className="animate-fade-in-up">
-                                <div className="mb-6">
-                                    <h3 className="text-sm font-bold text-slate-500 uppercase mb-3 px-1">Seleziona Utente</h3>
-                                    <div className="flex flex-wrap gap-4">
-                                        {staffForShift.map(staff => (
-                                            <button 
-                                                key={staff.id} 
-                                                onClick={() => setSelectedStaffId(staff.id)}
-                                                className={`
-                                                    group relative w-16 h-16 rounded-full flex items-center justify-center shadow-md border-2 transition-all duration-200
-                                                    ${selectedStaffId === staff.id 
-                                                        ? 'border-primary scale-110 opacity-100 ring-4 ring-primary/20' 
-                                                        : 'border-white bg-white opacity-80 hover:opacity-100 hover:scale-105'
-                                                    }
-                                                `}
-                                                title={staff.name}
-                                            >
-                                                <span className="text-2xl select-none">
-                                                    {staff.icon || getInitials(staff.name)}
-                                                </span>
-                                                {selectedStaffId === staff.id && (
-                                                    <span className="absolute -bottom-6 text-[10px] font-bold bg-slate-800 text-white px-2 py-0.5 rounded-full whitespace-nowrap z-20">
-                                                        {staff.name}
-                                                    </span>
-                                                )}
-                                            </button>
-                                        ))}
+                                {/* Sezione Selezione Utente (compare solo se nessuno è selezionato) */}
+                                {!selectedStaffId && (
+                                    <div className={`mb-6 transition-all duration-300 ${isAnimatingSelection ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+                                        <h3 className="text-sm font-bold text-slate-500 uppercase mb-3 px-1">Chi sei?</h3>
+                                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4">
+                                            {staffForShift.map(staff => (
+                                                <button 
+                                                    key={staff.id} 
+                                                    onClick={() => handleStaffSelection(staff.id)}
+                                                    className="group flex flex-col items-center gap-2"
+                                                >
+                                                    <div className="w-16 h-16 rounded-full bg-white shadow-md border-2 border-slate-100 flex items-center justify-center text-3xl group-hover:scale-110 group-hover:border-primary transition-all">
+                                                        {staff.icon || <span className="text-xl font-bold text-slate-600">{getInitials(staff.name)}</span>}
+                                                    </div>
+                                                    <span className="text-xs font-bold text-slate-600 group-hover:text-primary">{staff.name.split(' ')[0]}</span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
+
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                                     {sortedProducts.map(product => <ProductCard key={product.id} product={product} onAddToCart={addToOrder} />)}
                                 </div>
@@ -163,11 +184,17 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
             </div>
             
             {/* Mobile Bar & Drawer */}
-            <div className={`md:hidden fixed bottom-0 left-0 w-full bg-white shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] border-t border-slate-200 z-50 p-4 transition-transform duration-300 ${activeTab === 'order' ? 'translate-y-0' : 'translate-y-full'}`}>
-                <div className="flex justify-between items-center gap-4">
-                    <div className="flex flex-col"><span className="text-xs text-slate-500 font-bold uppercase">{cartItemCount} Articoli</span><span className="text-2xl font-black text-slate-800">€{cartTotal.toFixed(2)}</span></div>
-                    <button onClick={() => setIsCartOpen(true)} disabled={cartItemCount === 0} className="text-white font-bold py-3 px-6 rounded-xl shadow-lg disabled:bg-slate-300 disabled:shadow-none transition-all flex items-center gap-2" style={{ backgroundColor: themeColor }}><span>Vedi Ordine</span></button>
-                </div>
+            <div className={`md:hidden fixed bottom-0 left-0 w-full bg-white shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] border-t border-slate-200 z-50 transition-transform duration-300 ${activeTab === 'order' ? 'translate-y-0' : 'translate-y-full'}`}>
+                 <button onClick={() => setIsCartOpen(true)} className="w-full flex items-center justify-between p-4 bg-white active:bg-slate-50">
+                    <div className="flex flex-col items-start">
+                        <span className="text-xs text-slate-500 font-bold uppercase">{cartItemCount} Articoli</span>
+                        <span className="text-2xl font-black text-slate-800">€{cartTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="px-6 py-3 rounded-xl font-bold text-white shadow-lg flex items-center gap-2" style={{ backgroundColor: themeColor }}>
+                        <span>Vedi Carrello</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
+                    </div>
+                </button>
             </div>
              {isCartOpen && (
                 <div className="md:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-center items-end animate-fade-in">
@@ -182,7 +209,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                     </div>
                 </div>
             )}
-            <aside className="hidden md:flex sticky top-0 h-screen w-96 bg-white shadow-xl border-l border-slate-200 z-40 flex-col">
+            <aside className="hidden md:flex sticky top-0 h-screen w-96 bg-white/95 backdrop-blur shadow-xl border-l border-slate-200 z-40 flex-col">
                 <OrderSummary orderItems={currentOrder} onUpdateQuantity={updateQuantity} onClear={clearOrder} onComplete={completeOrder} selectedStaff={selectedStaffMember} />
             </aside>
         </div>

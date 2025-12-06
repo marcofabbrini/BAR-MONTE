@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement } from '../types';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -110,12 +110,21 @@ const AdminView: React.FC<AdminViewProps> = ({
         alert('Impostazioni salvate!');
     };
 
-    const TabButton = ({ tab, label }: { tab: AdminTab, label: string }) => (
+    const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
         <button 
             onClick={() => setActiveTab(tab)} 
-            className={`px-4 py-2 rounded-lg font-bold text-sm whitespace-nowrap transition-colors ${activeTab === tab ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-slate-700'}`}
+            className={`
+                flex flex-col items-center justify-center p-2 rounded-xl transition-all w-24 h-20 text-xs font-bold gap-1
+                ${activeTab === tab 
+                    ? 'bg-white text-slate-800 shadow-lg scale-105' 
+                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white hover:scale-105'
+                }
+            `}
         >
-            {label}
+            <div className={`${activeTab === tab ? 'text-primary' : 'text-current'}`}>
+                {icon}
+            </div>
+            <span className="text-center leading-tight">{label}</span>
         </button>
     );
 
@@ -139,18 +148,23 @@ const AdminView: React.FC<AdminViewProps> = ({
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col">
             <header className="bg-slate-800 text-white p-4 shadow-lg sticky top-0 z-50">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 max-w-7xl mx-auto w-full">
-                    <div className="flex items-center gap-3">
-                        <button onClick={onGoBack} className="p-2 hover:bg-slate-700 rounded-full transition-colors"><BackArrowIcon className="h-6 w-6" /></button>
-                        <h1 className="text-xl font-bold hidden md:block">Amministrazione</h1>
+                <div className="flex flex-col items-center gap-4 max-w-7xl mx-auto w-full">
+                    <div className="flex items-center justify-between w-full">
+                         <div className="flex items-center gap-3">
+                            <button onClick={onGoBack} className="p-2 hover:bg-slate-700 rounded-full transition-colors"><BackArrowIcon className="h-6 w-6" /></button>
+                            <h1 className="text-xl font-bold">Amministrazione</h1>
+                        </div>
+                        <span className="text-xs font-mono text-slate-500">v1.0</span>
                     </div>
-                    <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
-                        <TabButton tab="movements" label="Movimenti" />
-                        <TabButton tab="stock" label="Gestione Stock" />
-                        <TabButton tab="products" label="Prodotti" />
-                        <TabButton tab="staff" label="Personale" />
-                        <TabButton tab="cash" label="Cassa" />
-                        <TabButton tab="settings" label="Impostazioni" />
+                    
+                    {/* Menu a Griglia/Flex */}
+                    <div className="flex flex-wrap justify-center gap-2 w-full">
+                        <TabButton tab="movements" label="Movimenti" icon={<ListIcon className="h-6 w-6" />} />
+                        <TabButton tab="stock" label="Stock" icon={<BoxIcon className="h-6 w-6" />} />
+                        <TabButton tab="products" label="Prodotti" icon={<StarIcon className="h-6 w-6" />} />
+                        <TabButton tab="staff" label="Personale" icon={<StaffIcon className="h-6 w-6" />} />
+                        <TabButton tab="cash" label="Cassa" icon={<CashIcon className="h-6 w-6" />} />
+                        <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-6 w-6" />} />
                     </div>
                 </div>
             </header>
