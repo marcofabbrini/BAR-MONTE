@@ -106,34 +106,33 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     }, [currentOrder, clearOrder, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder]);
 
     return (
-        <div className="flex flex-col h-[100dvh] overflow-hidden bg-slate-50">
-            {/* Header Minimale */}
-            <header className="bg-white px-6 py-3 flex justify-between items-center shadow-sm z-20 shrink-0">
-                 <div className="flex items-center gap-4">
-                     <button
-                        onClick={onGoBack}
-                        className="group flex items-center gap-2 text-slate-500 hover:text-primary transition-colors"
-                    >
-                        <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-orange-50 flex items-center justify-center transition-colors">
-                            <BackArrowIcon className="h-5 w-5" />
-                        </div>
-                        <span className="text-sm font-medium hidden md:block">Indietro</span>
-                    </button>
-                    <div className="h-6 w-px bg-slate-200 mx-2"></div>
-                    <h1 className="text-xl font-bold text-slate-800 tracking-tight">{till.name}</h1>
-                </div>
+        <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row">
+            <div className="flex-grow flex flex-col min-h-screen">
+                {/* Header Sticky */}
+                <header className="sticky top-0 bg-white px-6 py-3 flex justify-between items-center shadow-sm z-30 border-b border-slate-100">
+                     <div className="flex items-center gap-4">
+                         <button
+                            onClick={onGoBack}
+                            className="group flex items-center gap-2 text-slate-500 hover:text-primary transition-colors"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-slate-100 group-hover:bg-orange-50 flex items-center justify-center transition-colors">
+                                <BackArrowIcon className="h-5 w-5" />
+                            </div>
+                            <span className="text-sm font-medium hidden md:block">Indietro</span>
+                        </button>
+                        <div className="h-6 w-px bg-slate-200 mx-2"></div>
+                        <h1 className="text-xl font-bold text-slate-800 tracking-tight">{till.name}</h1>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">Turno {till.shift}</span>
+                    </div>
+                </header>
                 
-                <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wide">Turno {till.shift}</span>
-                </div>
-            </header>
-            
-            <div className="flex flex-grow overflow-hidden relative">
-                {/* Main Content Area */}
-                <main className="flex-grow flex flex-col h-full overflow-hidden relative">
-                    {/* Tab Navigation pill style */}
-                    <div className="px-6 py-4 flex-shrink-0">
+                <main className="flex-grow flex flex-col relative">
+                    {/* Tab Navigation */}
+                    <div className="px-6 py-4 bg-slate-50 z-20">
                          <div className="bg-white p-1 rounded-xl shadow-sm inline-flex border border-slate-100">
                             <button 
                                 onClick={() => setActiveTab('order')} 
@@ -150,7 +149,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         </div>
                     </div>
 
-                    <div className="flex-grow overflow-y-auto px-6 pb-[48vh] md:pb-6 scroll-smooth">
+                    {/* Scrollable Content */}
+                    <div className="px-6 pb-40 md:pb-6">
                         {activeTab === 'order' && (
                             <div className="animate-fade-in-up">
                                 <div className="mb-6 max-w-md">
@@ -187,19 +187,19 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         )}
                     </div>
                 </main>
-
-                {/* Sidebar / Bottom Sheet for Order Summary */}
-                {/* On Mobile: Fixed at bottom. On Desktop: Fixed at right. */}
-                <aside className="fixed bottom-0 left-0 w-full md:static md:w-96 lg:w-[400px] bg-white shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] md:shadow-none border-t md:border-l border-slate-200 z-30 h-[45vh] md:h-full flex flex-col transition-all duration-300">
-                    <OrderSummary 
-                        orderItems={currentOrder}
-                        onUpdateQuantity={updateQuantity}
-                        onClear={clearOrder}
-                        onComplete={completeOrder}
-                        selectedStaff={selectedStaffMember}
-                    />
-                </aside>
             </div>
+
+            {/* Sidebar / Bottom Sheet for Order Summary */}
+            {/* On Mobile: Fixed at bottom. On Desktop: Sticky at top right. */}
+            <aside className="fixed bottom-0 left-0 w-full md:sticky md:top-0 md:h-screen md:w-96 lg:w-[400px] bg-white shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] md:shadow-none border-t md:border-l border-slate-200 z-40 max-h-[50vh] md:max-h-screen flex flex-col transition-all duration-300">
+                <OrderSummary 
+                    orderItems={currentOrder}
+                    onUpdateQuantity={updateQuantity}
+                    onClear={clearOrder}
+                    onComplete={completeOrder}
+                    selectedStaff={selectedStaffMember}
+                />
+            </aside>
         </div>
     );
 };
