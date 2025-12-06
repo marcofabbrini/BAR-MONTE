@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { StaffMember, Shift } from '../types';
 import { EditIcon, TrashIcon, PlusIcon, SaveIcon } from './Icons';
@@ -12,6 +13,7 @@ interface StaffManagementProps {
 const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, onUpdateStaff, onDeleteStaff }) => {
     const [name, setName] = useState('');
     const [shift, setShift] = useState<Shift>('a');
+    const [icon, setIcon] = useState('');
     const [isEditing, setIsEditing] = useState<string | null>(null);
 
     useEffect(() => {
@@ -20,10 +22,12 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             if (memberToEdit) {
                 setName(memberToEdit.name);
                 setShift(memberToEdit.shift);
+                setIcon(memberToEdit.icon || '');
             }
         } else {
             setName('');
             setShift('a');
+            setIcon('');
         }
     }, [isEditing, staff]);
 
@@ -36,10 +40,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             if (isEditing) {
                 const memberToUpdate = staff.find(m => m.id === isEditing);
                 if (memberToUpdate) {
-                    await onUpdateStaff({ ...memberToUpdate, name: name.trim(), shift });
+                    await onUpdateStaff({ ...memberToUpdate, name: name.trim(), shift, icon });
                 }
             } else {
-                await onAddStaff({ name: name.trim(), shift });
+                await onAddStaff({ name: name.trim(), shift, icon });
             }
             handleCancel();
         } catch (error) {
@@ -56,6 +60,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         setIsEditing(null);
         setName('');
         setShift('a');
+        setIcon('');
     };
 
     const handleDeleteStaff = async (id: string) => {
@@ -71,9 +76,20 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
 
     return (
         <div className="max-w-4xl mx-auto">
-            <div className="bg-white p-6 rounded-lg shadow-lg mb-8 border border-slate-200">
+            <div className="bg-white p-6 rounded-lg shadow-lg mb-8 border border-slate-200 print:hidden">
                 <h2 className="text-2xl font-bold text-slate-800 mb-4">{isEditing ? 'Modifica Personale' : 'Aggiungi Personale'}</h2>
                 <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-end">
+                    <div className="w-24">
+                        <label htmlFor="staff-icon" className="text-sm font-medium text-slate-600">Icona</label>
+                         <input
+                            id="staff-icon"
+                            type="text"
+                            placeholder="😀"
+                            value={icon}
+                            onChange={(e) => setIcon(e.target.value)}
+                            className="w-full mt-1 bg-slate-100 text-slate-800 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-secondary text-center text-xl"
+                        />
+                    </div>
                     <div className="flex-grow w-full">
                          <label htmlFor="staff-name" className="text-sm font-medium text-slate-600">Nome e Cognome</label>
                         <input
@@ -122,11 +138,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                     <ul className="space-y-3">
                         {staff.map(member => (
                             <li key={member.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-md border border-slate-200">
-                                <div>
-                                    <p className="font-semibold text-slate-800">{member.name}</p>
-                                    <p className="text-sm text-slate-600">Turno: {member.shift.toUpperCase()}</p>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-xl shadow-sm border border-orange-100">
+                                        {member.icon || member.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold text-slate-800">{member.name}</p>
+                                        <p className="text-sm text-slate-600">Turno: <span className="font-bold text-primary">{member.shift.toUpperCase()}</span></p>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 print:hidden">
                                      <button onClick={() => handleEdit(member)} className="w-9 h-9 flex items-center justify-center rounded-full text-blue-600 hover:bg-blue-100 transition-colors" aria-label="Modifica">
                                         <EditIcon className="h-5 w-5" />
                                     </button>

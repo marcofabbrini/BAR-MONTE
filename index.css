@@ -1,6 +1,12 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+html, body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
 body {
   margin: 0;
@@ -8,4 +14,45 @@ body {
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Stili specifici per la stampa */
+@media print {
+  @page {
+    margin: 1cm;
+    size: A4;
+  }
+  
+  body {
+    background: white;
+  }
+
+  /* Nascondi elementi di navigazione e interfaccia */
+  header, nav, button, input, select, .no-print {
+    display: none !important;
+  }
+
+  /* Forza la visualizzazione del contenuto report */
+  .max-w-7xl {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Rimuovi ombre e bordi superflui */
+  .shadow-lg, .shadow-sm {
+    box-shadow: none !important;
+  }
+  
+  .border {
+    border-color: #000 !important;
+    border-width: 1px !important;
+  }
+  
+  /* Assicurati che i grafici e testi siano neri o scala di grigi */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }

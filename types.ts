@@ -7,7 +7,7 @@ export interface Product {
     description: string;
     stock: number;
     isFavorite: boolean;
-    icon?: string; // Nuova proprietà per l'icona (emoji)
+    icon?: string;
 }
 
 export interface OrderItem {
@@ -37,4 +37,5 @@ export interface StaffMember {
     id: string;
     name: string;
     shift: Shift;
+    icon?: string; // Nuova proprietà per l'icona (emoji)
 }
