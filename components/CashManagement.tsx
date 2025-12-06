@@ -18,15 +18,22 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
     // CALCOLI SEPARATI PER CATEGORIA
     // 1. BAR: Vendite + (Versamenti Tombola in entrata se categorizzati) - Uscite Bar
     const activeOrders = useMemo(() => orders.filter(o => !o.isDeleted), [orders]);
-    const salesRevenue = activeOrders.reduce((sum, o) => sum + o.total, 0);
+    // FIX NAN: Aggiunto || 0
+    const salesRevenue = activeOrders.reduce((sum, o) => sum + o.total, 0) || 0;
     
     // Filtra movimenti "BAR" (default o esplicito bar)
-    const cashMovementsBar = useMemo(() => movements.filter(m => m.category !== 'tombola'), [movements]);
+    const cashMovementsBar = useMemo(() => movements.filter(m => m.category === 'bar' || !m.category), [movements]);
     
-    const deposits = cashMovementsBar.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0);
-    const withdrawals = cashMovementsBar.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + m.amount, 0);
+    const deposits = cashMovementsBar.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0) || 0;
+    const withdrawals = cashMovementsBar.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + m.amount, 0) || 0;
     
     const operationalBalance = salesRevenue + deposits - withdrawals;
+
+    // FONDO GIOCO
+    const cashMovementsTombola = useMemo(() => movements.filter(m => m.category === 'tombola'), [movements]);
+    const depositsTombola = cashMovementsTombola.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0) || 0;
+    // Il fondo gioco è l'80% degli incassi tombola
+    const jackpotFund = depositsTombola * 0.8; 
 
     const handleSubmitWithdrawal = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -56,28 +63,20 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-slate-800 p-6 rounded-xl text-white relative overflow-hidden shadow-lg">
                     <p className="text-xs text-slate-400 uppercase font-bold tracking-wider">Saldo Operativo Bar</p>
-                    <p className="text-4xl font-black mt-1">€{operationalBalance.toFixed(2)}</p>
+                    <p className="text-4xl font-black mt-1">€{(operationalBalance || 0).toFixed(2)}</p>
                     <div className="mt-4 flex gap-4 text-xs opacity-80">
-                        <span>Vendite: +€{salesRevenue.toFixed(2)}</span>
-                        <span>Spese: -€{withdrawals.toFixed(2)}</span>
+                        <span>Vendite: +€{(salesRevenue || 0).toFixed(2)}</span>
+                        <span>Spese: -€{(withdrawals || 0).toFixed(2)}</span>
                     </div>
                     {isSuperAdmin && (
                         <button onClick={handleReset} className="absolute top-4 right-4 text-[10px] bg-red-600 px-2 py-1 rounded hover:bg-red-500 font-bold">RESET</button>
                     )}
                 </div>
                 
-                <div className="bg-white p-6 rounded-xl border border-slate-200 flex flex-col justify-center">
-                    <h4 className="font-bold text-slate-700 mb-2">Ultimi Movimenti (Entrate/Uscite)</h4>
-                    <div className="space-y-2 text-sm text-slate-600">
-                        {cashMovementsBar.slice(0, 3).map(m => (
-                            <div key={m.id} className="flex justify-between border-b pb-1 last:border-0">
-                                <span className="truncate w-2/3">{m.reason}</span>
-                                <span className={m.type === 'withdrawal' ? 'text-red-500 font-bold' : 'text-green-500 font-bold'}>
-                                    {m.type === 'withdrawal' ? '-' : '+'}€{m.amount.toFixed(2)}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
+                <div className="bg-indigo-700 p-6 rounded-xl text-white shadow-lg">
+                    <p className="text-xs text-indigo-300 uppercase font-bold tracking-wider">Fondo Gioco (Montepremi)</p>
+                    <p className="text-4xl font-black mt-1">€{(jackpotFund || 0).toFixed(2)}</p>
+                    <p className="mt-4 text-xs opacity-80">Incassi totali Tombola: €{(depositsTombola || 0).toFixed(2)}</p>
                 </div>
             </div>
 
@@ -108,12 +107,13 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
                 <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b border-slate-200">Storico Movimenti Completo</h3>
                 <div className="max-h-80 overflow-y-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-500 sticky top-0 text-xs uppercase"><tr><th className="p-3">Data</th><th className="p-3">Causale</th><th className="p-3 text-right">Importo</th></tr></thead>
+                        <thead className="bg-slate-50 text-slate-500 sticky top-0 text-xs uppercase"><tr><th className="p-3">Data</th><th className="p-3">Causale</th><th className="p-3">Cat.</th><th className="p-3 text-right">Importo</th></tr></thead>
                         <tbody className="divide-y divide-slate-100">
                             {movements.map(m => (
                                 <tr key={m.id} className="hover:bg-slate-50">
                                     <td className="p-3 text-xs text-slate-400 whitespace-nowrap">{new Date(m.timestamp).toLocaleString()}</td>
                                     <td className="p-3 font-medium text-slate-700">{m.reason}</td>
+                                    <td className="p-3 text-xs uppercase font-bold text-slate-400">{m.category || 'BAR'}</td>
                                     <td className={`p-3 text-right font-bold ${m.type === 'withdrawal' ? 'text-red-500' : 'text-green-500'}`}>
                                         {m.type === 'withdrawal' ? '-' : '+'}€{m.amount.toFixed(2)}
                                     </td>
