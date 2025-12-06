@@ -29,9 +29,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     const selectedStaffMember = useMemo(() => allStaff.find(s => s.id === selectedStaffId), [allStaff, selectedStaffId]);
     const ordersForThisTill = useMemo(() => allOrders.filter(o => o.tillId === till.id), [allOrders, till.id]);
 
-    const sortedProducts = useMemo(() => {
-        return [...products].sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0));
-    }, [products]);
+    const favoriteProducts = useMemo(() => products.filter(p => p.isFavorite), [products]);
+    const otherProducts = useMemo(() => products.filter(p => !p.isFavorite), [products]);
 
     const cartTotal = useMemo(() => currentOrder.reduce((sum, item) => sum + item.product.price * item.quantity, 0), [currentOrder]);
     const cartItemCount = useMemo(() => currentOrder.reduce((sum, item) => sum + item.quantity, 0), [currentOrder]);
@@ -92,14 +91,12 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         setSelectedStaffId('');
     };
 
-    // Genera iniziali per utente
     const getInitials = (name: string) => {
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row relative">
-             {/* WATERMARK SFONDO */}
              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 fixed">
                 <span className="text-[400px] md:text-[600px] font-black text-slate-200/50 select-none">
                     {till.shift.toUpperCase()}
@@ -107,7 +104,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
             </div>
 
             <div className="flex-grow flex flex-col w-full md:w-auto min-h-screen z-10">
-                {/* Header con colore dinamico e trasparenza */}
                 <header className="sticky top-0 px-4 py-3 flex justify-between items-center shadow-sm z-30 border-b border-white/20 text-white transition-colors duration-300 backdrop-blur-md bg-opacity-90" style={{ backgroundColor: themeColor + 'E6' }}>
                      <div className="flex items-center gap-3">
                          <button onClick={onGoBack} className="group flex items-center gap-2 text-white/80 hover:text-white transition-colors">
@@ -119,7 +115,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                     </div>
                     
                     <div className="flex items-center gap-4">
-                        {/* Utente selezionato nell'header */}
                         {selectedStaffId && selectedStaffMember && (
                             <button 
                                 onClick={handleStaffDeselection}
@@ -148,11 +143,11 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                     <div className="px-4 w-full max-w-7xl mx-auto flex-grow">
                         {activeTab === 'order' && (
                             <div className="animate-fade-in-up">
-                                {/* Sezione Selezione Utente (compare solo se nessuno è selezionato) */}
                                 {!selectedStaffId && (
                                     <div className={`mb-6 transition-all duration-300 ${isAnimatingSelection ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                                         <h3 className="text-sm font-bold text-slate-500 uppercase mb-3 px-1">Chi sei?</h3>
-                                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4">
+                                        {/* GRIGLIA UTENTI CON ANIMAZIONE PULSE SE NON SELEZIONATO */}
+                                        <div className={`grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4 p-4 rounded-xl ${!selectedStaffId ? 'animate-red-pulse' : ''}`}>
                                             {staffForShift.map(staff => (
                                                 <button 
                                                     key={staff.id} 
@@ -169,9 +164,31 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                     </div>
                                 )}
 
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                                    {sortedProducts.map(product => <ProductCard key={product.id} product={product} onAddToCart={addToOrder} />)}
-                                </div>
+                                {/* GRIGLIA PREFERITI */}
+                                {favoriteProducts.length > 0 && (
+                                    <div className="mb-6">
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Preferiti</h3>
+                                        <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                            {favoriteProducts.map(product => {
+                                                const inCart = currentOrder.some(i => i.product.id === product.id);
+                                                return <ProductCard key={product.id} product={product} onAddToCart={addToOrder} inCart={inCart} />;
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* LISTA ALTRI PRODOTTI - LAYOUT COMPATTO */}
+                                {otherProducts.length > 0 && (
+                                    <div>
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Altri Prodotti</h3>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
+                                            {otherProducts.map(product => {
+                                                const inCart = currentOrder.some(i => i.product.id === product.id);
+                                                return <ProductCard key={product.id} product={product} onAddToCart={addToOrder} inCart={inCart} isCompact />;
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                         {activeTab === 'history' && (
@@ -183,7 +200,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                 </main>
             </div>
             
-            {/* Mobile Bar & Drawer */}
             <div className={`md:hidden fixed bottom-0 left-0 w-full bg-white shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] border-t border-slate-200 z-50 transition-transform duration-300 ${activeTab === 'order' ? 'translate-y-0' : 'translate-y-full'}`}>
                  <button onClick={() => setIsCartOpen(true)} className="w-full flex items-center justify-between p-4 bg-white active:bg-slate-50">
                     <div className="flex flex-col items-start">

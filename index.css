@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -15,43 +16,50 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Animazione Alone Rosso Pulsante per selezione utente */
+@keyframes red-pulse-glow {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.animate-red-pulse {
+  animation: red-pulse-glow 2s infinite;
+}
+
+/* Animazione Emoji Cadenti */
+.emoji-rain-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.falling-emoji {
+  position: absolute;
+  top: -10%;
+  font-size: 1.5rem;
+  opacity: 0.6;
+  animation: fall linear infinite;
+}
+
+@keyframes fall {
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.8; }
+  100% { transform: translateY(110vh) rotate(360deg); opacity: 0.3; }
+}
+
 /* Stili specifici per la stampa */
 @media print {
-  @page {
-    margin: 1cm;
-    size: A4;
-  }
-  
-  body {
-    background: white;
-  }
-
-  /* Nascondi elementi di navigazione e interfaccia */
-  header, nav, button, input, select, .no-print {
-    display: none !important;
-  }
-
-  /* Forza la visualizzazione del contenuto report */
-  .max-w-7xl {
-    max-width: none !important;
-    width: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-
-  /* Rimuovi ombre e bordi superflui */
-  .shadow-lg, .shadow-sm {
-    box-shadow: none !important;
-  }
-  
-  .border {
-    border-color: #000 !important;
-    border-width: 1px !important;
-  }
-  
-  /* Assicurati che i grafici e testi siano neri o scala di grigi */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
+  @page { margin: 1cm; size: A4; }
+  body { background: white; }
+  header, nav, button, input, select, .no-print { display: none !important; }
+  .max-w-7xl { max-width: none !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
+  .shadow-lg, .shadow-sm { box-shadow: none !important; }
+  .border { border-color: #000 !important; border-width: 1px !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }

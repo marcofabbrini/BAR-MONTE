@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser } from '../types';
+import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift } from '../types';
 import { User } from 'firebase/auth';
 import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon } from './Icons';
 import ProductManagement from './ProductManagement';
@@ -27,6 +27,9 @@ interface AdminViewProps {
     onDeleteStaff: (id: string) => Promise<void>;
     onAddCashMovement: (m: Omit<CashMovement, 'id'>) => Promise<void>;
     onStockPurchase: (productId: string, quantity: number, unitCost: number) => Promise<void>;
+    onStockCorrection: (productId: string, newStock: number) => Promise<void>;
+    onResetCash: () => Promise<void>;
+    onMassDelete: (date: string, type: 'orders' | 'movements') => Promise<void>;
     
     // Auth
     isAuthenticated: boolean;
@@ -45,7 +48,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     onUpdateTillColors, onDeleteOrders, onUpdateOrder,
     onAddProduct, onUpdateProduct, onDeleteProduct,
     onAddStaff, onUpdateStaff, onDeleteStaff,
-    onAddCashMovement, onStockPurchase,
+    onAddCashMovement, onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
     isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin
 }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
@@ -54,6 +57,13 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
     const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<{ total: number, date: string, time: string }>({ total: 0, date: '', time: '' });
+    
+    // Movement Filters
+    const [movFilterDate, setMovFilterDate] = useState('');
+    const [movFilterShift, setMovFilterShift] = useState<Shift | 'all'>('all');
+
+    // Mass Delete
+    const [massDeleteDate, setMassDeleteDate] = useState('');
 
     // States for Settings
     const [colors, setColors] = useState<TillColors>(tillColors);
@@ -61,8 +71,32 @@ const AdminView: React.FC<AdminViewProps> = ({
     // States for Admin Mgmt
     const [newAdminEmail, setNewAdminEmail] = useState('');
 
-    const activeOrders = useMemo(() => orders.filter(o => !o.isDeleted), [orders]);
-    const totalActiveRevenue = useMemo(() => activeOrders.reduce((sum, o) => sum + o.total, 0), [activeOrders]);
+    // Calcolo Super Admin (il primo in lista è il Super Admin)
+    const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
+    const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
+
+    // Filtri Movimenti
+    const filteredOrders = useMemo(() => {
+        return orders.filter(o => {
+            if (movFilterDate) {
+                const orderDate = new Date(o.timestamp).toISOString().split('T')[0];
+                if (orderDate !== movFilterDate) return false;
+            }
+            if (movFilterShift !== 'all') {
+                const staffMember = staff.find(s => s.id === o.staffId);
+                if (!staffMember || staffMember.shift !== movFilterShift) return false;
+            }
+            return true;
+        });
+    }, [orders, movFilterDate, movFilterShift, staff]);
+
+    const activeOrders = useMemo(() => filteredOrders.filter(o => !o.isDeleted), [filteredOrders]);
+    
+    // Calcolo Saldo Totale (globale, non filtrato)
+    const globalActiveOrders = useMemo(() => orders.filter(o => !o.isDeleted), [orders]);
+    const totalRevenue = globalActiveOrders.reduce((sum, o) => sum + o.total, 0);
+    const totalWithdrawals = cashMovements.reduce((sum, m) => sum + m.amount, 0);
+    const currentBalance = totalRevenue - totalWithdrawals;
 
     const toggleOrderSelection = (id: string) => {
         const newSet = new Set(selectedOrderIds);
@@ -72,10 +106,10 @@ const AdminView: React.FC<AdminViewProps> = ({
     };
 
     const toggleAllSelection = () => {
-        if (selectedOrderIds.size === orders.length) {
+        if (selectedOrderIds.size === filteredOrders.length) {
             setSelectedOrderIds(new Set());
         } else {
-            setSelectedOrderIds(new Set(orders.map(o => o.id)));
+            setSelectedOrderIds(new Set(filteredOrders.map(o => o.id)));
         }
     };
 
@@ -128,18 +162,25 @@ const AdminView: React.FC<AdminViewProps> = ({
         setNewAdminEmail('');
     };
 
+    const handleMassDelete = async (type: 'orders' | 'movements') => {
+        if (!massDeleteDate) return alert("Seleziona una data limite.");
+        if (window.confirm(`ATTENZIONE: Stai per eliminare DEFINITIVAMENTE tutti i record antecedenti al ${massDeleteDate}. Questa azione è irreversibile. Confermi?`)) {
+            await onMassDelete(massDeleteDate, type);
+        }
+    };
+
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
         <button 
             onClick={() => setActiveTab(tab)} 
             className={`
-                flex flex-col items-center justify-center p-2 rounded-xl transition-all w-24 h-20 text-xs font-bold gap-1
+                flex flex-col items-center justify-center p-2 rounded-lg transition-all w-20 h-16 text-[10px] font-bold gap-1
                 ${activeTab === tab 
-                    ? 'bg-white text-slate-800 shadow-lg scale-105' 
-                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700 hover:text-white hover:scale-105'
+                    ? 'bg-red-500 text-white shadow-md' 
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-red-500'
                 }
             `}
         >
-            <div className={`${activeTab === tab ? 'text-primary' : 'text-current'}`}>
+            <div className={`${activeTab === tab ? 'text-white' : 'text-current'} transform scale-75`}>
                 {icon}
             </div>
             <span className="text-center leading-tight">{label}</span>
@@ -151,15 +192,6 @@ const AdminView: React.FC<AdminViewProps> = ({
             <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 p-4">
                 <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
                     <h2 className="text-2xl font-bold mb-6 text-slate-800">Area Riservata</h2>
-                    <p className="text-slate-500 mb-6">Accedi per gestire il sistema</p>
-                    
-                    {currentUser ? (
-                         <div className="mb-4 text-red-500 bg-red-50 p-3 rounded">
-                             <p>Accesso negato. L'utente <b>{currentUser.email}</b> non è un amministratore.</p>
-                             <button onClick={onLogout} className="block w-full mt-2 text-sm text-slate-400 underline">Logout</button>
-                         </div>
-                    ) : null}
-
                     <div className="flex gap-2">
                          <button type="button" onClick={onGoBack} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Indietro</button>
                          <button type="button" onClick={onLogin} className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 shadow-sm">
@@ -172,88 +204,107 @@ const AdminView: React.FC<AdminViewProps> = ({
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col">
-            <header className="bg-slate-800 text-white p-4 shadow-lg sticky top-0 z-50">
-                <div className="flex flex-col items-center gap-4 max-w-7xl mx-auto w-full">
+        <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+            <header className="bg-white border-b border-slate-200 p-4 sticky top-0 z-50">
+                <div className="flex flex-col gap-4 max-w-7xl mx-auto w-full">
+                    
+                    {/* TOP BAR: Back, Balance, User */}
                     <div className="flex items-center justify-between w-full">
-                         <div className="flex items-center gap-3">
-                            <button onClick={onGoBack} className="p-2 hover:bg-slate-700 rounded-full transition-colors"><BackArrowIcon className="h-6 w-6" /></button>
-                            <h1 className="text-xl font-bold">Amministrazione</h1>
+                         <button onClick={onGoBack} className="flex items-center text-slate-500 hover:text-slate-800 font-bold gap-2">
+                            <BackArrowIcon className="h-5 w-5" /> Esci
+                        </button>
+                        
+                        <div className="bg-slate-800 text-white px-6 py-2 rounded-full shadow-lg flex flex-col items-center">
+                            <span className="text-[10px] uppercase text-slate-400 font-bold tracking-wider">Saldo Cassa</span>
+                            <span className="text-xl font-black">€{currentBalance.toFixed(2)}</span>
                         </div>
-                        <div className="flex items-center gap-4">
-                             <div className="text-right hidden md:block">
-                                 <p className="text-xs text-slate-400 uppercase">Admin</p>
-                                 <p className="text-sm font-bold">{currentUser?.email}</p>
-                             </div>
-                             <button onClick={onLogout} className="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded-full">Esci</button>
+
+                        <div className="text-right">
+                             <p className="text-[10px] text-slate-400 uppercase font-bold">{isSuperAdmin ? 'Super Admin' : 'Admin'}</p>
+                             <button onClick={onLogout} className="text-xs text-red-500 font-bold hover:underline">Logout</button>
                         </div>
                     </div>
                     
+                    {/* NAVIGATION TABS */}
                     <div className="flex flex-wrap justify-center gap-2 w-full">
                         <TabButton tab="movements" label="Movimenti" icon={<ListIcon className="h-6 w-6" />} />
-                        <TabButton tab="stock" label="Acquisto Mag." icon={<BoxIcon className="h-6 w-6" />} />
+                        <TabButton tab="stock" label="Stock" icon={<BoxIcon className="h-6 w-6" />} />
                         <TabButton tab="products" label="Prodotti" icon={<StarIcon className="h-6 w-6" />} />
-                        <TabButton tab="staff" label="Personale" icon={<StaffIcon className="h-6 w-6" />} />
+                        <TabButton tab="staff" label="Staff" icon={<StaffIcon className="h-6 w-6" />} />
                         <TabButton tab="cash" label="Cassa" icon={<CashIcon className="h-6 w-6" />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-6 w-6" />} />
-                        <TabButton tab="admins" label="Gestione Admin" icon={<UserPlusIcon className="h-6 w-6" />} />
+                        <TabButton tab="admins" label="Admin" icon={<UserPlusIcon className="h-6 w-6" />} />
                     </div>
                 </div>
             </header>
 
-            <main className="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full">
+            <main className="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
+                
                 {activeTab === 'movements' && (
-                    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <div>
-                                <h2 className="font-bold text-lg text-slate-700">Gestione Movimenti</h2>
-                                <p className="text-xs text-slate-500">Totale Attivo: <span className="font-bold text-green-600">€{totalActiveRevenue.toFixed(2)}</span></p>
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50">
+                            <div className="flex flex-wrap gap-4 items-end justify-between">
+                                <h2 className="font-bold text-lg text-slate-700">Movimenti Filtrati</h2>
+                                <div className="flex gap-2 items-center">
+                                    <div>
+                                        <label className="text-[10px] uppercase font-bold text-slate-400 block">Data</label>
+                                        <input type="date" value={movFilterDate} onChange={e => setMovFilterDate(e.target.value)} className="border rounded px-2 py-1 text-sm bg-white" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] uppercase font-bold text-slate-400 block">Turno</label>
+                                        <select value={movFilterShift} onChange={e => setMovFilterShift(e.target.value as any)} className="border rounded px-2 py-1 text-sm bg-white">
+                                            <option value="all">Tutti</option>
+                                            <option value="a">A</option>
+                                            <option value="b">B</option>
+                                            <option value="c">C</option>
+                                            <option value="d">D</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                             {selectedOrderIds.size > 0 && (
-                                <button onClick={handleBulkDelete} className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2"><TrashIcon className="h-4 w-4" /> Annulla ({selectedOrderIds.size})</button>
+                                <button onClick={handleBulkDelete} className="mt-3 w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center justify-center gap-2"><TrashIcon className="h-4 w-4" /> Annulla ({selectedOrderIds.size})</button>
                             )}
                         </div>
-                        <div className="overflow-x-auto max-h-[70vh]">
+                        <div className="overflow-x-auto max-h-[60vh]">
                             <table className="w-full text-left text-slate-600 text-sm">
                                 <thead className="bg-slate-100 text-slate-800 uppercase text-xs sticky top-0 z-10">
                                     <tr>
-                                        <th className="p-4 w-10"><input type="checkbox" checked={selectedOrderIds.size === orders.length && orders.length > 0} onChange={toggleAllSelection} className="w-4 h-4 rounded text-primary focus:ring-primary" /></th>
-                                        <th className="p-4">Data/Ora</th>
-                                        <th className="p-4">Cassa</th>
-                                        <th className="p-4">Utente</th>
-                                        <th className="p-4 text-right">Totale</th>
-                                        <th className="p-4 text-center">Stato</th>
-                                        <th className="p-4 text-center">Azioni</th>
+                                        <th className="p-3 w-8"><input type="checkbox" checked={selectedOrderIds.size === filteredOrders.length && filteredOrders.length > 0} onChange={toggleAllSelection} className="rounded text-red-500 focus:ring-red-500" /></th>
+                                        <th className="p-3">Data</th>
+                                        <th className="p-3">Info</th>
+                                        <th className="p-3 text-right">Totale</th>
+                                        <th className="p-3 text-center">Stato</th>
+                                        <th className="p-3 text-center">Azioni</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {orders.map(order => (
-                                        <tr key={order.id} className={`hover:bg-slate-50 ${selectedOrderIds.has(order.id) ? 'bg-orange-50' : ''} ${order.isDeleted ? 'bg-red-50 text-red-800' : ''}`}>
-                                            <td className="p-4"><input type="checkbox" checked={selectedOrderIds.has(order.id)} onChange={() => toggleOrderSelection(order.id)} className="w-4 h-4 rounded text-primary focus:ring-primary" /></td>
-                                            <td className={`p-4 ${order.isDeleted ? 'line-through opacity-50' : ''}`}>
+                                    {filteredOrders.map(order => (
+                                        <tr key={order.id} className={`hover:bg-slate-50 ${order.isDeleted ? 'bg-red-50' : ''}`}>
+                                            <td className="p-3"><input type="checkbox" checked={selectedOrderIds.has(order.id)} onChange={() => toggleOrderSelection(order.id)} className="rounded text-red-500 focus:ring-red-500" /></td>
+                                            <td className="p-3 whitespace-nowrap text-xs">
                                                 {editingOrderId === order.id ? (
-                                                    <div className="flex flex-col gap-1"><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="border rounded px-2 py-1 text-xs" /><input type="time" value={editForm.time} onChange={e => setEditForm({...editForm, time: e.target.value})} className="border rounded px-2 py-1 text-xs" /></div>
-                                                ) : <span>{new Date(order.timestamp).toLocaleString('it-IT')}</span>}
+                                                    <div className="flex flex-col gap-1"><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="border rounded px-1" /><input type="time" value={editForm.time} onChange={e => setEditForm({...editForm, time: e.target.value})} className="border rounded px-1" /></div>
+                                                ) : new Date(order.timestamp).toLocaleString('it-IT')}
                                             </td>
-                                            <td className={`p-4 ${order.isDeleted ? 'opacity-50' : ''}`}><span className="font-mono bg-slate-100 px-2 py-1 rounded">{order.tillId}</span></td>
-                                            <td className={`p-4 ${order.isDeleted ? 'opacity-50' : ''}`}>{order.staffName}</td>
-                                            <td className={`p-4 text-right font-bold ${order.isDeleted ? 'line-through opacity-50' : ''}`}>
-                                                 {editingOrderId === order.id ? <input type="number" step="0.01" value={editForm.total} onChange={e => setEditForm({...editForm, total: parseFloat(e.target.value)})} className="border rounded px-2 py-1 text-right w-24" /> : `€${order.total.toFixed(2)}`}
+                                            <td className="p-3">
+                                                <div className="text-xs font-bold text-slate-700">{order.staffName}</div>
+                                                <div className="text-[10px] text-slate-400 uppercase">Cassa {order.tillId}</div>
                                             </td>
-                                            <td className="p-4 text-center">
-                                                {order.isDeleted ? <span className="bg-red-200 text-red-800 text-[10px] px-2 py-1 rounded-full font-bold uppercase">Annullato</span> : <span className="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-full font-bold uppercase">Valido</span>}
+                                            <td className="p-3 text-right font-bold text-slate-800">
+                                                 {editingOrderId === order.id ? <input type="number" step="0.01" value={editForm.total} onChange={e => setEditForm({...editForm, total: parseFloat(e.target.value)})} className="border rounded px-1 w-20 text-right" /> : `€${order.total.toFixed(2)}`}
                                             </td>
-                                            <td className="p-4 flex justify-center gap-2">
+                                            <td className="p-3 text-center">
+                                                {order.isDeleted ? <span className="text-red-500 font-bold text-[10px] uppercase">Annullato</span> : <span className="text-green-500 font-bold text-[10px] uppercase">OK</span>}
+                                            </td>
+                                            <td className="p-3 flex justify-center gap-2">
                                                 {editingOrderId === order.id ? (
-                                                    <>
-                                                        <button onClick={saveEditOrder} className="text-green-600 hover:bg-green-100 p-2 rounded-full"><SaveIcon className="h-4 w-4" /></button>
-                                                        <button onClick={() => setEditingOrderId(null)} className="text-slate-400 hover:bg-slate-100 p-2 rounded-full">✕</button>
-                                                    </>
+                                                    <button onClick={saveEditOrder}><SaveIcon className="h-5 w-5 text-green-600" /></button>
                                                 ) : (
                                                     !order.isDeleted && (
                                                         <>
-                                                            <button onClick={() => startEditOrder(order)} className="text-blue-500 hover:bg-blue-50 p-2 rounded-full" title="Modifica"><EditIcon className="h-4 w-4" /></button>
-                                                            <button onClick={() => handleSingleDelete(order.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-full" title="Annulla Movimento"><TrashIcon className="h-4 w-4" /></button>
+                                                            <button onClick={() => startEditOrder(order)}><EditIcon className="h-4 w-4 text-blue-400" /></button>
+                                                            <button onClick={() => handleSingleDelete(order.id)}><TrashIcon className="h-4 w-4 text-red-400" /></button>
                                                         </>
                                                     )
                                                 )}
@@ -265,49 +316,65 @@ const AdminView: React.FC<AdminViewProps> = ({
                         </div>
                     </div>
                 )}
-                {activeTab === 'stock' && <StockControl products={products} onStockPurchase={onStockPurchase} />}
+                
+                {activeTab === 'stock' && <StockControl products={products} onStockPurchase={onStockPurchase} onStockCorrection={onStockCorrection} />}
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
-                {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} />}
+                {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} />}
+                
                 {activeTab === 'settings' && (
-                    <div className="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-lg border border-slate-200">
-                        <h2 className="text-2xl font-bold text-slate-800 mb-6">Personalizza Colori Casse</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {tills.map(till => (
-                                <div key={till.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md" style={{ backgroundColor: colors[till.id] || '#f97316' }}>{till.shift.toUpperCase()}</div>
-                                        <span className="font-bold text-slate-700">{till.name}</span>
+                    <div className="space-y-6">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-bold text-slate-800 mb-4">Colori Casse</h2>
+                            <div className="grid grid-cols-2 gap-4">
+                                {tills.map(till => (
+                                    <div key={till.id} className="flex items-center justify-between p-3 bg-slate-50 rounded border">
+                                        <span className="font-bold text-sm">Turno {till.shift.toUpperCase()}</span>
+                                        <input type="color" value={colors[till.id] || '#f97316'} onChange={(e) => handleColorChange(till.id, e.target.value)} className="h-8 w-12 cursor-pointer" />
                                     </div>
-                                    <input type="color" value={colors[till.id] || '#f97316'} onChange={(e) => handleColorChange(till.id, e.target.value)} className="h-10 w-20 cursor-pointer rounded border border-slate-300" />
+                                ))}
+                            </div>
+                            <button onClick={saveSettings} className="mt-4 w-full bg-slate-800 text-white font-bold py-2 rounded-lg">Salva Colori</button>
+                        </div>
+
+                        {isSuperAdmin && (
+                            <div className="bg-red-50 p-6 rounded-xl border border-red-100">
+                                <h2 className="text-lg font-bold text-red-800 mb-4">Zona Pericolo (Super Admin)</h2>
+                                <p className="text-sm text-red-600 mb-4">Elimina definitivamente i dati antecedenti a una data.</p>
+                                <div className="flex gap-2 items-end">
+                                    <div className="flex-grow">
+                                        <label className="text-xs font-bold text-red-400 uppercase">Data Limite</label>
+                                        <input type="date" value={massDeleteDate} onChange={e => setMassDeleteDate(e.target.value)} className="w-full border border-red-200 rounded p-2 text-sm" />
+                                    </div>
+                                    <button onClick={() => handleMassDelete('orders')} className="bg-red-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-red-700">Elimina Ordini</button>
+                                    <button onClick={() => handleMassDelete('movements')} className="bg-red-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-red-700">Elimina Movim.</button>
                                 </div>
-                            ))}
-                        </div>
-                        <div className="mt-8 flex justify-end">
-                            <button onClick={saveSettings} className="bg-primary hover:bg-primary-dark text-white font-bold py-3 px-8 rounded-xl shadow-lg flex items-center gap-2"><SaveIcon className="h-5 w-5" /> Salva Impostazioni</button>
-                        </div>
+                            </div>
+                        )}
                     </div>
                 )}
+                
                 {activeTab === 'admins' && (
-                     <div className="max-w-3xl mx-auto">
-                        <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200 mb-6">
-                            <h2 className="text-xl font-bold text-slate-800 mb-4">Aggiungi Amministratore</h2>
-                            <form onSubmit={handleAddAdminSubmit} className="flex gap-4">
-                                <input type="email" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="email@gmail.com" className="flex-grow border rounded-lg p-3 bg-slate-50" required />
-                                <button type="submit" className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg flex items-center gap-2"><UserPlusIcon className="h-5 w-5" /> Aggiungi</button>
+                     <div className="max-w-2xl mx-auto">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6">
+                            <h2 className="text-lg font-bold text-slate-800 mb-4">Nuovo Admin</h2>
+                            <form onSubmit={handleAddAdminSubmit} className="flex gap-2">
+                                <input type="email" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="email@gmail.com" className="flex-grow border rounded-lg p-2 bg-slate-50" required />
+                                <button type="submit" className="bg-green-500 text-white font-bold px-4 rounded-lg">Aggiungi</button>
                             </form>
                         </div>
                         
-                        <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                            <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b border-slate-200">Amministratori Abilitati</h3>
-                            <ul className="divide-y divide-slate-100">
-                                {adminList.map(admin => (
-                                    <li key={admin.id} className="p-4 flex justify-between items-center">
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                            <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b">Lista Amministratori</h3>
+                            <ul>
+                                {sortedAdmins.map((admin, idx) => (
+                                    <li key={admin.id} className="p-4 flex justify-between items-center border-b last:border-0">
                                         <div>
-                                            <p className="font-bold text-slate-700">{admin.email}</p>
-                                            <p className="text-xs text-slate-400">Aggiunto da: {admin.addedBy}</p>
+                                            <p className="font-bold text-slate-700">{admin.email} {idx === 0 && <span className="text-red-500 text-xs ml-2">(SUPER)</span>}</p>
                                         </div>
-                                        <button onClick={() => onRemoveAdmin(admin.id)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg text-sm font-bold">Rimuovi</button>
+                                        {isSuperAdmin && idx !== 0 && (
+                                            <button onClick={() => onRemoveAdmin(admin.id)} className="text-red-500 hover:bg-red-50 p-2 rounded text-xs font-bold">Rimuovi</button>
+                                        )}
                                     </li>
                                 ))}
                             </ul>

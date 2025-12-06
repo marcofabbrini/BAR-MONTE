@@ -17,9 +17,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     const { startDate, endDate, selectedShift, selectedStaffId, selectedProductId } = filters;
     const { setStartDate, setEndDate, setSelectedShift, setSelectedStaffId, setSelectedProductId } = onSetFilters;
 
-    // Filtra via gli ordini cancellati per le statistiche
     const activeOrders = useMemo(() => filteredOrders.filter(o => !o.isDeleted), [filteredOrders]);
-
     const totalSales = useMemo(() => activeOrders.reduce((sum, order) => sum + order.total, 0), [activeOrders]);
 
     const salesByStaff = useMemo(() => {
@@ -48,7 +46,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
 
     const handlePrintPdf = () => window.print();
 
-    // Pulsanti rapidi per le date
     const setDateRange = (range: 'today' | 'week' | 'month' | 'all') => {
         const today = new Date();
         const end = today.toISOString().split('T')[0];
@@ -62,42 +59,39 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8">
-            {/* Header Stampa */}
+        <div className="max-w-7xl mx-auto space-y-6">
             <div className="hidden print:block mb-8 text-center border-b pb-4">
                 <div className="flex items-center justify-center gap-2 mb-2"><LogoIcon className="h-8 w-8 text-slate-800" /><h1 className="text-2xl font-bold">Report Gestionale Bar</h1></div>
                 <p className="text-slate-500 text-sm">Periodo: {startDate || 'Inizio'} - {endDate || 'Oggi'}</p>
             </div>
 
-            {/* Filtri */}
+            {/* FILTRI DI ANALISI */}
             <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:hidden">
-                <div className="flex justify-between items-center mb-4">
+                <div className="mb-4">
                      <h2 className="text-2xl font-bold text-slate-800">Filtri di Analisi</h2>
-                     <div className="flex gap-2">
-                        <button onClick={() => setDateRange('today')} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold">Oggi</button>
-                        <button onClick={() => setDateRange('week')} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold">Settimana</button>
-                        <button onClick={() => setDateRange('month')} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold">Mese</button>
-                        <button onClick={() => setDateRange('all')} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold">Tutto</button>
-                     </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-                    <div><label className="text-xs font-bold text-slate-500 uppercase">Da</label><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full border p-2 rounded-lg" /></div>
-                    <div><label className="text-xs font-bold text-slate-500 uppercase">A</label><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full border p-2 rounded-lg" /></div>
-                    <div><label className="text-xs font-bold text-slate-500 uppercase">Turno</label><select value={selectedShift} onChange={e => setSelectedShift(e.target.value as any)} className="w-full border p-2 rounded-lg"><option value="all">Tutti</option><option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option></select></div>
-                    <div><label className="text-xs font-bold text-slate-500 uppercase">Utente</label><select value={selectedStaffId} onChange={e => setSelectedStaffId(e.target.value)} className="w-full border p-2 rounded-lg"><option value="all">Tutti</option>{allStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-                    <div><label className="text-xs font-bold text-slate-500 uppercase">Prodotto</label><select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} className="w-full border p-2 rounded-lg"><option value="all">Tutti</option>{allProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+                <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                    <button onClick={() => setDateRange('today')} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold whitespace-nowrap">Oggi</button>
+                    <button onClick={() => setDateRange('week')} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold whitespace-nowrap">Settimana</button>
+                    <button onClick={() => setDateRange('month')} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold whitespace-nowrap">Mese</button>
+                    <button onClick={() => setDateRange('all')} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold whitespace-nowrap">Tutto</button>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
+                    <div><label className="text-[10px] font-bold text-slate-500 uppercase">Da</label><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full border p-2 rounded-lg text-sm" /></div>
+                    <div><label className="text-[10px] font-bold text-slate-500 uppercase">A</label><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full border p-2 rounded-lg text-sm" /></div>
+                    <div><label className="text-[10px] font-bold text-slate-500 uppercase">Turno</label><select value={selectedShift} onChange={e => setSelectedShift(e.target.value as any)} className="w-full border p-2 rounded-lg text-sm"><option value="all">Tutti</option><option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option></select></div>
+                    <div><label className="text-[10px] font-bold text-slate-500 uppercase">Utente</label><select value={selectedStaffId} onChange={e => setSelectedStaffId(e.target.value)} className="w-full border p-2 rounded-lg text-sm"><option value="all">Tutti</option>{allStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+                    <div><label className="text-[10px] font-bold text-slate-500 uppercase">Prodotto</label><select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} className="w-full border p-2 rounded-lg text-sm"><option value="all">Tutti</option>{allProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
                 </div>
             </div>
 
-            {/* Totali */}
-            <div className="bg-gradient-to-r from-primary to-secondary p-6 rounded-xl shadow-lg text-white print:bg-white print:text-black print:border">
-                 <div className="flex justify-between items-center">
-                    <div><h2 className="text-3xl font-black">Totale: €{totalSales.toFixed(2)}</h2><p>{activeOrders.length} transazioni valide</p></div>
-                 </div>
+            <div className="bg-gradient-to-r from-primary to-secondary p-6 rounded-xl shadow-lg text-white print:bg-white print:text-black print:border flex justify-between items-center">
+                 <div><h2 className="text-3xl font-black">Totale: €{totalSales.toFixed(2)}</h2><p className="text-sm opacity-80">{activeOrders.length} transazioni</p></div>
+                 <button onClick={handlePrintPdf} className="bg-white/20 hover:bg-white/30 text-white font-bold py-2 px-4 rounded text-sm print:hidden">Stampa PDF</button>
             </div>
 
-            {/* Grafici */}
             <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
                  <h3 className="text-xl font-bold text-slate-800 mb-6">Trend Vendite</h3>
                  <div className="h-64 w-full"><LineChart data={salesTrend} height={250} /></div>
@@ -106,22 +100,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none"><h3 className="text-xl font-bold mb-4">Vendite per Utente</h3><BarChart data={salesByStaff} format="currency" /></div>
                 <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none"><h3 className="text-xl font-bold mb-4">Prodotti Top</h3><BarChart data={salesByProduct} format="integer" /></div>
-            </div>
-
-            {/* Tabella */}
-            <div className="bg-white rounded-lg shadow-lg p-6 border border-slate-200 print:shadow-none print:border-none">
-                <div className="flex justify-between items-center mb-4 print:hidden">
-                     <h2 className="text-2xl font-bold text-slate-800">Dettaglio Ordini</h2>
-                     <button onClick={handlePrintPdf} className="bg-slate-800 text-white font-bold py-2 px-6 rounded shadow-md">Stampa PDF</button>
-                </div>
-                <table className="w-full text-left text-slate-600 text-sm">
-                    <thead className="bg-slate-100 text-slate-800"><tr><th className="p-3">Data</th><th className="p-3">Utente</th><th className="p-3">Prodotti</th><th className="p-3 text-right">Totale</th></tr></thead>
-                    <tbody>
-                        {activeOrders.map(o => (
-                            <tr key={o.id} className="border-b"><td className="p-3">{new Date(o.timestamp).toLocaleString()}</td><td className="p-3">{o.staffName}</td><td className="p-3">{o.items.map(i => `${i.quantity}x ${i.product.name}`).join(', ')}</td><td className="p-3 text-right font-bold">€{o.total.toFixed(2)}</td></tr>
-                        ))}
-                    </tbody>
-                </table>
             </div>
         </div>
     );
