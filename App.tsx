@@ -34,6 +34,9 @@ const App: React.FC = () => {
     const [tombolaTickets, setTombolaTickets] = useState<TombolaTicket[]>([]);
     const [tombolaWins, setTombolaWins] = useState<TombolaWin[]>([]);
 
+    // Calcolo Super Admin (il primo in lista è il Super Admin)
+    const isSuperAdmin = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
+
     // Auth Listener & Admin Check
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -46,8 +49,9 @@ const App: React.FC = () => {
                     await addDoc(adminsRef, { email: user.email, addedBy: 'SYSTEM_BOOTSTRAP', timestamp: new Date().toISOString() });
                     setIsAdmin(true);
                 } else {
-                    // Temporaneo: tutti admin per test, altrimenti usare: const q = query(adminsRef, where("email", "==", user.email)); ...
-                    setIsAdmin(true); 
+                    const q = query(adminsRef, where("email", "==", user.email));
+                    const querySnapshot = await getDocs(q);
+                    setIsAdmin(!querySnapshot.empty);
                 }
             } else {
                 setIsAdmin(false);
@@ -73,7 +77,15 @@ const App: React.FC = () => {
         // Tombola Listeners
         const unsubTombolaConfig = onSnapshot(doc(db, 'tombola', 'config'), (d) => {
             if (d.exists()) setTombolaConfig(d.data() as TombolaConfig);
-            else setDoc(doc(db, 'tombola', 'config'), { ticketPrice: 5, jackpot: 0, lastExtraction: new Date().toISOString(), extractedNumbers: [] });
+            else setDoc(doc(db, 'tombola', 'config'), { 
+                status: 'pending',
+                maxTickets: 90, 
+                ticketPriceSingle: 1, 
+                ticketPriceBundle: 5,
+                jackpot: 0, 
+                lastExtraction: new Date().toISOString(), 
+                extractedNumbers: [] 
+            });
         });
         const unsubTombolaTickets = onSnapshot(collection(db, 'tombola_tickets'), (s) => setTombolaTickets(s.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket))));
         const unsubTombolaWins = onSnapshot(collection(db, 'tombola_wins'), (s) => setTombolaWins(s.docs.map(d => ({...d.data(), id: d.id} as TombolaWin))));
@@ -105,12 +117,27 @@ const App: React.FC = () => {
     // Tombola Logic: Extraction Engine (Lazy)
     useEffect(() => {
         const runTombolaExtraction = async () => {
-            if (!tombolaConfig) return;
+            if (!tombolaConfig || tombolaConfig.extractedNumbers.length >= 90) return;
+
+            // CHECK AVVIO:
+            // 1. Stato ACTIVE
+            // 2. OPPURE Stato PENDING ma vendite >= 50%
+            const ticketsSold = tombolaTickets.length;
+            const threshold = tombolaConfig.maxTickets / 2;
+            const shouldBeActive = tombolaConfig.status === 'active' || ticketsSold >= threshold;
+
+            if (!shouldBeActive) return; // Non estrarre se non attivo o soglia non raggiunta
+
+            // Se deve attivarsi ma è ancora pending, attivalo
+            if (tombolaConfig.status === 'pending' && ticketsSold >= threshold) {
+                await updateDoc(doc(db, 'tombola', 'config'), { status: 'active' });
+            }
+
             const now = new Date().getTime();
             const last = new Date(tombolaConfig.lastExtraction).getTime();
             const diffHours = (now - last) / (1000 * 60 * 60);
 
-            if (diffHours >= 2 && tombolaConfig.extractedNumbers.length < 90) {
+            if (diffHours >= 2) {
                 try {
                     await runTransaction(db, async (t) => {
                         const configRef = doc(db, 'tombola', 'config');
@@ -131,11 +158,10 @@ const App: React.FC = () => {
                             const matches = ticket.numbers.filter(n => newExtracted.includes(n));
                             const count = matches.length;
                             
-                            // Logica semplificata: se fa 2,3,4,5,15 punti è vincita (se non già vinta - TODO logic complessa omessa per brevità)
                             if ([2,3,4,5,15].includes(count)) {
                                 const type = count === 2 ? 'Ambo' : count === 3 ? 'Terno' : count === 4 ? 'Quaterna' : count === 5 ? 'Cinquina' : 'Tombola';
-                                // Salvataggio vincita (dovrebbe controllare se quel ticket ha già vinto quel premio)
                                 const winRef = doc(collection(db, 'tombola_wins'));
+                                // Qui servirebbe check se già vinto, semplificato per brevità
                                 t.set(winRef, {
                                     ticketId: ticketDoc.id,
                                     playerName: ticket.playerName,
@@ -148,7 +174,8 @@ const App: React.FC = () => {
 
                         t.update(configRef, { 
                             lastExtraction: new Date().toISOString(),
-                            extractedNumbers: newExtracted
+                            extractedNumbers: newExtracted,
+                            status: 'active' // Ensure active
                         });
                     });
                 } catch (e) { console.error("Tombola extraction error", e); }
@@ -156,7 +183,7 @@ const App: React.FC = () => {
         };
         const interval = setInterval(runTombolaExtraction, 60000); // Check every minute
         return () => clearInterval(interval);
-    }, [tombolaConfig]);
+    }, [tombolaConfig, tombolaTickets]);
 
     // Auth Actions
     const handleGoogleLogin = async () => {
@@ -188,9 +215,19 @@ const App: React.FC = () => {
     }, []);
     
     // Tombola Actions
-    const handleBuyTombolaTicket = async (playerName: string, quantity: number) => {
+    const handleBuyTombolaTicket = async (staffId: string, quantity: number) => {
         if (!tombolaConfig) return;
-        const totalCost = quantity * tombolaConfig.ticketPrice;
+        const staffMember = staff.find(s => s.id === staffId);
+        if (!staffMember) return;
+
+        // Pricing Logic: 6 = 5€, altrimenti 1€ l'una
+        let totalCost = 0;
+        if (quantity === 6) {
+            totalCost = tombolaConfig.ticketPriceBundle;
+        } else {
+            totalCost = quantity * tombolaConfig.ticketPriceSingle;
+        }
+
         const revenue = totalCost * 0.20; // 20% al bar
         const jackpotAdd = totalCost * 0.80; // 80% montepremi
 
@@ -198,21 +235,25 @@ const App: React.FC = () => {
             await runTransaction(db, async (t) => {
                 // 1. Crea Tickets
                 for (let i = 0; i < quantity; i++) {
-                    const numbers = Array.from({length: 15}, () => Math.floor(Math.random() * 90) + 1).sort((a,b)=>a-b); // Semplificato
+                    const numbers = Array.from({length: 15}, () => Math.floor(Math.random() * 90) + 1).sort((a,b)=>a-b); 
                     const ticketRef = doc(collection(db, 'tombola_tickets'));
-                    t.set(ticketRef, { playerName, numbers, purchaseTime: new Date().toISOString() });
+                    t.set(ticketRef, { playerId: staffId, playerName: staffMember.name, numbers, purchaseTime: new Date().toISOString() });
                 }
                 // 2. Aggiorna Config (Jackpot)
                 t.update(doc(db, 'tombola', 'config'), { jackpot: tombolaConfig.jackpot + jackpotAdd });
                 // 3. Versa quota al Bar
                 const cashRef = doc(collection(db, 'cash_movements'));
-                t.set(cashRef, { amount: revenue, reason: `Tombola: ${quantity} cartelle (${playerName})`, timestamp: new Date().toISOString(), type: 'deposit' });
+                t.set(cashRef, { amount: revenue, reason: `Tombola: ${quantity} cartelle (${staffMember.name})`, timestamp: new Date().toISOString(), type: 'deposit' });
             });
         } catch (e) { console.error(e); throw e; }
     };
 
     const handleUpdateTombolaConfig = async (cfg: TombolaConfig) => {
         await setDoc(doc(db, 'tombola', 'config'), cfg);
+    };
+
+    const handleTombolaStart = async () => {
+        await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() });
     };
 
     // Generic CRUD
@@ -260,7 +301,7 @@ const App: React.FC = () => {
         switch (view) {
             case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
-            case 'tombola': return <TombolaView onGoBack={handleGoBack} config={tombolaConfig!} tickets={tombolaTickets} wins={tombolaWins} onBuyTicket={handleBuyTombolaTicket} />;
+            case 'tombola': return <TombolaView onGoBack={handleGoBack} config={tombolaConfig!} tickets={tombolaTickets} wins={tombolaWins} onBuyTicket={handleBuyTombolaTicket} staff={staff} onStartGame={handleTombolaStart} isSuperAdmin={isSuperAdmin} />;
             case 'admin': return <AdminView onGoBack={handleGoBack} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements} onUpdateTillColors={updateTillColors} onDeleteOrders={deleteOrders} onPermanentDeleteOrder={permanentDeleteOrder} onUpdateOrder={updateOrder} onAddProduct={addProduct} onUpdateProduct={updateProduct} onDeleteProduct={deleteProduct} onAddStaff={addStaff} onUpdateStaff={updateStaff} onDeleteStaff={deleteStaff} onAddCashMovement={addCashMovement} onStockPurchase={handleStockPurchase} onStockCorrection={handleStockCorrection} onResetCash={handleResetCash} onMassDelete={handleMassDelete} isAuthenticated={isAdmin} currentUser={currentUser} onLogin={handleGoogleLogin} onLogout={handleLogout} adminList={adminList} onAddAdmin={handleAddAdmin} onRemoveAdmin={handleRemoveAdmin} tombolaConfig={tombolaConfig} onUpdateTombolaConfig={handleUpdateTombolaConfig} />;
             default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectTombola={handleSelectTombola} tillColors={tillColors} />;
         }

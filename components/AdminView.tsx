@@ -76,7 +76,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     
     // States for Admin Mgmt
     const [newAdminEmail, setNewAdminEmail] = useState('');
-    const [tombolaPrice, setTombolaPrice] = useState(tombolaConfig?.ticketPrice || 5);
+    const [tombolaPrice, setTombolaPrice] = useState(tombolaConfig?.ticketPriceSingle || 1);
 
     // Calcolo Super Admin (il primo in lista è il Super Admin)
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
@@ -181,7 +181,7 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     const handleUpdateTombolaPrice = async () => {
         if (!tombolaConfig) return;
-        await onUpdateTombolaConfig({ ...tombolaConfig, ticketPrice: Number(tombolaPrice) });
+        await onUpdateTombolaConfig({ ...tombolaConfig, ticketPriceSingle: Number(tombolaPrice) });
         alert("Prezzo cartella aggiornato!");
     };
 

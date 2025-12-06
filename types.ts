@@ -65,7 +65,10 @@ export interface AdminUser {
 
 // TOMBOLA TYPES
 export interface TombolaConfig {
-    ticketPrice: number;
+    status: 'pending' | 'active' | 'completed';
+    maxTickets: number; // Totale cartelle disponibili (es. 90)
+    ticketPriceSingle: number; // 1€
+    ticketPriceBundle: number; // 5€ per 6 cartelle
     jackpot: number; // 80% degli incassi
     lastExtraction: string;
     extractedNumbers: number[];
@@ -73,6 +76,7 @@ export interface TombolaConfig {
 
 export interface TombolaTicket {
     id: string;
+    playerId: string; // ID dello staff
     playerName: string;
     numbers: number[]; // 15 numeri
     purchaseTime: string;
