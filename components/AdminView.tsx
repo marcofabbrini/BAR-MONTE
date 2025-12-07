@@ -48,7 +48,7 @@ interface AdminViewProps {
 
     seasonalityConfig?: SeasonalityConfig;
     onUpdateSeasonality: (cfg: SeasonalityConfig) => Promise<void>;
-    onTransferGameFunds: (amount: number, gameName: string) => Promise<void>;
+    // onTransferGameFunds RIMOSSO perché non serve qui
 }
 
 type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'extra';
@@ -61,7 +61,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     onAddCashMovement, onUpdateMovement, onDeleteMovement, onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
     isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin,
     tombolaConfig, onUpdateTombolaConfig, onNavigateToTombola,
-    seasonalityConfig, onUpdateSeasonality, onTransferGameFunds
+    seasonalityConfig, onUpdateSeasonality
 }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
