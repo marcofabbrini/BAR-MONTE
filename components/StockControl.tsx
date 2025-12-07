@@ -135,7 +135,6 @@ const StockControl: React.FC<StockControlProps> = ({ products, onStockPurchase, 
                                     <span className="bg-slate-100 px-2 py-1 rounded">Stock: <b>{p.stock}</b></span>
                                     <span className="bg-slate-100 px-2 py-1 rounded">Costo: <b>€{p.costPrice?.toFixed(2) || '0.00'}</b></span>
                                 </div>
-                                {/* INFO AGGIUNTIVE */}
                                 {(p.createdAt || p.createdBy) && (
                                     <p className="text-[9px] text-slate-400 mt-1 truncate border-t border-slate-100 pt-1">
                                         Ins: {p.createdBy ? p.createdBy.split('@')[0] : 'N/D'} il {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'N/D'}

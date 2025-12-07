@@ -122,7 +122,6 @@ const App: React.FC = () => {
     // Tombola Extraction
     useEffect(() => {
         const runTombolaExtraction = async () => {
-            // FIX: Sicurezza accesso extractedNumbers
             if (!tombolaConfig || !tombolaConfig.extractedNumbers || tombolaConfig.extractedNumbers.length >= 90) return;
             if (tombolaConfig.status !== 'active') return;
             
@@ -303,7 +302,6 @@ const App: React.FC = () => {
         switch (view) {
             case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
-            
             case 'tombola': 
                 if (!tombolaConfig) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
                 return <TombolaView 
@@ -317,7 +315,6 @@ const App: React.FC = () => {
                 isSuperAdmin={isSuperAdmin} 
                 onTransferFunds={handleTransferGameFunds}
             />;
-            
             case 'admin': return <AdminView 
                 onGoBack={handleGoBack} 
                 orders={orders} 

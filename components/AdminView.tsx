@@ -71,15 +71,19 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [massDeleteDate, setMassDeleteDate] = useState('');
     const [colors, setColors] = useState<TillColors>(tillColors);
     const [newAdminEmail, setNewAdminEmail] = useState('');
+    
+    // Config Tombola State
     const [tombolaPriceSingle, setTombolaPriceSingle] = useState(tombolaConfig?.ticketPriceSingle || 1);
     const [tombolaPriceBundle, setTombolaPriceBundle] = useState(tombolaConfig?.ticketPriceBundle || 5);
     const [tombolaMaxTickets, setTombolaMaxTickets] = useState(tombolaConfig?.maxTickets || 168);
     const [tombolaMinStart, setTombolaMinStart] = useState(tombolaConfig?.minTicketsToStart || 84);
 
     // Seasonality State
-    const [seasonStart, setSeasonStart] = useState(seasonalityConfig?.startDate || '');
-    const [seasonEnd, setSeasonEnd] = useState(seasonalityConfig?.endDate || '');
-    const [seasonTheme, setSeasonTheme] = useState(seasonalityConfig?.theme || 'none');
+    const [seasonForm, setSeasonForm] = useState<SeasonalityConfig>({
+        startDate: seasonalityConfig?.startDate || '',
+        endDate: seasonalityConfig?.endDate || '',
+        theme: seasonalityConfig?.theme || 'none',
+    });
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
@@ -160,8 +164,11 @@ const AdminView: React.FC<AdminViewProps> = ({
         alert("Configurazione Tombola aggiornata!"); 
     };
     
-    const handleSaveSeasonality = async () => {
-        await onUpdateSeasonality({ startDate: seasonStart, endDate: seasonEnd, theme: seasonTheme as any });
+    const handleSeasonSave = async () => {
+        await onUpdateSeasonality({
+            ...seasonForm,
+            theme: seasonForm.theme as any // FIX TS
+        });
         alert("Stagionalità salvata!");
     };
 
@@ -283,22 +290,37 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <button onClick={saveSettings} className="mt-4 w-full bg-slate-800 text-white font-bold py-2 rounded-lg">Salva Colori</button>
                         </div>
 
-                        <div className="bg-blue-50 p-6 rounded-xl border border-blue-100">
-                            <h2 className="text-lg font-bold text-blue-800 mb-4">Stagionalità & Temi</h2>
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div><label className="text-xs font-bold text-blue-600">Inizio</label><input type="date" value={seasonStart} onChange={e => setSeasonStart(e.target.value)} className="w-full border p-2 rounded" /></div>
-                                <div><label className="text-xs font-bold text-blue-600">Fine</label><input type="date" value={seasonEnd} onChange={e => setSeasonEnd(e.target.value)} className="w-full border p-2 rounded" /></div>
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100 shadow-sm">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-lg font-bold text-blue-800 flex items-center gap-2">
+                                    <SparklesIcon className="h-5 w-5" /> Personalizzazione Stagionale
+                                </h2>
                             </div>
-                            <div className="mb-4">
-                                <label className="text-xs font-bold text-blue-600">Tema Attivo</label>
-                                <select value={seasonTheme} onChange={e => setSeasonTheme(e.target.value as any)} className="w-full border p-2 rounded">
-                                    <option value="none">Nessuno</option>
-                                    <option value="christmas">Natale (Neve + Logo)</option>
-                                    <option value="easter">Pasqua</option>
-                                    <option value="summer">Estate</option>
-                                </select>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <h3 className="text-xs font-black text-blue-400 uppercase tracking-wider">Periodo</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Inizio</label><input type="date" value={seasonForm.startDate} onChange={e => setSeasonForm({...seasonForm, startDate: e.target.value})} className="w-full border rounded p-2 text-sm" /></div>
+                                        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Fine</label><input type="date" value={seasonForm.endDate} onChange={e => setSeasonForm({...seasonForm, endDate: e.target.value})} className="w-full border rounded p-2 text-sm" /></div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h3 className="text-xs font-black text-blue-400 uppercase tracking-wider">Tema</h3>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Animazione</label>
+                                        <select value={seasonForm.theme} onChange={e => setSeasonForm({...seasonForm, theme: e.target.value as any})} className="w-full border rounded p-2 text-sm">
+                                            <option value="none">Nessuna</option>
+                                            <option value="christmas">Natale (Neve)</option>
+                                            <option value="easter">Pasqua</option>
+                                            <option value="summer">Estate</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                            <button onClick={handleSaveSeasonality} className="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 w-full">Salva Stagionalità</button>
+                            
+                            <button onClick={handleSeasonSave} className="mt-6 w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md hover:bg-blue-700 transition-colors">Salva Configurazione</button>
                         </div>
 
                         {isSuperAdmin && (
