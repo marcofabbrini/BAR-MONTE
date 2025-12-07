@@ -272,6 +272,7 @@ const App: React.FC = () => {
         switch (view) {
             case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
+            // FIX: Renderizza TombolaView correttamente nel case 'tombola'
             case 'tombola': return <TombolaView 
                 onGoBack={handleGoBack} 
                 config={tombolaConfig!} 
@@ -320,7 +321,6 @@ const App: React.FC = () => {
                 onNavigateToTombola={handleSelectTombola}
                 seasonalityConfig={seasonalityConfig}
                 onUpdateSeasonality={handleUpdateSeasonality}
-                onTransferGameFunds={handleTransferGameFunds}
             />;
             default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectTombola={handleSelectTombola} tillColors={tillColors} seasonalityConfig={seasonalityConfig} />;
         }
