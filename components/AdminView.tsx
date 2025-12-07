@@ -279,7 +279,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             </div>
                             <div className="mb-4">
                                 <label className="text-xs font-bold text-blue-600">Tema Attivo</label>
-                                {/* FIX: Cast (as any) per evitare errori TS su string vs union type */}
+                                {/* FIX: as any per evitare errore TypeScript string vs enum */}
                                 <select value={seasonTheme} onChange={e => setSeasonTheme(e.target.value as any)} className="w-full border p-2 rounded">
                                     <option value="none">Nessuno</option>
                                     <option value="christmas">Natale (Neve + Logo)</option>
