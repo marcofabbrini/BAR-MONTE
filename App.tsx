@@ -272,8 +272,7 @@ const App: React.FC = () => {
         switch (view) {
             case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
-            
-            // FIX 1: Renderizza TombolaView
+            // FIX DEFINITIVO: Renderizza TombolaView, NON AdminView
             case 'tombola': return <TombolaView 
                 onGoBack={handleGoBack} 
                 config={tombolaConfig!} 
@@ -285,8 +284,6 @@ const App: React.FC = () => {
                 isSuperAdmin={isSuperAdmin} 
                 onTransferFunds={handleTransferGameFunds}
             />;
-            
-            // FIX 2: Renderizza AdminView e passa onTransferGameFunds
             case 'admin': return <AdminView 
                 onGoBack={handleGoBack} 
                 orders={orders} 
