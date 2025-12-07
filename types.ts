@@ -8,6 +8,8 @@ export interface Product {
     isFavorite: boolean;
     icon?: string;
     costPrice?: number;
+    createdAt?: string; // Data inserimento
+    createdBy?: string; // Email admin
 }
 
 export interface OrderItem {
@@ -47,7 +49,6 @@ export interface TillColors {
     [key: string]: string; 
 }
 
-// FIX ERRORI TYPESCRIPT QUI: Aggiunti campi opzionali per soft delete
 export interface CashMovement {
     id: string;
     amount: number;
