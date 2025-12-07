@@ -71,8 +71,6 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [massDeleteDate, setMassDeleteDate] = useState('');
     const [colors, setColors] = useState<TillColors>(tillColors);
     const [newAdminEmail, setNewAdminEmail] = useState('');
-    
-    // Config Tombola State
     const [tombolaPriceSingle, setTombolaPriceSingle] = useState(tombolaConfig?.ticketPriceSingle || 1);
     const [tombolaPriceBundle, setTombolaPriceBundle] = useState(tombolaConfig?.ticketPriceBundle || 5);
     const [tombolaMaxTickets, setTombolaMaxTickets] = useState(tombolaConfig?.maxTickets || 168);
@@ -86,7 +84,9 @@ const AdminView: React.FC<AdminViewProps> = ({
     useMemo(() => {
         if (seasonalityConfig && !seasonConfigForm) {
             setSeasonConfigForm(seasonalityConfig);
-            setEmojiInput(seasonalityConfig.seasons['winter'].emojis.join(', '));
+            if (seasonalityConfig.seasons && seasonalityConfig.seasons.winter) {
+                setEmojiInput(seasonalityConfig.seasons.winter.emojis.join(', '));
+            }
         }
     }, [seasonalityConfig]);
 
@@ -117,7 +117,6 @@ const AdminView: React.FC<AdminViewProps> = ({
     const totalDeposits = barMovements.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0) || 0;
     const currentBalance = totalRevenue + totalDeposits - totalWithdrawals;
 
-    // ... (funzioni di gestione ordini/cancellazione uguali a prima)
     const toggleOrderSelection = (id: string) => { const newSet = new Set(selectedOrderIds); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedOrderIds(newSet); };
     const toggleAllSelection = () => { if (selectedOrderIds.size === filteredOrders.length) setSelectedOrderIds(new Set()); else setSelectedOrderIds(new Set(filteredOrders.map(o => o.id))); };
     const handleBulkDelete = async () => { if (selectedOrderIds.size === 0) return; if (window.confirm(`Sei sicuro di voler annullare ${selectedOrderIds.size} movimenti?`)) { await onDeleteOrders(Array.from(selectedOrderIds), currentUser?.email || 'Admin'); setSelectedOrderIds(new Set()); } };
@@ -155,7 +154,9 @@ const AdminView: React.FC<AdminViewProps> = ({
     };
     const changeSeasonTab = (season: 'winter'|'spring'|'summer'|'autumn') => {
         setActiveSeasonTab(season);
-        if(seasonConfigForm) setEmojiInput(seasonConfigForm.seasons[season].emojis.join(', '));
+        if(seasonConfigForm && seasonConfigForm.seasons && seasonConfigForm.seasons[season]) {
+            setEmojiInput(seasonConfigForm.seasons[season].emojis.join(', '));
+        }
     };
 
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
@@ -194,7 +195,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="cash" label="Cassa" icon={<CashIcon className="h-6 w-6" />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-6 w-6" />} />
                         <TabButton tab="admins" label="Admin" icon={<UserPlusIcon className="h-6 w-6" />} />
-                        <TabButton tab="extra" label="Extra" icon={<SparklesIcon className="h-6 w-6" />} />
+                        <TabButton tab="extra" label="Giochi" icon={<SparklesIcon className="h-6 w-6" />} />
                     </div>
                 </div>
             </header>
@@ -202,7 +203,6 @@ const AdminView: React.FC<AdminViewProps> = ({
             <main className="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
                 {activeTab === 'movements' && (
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        {/* ... Table Movimenti (stesso codice di prima) ... */}
                         <div className="p-4 border-b border-slate-100 bg-slate-50">
                             <div className="flex flex-wrap gap-4 items-end justify-between">
                                 <h2 className="font-bold text-lg text-slate-700">Gestione Movimenti</h2>
@@ -259,18 +259,15 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <button onClick={saveSettings} className="mt-4 w-full bg-slate-800 text-white font-bold py-2 rounded-lg">Salva Colori</button>
                         </div>
 
-                        {/* CONFIGURAZIONE STAGIONALITA */}
+                        {/* CONFIGURAZIONE STAGIONALITA' A SCHEDE */}
                         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100 shadow-sm">
                             <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-lg font-bold text-blue-800 flex items-center gap-2">
-                                    <SparklesIcon className="h-5 w-5" /> Personalizzazione Stagionale
-                                </h2>
+                                <h2 className="text-lg font-bold text-blue-800 flex items-center gap-2"><SparklesIcon className="h-5 w-5" /> Personalizzazione Stagionale</h2>
                                 <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
                                     <button onClick={() => setSeasonConfigForm(prev => prev ? {...prev, mode: 'auto'} : null)} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${seasonConfigForm?.mode === 'auto' ? 'bg-white shadow text-purple-600' : 'text-slate-400'}`}>Auto</button>
                                     <button onClick={() => setSeasonConfigForm(prev => prev ? {...prev, mode: 'manual'} : null)} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${seasonConfigForm?.mode === 'manual' ? 'bg-white shadow text-purple-600' : 'text-slate-400'}`}>Manuale</button>
                                 </div>
                             </div>
-                            {/* TAB STAGIONI */}
                             <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
                                 {(['winter', 'spring', 'summer', 'autumn'] as const).map(s => (
                                     <button key={s} onClick={() => changeSeasonTab(s)} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${activeSeasonTab === s ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>
@@ -278,8 +275,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                                     </button>
                                 ))}
                             </div>
-                            {/* FORM */}
-                            {seasonConfigForm && (
+                            {seasonConfigForm && seasonConfigForm.seasons && (
                                 <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-100 animate-fade-in">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div><label className="text-[10px] font-bold text-slate-400 uppercase">Sfondo</label><div className="flex gap-2 mt-1"><input type="color" value={seasonConfigForm.seasons[activeSeasonTab].backgroundColor} onChange={e => handleSeasonChange('backgroundColor', e.target.value)} className="h-8 w-12 cursor-pointer rounded border" /><input type="text" value={seasonConfigForm.seasons[activeSeasonTab].backgroundColor} onChange={e => handleSeasonChange('backgroundColor', e.target.value)} className="w-full border rounded p-1 text-xs font-mono" /></div></div>
@@ -288,7 +284,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                                     <div><label className="text-[10px] font-bold text-slate-400 uppercase">Emoji (virgola separati)</label><input type="text" value={emojiInput} onChange={e => handleEmojiChange(e.target.value)} className="w-full border rounded p-2 text-lg mt-1" /></div>
                                     {seasonConfigForm.mode === 'manual' && (
                                         <div className="mt-4 pt-4 border-t border-slate-200">
-                                            <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="currentManual" checked={seasonConfigForm.currentManualSeason === activeSeasonTab} onChange={() => setSeasonConfigForm({...seasonConfigForm, currentManualSeason: activeSeasonTab})} className="text-purple-600 focus:ring-purple-500" /><span className="text-sm font-bold text-slate-700">Imposta {activeSeasonTab} come attiva</span></label>
+                                            <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="currentManual" checked={seasonConfigForm.currentManualSeason === activeSeasonTab} onChange={() => setSeasonConfigForm({...seasonConfigForm, currentManualSeason: activeSeasonTab})} className="text-purple-600 focus:ring-purple-500" /><span className="text-sm font-bold text-slate-700">Imposta {activeSeasonTab} come stagione attiva</span></label>
                                         </div>
                                     )}
                                 </div>
