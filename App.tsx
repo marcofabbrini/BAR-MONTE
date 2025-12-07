@@ -170,6 +170,7 @@ const App: React.FC = () => {
     const handleSelectTill = useCallback((tillId: string) => { setSelectedTillId(tillId); setView('till'); }, []);
     const handleSelectReports = useCallback(() => setView('reports'), []);
     const handleSelectAdmin = useCallback(() => setView('admin'), []);
+    const handleSelectTombola = useCallback(() => setView('tombola'), []); // FIX: Funzione ora definita
     const handleGoBack = useCallback(() => { setSelectedTillId(null); setView('selection'); }, []);
     const handleNavigateToTombola = useCallback(() => setView('tombola'), []);
 
@@ -257,7 +258,7 @@ const App: React.FC = () => {
         return ticket.sort((a,b) => a-b);
     };
 
-    const handleUpdateTombolaConfig = async (cfg: Partial<TombolaConfig>) => { await updateDoc(doc(db, 'tombola', 'config'), cfg); };
+    const handleUpdateTombolaConfig = async (cfg: TombolaConfig) => { await setDoc(doc(db, 'tombola', 'config'), cfg); };
     const handleTombolaStart = async () => { await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() }); };
 
     const addProduct = async (d: any) => { await addDoc(collection(db, 'products'), d); };
@@ -286,7 +287,7 @@ const App: React.FC = () => {
             case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
             case 'tombola': return <TombolaView onGoBack={handleGoBack} config={tombolaConfig!} tickets={tombolaTickets} wins={tombolaWins} onBuyTicket={handleBuyTombolaTicket} staff={staff} onStartGame={handleTombolaStart} isSuperAdmin={isSuperAdmin} />;
-            case 'admin': return <AdminView onGoBack={handleGoBack} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements} onUpdateTillColors={updateTillColors} onDeleteOrders={deleteOrders} onPermanentDeleteOrder={permanentDeleteOrder} onUpdateOrder={updateOrder} onAddProduct={addProduct} onUpdateProduct={updateProduct} onDeleteProduct={deleteProduct} onAddStaff={addStaff} onUpdateStaff={updateStaff} onDeleteStaff={deleteStaff} onAddCashMovement={addCashMovement} onUpdateCashMovement={updateCashMovement} onDeleteCashMovement={deleteCashMovement} onStockPurchase={handleStockPurchase} onStockCorrection={handleStockCorrection} onResetCash={handleResetCash} onMassDelete={handleMassDelete} isAuthenticated={isAdmin} currentUser={currentUser} onLogin={handleGoogleLogin} onLogout={handleLogout} adminList={adminList} onAddAdmin={handleAddAdmin} onRemoveAdmin={handleRemoveAdmin} tombolaConfig={tombolaConfig} onUpdateTombolaConfig={handleUpdateTombolaConfig as any} onNavigateToTombola={handleNavigateToTombola} />;
+            case 'admin': return <AdminView onGoBack={handleGoBack} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements} onUpdateTillColors={updateTillColors} onDeleteOrders={deleteOrders} onPermanentDeleteOrder={permanentDeleteOrder} onUpdateOrder={updateOrder} onAddProduct={addProduct} onUpdateProduct={updateProduct} onDeleteProduct={deleteProduct} onAddStaff={addStaff} onUpdateStaff={updateStaff} onDeleteStaff={deleteStaff} onAddCashMovement={addCashMovement} onUpdateCashMovement={updateCashMovement} onDeleteCashMovement={deleteCashMovement} onStockPurchase={handleStockPurchase} onStockCorrection={handleStockCorrection} onResetCash={handleResetCash} onMassDelete={handleMassDelete} isAuthenticated={isAdmin} currentUser={currentUser} onLogin={handleGoogleLogin} onLogout={handleLogout} adminList={adminList} onAddAdmin={handleAddAdmin} onRemoveAdmin={handleRemoveAdmin} tombolaConfig={tombolaConfig} onUpdateTombolaConfig={handleUpdateTombolaConfig as any} onNavigateToTombola={handleSelectTombola} />;
             default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectTombola={handleSelectTombola} tillColors={tillColors} />;
         }
     };

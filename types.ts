@@ -47,6 +47,7 @@ export interface TillColors {
     [key: string]: string; 
 }
 
+// FIX ERRORI TYPESCRIPT QUI: Aggiunti campi opzionali per soft delete
 export interface CashMovement {
     id: string;
     amount: number;
@@ -54,6 +55,9 @@ export interface CashMovement {
     timestamp: string;
     type: 'withdrawal' | 'deposit';
     category?: 'bar' | 'tombola';
+    isDeleted?: boolean;
+    deletedBy?: string;
+    deletedAt?: string;
 }
 
 export interface AdminUser {

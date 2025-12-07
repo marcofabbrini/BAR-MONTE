@@ -7,13 +7,14 @@ interface TillSelectionProps {
     onSelectTill: (tillId: string) => void;
     onSelectReports: () => void;
     onSelectAdmin: () => void;
-    onSelectTombola: () => void;
+    // Rimosso onSelectTombola perché non serve più qui
+    onSelectTombola: () => void; 
     tillColors: TillColors;
 }
 
 const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, tillColors }) => {
     
-    // Generazione emoji cadenti (snowfall effect) - PIÙ PICCOLE E LEGGERE
+    // Generazione emoji cadenti
     const fallingEmojis = useMemo(() => {
         const emojis = ['☕', '🥐', '🍰', '🍹', '🍦', '🥪', '🍩', '🍪', '🥃', '🍷', '🍕', '🍔', '🍺', '🥨', '🍇', '🍉', '🍊', '🍋', '🍌'];
         return Array.from({ length: 50 }).map((_, i) => ({
@@ -22,7 +23,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             left: `${Math.random() * 100}%`,
             duration: `${Math.random() * 20 + 10}s`, 
             delay: `${Math.random() * 10}s`,
-            size: `${Math.random() * 0.8 + 0.4}rem` // Dimensioni ridotte
+            size: `${Math.random() * 0.8 + 0.4}rem`
         }));
     }, []);
 
@@ -75,11 +76,10 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     </p>
                 </div>
 
-                {/* GRIGLIA PULSANTI CASSE - COMPATTISSIMA */}
+                {/* GRIGLIA CASSE */}
                 <div className="flex flex-wrap justify-center gap-2 w-full mb-3 px-2">
                     {tills.map((till) => {
                         const bgColor = tillColors[till.id] || '#f97316';
-                        
                         return (
                             <button
                                 key={till.id}
@@ -102,7 +102,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     })}
                 </div>
                 
-                {/* MENU FUNZIONI - COMPATTISSIMO */}
+                {/* MENU FUNZIONI */}
                 <div className="flex gap-2 w-full justify-center px-2 flex-wrap mb-3">
                     <button
                         onClick={onSelectReports}
@@ -122,7 +122,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
             </div>
 
-            {/* FOOTER FISSO CHIARO */}
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 text-center z-50 shadow-lg">
                 <p className="text-[10px] text-slate-400 font-medium">
                     Gestionale Bar v2.8 | <span className="font-bold text-slate-500">Fabbrini M.</span>
