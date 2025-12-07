@@ -1,3 +1,4 @@
+
 export interface Product {
     id: string;
     name: string;
@@ -8,8 +9,6 @@ export interface Product {
     isFavorite: boolean;
     icon?: string;
     costPrice?: number;
-    createdAt?: string; // Data inserimento
-    createdBy?: string; // Email admin
 }
 
 export interface OrderItem {
@@ -93,4 +92,10 @@ export interface TombolaWin {
     type: 'Ambo' | 'Terno' | 'Quaterna' | 'Cinquina' | 'Tombola';
     numbers: number[];
     timestamp: string;
+}
+
+export interface SeasonalityConfig {
+    startDate: string;
+    endDate: string;
+    theme: 'none' | 'christmas' | 'easter' | 'summer';
 }

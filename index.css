@@ -26,7 +26,7 @@ body {
   animation: red-pulse-glow 2s infinite;
 }
 
-/* Animazione Emoji Cadenti (Neve) */
+/* Animazione Emoji Cadenti */
 .emoji-rain-container {
   position: absolute;
   top: 0;
@@ -35,20 +35,18 @@ body {
   height: 100%;
   overflow: hidden;
   pointer-events: none;
-  z-index: 0; /* Dietro a tutto */
+  z-index: 0;
 }
 
 .falling-emoji {
   position: absolute;
-  top: -50px; /* Parte sopra lo schermo */
+  top: -10%;
   opacity: 0.6;
-  animation-name: fall;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
+  animation: fall linear infinite;
 }
 
 @keyframes fall {
-  0% { transform: translateY(-50px) rotate(0deg); opacity: 0; }
+  0% { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
   10% { opacity: 0.8; }
   100% { transform: translateY(110vh) rotate(360deg); opacity: 0.3; }
 }
