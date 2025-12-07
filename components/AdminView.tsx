@@ -72,7 +72,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [colors, setColors] = useState<TillColors>(tillColors);
     const [newAdminEmail, setNewAdminEmail] = useState('');
     
-    // Config Tombola State
+    // Config Tombola State (CORRETTO: usiamo le nuove variabili separate)
     const [tombolaPriceSingle, setTombolaPriceSingle] = useState(tombolaConfig?.ticketPriceSingle || 1);
     const [tombolaPriceBundle, setTombolaPriceBundle] = useState(tombolaConfig?.ticketPriceBundle || 5);
     const [tombolaMaxTickets, setTombolaMaxTickets] = useState(tombolaConfig?.maxTickets || 168);
@@ -336,15 +336,16 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 ))}
                             </ul>
                         </div>
-                        {/* CONFIGURAZIONE TOMBOLA POTENZIATA (PREZZI + LIMITI) */}
+                        
+                        {/* CONFIGURAZIONE TOMBOLA AGGIORNATA */}
                         {isSuperAdmin && tombolaConfig && (
                             <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
                                 <h2 className="text-lg font-bold text-indigo-800 mb-4">Configurazione Tombola</h2>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div><label className="text-xs font-bold text-indigo-600 uppercase">Prezzo Singola (€)</label><input type="number" step="0.5" value={tombolaPrice} onChange={e => setTombolaPrice(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /></div>
+                                    <div><label className="text-xs font-bold text-indigo-600 uppercase">Prezzo Singola (€)</label><input type="number" step="0.5" value={tombolaPriceSingle} onChange={e => setTombolaPriceSingle(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /></div>
                                     <div><label className="text-xs font-bold text-indigo-600 uppercase">Prezzo Pack 6 (€)</label><input type="number" step="0.5" value={tombolaPriceBundle} onChange={e => setTombolaPriceBundle(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /></div>
-                                    <div><label className="text-xs font-bold text-indigo-600 uppercase">Max Cartelle Totali</label><input type="number" value={tombolaMaxTickets} onChange={e => setTombolaMaxTickets(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /></div>
-                                    <div><label className="text-xs font-bold text-indigo-600 uppercase">Minimo per Avvio</label><input type="number" value={tombolaMinStart} onChange={e => setTombolaMinStart(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /></div>
+                                    <div><label className="text-xs font-bold text-indigo-600 uppercase">Max Cartelle</label><input type="number" value={tombolaMaxTickets} onChange={e => setTombolaMaxTickets(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /></div>
+                                    <div><label className="text-xs font-bold text-indigo-600 uppercase">Min Start</label><input type="number" value={tombolaMinStart} onChange={e => setTombolaMinStart(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /></div>
                                 </div>
                                 <button onClick={handleUpdateTombolaConfig} className="bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700 mt-4 w-full">Salva Configurazione Tombola</button>
                             </div>
