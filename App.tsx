@@ -122,6 +122,7 @@ const App: React.FC = () => {
     // Tombola Extraction
     useEffect(() => {
         const runTombolaExtraction = async () => {
+            // FIX: Sicurezza accesso extractedNumbers
             if (!tombolaConfig || !tombolaConfig.extractedNumbers || tombolaConfig.extractedNumbers.length >= 90) return;
             if (tombolaConfig.status !== 'active') return;
             

@@ -15,34 +15,30 @@ interface TombolaViewProps {
 }
 
 const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wins, onBuyTicket, staff, onStartGame, isSuperAdmin, onTransferFunds }) => {
-    // --- DATI SICURI (Fallback preventivo) ---
-    const safeTickets = Array.isArray(tickets) ? tickets : [];
-    const safeWins = Array.isArray(wins) ? wins : [];
-    const safeConfig = config || { 
-        status: 'pending', maxTickets: 168, minTicketsToStart: 84, ticketPriceSingle: 1, ticketPriceBundle: 5, jackpot: 0, lastExtraction: new Date().toISOString(), extractedNumbers: [] 
-    } as TombolaConfig;
-    const safeExtractedNumbers = Array.isArray(safeConfig.extractedNumbers) ? safeConfig.extractedNumbers : [];
-
     const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
     const [buyQuantity, setBuyQuantity] = useState(1);
     
-    // --- STATISTICHE SICURE ---
+    // Fallback sicuri per i dati
+    const safeTickets = Array.isArray(tickets) ? tickets : [];
+    const safeWins = Array.isArray(wins) ? wins : [];
+    
+    // Calcolo statistiche con controlli di sicurezza
     const totalTickets = safeTickets.length;
-    const maxTickets = safeConfig.maxTickets || 168;
+    const maxTickets = config?.maxTickets || 168; // fallback
     const progressPercent = maxTickets > 0 ? Math.min((totalTickets / maxTickets) * 100, 100) : 0;
-    const minStart = safeConfig.minTicketsToStart || 0;
+    const minStart = config?.minTicketsToStart || 0;
     const ticketsNeededToStart = Math.max(0, minStart - totalTickets);
     
     const nextExtractionTime = useMemo(() => {
-        if (!safeConfig.lastExtraction) return new Date();
-        return new Date(new Date(safeConfig.lastExtraction).getTime() + 2 * 60 * 60 * 1000);
-    }, [safeConfig.lastExtraction]);
+        if (!config?.lastExtraction) return new Date();
+        return new Date(new Date(config.lastExtraction).getTime() + 2 * 60 * 60 * 1000);
+    }, [config?.lastExtraction]);
     
     const [timeLeft, setTimeLeft] = useState('');
 
     useEffect(() => {
         const interval = setInterval(() => {
-            if (safeConfig.status === 'pending') {
+            if (!config || config.status === 'pending') {
                 setTimeLeft("In attesa avvio...");
                 return;
             }
@@ -59,7 +55,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
             }
         }, 1000);
         return () => clearInterval(interval);
-    }, [safeConfig.lastExtraction, safeConfig.status, nextExtractionTime]);
+    }, [config?.lastExtraction, config?.status, nextExtractionTime]);
 
     const handleBuy = async () => {
         if (!selectedStaffId) return;
@@ -73,18 +69,18 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
 
     const selectedStaffMember = staff.find(s => s.id === selectedStaffId);
 
-    // --- GRIGLIA SICURA ---
     const formatTicketToGrid = (numbers: number[]) => {
-        if (!Array.isArray(numbers)) return Array(3).fill(Array(9).fill(null));
+        // Safety check: se numbers è undefined, ritorna griglia vuota
+        if (!numbers || !Array.isArray(numbers)) return Array(3).fill(Array(9).fill(null));
 
         const grid: (number | null)[][] = [[], [], []];
         const cols: number[][] = Array.from({length: 9}, () => []);
         numbers.forEach(n => {
-            if (typeof n !== 'number') return; 
+            if (typeof n !== 'number') return;
             const colIdx = n === 90 ? 8 : Math.floor(n / 10);
             if (colIdx >= 0 && colIdx < 9) cols[colIdx].push(n);
         });
-
+        
         for(let r=0; r<3; r++) grid[r] = Array(9).fill(null);
 
         cols.forEach((colNums, colIdx) => {
@@ -108,26 +104,28 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         return grid;
     };
 
-    // --- GIOCATORI ATTIVI SICURI ---
+    // CALCOLO GIOCATORI ATTIVI CON SICUREZZA
     const activePlayers = useMemo(() => {
         const playersMap = new Map<string, { id:string, name: string, icon: string, ticketCount: number, spent: number, wins: number }>();
         
         safeTickets.forEach(t => {
-            if (!t || !t.playerId) return;
+            if (!t || !t.playerId) return; // Skip invalid tickets
 
             const current = playersMap.get(t.playerId) || { 
                 id: t.playerId, 
                 name: t.playerName || 'Sconosciuto', 
-                icon: staff.find(s => s.id === t.playerId)?.icon || '👤', 
+                icon: staff.find(s=>s.id===t.playerId)?.icon || '👤', 
                 ticketCount: 0, 
                 spent: 0, 
                 wins: 0 
             };
             current.ticketCount++;
             
+            // FIX: Controllo esistenza array numbers
             const numCount = Array.isArray(t.numbers) ? t.numbers.length : 0;
-            const price = safeConfig.ticketPriceSingle || 1;
+            const price = config?.ticketPriceSingle || 1;
             
+            // Stima spesa (solo se cartella valida)
             current.spent += (numCount === 15 ? price : 0);
             playersMap.set(t.playerId, current);
         });
@@ -142,17 +140,20 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         });
 
         return Array.from(playersMap.values());
-    }, [safeTickets, safeWins, staff, safeConfig]);
+    }, [safeTickets, safeWins, staff, config]);
 
     const handleTransfer = async () => {
-        const amount = safeConfig.jackpot || 0;
-        if(amount <= 0) return;
-        if(window.confirm(`Versare €${amount.toFixed(2)} in Cassa Bar?`)) {
-            await onTransferFunds(amount, 'Tombola');
+        const jackpot = config?.jackpot || 0;
+        if(jackpot <= 0) return;
+        if(window.confirm(`Versare €${jackpot.toFixed(2)} in Cassa Bar?`)) {
+            await onTransferFunds(jackpot, 'Tombola');
         }
     };
     
-    if (!config) return <div className="flex items-center justify-center min-h-screen text-slate-500">Inizializzazione Tombola...</div>;
+    // Se config non è caricata (double check)
+    if (!config) return <div className="flex items-center justify-center min-h-screen text-slate-500">Caricamento Tombola...</div>;
+
+    const extractedNumbers = Array.isArray(config.extractedNumbers) ? config.extractedNumbers : [];
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-100 relative font-sans">
@@ -166,18 +167,18 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                     </h1>
                     <div className="text-right">
                         <p className="text-[9px] uppercase opacity-80 font-bold">Montepremi</p>
-                        <p className="text-xl font-black text-yellow-300">€{(safeConfig.jackpot || 0).toFixed(2)}</p>
+                        <p className="text-xl font-black text-yellow-300">€{(config.jackpot || 0).toFixed(2)}</p>
                     </div>
                 </div>
             </header>
 
             <main className="flex-grow p-4 max-w-6xl mx-auto w-full space-y-6">
                 
-                {/* Status Bar */}
+                {/* Status Bar & Admin Controls */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                     <div className="flex justify-between items-end mb-2">
                         <span className="text-xs font-bold text-slate-500 uppercase">Cartelle Vendute</span>
-                        <span className="text-sm font-black text-slate-800">{totalTickets} / {maxTickets}</span>
+                        <span className="text-sm font-black text-slate-800">{totalTickets} / {config.maxTickets}</span>
                     </div>
                     <div className="w-full bg-slate-200 rounded-full h-4 overflow-hidden relative">
                         <div className="bg-gradient-to-r from-green-500 to-green-400 h-4 rounded-full transition-all duration-1000 ease-out" style={{ width: `${progressPercent}%` }}></div>
@@ -185,7 +186,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                     </div>
                     {isSuperAdmin && (
                         <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col md:flex-row gap-2">
-                            {safeConfig.status === 'pending' ? (
+                            {config.status === 'pending' ? (
                                 <button onClick={onStartGame} disabled={ticketsNeededToStart > 0} className={`flex-1 font-bold py-3 rounded-lg shadow-md uppercase tracking-wider ${ticketsNeededToStart > 0 ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-red-600 text-white hover:bg-red-700 animate-pulse'}`}>
                                     🚀 Avvia Estrazione
                                 </button>
@@ -201,15 +202,15 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                     )}
                 </div>
 
-                {/* Dashboard Giocatori */}
+                {/* Dashboard Giocatori Attivi */}
                 {activePlayers.length > 0 && (
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                         <h3 className="text-sm font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
                             <span className="bg-green-100 text-green-600 p-1 rounded">👥</span> Giocatori in Gara
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                            {activePlayers.map((player) => (
-                                <div key={player.id} className="bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center relative overflow-hidden group">
+                            {activePlayers.map((player, idx) => (
+                                <div key={idx} className="bg-slate-50 p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center relative overflow-hidden group">
                                     {player.wins > 0 && (
                                         <div className="absolute top-0 right-0 bg-yellow-400 text-[8px] font-bold px-2 py-0.5 rounded-bl-lg shadow-sm">
                                             🏆 {player.wins}
@@ -227,7 +228,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* SX: Tabellone & Vincitori */}
+                    {/* COLONNA SX: Tabellone & Vincitori */}
                     <div className="space-y-6 lg:col-span-2">
                         <div className="bg-white rounded-2xl shadow-xl p-6 border-4 border-red-100 relative">
                             <div className="flex justify-between items-center mb-4">
@@ -237,7 +238,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                 {Array.from({ length: 90 }, (_, i) => i + 1).map(num => (
                                     <div 
                                         key={num} 
-                                        className={`aspect-square flex items-center justify-center font-bold rounded-full text-xs md:text-sm shadow-sm transition-all duration-500 ${safeExtractedNumbers.includes(num) ? 'bg-red-500 text-white scale-110 shadow-md ring-2 ring-red-200' : 'bg-slate-50 text-slate-300'}`}
+                                        className={`aspect-square flex items-center justify-center font-bold rounded-full text-xs md:text-sm shadow-sm transition-all duration-500 ${extractedNumbers.includes(num) ? 'bg-red-500 text-white scale-110 shadow-md ring-2 ring-red-200' : 'bg-slate-50 text-slate-300'}`}
                                     >
                                         {num}
                                     </div>
@@ -304,8 +305,8 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                 <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl shadow-lg p-4 text-white mb-6 border border-indigo-500">
                                     <h4 className="font-bold text-sm mb-3 flex items-center gap-2 uppercase tracking-wide"><TicketIcon className="h-4 w-4"/> Acquista</h4>
                                     <div className="flex gap-2 mb-4">
-                                        <button onClick={() => setBuyQuantity(1)} className={`flex-1 py-2 rounded font-bold text-xs ${buyQuantity === 1 ? 'bg-yellow-400 text-red-900 shadow-md' : 'bg-white/10 hover:bg-white/20'}`}>1x (€{safeConfig.ticketPriceSingle})</button>
-                                        <button onClick={() => setBuyQuantity(6)} className={`flex-1 py-2 rounded font-bold text-xs ${buyQuantity === 6 ? 'bg-yellow-400 text-red-900 shadow-md' : 'bg-white/10 hover:bg-white/20'}`}>6x (€{safeConfig.ticketPriceBundle})</button>
+                                        <button onClick={() => setBuyQuantity(1)} className={`flex-1 py-2 rounded font-bold text-xs ${buyQuantity === 1 ? 'bg-yellow-400 text-red-900 shadow-md' : 'bg-white/10 hover:bg-white/20'}`}>1x (€{config.ticketPriceSingle})</button>
+                                        <button onClick={() => setBuyQuantity(6)} className={`flex-1 py-2 rounded font-bold text-xs ${buyQuantity === 6 ? 'bg-yellow-400 text-red-900 shadow-md' : 'bg-white/10 hover:bg-white/20'}`}>6x (€{config.ticketPriceBundle})</button>
                                     </div>
                                     <button onClick={handleBuy} className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg shadow text-sm uppercase tracking-wide transition-colors">
                                         Conferma Acquisto
@@ -325,7 +326,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                                 {formatTicketToGrid(ticket.numbers).map((row, rIdx) => (
                                                     <div key={rIdx} className="grid grid-cols-9 gap-0.5 mb-0.5 last:mb-0">
                                                         {row.map((num, cIdx) => (
-                                                            <div key={cIdx} className={`aspect-square flex items-center justify-center text-[9px] font-bold rounded-sm border ${num ? (safeExtractedNumbers.includes(num) ? 'bg-red-500 text-white border-red-600' : 'bg-slate-50 text-slate-700 border-slate-200') : 'bg-transparent border-transparent'}`}>
+                                                            <div key={cIdx} className={`aspect-square flex items-center justify-center text-[9px] font-bold rounded-sm border ${num ? (extractedNumbers.includes(num) ? 'bg-red-500 text-white border-red-600' : 'bg-slate-50 text-slate-700 border-slate-200') : 'bg-transparent border-transparent'}`}>
                                                                 {num}
                                                             </div>
                                                         ))}
