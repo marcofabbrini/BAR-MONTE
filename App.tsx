@@ -94,11 +94,10 @@ const App: React.FC = () => {
         const unsubTombolaTickets = onSnapshot(collection(db, 'tombola_tickets'), (s) => setTombolaTickets(s.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket))));
         const unsubTombolaWins = onSnapshot(collection(db, 'tombola_wins'), (s) => setTombolaWins(s.docs.map(d => ({...d.data(), id: d.id} as TombolaWin))));
         
-        // CONFIGURAZIONE STAGIONALE AVANZATA (4 STAGIONI)
+        // CONFIGURAZIONE STAGIONALE
         const unsubSeasonality = onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { 
             if(d.exists()) setSeasonalityConfig(d.data() as SeasonalityConfig); 
             else {
-                // Default robusto
                 const defaultConfig: SeasonalityConfig = {
                     mode: 'auto',
                     currentManualSeason: 'winter',

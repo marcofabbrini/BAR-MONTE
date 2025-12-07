@@ -284,7 +284,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                                     <div><label className="text-[10px] font-bold text-slate-400 uppercase">Emoji (virgola separati)</label><input type="text" value={emojiInput} onChange={e => handleEmojiChange(e.target.value)} className="w-full border rounded p-2 text-lg mt-1" /></div>
                                     {seasonConfigForm.mode === 'manual' && (
                                         <div className="mt-4 pt-4 border-t border-slate-200">
-                                            <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="currentManual" checked={seasonConfigForm.currentManualSeason === activeSeasonTab} onChange={() => setSeasonConfigForm({...seasonConfigForm, currentManualSeason: activeSeasonTab})} className="text-purple-600 focus:ring-purple-500" /><span className="text-sm font-bold text-slate-700">Imposta {activeSeasonTab} come stagione attiva</span></label>
+                                            <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="currentManual" checked={seasonConfigForm.currentManualSeason === activeSeasonTab} onChange={() => setSeasonConfigForm({...seasonConfigForm, currentManualSeason: activeSeasonTab})} className="text-purple-600 focus:ring-purple-500" /><span className="text-sm font-bold text-slate-700">Imposta {activeSeasonTab} come attiva</span></label>
                                         </div>
                                     )}
                                 </div>
