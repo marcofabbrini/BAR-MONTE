@@ -228,42 +228,24 @@ const App: React.FC = () => {
     const handleUpdateTombolaConfig = async (cfg: TombolaConfig) => { await setDoc(doc(db, 'tombola', 'config'), cfg); };
     const handleTombolaStart = async () => { await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() }); };
 
-    // FUNZIONE PER SPOSTARE IL FONDO GIOCO IN CASSA
     const handleTransferGameFunds = async (amount: number, gameName: string) => {
         if (amount <= 0) return;
         try {
             await runTransaction(db, async (t) => {
-                // 1. Azzera jackpot tombola (se è tombola)
                 if (gameName.toLowerCase().includes('tombola')) {
                     t.update(doc(db, 'tombola', 'config'), { jackpot: 0 });
                 }
-                
-                // 2. Crea movimento deposito in cassa bar
                 const cashRef = doc(collection(db, 'cash_movements'));
                 t.set(cashRef, {
                     amount: amount,
                     reason: `Versamento utile ${gameName}`,
                     timestamp: new Date().toISOString(),
                     type: 'deposit',
-                    category: 'bar', // Entra nel bar
-                    isDeleted: false
-                });
-
-                // 3. (Opzionale) Traccia l'uscita dal fondo gioco per bilancio
-                const gameOutRef = doc(collection(db, 'cash_movements'));
-                t.set(gameOutRef, {
-                    amount: amount,
-                    reason: `Trasferimento a Cassa Bar`,
-                    timestamp: new Date().toISOString(),
-                    type: 'withdrawal',
-                    category: 'tombola', // Esce dalla tombola
+                    category: 'bar',
                     isDeleted: false
                 });
             });
-        } catch (error) {
-            console.error("Error transferring funds:", error);
-            throw error;
-        }
+        } catch (error) { console.error("Error transferring funds:", error); }
     };
 
     const addProduct = async (d: any) => { await addDoc(collection(db, 'products'), { ...d, createdAt: new Date().toISOString(), createdBy: currentUser?.email || 'admin' }); };
@@ -275,9 +257,7 @@ const App: React.FC = () => {
     const addCashMovement = async (d: any) => { await addDoc(collection(db, 'cash_movements'), d); };
     const updateCashMovement = async (m: CashMovement) => { const { id, ...d } = m; await updateDoc(doc(db, 'cash_movements', id), d); };
     const deleteCashMovement = async (id: string, email: string) => { await updateDoc(doc(db, 'cash_movements', id), { isDeleted: true, deletedBy: email, deletedAt: new Date().toISOString() }); };
-    
     const updateTillColors = async (c: TillColors) => { await setDoc(doc(db, 'settings', 'tillColors'), c, { merge: true }); };
-    
     const deleteOrders = async (ids: string[], email: string) => { const batch = writeBatch(db); ids.forEach(id => batch.update(doc(db, 'orders', id), { isDeleted: true, deletedBy: email, deletedAt: new Date().toISOString() })); await batch.commit(); };
     const permanentDeleteOrder = async (id: string) => { await deleteDoc(doc(db, 'orders', id)); };
     const updateOrder = async (o: Order) => { const { id, ...d } = o; await updateDoc(doc(db, 'orders', id), d); };
