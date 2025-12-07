@@ -1,14 +1,14 @@
 import React from 'react';
+import { TombolaConfig } from '../types';
 import { TicketIcon, TrophyIcon } from './Icons';
 
-// Semplifichiamo le props: invece di tutto l'oggetto config che può essere undefined,
-// passiamo solo il jackpot come numero (che sarà 0 di default se manca).
 interface GamesHubProps {
     onPlayTombola: () => void;
-    jackpot: number;
+    // FIX: Ora accetta l'intero oggetto config, opzionale
+    tombolaConfig?: TombolaConfig;
 }
 
-const GamesHub: React.FC<GamesHubProps> = ({ onPlayTombola, jackpot }) => {
+const GamesHub: React.FC<GamesHubProps> = ({ onPlayTombola, tombolaConfig }) => {
     return (
         <div className="max-w-5xl mx-auto animate-fade-in">
             <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
@@ -29,8 +29,8 @@ const GamesHub: React.FC<GamesHubProps> = ({ onPlayTombola, jackpot }) => {
                         <div className="bg-black/20 rounded-lg p-3 backdrop-blur-sm">
                             <div className="flex justify-between items-end">
                                 <span className="text-xs text-yellow-200 font-bold uppercase">Montepremi Attuale</span>
-                                {/* Ora usiamo la prop sicura 'jackpot' */}
-                                <span className="text-xl font-black text-yellow-400">€{jackpot.toFixed(2)}</span>
+                                {/* FIX: Accesso sicuro con ?. */}
+                                <span className="text-xl font-black text-yellow-400">€{tombolaConfig?.jackpot?.toFixed(2) || '0.00'}</span>
                             </div>
                         </div>
                     </div>

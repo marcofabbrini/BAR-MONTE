@@ -71,8 +71,6 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [massDeleteDate, setMassDeleteDate] = useState('');
     const [colors, setColors] = useState<TillColors>(tillColors);
     const [newAdminEmail, setNewAdminEmail] = useState('');
-    
-    // Config Tombola State (CORRETTO: usiamo le nuove variabili separate)
     const [tombolaPriceSingle, setTombolaPriceSingle] = useState(tombolaConfig?.ticketPriceSingle || 1);
     const [tombolaPriceBundle, setTombolaPriceBundle] = useState(tombolaConfig?.ticketPriceBundle || 5);
     const [tombolaMaxTickets, setTombolaMaxTickets] = useState(tombolaConfig?.maxTickets || 168);
@@ -208,7 +206,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="cash" label="Cassa" icon={<CashIcon className="h-6 w-6" />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-6 w-6" />} />
                         <TabButton tab="admins" label="Admin" icon={<UserPlusIcon className="h-6 w-6" />} />
-                        <TabButton tab="extra" label="Extra" icon={<SparklesIcon className="h-6 w-6" />} />
+                        <TabButton tab="extra" label="Giochi" icon={<SparklesIcon className="h-6 w-6" />} />
                     </div>
                 </div>
             </header>
@@ -336,8 +334,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 ))}
                             </ul>
                         </div>
-                        
-                        {/* CONFIGURAZIONE TOMBOLA AGGIORNATA */}
                         {isSuperAdmin && tombolaConfig && (
                             <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
                                 <h2 className="text-lg font-bold text-indigo-800 mb-4">Configurazione Tombola</h2>
