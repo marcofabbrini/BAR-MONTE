@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
 import { collection, onSnapshot, doc, getDocs, writeBatch, runTransaction, addDoc, updateDoc, deleteDoc, setDoc, orderBy, query, getDoc, where } from 'firebase/firestore';
@@ -135,7 +134,6 @@ const App: React.FC = () => {
                         const configRef = doc(db, 'tombola', 'config');
                         const configSnap = await t.get(configRef);
                         const currentConfig = configSnap.data() as TombolaConfig;
-                        // Safety check inside transaction
                         if (!currentConfig.extractedNumbers) currentConfig.extractedNumbers = [];
 
                         let nextNum;
@@ -145,7 +143,7 @@ const App: React.FC = () => {
                         const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
                         ticketsSnap.forEach(ticketDoc => {
                             const ticket = ticketDoc.data() as TombolaTicket;
-                            if (!ticket.numbers) return; // Skip broken tickets
+                            if (!ticket.numbers) return;
                             const matches = ticket.numbers.filter(n => newExtracted.includes(n));
                             const count = matches.length;
                             if ([2,3,4,5,15].includes(count)) {
@@ -188,6 +186,12 @@ const App: React.FC = () => {
     
     const handleBuyTombolaTicket = async (staffId: string, quantity: number) => {
         if (!tombolaConfig) return;
+        const currentTicketsCount = tombolaTickets.length;
+        if (currentTicketsCount + quantity > tombolaConfig.maxTickets) {
+            alert(`Impossibile acquistare. Rimangono solo ${tombolaConfig.maxTickets - currentTicketsCount} cartelle.`);
+            return;
+        }
+
         const staffMember = staff.find(s => s.id === staffId);
         if (!staffMember) return;
 
@@ -246,7 +250,13 @@ const App: React.FC = () => {
     };
 
     const handleUpdateTombolaConfig = async (cfg: TombolaConfig) => { await setDoc(doc(db, 'tombola', 'config'), cfg); };
-    const handleTombolaStart = async () => { await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() }); };
+    const handleTombolaStart = async () => { 
+        if (!tombolaConfig) return;
+        if (tombolaTickets.length < (tombolaConfig.minTicketsToStart || 0)) {
+             if(!window.confirm(`Attenzione: vendute solo ${tombolaTickets.length} cartelle su min ${tombolaConfig.minTicketsToStart}. Avviare comunque?`)) return;
+        }
+        await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() }); 
+    };
 
     const handleTransferGameFunds = async (amount: number, gameName: string) => {
         if (amount <= 0) return;
@@ -292,6 +302,7 @@ const App: React.FC = () => {
         switch (view) {
             case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
+            
             case 'tombola': 
                 if (!tombolaConfig) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
                 return <TombolaView 
@@ -305,6 +316,7 @@ const App: React.FC = () => {
                 isSuperAdmin={isSuperAdmin} 
                 onTransferFunds={handleTransferGameFunds}
             />;
+            
             case 'admin': return <AdminView 
                 onGoBack={handleGoBack} 
                 orders={orders} 

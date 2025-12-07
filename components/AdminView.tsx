@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig } from '../types';
 import { User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, SparklesIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, TicketIcon, SparklesIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -74,7 +73,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [newAdminEmail, setNewAdminEmail] = useState('');
     const [tombolaPrice, setTombolaPrice] = useState(tombolaConfig?.ticketPriceSingle || 1);
 
-    // Seasonality
+    // Seasonality State
     const [seasonStart, setSeasonStart] = useState(seasonalityConfig?.startDate || '');
     const [seasonEnd, setSeasonEnd] = useState(seasonalityConfig?.endDate || '');
     const [seasonTheme, setSeasonTheme] = useState(seasonalityConfig?.theme || 'none');

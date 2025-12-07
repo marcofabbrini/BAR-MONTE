@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TombolaConfig, TombolaTicket, TombolaWin, StaffMember } from '../types';
 import { BackArrowIcon, TrophyIcon, TicketIcon, GridIcon, CashIcon } from './Icons';
@@ -19,10 +18,10 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
     const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
     const [buyQuantity, setBuyQuantity] = useState(1);
     
-    // Calcolo statistiche con controlli di sicurezza (FIXED)
+    // Calcolo statistiche con controlli di sicurezza
     const totalTickets = tickets ? tickets.length : 0;
     const maxTickets = config?.maxTickets || 168; // fallback
-    const progressPercent = maxTickets > 0 ? Math.min((totalTickets / maxTickets) * 100, 100) : 0;
+    const progressPercent = Math.min((totalTickets / maxTickets) * 100, 100);
     const minStart = config?.minTicketsToStart || 0;
     const ticketsNeededToStart = Math.max(0, minStart - totalTickets);
     
@@ -68,7 +67,6 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
     const selectedStaffMember = staff.find(s => s.id === selectedStaffId);
 
     const formatTicketToGrid = (numbers: number[]) => {
-        // Safety check
         if (!numbers || !Array.isArray(numbers)) return Array(3).fill(Array(9).fill(null));
 
         const grid: (number | null)[][] = [[], [], []];
@@ -99,7 +97,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         return grid;
     };
 
-    // CALCOLO GIOCATORI ATTIVI CON SICUREZZA
+    // CALCOLO GIOCATORI ATTIVI
     const activePlayers = useMemo(() => {
         if (!tickets) return [];
         const playersMap = new Map<string, { id:string, name: string, icon: string, ticketCount: number, spent: number, wins: number }>();
@@ -142,7 +140,6 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         }
     };
     
-    // Safety
     if (!config) return <div className="flex items-center justify-center min-h-screen">Caricamento Tombola...</div>;
 
     return (
@@ -192,7 +189,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                     )}
                 </div>
 
-                {/* Dashboard Giocatori */}
+                {/* Dashboard Giocatori Attivi */}
                 {activePlayers.length > 0 && (
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                         <h3 className="text-sm font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
@@ -218,7 +215,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* SX: Tabellone & Vincitori */}
+                    {/* COLONNA SX: Tabellone & Vincitori */}
                     <div className="space-y-6 lg:col-span-2">
                         <div className="bg-white rounded-2xl shadow-xl p-6 border-4 border-red-100 relative">
                             <div className="flex justify-between items-center mb-4">
