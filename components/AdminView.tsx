@@ -26,11 +26,14 @@ interface AdminViewProps {
     onUpdateStaff: (s: StaffMember) => Promise<void>;
     onDeleteStaff: (id: string) => Promise<void>;
     onAddCashMovement: (m: Omit<CashMovement, 'id'>) => Promise<void>;
+    onUpdateCashMovement: (m: CashMovement) => Promise<void>;
+    onDeleteCashMovement: (id: string, email: string) => Promise<void>;
     onStockPurchase: (productId: string, quantity: number, unitCost: number) => Promise<void>;
     onStockCorrection: (productId: string, newStock: number) => Promise<void>;
     onResetCash: () => Promise<void>;
     onMassDelete: (date: string, type: 'orders' | 'movements') => Promise<void>;
     
+    // Auth
     isAuthenticated: boolean;
     currentUser: User | null;
     onLogin: () => void;
@@ -39,6 +42,7 @@ interface AdminViewProps {
     onAddAdmin: (email: string) => Promise<void>;
     onRemoveAdmin: (id: string) => Promise<void>;
 
+    // Tombola
     tombolaConfig?: TombolaConfig;
     onUpdateTombolaConfig: (cfg: Partial<TombolaConfig>) => Promise<void>;
     onNavigateToTombola: () => void;
@@ -51,24 +55,36 @@ const AdminView: React.FC<AdminViewProps> = ({
     onUpdateTillColors, onDeleteOrders, onPermanentDeleteOrder, onUpdateOrder,
     onAddProduct, onUpdateProduct, onDeleteProduct,
     onAddStaff, onUpdateStaff, onDeleteStaff,
-    onAddCashMovement, onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
+    onAddCashMovement, onUpdateCashMovement, onDeleteCashMovement, onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
     isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin,
     tombolaConfig, onUpdateTombolaConfig, onNavigateToTombola
 }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
+    
+    // States for Movements
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
     const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<{ total: number, date: string, time: string }>({ total: 0, date: '', time: '' });
+    
+    // Movement Filters
     const [movFilterDate, setMovFilterDate] = useState('');
     const [movFilterShift, setMovFilterShift] = useState<Shift | 'all'>('all');
+
+    // Mass Delete
     const [massDeleteDate, setMassDeleteDate] = useState('');
+
+    // States for Settings
     const [colors, setColors] = useState<TillColors>(tillColors);
+    
+    // States for Admin Mgmt
     const [newAdminEmail, setNewAdminEmail] = useState('');
     const [tombolaPrice, setTombolaPrice] = useState(tombolaConfig?.ticketPriceSingle || 1);
 
+    // Calcolo Super Admin (il primo in lista è il Super Admin)
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
 
+    // Filtri Movimenti
     const filteredOrders = useMemo(() => {
         return orders.filter(o => {
             if (movFilterDate) {
@@ -84,8 +100,13 @@ const AdminView: React.FC<AdminViewProps> = ({
     }, [orders, movFilterDate, movFilterShift, staff]);
 
     const globalActiveOrders = useMemo(() => orders.filter(o => !o.isDeleted), [orders]);
+    // FIX NAN: Aggiunto || 0 per sicurezza
     const totalRevenue = globalActiveOrders.reduce((sum, o) => sum + o.total, 0) || 0;
-    const barMovements = cashMovements.filter(m => m.category === 'bar' || !m.category);
+    
+    // Filtriamo solo i movimenti 'bar' attivi
+    const activeCashMovements = useMemo(() => cashMovements.filter(m => !m.isDeleted), [cashMovements]);
+    const barMovements = activeCashMovements.filter(m => m.category === 'bar' || !m.category);
+    
     const totalWithdrawals = barMovements.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + m.amount, 0) || 0;
     const totalDeposits = barMovements.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0) || 0;
     
@@ -93,13 +114,17 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     const toggleOrderSelection = (id: string) => {
         const newSet = new Set(selectedOrderIds);
-        if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
+        if (newSet.has(id)) newSet.delete(id);
+        else newSet.add(id);
         setSelectedOrderIds(newSet);
     };
 
     const toggleAllSelection = () => {
-        if (selectedOrderIds.size === filteredOrders.length) setSelectedOrderIds(new Set());
-        else setSelectedOrderIds(new Set(filteredOrders.map(o => o.id)));
+        if (selectedOrderIds.size === filteredOrders.length) {
+            setSelectedOrderIds(new Set());
+        } else {
+            setSelectedOrderIds(new Set(filteredOrders.map(o => o.id)));
+        }
     };
 
     const handleBulkDelete = async () => {
@@ -110,13 +135,26 @@ const AdminView: React.FC<AdminViewProps> = ({
         }
     };
     
-    const handleSingleDelete = async (orderId: string) => { if (window.confirm("Sei sicuro di voler annullare questo movimento?")) await onDeleteOrders([orderId], currentUser?.email || 'Admin'); };
-    const handlePermanentDelete = async (orderId: string) => { if (window.confirm("ELIMINAZIONE DEFINITIVA. Procedere?")) await onPermanentDeleteOrder(orderId); };
+    const handleSingleDelete = async (orderId: string) => {
+        if (window.confirm("Sei sicuro di voler annullare questo movimento?")) {
+            await onDeleteOrders([orderId], currentUser?.email || 'Admin');
+        }
+    };
+
+    const handlePermanentDelete = async (orderId: string) => {
+        if (window.confirm("ELIMINAZIONE DEFINITIVA. Questa operazione non può essere annullata. Procedere?")) {
+            await onPermanentDeleteOrder(orderId);
+        }
+    };
 
     const startEditOrder = (order: Order) => {
         const dateObj = new Date(order.timestamp);
         setEditingOrderId(order.id);
-        setEditForm({ total: order.total, date: dateObj.toISOString().split('T')[0], time: dateObj.toTimeString().slice(0, 5) });
+        setEditForm({
+            total: order.total,
+            date: dateObj.toISOString().split('T')[0],
+            time: dateObj.toTimeString().slice(0, 5)
+        });
     };
 
     const saveEditOrder = async () => {
@@ -128,15 +166,49 @@ const AdminView: React.FC<AdminViewProps> = ({
         setEditingOrderId(null);
     };
 
-    const handleColorChange = (tillId: string, color: string) => setColors(prev => ({ ...prev, [tillId]: color }));
-    const saveSettings = async () => { await onUpdateTillColors(colors); alert('Impostazioni salvate!'); };
-    const handleAddAdminSubmit = async (e: React.FormEvent) => { e.preventDefault(); if(!newAdminEmail.trim()) return; await onAddAdmin(newAdminEmail.trim()); setNewAdminEmail(''); };
-    const handleMassDelete = async (type: 'orders' | 'movements') => { if (!massDeleteDate) return alert("Seleziona data."); if (window.confirm(`ATTENZIONE: Eliminazione DEFINITIVA antecedenti a ${massDeleteDate}. Confermi?`)) await onMassDelete(massDeleteDate, type); };
-    const handleUpdateTombolaPrice = async () => { await onUpdateTombolaConfig({ ticketPriceSingle: Number(tombolaPrice) }); alert("Prezzo aggiornato!"); };
+    const handleColorChange = (tillId: string, color: string) => {
+        setColors(prev => ({ ...prev, [tillId]: color }));
+    };
+
+    const saveSettings = async () => {
+        await onUpdateTillColors(colors);
+        alert('Impostazioni salvate!');
+    };
+    
+    const handleAddAdminSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if(!newAdminEmail.trim()) return;
+        await onAddAdmin(newAdminEmail.trim());
+        setNewAdminEmail('');
+    };
+
+    const handleMassDelete = async (type: 'orders' | 'movements') => {
+        if (!massDeleteDate) return alert("Seleziona una data limite.");
+        if (window.confirm(`ATTENZIONE: Stai per eliminare DEFINITIVAMENTE tutti i record antecedenti al ${massDeleteDate}. Questa azione è irreversibile. Confermi?`)) {
+            await onMassDelete(massDeleteDate, type);
+        }
+    };
+
+    const handleUpdateTombolaPrice = async () => {
+        if (!tombolaConfig) return;
+        await onUpdateTombolaConfig({ ticketPriceSingle: Number(tombolaPrice) });
+        alert("Prezzo cartella aggiornato!");
+    };
 
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
-        <button onClick={() => setActiveTab(tab)} className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all w-16 h-14 md:w-20 md:h-16 text-[9px] md:text-[10px] font-bold gap-1 ${activeTab === tab ? 'bg-red-500 text-white shadow-md scale-105' : 'bg-white text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-100'}`}>
-            <div className={`${activeTab === tab ? 'text-white' : 'text-current'} transform scale-75 md:scale-90`}>{icon}</div>
+        <button 
+            onClick={() => setActiveTab(tab)} 
+            className={`
+                flex flex-col items-center justify-center p-2 rounded-lg transition-all w-16 h-14 md:w-20 md:h-16 text-[9px] md:text-[10px] font-bold gap-1
+                ${activeTab === tab 
+                    ? 'bg-red-500 text-white shadow-md scale-105' 
+                    : 'bg-white text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-100'
+                }
+            `}
+        >
+            <div className={`${activeTab === tab ? 'text-white' : 'text-current'} transform scale-75 md:scale-90`}>
+                {icon}
+            </div>
             <span className="text-center leading-tight">{label}</span>
         </button>
     );
@@ -148,7 +220,9 @@ const AdminView: React.FC<AdminViewProps> = ({
                     <h2 className="text-2xl font-bold mb-6 text-slate-800">Area Amministrativa</h2>
                     <div className="flex gap-2">
                          <button type="button" onClick={onGoBack} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Indietro</button>
-                         <button type="button" onClick={onLogin} className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 shadow-sm"><GoogleIcon className="h-5 w-5" /> Accedi con Google</button>
+                         <button type="button" onClick={onLogin} className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 shadow-sm">
+                            <GoogleIcon className="h-5 w-5" /> Accedi con Google
+                         </button>
                     </div>
                 </div>
             </div>
@@ -159,14 +233,26 @@ const AdminView: React.FC<AdminViewProps> = ({
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
             <header className="bg-white border-b border-slate-200 p-3 sticky top-0 z-50">
                 <div className="flex flex-col gap-3 max-w-7xl mx-auto w-full">
+                    
+                    {/* TOP BAR */}
                     <div className="flex items-center justify-between w-full">
-                         <button onClick={onGoBack} className="flex items-center text-slate-500 hover:text-slate-800 font-bold gap-1 text-sm"><BackArrowIcon className="h-4 w-4" /> Esci</button>
+                         <button onClick={onGoBack} className="flex items-center text-slate-500 hover:text-slate-800 font-bold gap-1 text-sm">
+                            <BackArrowIcon className="h-4 w-4" /> Esci
+                        </button>
+                        
                         <div className="bg-slate-800 text-white px-4 py-1.5 rounded-full shadow-lg flex flex-col items-center">
                             <span className="text-[9px] uppercase text-slate-400 font-bold tracking-wider">Saldo Cassa</span>
+                            {/* FIX NAN: Aggiunto || 0 per sicurezza */}
                             <span className="text-lg font-black leading-none">€{(currentBalance || 0).toFixed(2)}</span>
                         </div>
-                        <div className="text-right"><p className="text-[9px] text-slate-400 uppercase font-bold">{isSuperAdmin ? 'Super Admin' : 'Admin'}</p><button onClick={onLogout} className="text-[10px] text-red-500 font-bold hover:underline">LOGOUT</button></div>
+
+                        <div className="text-right">
+                             <p className="text-[9px] text-slate-400 uppercase font-bold">{isSuperAdmin ? 'Super Admin' : 'Admin'}</p>
+                             <button onClick={onLogout} className="text-[10px] text-red-500 font-bold hover:underline">LOGOUT</button>
+                        </div>
                     </div>
+                    
+                    {/* NAVIGATION TABS - GRID */}
                     <div className="flex flex-wrap justify-center gap-2 w-full">
                         <TabButton tab="movements" label="Movimenti" icon={<ListIcon className="h-6 w-6" />} />
                         <TabButton tab="stock" label="Stock" icon={<BoxIcon className="h-6 w-6" />} />
@@ -190,8 +276,20 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <div className="flex flex-wrap gap-4 items-end justify-between">
                                 <h2 className="font-bold text-lg text-slate-700">Gestione Movimenti</h2>
                                 <div className="flex gap-2 items-center">
-                                    <div><label className="text-[9px] uppercase font-bold text-slate-400 block">Data</label><input type="date" value={movFilterDate} onChange={e => setMovFilterDate(e.target.value)} className="border rounded px-2 py-1 text-sm bg-white" /></div>
-                                    <div><label className="text-[9px] uppercase font-bold text-slate-400 block">Turno</label><select value={movFilterShift} onChange={e => setMovFilterShift(e.target.value as any)} className="border rounded px-2 py-1 text-sm bg-white"><option value="all">Tutti</option><option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option></select></div>
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-slate-400 block">Data</label>
+                                        <input type="date" value={movFilterDate} onChange={e => setMovFilterDate(e.target.value)} className="border rounded px-2 py-1 text-sm bg-white" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[9px] uppercase font-bold text-slate-400 block">Turno</label>
+                                        <select value={movFilterShift} onChange={e => setMovFilterShift(e.target.value as any)} className="border rounded px-2 py-1 text-sm bg-white">
+                                            <option value="all">Tutti</option>
+                                            <option value="a">A</option>
+                                            <option value="b">B</option>
+                                            <option value="c">C</option>
+                                            <option value="d">D</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                             {selectedOrderIds.size > 0 && (
@@ -218,7 +316,9 @@ const AdminView: React.FC<AdminViewProps> = ({
                                                 {editingOrderId === order.id ? (
                                                     <div className="flex flex-col gap-1"><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="border rounded px-1" /><input type="time" value={editForm.time} onChange={e => setEditForm({...editForm, time: e.target.value})} className="border rounded px-1" /></div>
                                                 ) : new Date(order.timestamp).toLocaleString('it-IT')}
-                                                {order.deletedBy && <div className="text-[9px] text-red-500 italic mt-1">Del: {order.deletedBy}</div>}
+                                                {order.deletedBy && (
+                                                    <div className="text-[9px] text-red-500 italic mt-1">Del: {order.deletedBy}</div>
+                                                )}
                                             </td>
                                             <td className="p-3">
                                                 <div className={`text-xs font-bold ${order.isDeleted ? 'text-red-800 line-through' : 'text-slate-700'}`}>{order.staffName}</div>
@@ -236,8 +336,12 @@ const AdminView: React.FC<AdminViewProps> = ({
                                                 ) : (
                                                     <>
                                                         {!order.isDeleted && <button onClick={() => startEditOrder(order)}><EditIcon className="h-4 w-4 text-blue-400" /></button>}
+                                                        
                                                         {!order.isDeleted && <button onClick={() => handleSingleDelete(order.id)}><TrashIcon className="h-4 w-4 text-red-500" /></button>}
-                                                        {order.isDeleted && isSuperAdmin && <button onClick={() => handlePermanentDelete(order.id)} title="Elimina Definitivamente"><TrashIcon className="h-4 w-4 text-slate-800" /></button>}
+                                                        
+                                                        {order.isDeleted && isSuperAdmin && (
+                                                            <button onClick={() => handlePermanentDelete(order.id)} title="Elimina Definitivamente"><TrashIcon className="h-4 w-4 text-slate-800" /></button>
+                                                        )}
                                                     </>
                                                 )}
                                             </td>
@@ -252,7 +356,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'stock' && <StockControl products={products} onStockPurchase={onStockPurchase} onStockCorrection={onStockCorrection} />}
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
-                {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} />}
+                {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateCashMovement} onDeleteMovement={onDeleteCashMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
                 
                 {activeTab === 'settings' && (
                     <div className="space-y-6">
@@ -301,13 +405,18 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <ul>
                                 {sortedAdmins.map((admin, idx) => (
                                     <li key={admin.id} className="p-4 flex justify-between items-center border-b last:border-0">
-                                        <div><p className="font-bold text-slate-700">{admin.email} {idx === 0 && <span className="text-red-500 text-xs ml-2">(SUPER)</span>}</p></div>
-                                        {isSuperAdmin && idx !== 0 && (<button onClick={() => onRemoveAdmin(admin.id)} className="text-red-500 hover:bg-red-50 p-2 rounded text-xs font-bold">Rimuovi</button>)}
+                                        <div>
+                                            <p className="font-bold text-slate-700">{admin.email} {idx === 0 && <span className="text-red-500 text-xs ml-2">(SUPER)</span>}</p>
+                                        </div>
+                                        {isSuperAdmin && idx !== 0 && (
+                                            <button onClick={() => onRemoveAdmin(admin.id)} className="text-red-500 hover:bg-red-50 p-2 rounded text-xs font-bold">Rimuovi</button>
+                                        )}
                                     </li>
                                 ))}
                             </ul>
                         </div>
 
+                        {/* CONFIGURAZIONE VARIE (TOMBOLA) - Solo Super Admin */}
                         {isSuperAdmin && tombolaConfig && (
                             <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
                                 <h2 className="text-lg font-bold text-indigo-800 mb-4">Configurazione Varie</h2>
