@@ -273,7 +273,7 @@ const App: React.FC = () => {
             case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
             
-            // CORRETTO: Renderizza TombolaView
+            // CORRETTO: Renderizza TombolaView (le props sono giuste per TombolaView)
             case 'tombola': return <TombolaView 
                 onGoBack={handleGoBack} 
                 config={tombolaConfig!} 
@@ -286,7 +286,7 @@ const App: React.FC = () => {
                 onTransferFunds={handleTransferGameFunds}
             />;
             
-            // CORRETTO: Renderizza AdminView (senza prop superflua)
+            // CORRETTO: Renderizza AdminView (le props sono giuste per AdminView)
             case 'admin': return <AdminView 
                 onGoBack={handleGoBack} 
                 orders={orders} 
@@ -324,7 +324,6 @@ const App: React.FC = () => {
                 onNavigateToTombola={handleSelectTombola}
                 seasonalityConfig={seasonalityConfig}
                 onUpdateSeasonality={handleUpdateSeasonality}
-                // RIMOSSO onTransferGameFunds perché non serve in AdminViewProps
             />;
             default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectTombola={handleSelectTombola} tillColors={tillColors} seasonalityConfig={seasonalityConfig} />;
         }
