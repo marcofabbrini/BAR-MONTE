@@ -273,7 +273,6 @@ const App: React.FC = () => {
             case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
             
-            // CORRETTO: Renderizza TombolaView (le props sono giuste per TombolaView)
             case 'tombola': return <TombolaView 
                 onGoBack={handleGoBack} 
                 config={tombolaConfig!} 
@@ -286,7 +285,6 @@ const App: React.FC = () => {
                 onTransferFunds={handleTransferGameFunds}
             />;
             
-            // CORRETTO: Renderizza AdminView (le props sono giuste per AdminView)
             case 'admin': return <AdminView 
                 onGoBack={handleGoBack} 
                 orders={orders} 
