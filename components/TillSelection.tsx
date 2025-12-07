@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Till, TillColors, SeasonalityConfig } from '../types';
+import { Till, TillColors, SeasonalityConfig, SeasonTheme } from '../types';
 import { ModernChartIcon, LockIcon } from './Icons';
 
 interface TillSelectionProps {
@@ -14,57 +14,58 @@ interface TillSelectionProps {
 
 const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, tillColors, seasonalityConfig }) => {
     
-    // Verifica se attivo e nel range
-    const isSeasonActive = useMemo(() => {
-        if (!seasonalityConfig?.isActive || !seasonalityConfig?.startDate || !seasonalityConfig?.endDate) return false;
+    // Determina il tema attivo
+    const activeTheme: SeasonTheme | null = useMemo(() => {
+        if (!seasonalityConfig || !seasonalityConfig.seasons) return null;
+
+        if (seasonalityConfig.mode === 'manual') {
+            return seasonalityConfig.seasons[seasonalityConfig.currentManualSeason];
+        }
+
+        // Mode AUTO
         const now = new Date();
-        const start = new Date(seasonalityConfig.startDate);
-        const end = new Date(seasonalityConfig.endDate);
-        end.setHours(23, 59, 59);
-        return now >= start && now <= end;
+        const month = now.getMonth(); // 0-11
+        // Inverno: Dic, Gen, Feb
+        if (month === 11 || month === 0 || month === 1) return seasonalityConfig.seasons.winter;
+        // Primavera: Mar, Apr, Mag
+        if (month >= 2 && month <= 4) return seasonalityConfig.seasons.spring;
+        // Estate: Giu, Lug, Ago
+        if (month >= 5 && month <= 7) return seasonalityConfig.seasons.summer;
+        // Autunno: Set, Ott, Nov
+        return seasonalityConfig.seasons.autumn;
+
     }, [seasonalityConfig]);
 
-    // Fallback ai valori di default se non attivi o mancanti
-    const bgColor = isSeasonActive ? (seasonalityConfig?.backgroundColor || '#f8fafc') : '#f8fafc';
-    const animationType = isSeasonActive ? (seasonalityConfig?.animationType || 'none') : 'none';
-    const emojis = isSeasonActive ? (seasonalityConfig?.emojis || []) : [];
-    
-    // Parametri Fisici
-    const speedBase = seasonalityConfig?.speed || 5;
-    const sizeBase = seasonalityConfig?.size || 5;
-    const opacityBase = seasonalityConfig?.opacity || 0.6;
+    const bgColor = activeTheme?.backgroundColor || '#f8fafc';
+    const animationType = activeTheme?.animationType || 'none';
+    const emojis = activeTheme?.emojis || [];
 
     // Generazione particelle
     const particles = useMemo(() => {
-        if (animationType === 'none' || emojis.length === 0) return [];
+        if (animationType === 'none' || !emojis.length) return [];
         
         return Array.from({ length: 40 }).map((_, i) => {
-            // Calcolo durata basata sulla velocità (Speed 1 = Lento/20s, Speed 10 = Veloce/2s)
-            // Formula inversa: Più è alto speed, più bassa è duration
-            const durationBase = 22 - (speedBase * 2); 
-            const duration = Math.max(2, durationBase + (Math.random() * 5)); // Aggiungi varianza
-            
-            // Calcolo dimensione (Size 1 = 0.2rem, Size 10 = 3rem)
-            const size = (sizeBase * 0.3) + (Math.random() * 0.5);
-
             const style: any = {
                 left: `${Math.random() * 100}%`,
-                fontSize: `${size}rem`,
+                fontSize: `${Math.random() * 1 + 0.5}rem`,
                 animationDelay: `${Math.random() * 5}s`,
-                animationDuration: `${duration}s`,
-                opacity: opacityBase
             };
 
-            if (animationType === 'snow' || animationType === 'rain') {
+            if (animationType === 'snow' || animationType === 'leaves') {
                 style.animationName = 'fall';
+                style.animationDuration = `${Math.random() * 10 + 10}s`;
+            } else if (animationType === 'rain') {
+                style.animationName = 'fall';
+                style.animationDuration = `${Math.random() * 2 + 1}s`;
             } else if (animationType === 'float') {
                 style.animationName = 'float';
+                style.animationDuration = `${Math.random() * 15 + 10}s`;
                 style.top = `${Math.random() * 100}%`;
             }
 
             return { id: i, char: emojis[Math.floor(Math.random() * emojis.length)], style };
         });
-    }, [animationType, emojis, speedBase, sizeBase, opacityBase]);
+    }, [animationType, emojis]);
 
     const isDarkBg = bgColor === '#1e293b' || bgColor.toLowerCase().includes('#0') || bgColor.toLowerCase().includes('#1'); 
 
@@ -73,7 +74,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             
             {/* CANVAS ANIMAZIONI */}
             {animationType !== 'none' && (
-                <div className="emoji-rain-container pointer-events-none">
+                <div className="emoji-rain-container opacity-40 pointer-events-none">
                     {particles.map(p => (
                         <span 
                             key={p.id} 
@@ -164,7 +165,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 text-center z-50 shadow-lg">
                 <p className="text-[10px] text-slate-400 font-medium">
-                    Gestionale Bar v3.7 | <span className="font-bold text-slate-500">Fabbrini M.</span>
+                    Gestionale Bar v3.6 | <span className="font-bold text-slate-500">Fabbrini M.</span>
                 </p>
             </div>
         </div>
