@@ -1,4 +1,3 @@
-
 export interface Product {
     id: string;
     name: string;
@@ -9,6 +8,8 @@ export interface Product {
     isFavorite: boolean;
     icon?: string;
     costPrice?: number;
+    createdAt?: string;
+    createdBy?: string;
 }
 
 export interface OrderItem {

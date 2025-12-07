@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
 import { collection, onSnapshot, doc, getDocs, writeBatch, runTransaction, addDoc, updateDoc, deleteDoc, setDoc, orderBy, query, getDoc, where } from 'firebase/firestore';
@@ -167,7 +166,6 @@ const App: React.FC = () => {
         } catch (error) { console.error(error); throw error; }
     }, []);
     
-    // TOMBOLA: SERIE PERFETTA
     const handleBuyTombolaTicket = async (staffId: string, quantity: number) => {
         if (!tombolaConfig) return;
         const staffMember = staff.find(s => s.id === staffId);
@@ -180,7 +178,6 @@ const App: React.FC = () => {
         try {
             await runTransaction(db, async (t) => {
                 if (quantity === 6) {
-                    // SERIE PERFETTA: 90 NUMERI UNICI SU 6 CARTELLE
                     const allNumbers = shuffleArray(Array.from({ length: 90 }, (_, i) => i + 1));
                     for (let i = 0; i < 6; i++) {
                         const ticketNumbers = allNumbers.slice(i * 15, (i + 1) * 15).sort((a,b) => a - b);
@@ -198,14 +195,12 @@ const App: React.FC = () => {
                 t.update(doc(db, 'tombola', 'config'), { jackpot: tombolaConfig.jackpot + jackpotAdd });
                 const cashRef = doc(collection(db, 'cash_movements'));
                 t.set(cashRef, { amount: totalCost, reason: `Tombola: ${quantity} cartelle (${staffMember.name})`, timestamp: new Date().toISOString(), type: 'deposit', category: 'tombola' });
-                // Versamento 20% al bar
                 const barCashRef = doc(collection(db, 'cash_movements'));
                 t.set(barCashRef, { amount: revenue, reason: `Utile Tombola (20%)`, timestamp: new Date().toISOString(), type: 'deposit', category: 'bar' });
             });
         } catch (e) { console.error(e); throw e; }
     };
     
-    // Cartella Singola: Randomico con distribuzione decine
     const generateSingleTicket = () => {
         const ticket: number[] = [];
         const cols: number[][] = Array.from({ length: 9 }, () => []);
@@ -214,7 +209,6 @@ const App: React.FC = () => {
             const end = i === 8 ? 90 : (i + 1) * 10;
             for(let n=start; n <= end; n++) if(i===0 && n>9) continue; else cols[i].push(n);
         }
-        
         let numbersCount = 0;
         while(numbersCount < 15) {
             const colIdx = Math.floor(Math.random() * 9);
@@ -231,16 +225,57 @@ const App: React.FC = () => {
         return ticket.sort((a,b) => a-b);
     };
 
-    const handleUpdateTombolaConfig = async (cfg: TombolaConfig) => { await setDoc(doc(db, 'tombola', 'config'), cfg, { merge: true }); };
+    const handleUpdateTombolaConfig = async (cfg: TombolaConfig) => { await setDoc(doc(db, 'tombola', 'config'), cfg); };
     const handleTombolaStart = async () => { await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() }); };
 
-    const addProduct = async (d: any) => { await addDoc(collection(db, 'products'), d); };
+    // FUNZIONE PER SPOSTARE IL FONDO GIOCO IN CASSA
+    const handleTransferGameFunds = async (amount: number, gameName: string) => {
+        if (amount <= 0) return;
+        try {
+            await runTransaction(db, async (t) => {
+                // 1. Azzera jackpot tombola (se è tombola)
+                if (gameName.toLowerCase().includes('tombola')) {
+                    t.update(doc(db, 'tombola', 'config'), { jackpot: 0 });
+                }
+                
+                // 2. Crea movimento deposito in cassa bar
+                const cashRef = doc(collection(db, 'cash_movements'));
+                t.set(cashRef, {
+                    amount: amount,
+                    reason: `Versamento utile ${gameName}`,
+                    timestamp: new Date().toISOString(),
+                    type: 'deposit',
+                    category: 'bar', // Entra nel bar
+                    isDeleted: false
+                });
+
+                // 3. (Opzionale) Traccia l'uscita dal fondo gioco per bilancio
+                const gameOutRef = doc(collection(db, 'cash_movements'));
+                t.set(gameOutRef, {
+                    amount: amount,
+                    reason: `Trasferimento a Cassa Bar`,
+                    timestamp: new Date().toISOString(),
+                    type: 'withdrawal',
+                    category: 'tombola', // Esce dalla tombola
+                    isDeleted: false
+                });
+            });
+        } catch (error) {
+            console.error("Error transferring funds:", error);
+            throw error;
+        }
+    };
+
+    const addProduct = async (d: any) => { await addDoc(collection(db, 'products'), { ...d, createdAt: new Date().toISOString(), createdBy: currentUser?.email || 'admin' }); };
     const updateProduct = async (p: any) => { const { id, ...d } = p; await updateDoc(doc(db, 'products', id), d); };
     const deleteProduct = async (id: string) => { await deleteDoc(doc(db, 'products', id)); };
     const addStaff = async (d: any) => { await addDoc(collection(db, 'staff'), d); };
     const updateStaff = async (s: any) => { const { id, ...d } = s; await updateDoc(doc(db, 'staff', id), d); };
     const deleteStaff = async (id: string) => { await deleteDoc(doc(db, 'staff', id)); };
     const addCashMovement = async (d: any) => { await addDoc(collection(db, 'cash_movements'), d); };
+    const updateCashMovement = async (m: CashMovement) => { const { id, ...d } = m; await updateDoc(doc(db, 'cash_movements', id), d); };
+    const deleteCashMovement = async (id: string, email: string) => { await updateDoc(doc(db, 'cash_movements', id), { isDeleted: true, deletedBy: email, deletedAt: new Date().toISOString() }); };
+    
     const updateTillColors = async (c: TillColors) => { await setDoc(doc(db, 'settings', 'tillColors'), c, { merge: true }); };
     
     const deleteOrders = async (ids: string[], email: string) => { const batch = writeBatch(db); ids.forEach(id => batch.update(doc(db, 'orders', id), { isDeleted: true, deletedBy: email, deletedAt: new Date().toISOString() })); await batch.commit(); };
@@ -250,10 +285,6 @@ const App: React.FC = () => {
     const handleStockCorrection = async (pid: string, stock: number) => { await updateDoc(doc(db, 'products', pid), { stock }); };
     const handleResetCash = async () => { const batch = writeBatch(db); cashMovements.forEach(m => batch.update(doc(db, 'cash_movements', m.id), { amount: 0, reason: m.reason + ' (RESET)' })); await batch.commit(); };
     const handleMassDelete = async (date: string, type: 'orders'|'movements') => { const q = query(collection(db, type === 'orders' ? 'orders' : 'cash_movements'), where('timestamp', '<=', new Date(date).toISOString())); const s = await getDocs(q); const batch = writeBatch(db); s.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); };
-
-    const updateCashMovement = async (m: CashMovement) => { const { id, ...d } = m; await updateDoc(doc(db, 'cash_movements', id), d); };
-    const deleteCashMovement = async (id: string, email: string) => { await updateDoc(doc(db, 'cash_movements', id), { isDeleted: true, deletedBy: email, deletedAt: new Date().toISOString() }); };
-    
     const handleUpdateSeasonality = async (cfg: SeasonalityConfig) => { await setDoc(doc(db, 'settings', 'seasonality'), cfg); };
 
     const renderContent = () => {
@@ -261,7 +292,17 @@ const App: React.FC = () => {
         switch (view) {
             case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
-            case 'tombola': return <TombolaView onGoBack={handleGoBack} config={tombolaConfig!} tickets={tombolaTickets} wins={tombolaWins} onBuyTicket={handleBuyTombolaTicket} staff={staff} onStartGame={handleTombolaStart} isSuperAdmin={isSuperAdmin} />;
+            case 'tombola': return <TombolaView 
+                onGoBack={handleGoBack} 
+                config={tombolaConfig!} 
+                tickets={tombolaTickets} 
+                wins={tombolaWins} 
+                onBuyTicket={handleBuyTombolaTicket} 
+                staff={staff} 
+                onStartGame={handleTombolaStart} 
+                isSuperAdmin={isSuperAdmin} 
+                onTransferFunds={handleTransferGameFunds}
+            />;
             case 'admin': return <AdminView 
                 onGoBack={handleGoBack} 
                 orders={orders} 
@@ -280,9 +321,9 @@ const App: React.FC = () => {
                 onAddStaff={addStaff} 
                 onUpdateStaff={updateStaff} 
                 onDeleteStaff={deleteStaff} 
-                onAddCashMovement={addCashMovement}
-                onUpdateMovement={updateCashMovement}
-                onDeleteMovement={deleteCashMovement}
+                onAddCashMovement={addCashMovement} 
+                onUpdateMovement={updateCashMovement} 
+                onDeleteMovement={deleteCashMovement} 
                 onStockPurchase={handleStockPurchase} 
                 onStockCorrection={handleStockCorrection} 
                 onResetCash={handleResetCash} 
@@ -299,8 +340,9 @@ const App: React.FC = () => {
                 onNavigateToTombola={handleSelectTombola}
                 seasonalityConfig={seasonalityConfig}
                 onUpdateSeasonality={handleUpdateSeasonality}
+                onTransferGameFunds={handleTransferGameFunds}
             />;
-            default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectTombola={handleSelectTombola} tillColors={tillColors} />;
+            default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectTombola={handleSelectTombola} tillColors={tillColors} seasonalityConfig={seasonalityConfig} />;
         }
     };
 

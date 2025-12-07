@@ -48,6 +48,7 @@ interface AdminViewProps {
 
     seasonalityConfig?: SeasonalityConfig;
     onUpdateSeasonality: (cfg: SeasonalityConfig) => Promise<void>;
+    onTransferGameFunds: (amount: number, gameName: string) => Promise<void>;
 }
 
 type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'extra';
@@ -60,7 +61,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     onAddCashMovement, onUpdateMovement, onDeleteMovement, onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
     isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin,
     tombolaConfig, onUpdateTombolaConfig, onNavigateToTombola,
-    seasonalityConfig, onUpdateSeasonality
+    seasonalityConfig, onUpdateSeasonality, onTransferGameFunds
 }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -279,7 +280,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                             </div>
                             <div className="mb-4">
                                 <label className="text-xs font-bold text-blue-600">Tema Attivo</label>
-                                {/* FIX: as any per evitare errore TypeScript string vs enum */}
                                 <select value={seasonTheme} onChange={e => setSeasonTheme(e.target.value as any)} className="w-full border p-2 rounded">
                                     <option value="none">Nessuno</option>
                                     <option value="christmas">Natale (Neve + Logo)</option>
