@@ -70,7 +70,8 @@ export interface AdminUser {
 
 export interface TombolaConfig {
     status: 'pending' | 'active' | 'completed';
-    maxTickets: number;
+    maxTickets: number; // Default 168 (es. 2 serie da 90 o 90+riserva)
+    minTicketsToStart: number; // Soglia avvio
     ticketPriceSingle: number;
     ticketPriceBundle: number;
     jackpot: number;

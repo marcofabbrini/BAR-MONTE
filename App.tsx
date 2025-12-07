@@ -77,7 +77,21 @@ const App: React.FC = () => {
         const unsubCash = onSnapshot(query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc')), (s) => setCashMovements(s.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement))));
         const unsubAdmins = onSnapshot(collection(db, 'admins'), (s) => setAdminList(s.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser))));
         const unsubSettings = onSnapshot(doc(db, 'settings', 'tillColors'), (d) => { if(d.exists()) setTillColors(d.data() as TillColors); });
-        const unsubTombolaConfig = onSnapshot(doc(db, 'tombola', 'config'), (d) => { if (d.exists()) setTombolaConfig(d.data() as TombolaConfig); else setDoc(doc(db, 'tombola', 'config'), { status: 'pending', maxTickets: 90, ticketPriceSingle: 1, ticketPriceBundle: 5, jackpot: 0, lastExtraction: new Date().toISOString(), extractedNumbers: [] }); });
+        
+        // Configurazione Tombola con valori di default aggiornati
+        const unsubTombolaConfig = onSnapshot(doc(db, 'tombola', 'config'), (d) => {
+            if (d.exists()) setTombolaConfig(d.data() as TombolaConfig);
+            else setDoc(doc(db, 'tombola', 'config'), { 
+                status: 'pending',
+                maxTickets: 168, // Default aggiornato
+                minTicketsToStart: 84, // Default 50%
+                ticketPriceSingle: 1, 
+                ticketPriceBundle: 5,
+                jackpot: 0, 
+                lastExtraction: new Date().toISOString(), 
+                extractedNumbers: [] 
+            });
+        });
         const unsubTombolaTickets = onSnapshot(collection(db, 'tombola_tickets'), (s) => setTombolaTickets(s.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket))));
         const unsubTombolaWins = onSnapshot(collection(db, 'tombola_wins'), (s) => setTombolaWins(s.docs.map(d => ({...d.data(), id: d.id} as TombolaWin))));
         const unsubSeasonality = onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { if(d.exists()) setSeasonalityConfig(d.data() as SeasonalityConfig); else setDoc(doc(db, 'settings', 'seasonality'), { startDate: '', endDate: '', theme: 'none' }); });
@@ -111,6 +125,10 @@ const App: React.FC = () => {
         const runTombolaExtraction = async () => {
             if (!tombolaConfig || tombolaConfig.extractedNumbers.length >= 90) return;
             if (tombolaConfig.status !== 'active') return;
+            
+            // Controllo soglia minima (opzionale, se si volesse riattivare l'automazione in futuro)
+            // Attualmente l'avvio è manuale, quindi questo check è implicito nello Start manuale dell'admin
+            
             const now = new Date().getTime();
             const last = new Date(tombolaConfig.lastExtraction).getTime();
             const diffHours = (now - last) / (1000 * 60 * 60);
@@ -168,6 +186,14 @@ const App: React.FC = () => {
     
     const handleBuyTombolaTicket = async (staffId: string, quantity: number) => {
         if (!tombolaConfig) return;
+        
+        // Controllo Limite Max Biglietti
+        const currentTicketsCount = tombolaTickets.length;
+        if (currentTicketsCount + quantity > tombolaConfig.maxTickets) {
+            alert(`Impossibile acquistare. Rimangono solo ${tombolaConfig.maxTickets - currentTicketsCount} cartelle.`);
+            return;
+        }
+
         const staffMember = staff.find(s => s.id === staffId);
         if (!staffMember) return;
 
@@ -226,7 +252,15 @@ const App: React.FC = () => {
     };
 
     const handleUpdateTombolaConfig = async (cfg: TombolaConfig) => { await setDoc(doc(db, 'tombola', 'config'), cfg); };
-    const handleTombolaStart = async () => { await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() }); };
+    
+    const handleTombolaStart = async () => { 
+        if (!tombolaConfig) return;
+        if (tombolaTickets.length < tombolaConfig.minTicketsToStart) {
+             // Opzionale: Alert se si forza l'avvio sotto soglia
+             if(!window.confirm(`Attenzione: vendute solo ${tombolaTickets.length} cartelle su min ${tombolaConfig.minTicketsToStart}. Avviare comunque?`)) return;
+        }
+        await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() }); 
+    };
 
     const handleTransferGameFunds = async (amount: number, gameName: string) => {
         if (amount <= 0) return;
@@ -272,7 +306,6 @@ const App: React.FC = () => {
         switch (view) {
             case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
-            
             case 'tombola': return <TombolaView 
                 onGoBack={handleGoBack} 
                 config={tombolaConfig!} 
@@ -284,7 +317,6 @@ const App: React.FC = () => {
                 isSuperAdmin={isSuperAdmin} 
                 onTransferFunds={handleTransferGameFunds}
             />;
-            
             case 'admin': return <AdminView 
                 onGoBack={handleGoBack} 
                 orders={orders} 

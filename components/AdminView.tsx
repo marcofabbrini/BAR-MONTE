@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig } from '../types';
 import { User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, SparklesIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, TicketIcon, SparklesIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -71,7 +71,12 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [massDeleteDate, setMassDeleteDate] = useState('');
     const [colors, setColors] = useState<TillColors>(tillColors);
     const [newAdminEmail, setNewAdminEmail] = useState('');
-    const [tombolaPrice, setTombolaPrice] = useState(tombolaConfig?.ticketPriceSingle || 1);
+    
+    // Config Tombola State
+    const [tombolaPriceSingle, setTombolaPriceSingle] = useState(tombolaConfig?.ticketPriceSingle || 1);
+    const [tombolaPriceBundle, setTombolaPriceBundle] = useState(tombolaConfig?.ticketPriceBundle || 5);
+    const [tombolaMaxTickets, setTombolaMaxTickets] = useState(tombolaConfig?.maxTickets || 168);
+    const [tombolaMinStart, setTombolaMinStart] = useState(tombolaConfig?.minTicketsToStart || 84);
 
     // Seasonality State
     const [seasonStart, setSeasonStart] = useState(seasonalityConfig?.startDate || '');
@@ -146,7 +151,16 @@ const AdminView: React.FC<AdminViewProps> = ({
     const saveSettings = async () => { await onUpdateTillColors(colors); alert('Impostazioni salvate!'); };
     const handleAddAdminSubmit = async (e: React.FormEvent) => { e.preventDefault(); if(!newAdminEmail.trim()) return; await onAddAdmin(newAdminEmail.trim()); setNewAdminEmail(''); };
     const handleMassDelete = async (type: 'orders' | 'movements') => { if (!massDeleteDate) return alert("Seleziona data."); if (window.confirm(`ATTENZIONE: Eliminazione DEFINITIVA antecedenti a ${massDeleteDate}. Confermi?`)) await onMassDelete(massDeleteDate, type); };
-    const handleUpdateTombolaPrice = async () => { await onUpdateTombolaConfig({ ticketPriceSingle: Number(tombolaPrice) }); alert("Prezzo aggiornato!"); };
+    
+    const handleUpdateTombolaConfig = async () => { 
+        await onUpdateTombolaConfig({ 
+            ticketPriceSingle: Number(tombolaPriceSingle),
+            ticketPriceBundle: Number(tombolaPriceBundle),
+            maxTickets: Number(tombolaMaxTickets),
+            minTicketsToStart: Number(tombolaMinStart)
+        }); 
+        alert("Configurazione Tombola aggiornata!"); 
+    };
     
     const handleSaveSeasonality = async () => {
         await onUpdateSeasonality({ startDate: seasonStart, endDate: seasonEnd, theme: seasonTheme as any });
@@ -322,10 +336,17 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 ))}
                             </ul>
                         </div>
+                        {/* CONFIGURAZIONE TOMBOLA POTENZIATA (PREZZI + LIMITI) */}
                         {isSuperAdmin && tombolaConfig && (
                             <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
                                 <h2 className="text-lg font-bold text-indigo-800 mb-4">Configurazione Tombola</h2>
-                                <div><label className="text-xs font-bold text-indigo-600 uppercase">Prezzo Cartella Singola (€)</label><div className="flex gap-2 mt-1"><input type="number" step="0.5" value={tombolaPrice} onChange={e => setTombolaPrice(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /><button onClick={handleUpdateTombolaPrice} className="bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700">Salva</button></div></div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div><label className="text-xs font-bold text-indigo-600 uppercase">Prezzo Singola (€)</label><input type="number" step="0.5" value={tombolaPrice} onChange={e => setTombolaPrice(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /></div>
+                                    <div><label className="text-xs font-bold text-indigo-600 uppercase">Prezzo Pack 6 (€)</label><input type="number" step="0.5" value={tombolaPriceBundle} onChange={e => setTombolaPriceBundle(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /></div>
+                                    <div><label className="text-xs font-bold text-indigo-600 uppercase">Max Cartelle Totali</label><input type="number" value={tombolaMaxTickets} onChange={e => setTombolaMaxTickets(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /></div>
+                                    <div><label className="text-xs font-bold text-indigo-600 uppercase">Minimo per Avvio</label><input type="number" value={tombolaMinStart} onChange={e => setTombolaMinStart(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /></div>
+                                </div>
+                                <button onClick={handleUpdateTombolaConfig} className="bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700 mt-4 w-full">Salva Configurazione Tombola</button>
                             </div>
                         )}
                      </div>
