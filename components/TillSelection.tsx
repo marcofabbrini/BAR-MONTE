@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Till, TillColors, SeasonalityConfig } from '../types';
+import { Till, TillColors, SeasonalityConfig, SeasonTheme } from '../types';
 import { ModernChartIcon, LockIcon } from './Icons';
 
 interface TillSelectionProps {
@@ -14,52 +14,75 @@ interface TillSelectionProps {
 
 const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, tillColors, seasonalityConfig }) => {
     
-    // Verifica se attivo e nel range
-    const isSeasonActive = useMemo(() => {
-        if (!seasonalityConfig?.startDate || !seasonalityConfig?.endDate) return false;
+    // Determina il tema attivo
+    const activeTheme: SeasonTheme | null = useMemo(() => {
+        if (!seasonalityConfig) return null;
+
+        if (seasonalityConfig.mode === 'manual') {
+            return seasonalityConfig.seasons[seasonalityConfig.currentManualSeason];
+        }
+
+        // Mode AUTO
         const now = new Date();
-        const start = new Date(seasonalityConfig.startDate);
-        const end = new Date(seasonalityConfig.endDate);
-        end.setHours(23, 59, 59);
-        return now >= start && now <= end;
+        const month = now.getMonth(); // 0-11
+        // Inverno: Dic, Gen, Feb
+        if (month === 11 || month === 0 || month === 1) return seasonalityConfig.seasons.winter;
+        // Primavera: Mar, Apr, Mag
+        if (month >= 2 && month <= 4) return seasonalityConfig.seasons.spring;
+        // Estate: Giu, Lug, Ago
+        if (month >= 5 && month <= 7) return seasonalityConfig.seasons.summer;
+        // Autunno: Set, Ott, Nov
+        return seasonalityConfig.seasons.autumn;
+
     }, [seasonalityConfig]);
 
-    const activeTheme = isSeasonActive ? seasonalityConfig?.theme : 'none';
+    const bgColor = activeTheme?.backgroundColor || '#f8fafc';
+    const animationType = activeTheme?.animationType || 'none';
+    const emojis = activeTheme?.emojis || [];
 
     // Generazione particelle
     const particles = useMemo(() => {
-        if (activeTheme === 'none') return [];
+        if (animationType === 'none' || !emojis.length) return [];
         
-        let emojis = [''];
-        if (activeTheme === 'christmas') emojis = ['❄️', '⛄', '🎄'];
-        else if (activeTheme === 'easter') emojis = ['🐰', '🥚', '🌸'];
-        else if (activeTheme === 'summer') emojis = ['☀️', '🍦', '🌊'];
+        return Array.from({ length: 40 }).map((_, i) => {
+            const style: any = {
+                left: `${Math.random() * 100}%`,
+                fontSize: `${Math.random() * 1 + 0.5}rem`,
+                animationDelay: `${Math.random() * 5}s`,
+            };
 
-        return Array.from({ length: 40 }).map((_, i) => ({
-            id: i,
-            char: emojis[Math.floor(Math.random() * emojis.length)],
-            left: `${Math.random() * 100}%`,
-            duration: `${Math.random() * 10 + 5}s`,
-            delay: `${Math.random() * 5}s`,
-            size: `${Math.random() * 0.8 + 0.5}rem`
-        }));
-    }, [activeTheme]);
+            if (animationType === 'snow' || animationType === 'leaves') {
+                style.animationName = 'fall';
+                style.animationDuration = `${Math.random() * 10 + 10}s`;
+            } else if (animationType === 'rain') {
+                style.animationName = 'fall';
+                style.animationDuration = `${Math.random() * 2 + 1}s`;
+            } else if (animationType === 'float') {
+                style.animationName = 'float';
+                style.animationDuration = `${Math.random() * 15 + 10}s`;
+                style.top = `${Math.random() * 100}%`;
+            }
+
+            return { id: i, char: emojis[Math.floor(Math.random() * emojis.length)], style };
+        });
+    }, [animationType, emojis]);
+
+    const isDarkBg = bgColor === '#1e293b' || bgColor.toLowerCase().includes('#0') || bgColor.toLowerCase().includes('#1'); 
 
     return (
-        <div className={`flex flex-col min-h-screen relative overflow-hidden font-sans transition-colors duration-1000 ${activeTheme === 'christmas' ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-800'}`}>
+        <div className="flex flex-col min-h-screen relative overflow-hidden font-sans transition-colors duration-1000" style={{ backgroundColor: bgColor }}>
             
             {/* CANVAS ANIMAZIONI */}
-            {activeTheme !== 'none' && (
+            {animationType !== 'none' && (
                 <div className="emoji-rain-container opacity-40 pointer-events-none">
                     {particles.map(p => (
                         <span 
                             key={p.id} 
-                            className="falling-emoji"
+                            className="absolute"
                             style={{ 
-                                left: p.left,
-                                animationDuration: p.duration,
-                                animationDelay: p.delay,
-                                fontSize: p.size
+                                ...p.style,
+                                animationTimingFunction: animationType === 'float' ? 'ease-in-out' : 'linear',
+                                animationIterationCount: 'infinite'
                             }}
                         >
                             {p.char}
@@ -70,47 +93,48 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
             <div className="flex-grow flex flex-col items-center justify-center p-2 z-10 w-full max-w-4xl mx-auto pb-16">
                 
+                {/* LOGO */}
                 <div className="mb-2 relative group">
                     <img 
                         src="/logo.png" 
                         alt="Logo" 
-                        className={`h-16 w-auto object-contain drop-shadow-md transition-transform duration-500 hover:scale-105 ${activeTheme === 'christmas' ? 'brightness-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]' : ''}`}
+                        className={`h-16 w-auto object-contain drop-shadow-md transition-transform duration-500 hover:scale-105 ${isDarkBg ? 'brightness-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]' : ''}`}
                         onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                 </div>
 
                 <div className="text-center mb-4">
                     <h1 className="flex flex-col items-center leading-none">
-                        <span className="text-3xl md:text-4xl font-black tracking-tighter mb-1 drop-shadow-sm">
+                        <span className={`text-3xl md:text-4xl font-black tracking-tighter mb-1 drop-shadow-sm ${isDarkBg ? 'text-white' : 'text-slate-800'}`}>
                             BAR VVF
                         </span>
                         <span className="text-xl md:text-2xl font-extrabold text-primary tracking-tight drop-shadow-sm">
                             Montepulciano
                         </span>
                     </h1>
-                    <p className={`font-medium text-[10px] md:text-xs mt-1 px-3 py-1 rounded-full inline-block backdrop-blur-sm shadow-sm border ${activeTheme === 'christmas' ? 'bg-white/20 border-white/10' : 'bg-white/90 border-slate-100 text-slate-500'}`}>
+                    <p className={`font-medium text-[10px] md:text-xs mt-1 px-3 py-1 rounded-full inline-block backdrop-blur-sm shadow-sm border ${isDarkBg ? 'bg-white/20 text-white border-white/10' : 'bg-white/90 text-slate-500 border-slate-100'}`}>
                         Scegli il turno per iniziare
                     </p>
                 </div>
 
                 <div className="flex flex-wrap justify-center gap-2 w-full mb-3 px-2">
                     {tills.map((till) => {
-                        const bgColor = tillColors[till.id] || '#f97316';
+                        const bgBtnColor = tillColors[till.id] || '#f97316';
                         return (
                             <button
                                 key={till.id}
                                 onClick={() => onSelectTill(till.id)}
-                                className={`group relative rounded-xl p-1 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col items-center justify-center w-16 h-20 border ${activeTheme === 'christmas' ? 'bg-white/10 border-white/20 hover:bg-white/20' : 'bg-white border-slate-100'}`}
+                                className={`group relative rounded-xl p-1 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col items-center justify-center w-16 h-20 border ${isDarkBg ? 'bg-white/10 border-white/20 hover:bg-white/20' : 'bg-white border-slate-100'}`}
                             >
                                 <div 
                                     className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner mb-1 transition-transform duration-300 group-hover:scale-110" 
-                                    style={{ backgroundColor: bgColor }}
+                                    style={{ backgroundColor: bgBtnColor }}
                                 >
                                     <span className="text-xl font-black text-white select-none">
                                         {till.shift.toUpperCase()}
                                     </span>
                                 </div>
-                                <span className="text-[9px] font-bold leading-tight">
+                                <span className={`text-[9px] font-bold leading-tight ${isDarkBg ? 'text-white' : 'text-slate-700'}`}>
                                     {till.name}
                                 </span>
                             </button>
@@ -139,7 +163,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 text-center z-50 shadow-lg">
                 <p className="text-[10px] text-slate-400 font-medium">
-                    Gestionale Bar v3.4 | <span className="font-bold text-slate-500">Fabbrini M.</span>
+                    Gestionale Bar v3.5 | <span className="font-bold text-slate-500">Fabbrini M.</span>
                 </p>
             </div>
         </div>

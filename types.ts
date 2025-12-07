@@ -71,7 +71,7 @@ export interface AdminUser {
 export interface TombolaConfig {
     status: 'pending' | 'active' | 'completed';
     maxTickets: number;
-    minTicketsToStart?: number; // Opzionale
+    minTicketsToStart?: number;
     ticketPriceSingle: number;
     ticketPriceBundle: number;
     jackpot: number;
@@ -96,8 +96,20 @@ export interface TombolaWin {
     timestamp: string;
 }
 
+export interface SeasonTheme {
+    name: string;
+    backgroundColor: string;
+    animationType: 'none' | 'snow' | 'rain' | 'float' | 'leaves';
+    emojis: string[];
+}
+
 export interface SeasonalityConfig {
-    startDate: string;
-    endDate: string;
-    theme: 'none' | 'christmas' | 'easter' | 'summer';
+    mode: 'auto' | 'manual';
+    currentManualSeason: 'winter' | 'spring' | 'summer' | 'autumn';
+    seasons: {
+        winter: SeasonTheme;
+        spring: SeasonTheme;
+        summer: SeasonTheme;
+        autumn: SeasonTheme;
+    };
 }

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig } from '../types';
+import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, SeasonTheme } from '../types';
 import { User } from 'firebase/auth';
 import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, TicketIcon, SparklesIcon } from './Icons';
 import ProductManagement from './ProductManagement';
@@ -79,11 +79,16 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [tombolaMinStart, setTombolaMinStart] = useState(tombolaConfig?.minTicketsToStart || 84);
 
     // Seasonality State
-    const [seasonForm, setSeasonForm] = useState<SeasonalityConfig>({
-        startDate: seasonalityConfig?.startDate || '',
-        endDate: seasonalityConfig?.endDate || '',
-        theme: seasonalityConfig?.theme || 'none',
-    });
+    const [seasonConfigForm, setSeasonConfigForm] = useState<SeasonalityConfig | null>(null);
+    const [activeSeasonTab, setActiveSeasonTab] = useState<'winter'|'spring'|'summer'|'autumn'>('winter');
+    const [emojiInput, setEmojiInput] = useState('');
+
+    useMemo(() => {
+        if (seasonalityConfig && !seasonConfigForm) {
+            setSeasonConfigForm(seasonalityConfig);
+            setEmojiInput(seasonalityConfig.seasons['winter'].emojis.join(', '));
+        }
+    }, [seasonalityConfig]);
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
@@ -112,64 +117,45 @@ const AdminView: React.FC<AdminViewProps> = ({
     const totalDeposits = barMovements.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0) || 0;
     const currentBalance = totalRevenue + totalDeposits - totalWithdrawals;
 
-    const toggleOrderSelection = (id: string) => {
-        const newSet = new Set(selectedOrderIds);
-        if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
-        setSelectedOrderIds(newSet);
-    };
-
-    const toggleAllSelection = () => {
-        if (selectedOrderIds.size === filteredOrders.length) setSelectedOrderIds(new Set());
-        else setSelectedOrderIds(new Set(filteredOrders.map(o => o.id)));
-    };
-
-    const handleBulkDelete = async () => {
-        if (selectedOrderIds.size === 0) return;
-        if (window.confirm(`Sei sicuro di voler annullare ${selectedOrderIds.size} movimenti?`)) {
-            await onDeleteOrders(Array.from(selectedOrderIds), currentUser?.email || 'Admin');
-            setSelectedOrderIds(new Set());
-        }
-    };
-    
+    // ... (funzioni di gestione ordini/cancellazione uguali a prima)
+    const toggleOrderSelection = (id: string) => { const newSet = new Set(selectedOrderIds); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedOrderIds(newSet); };
+    const toggleAllSelection = () => { if (selectedOrderIds.size === filteredOrders.length) setSelectedOrderIds(new Set()); else setSelectedOrderIds(new Set(filteredOrders.map(o => o.id))); };
+    const handleBulkDelete = async () => { if (selectedOrderIds.size === 0) return; if (window.confirm(`Sei sicuro di voler annullare ${selectedOrderIds.size} movimenti?`)) { await onDeleteOrders(Array.from(selectedOrderIds), currentUser?.email || 'Admin'); setSelectedOrderIds(new Set()); } };
     const handleSingleDelete = async (orderId: string) => { if (window.confirm("Sei sicuro di voler annullare questo movimento?")) await onDeleteOrders([orderId], currentUser?.email || 'Admin'); };
     const handlePermanentDelete = async (orderId: string) => { if (window.confirm("ELIMINAZIONE DEFINITIVA. Procedere?")) await onPermanentDeleteOrder(orderId); };
-
-    const startEditOrder = (order: Order) => {
-        const dateObj = new Date(order.timestamp);
-        setEditingOrderId(order.id);
-        setEditForm({ total: order.total, date: dateObj.toISOString().split('T')[0], time: dateObj.toTimeString().slice(0, 5) });
-    };
-
-    const saveEditOrder = async () => {
-        if (!editingOrderId) return;
-        const originalOrder = orders.find(o => o.id === editingOrderId);
-        if (!originalOrder) return;
-        const newTimestamp = new Date(`${editForm.date}T${editForm.time}`).toISOString();
-        await onUpdateOrder({ ...originalOrder, total: editForm.total, timestamp: newTimestamp });
-        setEditingOrderId(null);
-    };
-
+    const startEditOrder = (order: Order) => { const dateObj = new Date(order.timestamp); setEditingOrderId(order.id); setEditForm({ total: order.total, date: dateObj.toISOString().split('T')[0], time: dateObj.toTimeString().slice(0, 5) }); };
+    const saveEditOrder = async () => { if (!editingOrderId) return; const originalOrder = orders.find(o => o.id === editingOrderId); if (!originalOrder) return; const newTimestamp = new Date(`${editForm.date}T${editForm.time}`).toISOString(); await onUpdateOrder({ ...originalOrder, total: editForm.total, timestamp: newTimestamp }); setEditingOrderId(null); };
     const handleColorChange = (tillId: string, color: string) => setColors(prev => ({ ...prev, [tillId]: color }));
     const saveSettings = async () => { await onUpdateTillColors(colors); alert('Impostazioni salvate!'); };
     const handleAddAdminSubmit = async (e: React.FormEvent) => { e.preventDefault(); if(!newAdminEmail.trim()) return; await onAddAdmin(newAdminEmail.trim()); setNewAdminEmail(''); };
     const handleMassDelete = async (type: 'orders' | 'movements') => { if (!massDeleteDate) return alert("Seleziona data."); if (window.confirm(`ATTENZIONE: Eliminazione DEFINITIVA antecedenti a ${massDeleteDate}. Confermi?`)) await onMassDelete(massDeleteDate, type); };
-    
-    const handleUpdateTombolaConfig = async () => { 
-        await onUpdateTombolaConfig({ 
-            ticketPriceSingle: Number(tombolaPriceSingle),
-            ticketPriceBundle: Number(tombolaPriceBundle),
-            maxTickets: Number(tombolaMaxTickets),
-            minTicketsToStart: Number(tombolaMinStart)
-        }); 
-        alert("Configurazione Tombola aggiornata!"); 
-    };
-    
-    const handleSeasonSave = async () => {
-        await onUpdateSeasonality({
-            ...seasonForm,
-            theme: seasonForm.theme as any // FIX TS
+    const handleUpdateTombolaConfig = async () => { await onUpdateTombolaConfig({ ticketPriceSingle: Number(tombolaPriceSingle), ticketPriceBundle: Number(tombolaPriceBundle), maxTickets: Number(tombolaMaxTickets), minTicketsToStart: Number(tombolaMinStart) }); alert("Configurazione Tombola aggiornata!"); };
+
+    // Seasonality Handlers
+    const handleSeasonChange = (field: keyof SeasonTheme, value: any) => {
+        if (!seasonConfigForm) return;
+        setSeasonConfigForm({
+            ...seasonConfigForm,
+            seasons: {
+                ...seasonConfigForm.seasons,
+                [activeSeasonTab]: { ...seasonConfigForm.seasons[activeSeasonTab], [field]: value }
+            }
         });
-        alert("Stagionalità salvata!");
+    };
+    const handleEmojiChange = (val: string) => {
+        setEmojiInput(val);
+        const emojis = val.split(',').map(e => e.trim()).filter(e => e !== '');
+        handleSeasonChange('emojis', emojis);
+    };
+    const saveSeasonality = async () => {
+        if (seasonConfigForm) {
+            await onUpdateSeasonality(seasonConfigForm);
+            alert("Configurazione stagionale salvata!");
+        }
+    };
+    const changeSeasonTab = (season: 'winter'|'spring'|'summer'|'autumn') => {
+        setActiveSeasonTab(season);
+        if(seasonConfigForm) setEmojiInput(seasonConfigForm.seasons[season].emojis.join(', '));
     };
 
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
@@ -179,19 +165,14 @@ const AdminView: React.FC<AdminViewProps> = ({
         </button>
     );
 
-    if (!isAuthenticated) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 p-4">
-                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-t-4 border-red-500">
-                    <h2 className="text-2xl font-bold mb-6 text-slate-800">Area Amministrativa</h2>
-                    <div className="flex gap-2">
-                         <button type="button" onClick={onGoBack} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Indietro</button>
-                         <button type="button" onClick={onLogin} className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 shadow-sm"><GoogleIcon className="h-5 w-5" /> Accedi con Google</button>
-                    </div>
-                </div>
+    if (!isAuthenticated) return (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-slate-100 p-4">
+            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-t-4 border-red-500">
+                <h2 className="text-2xl font-bold mb-6 text-slate-800">Area Amministrativa</h2>
+                <div className="flex gap-2"><button type="button" onClick={onGoBack} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Indietro</button><button type="button" onClick={onLogin} className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 shadow-sm"><GoogleIcon className="h-5 w-5" /> Accedi con Google</button></div>
             </div>
-        );
-    }
+        </div>
+    );
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -213,7 +194,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="cash" label="Cassa" icon={<CashIcon className="h-6 w-6" />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-6 w-6" />} />
                         <TabButton tab="admins" label="Admin" icon={<UserPlusIcon className="h-6 w-6" />} />
-                        <TabButton tab="extra" label="Giochi" icon={<SparklesIcon className="h-6 w-6" />} />
+                        <TabButton tab="extra" label="Extra" icon={<SparklesIcon className="h-6 w-6" />} />
                     </div>
                 </div>
             </header>
@@ -221,6 +202,7 @@ const AdminView: React.FC<AdminViewProps> = ({
             <main className="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
                 {activeTab === 'movements' && (
                     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        {/* ... Table Movimenti (stesso codice di prima) ... */}
                         <div className="p-4 border-b border-slate-100 bg-slate-50">
                             <div className="flex flex-wrap gap-4 items-end justify-between">
                                 <h2 className="font-bold text-lg text-slate-700">Gestione Movimenti</h2>
@@ -236,31 +218,18 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 <thead className="bg-slate-100 text-slate-800 uppercase text-xs sticky top-0 z-10">
                                     <tr>
                                         <th className="p-3 w-8"><input type="checkbox" checked={selectedOrderIds.size === filteredOrders.length && filteredOrders.length > 0} onChange={toggleAllSelection} className="rounded text-red-500 focus:ring-red-500" /></th>
-                                        <th className="p-3">Data</th>
-                                        <th className="p-3">Info</th>
-                                        <th className="p-3 text-right">Totale</th>
-                                        <th className="p-3 text-center">Stato</th>
-                                        <th className="p-3 text-center">Azioni</th>
+                                        <th className="p-3">Data</th><th className="p-3">Info</th><th className="p-3 text-right">Totale</th><th className="p-3 text-center">Stato</th><th className="p-3 text-center">Azioni</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {filteredOrders.map(order => (
                                         <tr key={order.id} className={`hover:bg-slate-50 ${order.isDeleted ? 'bg-red-50' : ''}`}>
                                             <td className="p-3"><input type="checkbox" checked={selectedOrderIds.has(order.id)} onChange={() => toggleOrderSelection(order.id)} className="rounded text-red-500 focus:ring-red-500" /></td>
-                                            <td className="p-3 whitespace-nowrap text-xs">
-                                                {editingOrderId === order.id ? (<div className="flex flex-col gap-1"><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="border rounded px-1" /><input type="time" value={editForm.time} onChange={e => setEditForm({...editForm, time: e.target.value})} className="border rounded px-1" /></div>) : new Date(order.timestamp).toLocaleString('it-IT')}
-                                                {order.deletedBy && <div className="text-[9px] text-red-500 italic mt-1">Del: {order.deletedBy}</div>}
-                                            </td>
+                                            <td className="p-3 whitespace-nowrap text-xs">{editingOrderId === order.id ? (<div className="flex flex-col gap-1"><input type="date" value={editForm.date} onChange={e => setEditForm({...editForm, date: e.target.value})} className="border rounded px-1" /><input type="time" value={editForm.time} onChange={e => setEditForm({...editForm, time: e.target.value})} className="border rounded px-1" /></div>) : new Date(order.timestamp).toLocaleString('it-IT')}{order.deletedBy && <div className="text-[9px] text-red-500 italic mt-1">Del: {order.deletedBy}</div>}</td>
                                             <td className="p-3"><div className={`text-xs font-bold ${order.isDeleted ? 'text-red-800 line-through' : 'text-slate-700'}`}>{order.staffName}</div><div className="text-[10px] text-slate-400 uppercase">Cassa {order.tillId}</div></td>
                                             <td className="p-3 text-right font-bold text-slate-800">{editingOrderId === order.id ? <input type="number" step="0.01" value={editForm.total} onChange={e => setEditForm({...editForm, total: parseFloat(e.target.value)})} className="border rounded px-1 w-20 text-right" /> : <span className={order.isDeleted ? 'line-through opacity-50' : ''}>€{order.total.toFixed(2)}</span>}</td>
                                             <td className="p-3 text-center">{order.isDeleted ? <span className="text-red-500 font-bold text-[10px] uppercase border border-red-200 bg-red-100 px-1 rounded">ANNULLATO</span> : <span className="text-green-500 font-bold text-[10px] uppercase">OK</span>}</td>
-                                            <td className="p-3 flex justify-center gap-2">
-                                                {editingOrderId === order.id ? <button onClick={saveEditOrder}><SaveIcon className="h-5 w-5 text-green-600" /></button> : <>
-                                                    {!order.isDeleted && <button onClick={() => startEditOrder(order)}><EditIcon className="h-4 w-4 text-blue-400" /></button>}
-                                                    {!order.isDeleted && <button onClick={() => handleSingleDelete(order.id)}><TrashIcon className="h-4 w-4 text-red-500" /></button>}
-                                                    {order.isDeleted && isSuperAdmin && <button onClick={() => handlePermanentDelete(order.id)} title="Elimina Definitivamente"><TrashIcon className="h-4 w-4 text-slate-800" /></button>}
-                                                </>}
-                                            </td>
+                                            <td className="p-3 flex justify-center gap-2">{editingOrderId === order.id ? <button onClick={saveEditOrder}><SaveIcon className="h-5 w-5 text-green-600" /></button> : <>{!order.isDeleted && <button onClick={() => startEditOrder(order)}><EditIcon className="h-4 w-4 text-blue-400" /></button>}{!order.isDeleted && <button onClick={() => handleSingleDelete(order.id)}><TrashIcon className="h-4 w-4 text-red-500" /></button>}{order.isDeleted && isSuperAdmin && <button onClick={() => handlePermanentDelete(order.id)} title="Elimina Definitivamente"><TrashIcon className="h-4 w-4 text-slate-800" /></button>}</>}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -290,42 +259,46 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <button onClick={saveSettings} className="mt-4 w-full bg-slate-800 text-white font-bold py-2 rounded-lg">Salva Colori</button>
                         </div>
 
+                        {/* CONFIGURAZIONE STAGIONALITA */}
                         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100 shadow-sm">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-lg font-bold text-blue-800 flex items-center gap-2">
                                     <SparklesIcon className="h-5 w-5" /> Personalizzazione Stagionale
                                 </h2>
+                                <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+                                    <button onClick={() => setSeasonConfigForm(prev => prev ? {...prev, mode: 'auto'} : null)} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${seasonConfigForm?.mode === 'auto' ? 'bg-white shadow text-purple-600' : 'text-slate-400'}`}>Auto</button>
+                                    <button onClick={() => setSeasonConfigForm(prev => prev ? {...prev, mode: 'manual'} : null)} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${seasonConfigForm?.mode === 'manual' ? 'bg-white shadow text-purple-600' : 'text-slate-400'}`}>Manuale</button>
+                                </div>
                             </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="space-y-4">
-                                    <h3 className="text-xs font-black text-blue-400 uppercase tracking-wider">Periodo</h3>
+                            {/* TAB STAGIONI */}
+                            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                                {(['winter', 'spring', 'summer', 'autumn'] as const).map(s => (
+                                    <button key={s} onClick={() => changeSeasonTab(s)} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${activeSeasonTab === s ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>
+                                        {s === 'winter' ? '❄️ Inverno' : s === 'spring' ? '🌸 Primavera' : s === 'summer' ? '☀️ Estate' : '🍂 Autunno'}
+                                    </button>
+                                ))}
+                            </div>
+                            {/* FORM */}
+                            {seasonConfigForm && (
+                                <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-100 animate-fade-in">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Inizio</label><input type="date" value={seasonForm.startDate} onChange={e => setSeasonForm({...seasonForm, startDate: e.target.value})} className="w-full border rounded p-2 text-sm" /></div>
-                                        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Fine</label><input type="date" value={seasonForm.endDate} onChange={e => setSeasonForm({...seasonForm, endDate: e.target.value})} className="w-full border rounded p-2 text-sm" /></div>
+                                        <div><label className="text-[10px] font-bold text-slate-400 uppercase">Sfondo</label><div className="flex gap-2 mt-1"><input type="color" value={seasonConfigForm.seasons[activeSeasonTab].backgroundColor} onChange={e => handleSeasonChange('backgroundColor', e.target.value)} className="h-8 w-12 cursor-pointer rounded border" /><input type="text" value={seasonConfigForm.seasons[activeSeasonTab].backgroundColor} onChange={e => handleSeasonChange('backgroundColor', e.target.value)} className="w-full border rounded p-1 text-xs font-mono" /></div></div>
+                                        <div><label className="text-[10px] font-bold text-slate-400 uppercase">Animazione</label><select value={seasonConfigForm.seasons[activeSeasonTab].animationType} onChange={e => handleSeasonChange('animationType', e.target.value)} className="w-full border rounded p-1.5 text-sm mt-1"><option value="none">Nessuna</option><option value="snow">Neve (Lenta)</option><option value="rain">Pioggia (Veloce)</option><option value="float">Farfalle</option><option value="leaves">Foglie</option></select></div>
                                     </div>
+                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Emoji (virgola separati)</label><input type="text" value={emojiInput} onChange={e => handleEmojiChange(e.target.value)} className="w-full border rounded p-2 text-lg mt-1" /></div>
+                                    {seasonConfigForm.mode === 'manual' && (
+                                        <div className="mt-4 pt-4 border-t border-slate-200">
+                                            <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="currentManual" checked={seasonConfigForm.currentManualSeason === activeSeasonTab} onChange={() => setSeasonConfigForm({...seasonConfigForm, currentManualSeason: activeSeasonTab})} className="text-purple-600 focus:ring-purple-500" /><span className="text-sm font-bold text-slate-700">Imposta {activeSeasonTab} come attiva</span></label>
+                                        </div>
+                                    )}
                                 </div>
-
-                                <div className="space-y-4">
-                                    <h3 className="text-xs font-black text-blue-400 uppercase tracking-wider">Tema</h3>
-                                    <div>
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Animazione</label>
-                                        <select value={seasonForm.theme} onChange={e => setSeasonForm({...seasonForm, theme: e.target.value as any})} className="w-full border rounded p-2 text-sm">
-                                            <option value="none">Nessuna</option>
-                                            <option value="christmas">Natale (Neve)</option>
-                                            <option value="easter">Pasqua</option>
-                                            <option value="summer">Estate</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <button onClick={handleSeasonSave} className="mt-6 w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md hover:bg-blue-700 transition-colors">Salva Configurazione</button>
+                            )}
+                            <button onClick={saveSeasonality} className="mt-4 w-full bg-purple-600 text-white font-bold py-3 rounded-lg hover:bg-purple-700 shadow-md">Salva Tutto</button>
                         </div>
 
                         {isSuperAdmin && (
                             <div className="bg-red-50 p-6 rounded-xl border border-red-100">
-                                <h2 className="text-lg font-bold text-red-800 mb-4">Zona Pericolo (Super Admin)</h2>
+                                <h2 className="text-lg font-bold text-red-800 mb-4">Zona Pericolo</h2>
                                 <div className="flex gap-2 items-end">
                                     <div className="flex-grow"><label className="text-xs font-bold text-red-400 uppercase">Data Limite</label><input type="date" value={massDeleteDate} onChange={e => setMassDeleteDate(e.target.value)} className="w-full border border-red-200 rounded p-2 text-sm" /></div>
                                     <button onClick={() => handleMassDelete('orders')} className="bg-red-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-red-700">Elimina Ordini</button>

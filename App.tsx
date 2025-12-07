@@ -93,7 +93,24 @@ const App: React.FC = () => {
         });
         const unsubTombolaTickets = onSnapshot(collection(db, 'tombola_tickets'), (s) => setTombolaTickets(s.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket))));
         const unsubTombolaWins = onSnapshot(collection(db, 'tombola_wins'), (s) => setTombolaWins(s.docs.map(d => ({...d.data(), id: d.id} as TombolaWin))));
-        const unsubSeasonality = onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { if(d.exists()) setSeasonalityConfig(d.data() as SeasonalityConfig); else setDoc(doc(db, 'settings', 'seasonality'), { startDate: '', endDate: '', theme: 'none' }); });
+        
+        // Seasonality Config Listener con default per 4 stagioni
+        const unsubSeasonality = onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { 
+            if(d.exists()) setSeasonalityConfig(d.data() as SeasonalityConfig); 
+            else {
+                const defaultConfig: SeasonalityConfig = {
+                    mode: 'auto',
+                    currentManualSeason: 'winter',
+                    seasons: {
+                        winter: { name: 'Inverno', backgroundColor: '#1e293b', animationType: 'snow', emojis: ['❄️', '⛄', '🎄'] },
+                        spring: { name: 'Primavera', backgroundColor: '#f0fdf4', animationType: 'float', emojis: ['🌸', '🦋', '🌱'] },
+                        summer: { name: 'Estate', backgroundColor: '#fefce8', animationType: 'float', emojis: ['☀️', '🍦', '🌊'] },
+                        autumn: { name: 'Autunno', backgroundColor: '#fff7ed', animationType: 'leaves', emojis: ['🍂', '🍄', '🌰'] }
+                    }
+                };
+                setDoc(doc(db, 'settings', 'seasonality'), defaultConfig);
+            }
+        });
         
         return () => { unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); unsubSeasonality(); };
     }, []);
@@ -295,6 +312,8 @@ const App: React.FC = () => {
     const handleStockCorrection = async (pid: string, stock: number) => { await updateDoc(doc(db, 'products', pid), { stock }); };
     const handleResetCash = async () => { const batch = writeBatch(db); cashMovements.forEach(m => batch.update(doc(db, 'cash_movements', m.id), { amount: 0, reason: m.reason + ' (RESET)' })); await batch.commit(); };
     const handleMassDelete = async (date: string, type: 'orders'|'movements') => { const q = query(collection(db, type === 'orders' ? 'orders' : 'cash_movements'), where('timestamp', '<=', new Date(date).toISOString())); const s = await getDocs(q); const batch = writeBatch(db); s.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); };
+    
+    // Configura Stagionalità
     const handleUpdateSeasonality = async (cfg: SeasonalityConfig) => { await setDoc(doc(db, 'settings', 'seasonality'), cfg); };
 
     const renderContent = () => {
