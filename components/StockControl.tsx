@@ -19,13 +19,11 @@ const StockControl: React.FC<StockControlProps> = ({ products, onStockPurchase, 
     const [purchaseForm, setPurchaseForm] = useState({ quantity: 0, cost: 0 });
     const [correctionStock, setCorrectionStock] = useState(0);
 
-    // Estrai categorie uniche
     const categories = useMemo(() => ['all', ...new Set(products.map(p => p.category))], [products]);
 
     // LOGICA AVANZATA
     const processedProducts = useMemo(() => {
         let result = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
-        
         if (selectedCategory !== 'all') {
             result = result.filter(p => p.category === selectedCategory);
         }
@@ -36,10 +34,8 @@ const StockControl: React.FC<StockControlProps> = ({ products, onStockPurchase, 
                 case 'nameDesc': return b.name.localeCompare(a.name);
                 case 'stockAsc': return a.stock - b.stock;
                 case 'stockDesc': return b.stock - a.stock;
-                // Gestione date sicura
                 case 'dateDesc': return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
                 case 'dateAsc': return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
-                // Gestione Admin
                 case 'admin': return (a.createdBy || '').localeCompare(b.createdBy || '');
                 default: return 0;
             }
