@@ -1,7 +1,8 @@
+
 import React, { useState, useMemo } from 'react';
 import { Order, CashMovement } from '../types';
-import { EditIcon, TrashIcon, SaveIcon } from './Icons';
 import { User } from 'firebase/auth';
+import { TrashIcon } from './Icons';
 
 interface CashManagementProps {
     orders: Order[];
@@ -19,30 +20,21 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
     const [reason, setReason] = useState('');
     const [miscAmount, setMiscAmount] = useState('');
     const [miscReason, setMiscReason] = useState('');
-    
-    const [editingMovementId, setEditingMovementId] = useState<string | null>(null);
-    const [editForm, setEditForm] = useState({ amount: 0, reason: '' });
 
-    // CALCOLI SEPARATI PER CATEGORIA
     const activeOrders = useMemo(() => orders.filter(o => !o.isDeleted), [orders]);
-    // FIX NaN: Aggiunto || 0
     const salesRevenue = activeOrders.reduce((sum, o) => sum + o.total, 0) || 0;
     
-    const activeCashMovements = useMemo(() => movements.filter(m => !m.isDeleted), [movements]);
-    const cashMovementsBar = useMemo(() => activeCashMovements.filter(m => m.category === 'bar' || !m.category), [activeCashMovements]);
-    
+    // Filtra movimenti "BAR" e non cancellati
+    const activeMovements = useMemo(() => movements.filter(m => !m.isDeleted), [movements]);
+    const cashMovementsBar = useMemo(() => activeMovements.filter(m => m.category === 'bar' || !m.category), [activeMovements]);
     const deposits = cashMovementsBar.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0) || 0;
     const withdrawals = cashMovementsBar.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + m.amount, 0) || 0;
-    
     const operationalBalance = salesRevenue + deposits - withdrawals;
 
     // FONDO GIOCO
-    const cashMovementsTombola = useMemo(() => activeCashMovements.filter(m => m.category === 'tombola'), [activeCashMovements]);
+    const cashMovementsTombola = useMemo(() => activeMovements.filter(m => m.category === 'tombola'), [activeMovements]);
     const depositsTombola = cashMovementsTombola.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0) || 0;
-    const withdrawalsTombola = cashMovementsTombola.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + m.amount, 0) || 0;
-    
-    // Il fondo gioco è l'80% degli incassi NETTI (dopo eventuali versamenti in cassa bar)
-    const jackpotFund = (depositsTombola * 0.8) - withdrawalsTombola; 
+    const jackpotFund = depositsTombola * 0.8; 
 
     const handleSubmitWithdrawal = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -62,9 +54,12 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
 
     const handleReset = async () => { if(window.confirm("SEI SICURO? Questo azzererà il conteggio della cassa.")) await onResetCash(); };
 
-    const startEdit = (m: CashMovement) => { setEditingMovementId(m.id); setEditForm({ amount: m.amount, reason: m.reason }); };
-    const saveEdit = async (original: CashMovement) => { await onUpdateMovement({ ...original, amount: editForm.amount, reason: editForm.reason }); setEditingMovementId(null); };
-    const handleDelete = async (id: string) => { if(window.confirm("Eliminare questo movimento?")) await onDeleteMovement(id, currentUser?.email || 'admin'); };
+    const handleDelete = async (id: string) => {
+        if (!currentUser?.email) return alert("Devi essere loggato per eliminare.");
+        if (window.confirm("Sei sicuro di voler eliminare questo movimento?")) {
+            await onDeleteMovement(id, currentUser.email);
+        }
+    };
 
     return (
         <div className="max-w-4xl mx-auto space-y-8">
@@ -76,19 +71,12 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
                         <span>Vendite: +€{(salesRevenue || 0).toFixed(2)}</span>
                         <span>Spese: -€{(withdrawals || 0).toFixed(2)}</span>
                     </div>
-                    {isSuperAdmin && (
-                        <button onClick={handleReset} className="absolute top-4 right-4 text-[10px] bg-red-600 px-2 py-1 rounded hover:bg-red-500 font-bold">RESET</button>
-                    )}
+                    {isSuperAdmin && <button onClick={handleReset} className="absolute top-4 right-4 text-[10px] bg-red-600 px-2 py-1 rounded hover:bg-red-500 font-bold">RESET</button>}
                 </div>
                 
                 <div className="bg-indigo-700 p-6 rounded-xl text-white shadow-lg">
                     <p className="text-xs text-indigo-300 uppercase font-bold tracking-wider">Fondo Gioco (Montepremi)</p>
-                    {/* Nascondi se zero o negativo */}
-                    {jackpotFund > 0 ? (
-                        <p className="text-4xl font-black mt-1">€{(jackpotFund || 0).toFixed(2)}</p>
-                    ) : (
-                        <p className="text-4xl font-black mt-1 text-white/20">€0.00</p>
-                    )}
+                    <p className="text-4xl font-black mt-1">€{(jackpotFund || 0).toFixed(2)}</p>
                     <p className="mt-4 text-xs opacity-80">Incassi totali Tombola: €{(depositsTombola || 0).toFixed(2)}</p>
                 </div>
             </div>
@@ -114,42 +102,27 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b border-slate-200">Storico Movimenti Cassa</h3>
+                <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b border-slate-200">Storico Movimenti Completo</h3>
                 <div className="max-h-80 overflow-y-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-500 sticky top-0 text-xs uppercase"><tr><th className="p-3">Data</th><th className="p-3">Causale</th><th className="p-3">Cat.</th><th className="p-3 text-right">Importo</th><th className="p-3 text-center">Azioni</th></tr></thead>
+                        <thead className="bg-slate-50 text-slate-500 sticky top-0 text-xs uppercase"><tr><th className="p-3">Data</th><th className="p-3">Causale</th><th className="p-3">Cat.</th><th className="p-3 text-right">Importo</th><th className="p-3"></th></tr></thead>
                         <tbody className="divide-y divide-slate-100">
                             {movements.map(m => (
-                                <tr key={m.id} className={`hover:bg-slate-50 ${m.isDeleted ? 'bg-red-50' : ''}`}>
+                                <tr key={m.id} className={`hover:bg-slate-50 ${m.isDeleted ? 'bg-red-50 opacity-50' : ''}`}>
                                     <td className="p-3 text-xs text-slate-400 whitespace-nowrap">
                                         {new Date(m.timestamp).toLocaleString()}
-                                        {m.isDeleted && <div className="text-[9px] text-red-500">Del by: {m.deletedBy}</div>}
+                                        {m.isDeleted && <div className="text-[9px] text-red-500">DEL: {m.deletedBy}</div>}
                                     </td>
-                                    <td className="p-3 font-medium text-slate-700">
-                                        {editingMovementId === m.id ? (
-                                            <input type="text" value={editForm.reason} onChange={e => setEditForm({...editForm, reason: e.target.value})} className="border rounded px-2 py-1 w-full" />
-                                        ) : (
-                                            <span className={m.isDeleted ? 'line-through text-red-800' : ''}>{m.reason}</span>
-                                        )}
-                                    </td>
+                                    <td className="p-3 font-medium text-slate-700">{m.reason}</td>
                                     <td className="p-3 text-xs uppercase font-bold text-slate-400">{m.category || 'BAR'}</td>
                                     <td className={`p-3 text-right font-bold ${m.type === 'withdrawal' ? 'text-red-500' : 'text-green-500'}`}>
-                                        {editingMovementId === m.id ? (
-                                            <input type="number" step="0.01" value={editForm.amount} onChange={e => setEditForm({...editForm, amount: parseFloat(e.target.value)})} className="border rounded px-2 py-1 w-20 text-right" />
-                                        ) : (
-                                            <span className={m.isDeleted ? 'line-through opacity-50' : ''}>{m.type === 'withdrawal' ? '-' : '+'}€{m.amount.toFixed(2)}</span>
-                                        )}
+                                        {m.type === 'withdrawal' ? '-' : '+'}€{m.amount.toFixed(2)}
                                     </td>
-                                    <td className="p-3 flex justify-center gap-2">
-                                        {!m.isDeleted && (
-                                            <>
-                                                {editingMovementId === m.id ? (
-                                                    <button onClick={() => saveEdit(m)}><SaveIcon className="h-4 w-4 text-green-600" /></button>
-                                                ) : (
-                                                    <button onClick={() => startEdit(m)}><EditIcon className="h-4 w-4 text-blue-400" /></button>
-                                                )}
-                                                <button onClick={() => handleDelete(m.id)}><TrashIcon className="h-4 w-4 text-red-500" /></button>
-                                            </>
+                                    <td className="p-3 text-right">
+                                        {!m.isDeleted && isSuperAdmin && (
+                                            <button onClick={() => handleDelete(m.id)} className="text-red-400 hover:text-red-600">
+                                                <TrashIcon className="h-4 w-4" />
+                                            </button>
                                         )}
                                     </td>
                                 </tr>

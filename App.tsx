@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
 import { collection, onSnapshot, doc, getDocs, writeBatch, runTransaction, addDoc, updateDoc, deleteDoc, setDoc, orderBy, query, getDoc, where } from 'firebase/firestore';
@@ -78,19 +79,18 @@ const App: React.FC = () => {
         const unsubAdmins = onSnapshot(collection(db, 'admins'), (s) => setAdminList(s.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser))));
         const unsubSettings = onSnapshot(doc(db, 'settings', 'tillColors'), (d) => { if(d.exists()) setTillColors(d.data() as TillColors); });
         
-        // Configurazione Tombola con valori di default aggiornati
-        const unsubTombolaConfig = onSnapshot(doc(db, 'tombola', 'config'), (d) => {
-            if (d.exists()) setTombolaConfig(d.data() as TombolaConfig);
+        const unsubTombolaConfig = onSnapshot(doc(db, 'tombola', 'config'), (d) => { 
+            if (d.exists()) setTombolaConfig(d.data() as TombolaConfig); 
             else setDoc(doc(db, 'tombola', 'config'), { 
                 status: 'pending',
-                maxTickets: 168, // Default aggiornato
-                minTicketsToStart: 84, // Default 50%
+                maxTickets: 168,
+                minTicketsToStart: 84,
                 ticketPriceSingle: 1, 
                 ticketPriceBundle: 5,
                 jackpot: 0, 
                 lastExtraction: new Date().toISOString(), 
                 extractedNumbers: [] 
-            });
+            }); 
         });
         const unsubTombolaTickets = onSnapshot(collection(db, 'tombola_tickets'), (s) => setTombolaTickets(s.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket))));
         const unsubTombolaWins = onSnapshot(collection(db, 'tombola_wins'), (s) => setTombolaWins(s.docs.map(d => ({...d.data(), id: d.id} as TombolaWin))));
@@ -123,11 +123,8 @@ const App: React.FC = () => {
     // Tombola Extraction
     useEffect(() => {
         const runTombolaExtraction = async () => {
-            if (!tombolaConfig || tombolaConfig.extractedNumbers.length >= 90) return;
+            if (!tombolaConfig || !tombolaConfig.extractedNumbers || tombolaConfig.extractedNumbers.length >= 90) return;
             if (tombolaConfig.status !== 'active') return;
-            
-            // Controllo soglia minima (opzionale, se si volesse riattivare l'automazione in futuro)
-            // Attualmente l'avvio è manuale, quindi questo check è implicito nello Start manuale dell'admin
             
             const now = new Date().getTime();
             const last = new Date(tombolaConfig.lastExtraction).getTime();
@@ -138,12 +135,17 @@ const App: React.FC = () => {
                         const configRef = doc(db, 'tombola', 'config');
                         const configSnap = await t.get(configRef);
                         const currentConfig = configSnap.data() as TombolaConfig;
+                        // Safety check inside transaction
+                        if (!currentConfig.extractedNumbers) currentConfig.extractedNumbers = [];
+
                         let nextNum;
                         do { nextNum = Math.floor(Math.random() * 90) + 1; } while (currentConfig.extractedNumbers.includes(nextNum));
                         const newExtracted = [...currentConfig.extractedNumbers, nextNum];
+                        
                         const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
                         ticketsSnap.forEach(ticketDoc => {
                             const ticket = ticketDoc.data() as TombolaTicket;
+                            if (!ticket.numbers) return; // Skip broken tickets
                             const matches = ticket.numbers.filter(n => newExtracted.includes(n));
                             const count = matches.length;
                             if ([2,3,4,5,15].includes(count)) {
@@ -186,14 +188,6 @@ const App: React.FC = () => {
     
     const handleBuyTombolaTicket = async (staffId: string, quantity: number) => {
         if (!tombolaConfig) return;
-        
-        // Controllo Limite Max Biglietti
-        const currentTicketsCount = tombolaTickets.length;
-        if (currentTicketsCount + quantity > tombolaConfig.maxTickets) {
-            alert(`Impossibile acquistare. Rimangono solo ${tombolaConfig.maxTickets - currentTicketsCount} cartelle.`);
-            return;
-        }
-
         const staffMember = staff.find(s => s.id === staffId);
         if (!staffMember) return;
 
@@ -252,15 +246,7 @@ const App: React.FC = () => {
     };
 
     const handleUpdateTombolaConfig = async (cfg: TombolaConfig) => { await setDoc(doc(db, 'tombola', 'config'), cfg); };
-    
-    const handleTombolaStart = async () => { 
-        if (!tombolaConfig) return;
-        if (tombolaTickets.length < tombolaConfig.minTicketsToStart) {
-             // Opzionale: Alert se si forza l'avvio sotto soglia
-             if(!window.confirm(`Attenzione: vendute solo ${tombolaTickets.length} cartelle su min ${tombolaConfig.minTicketsToStart}. Avviare comunque?`)) return;
-        }
-        await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() }); 
-    };
+    const handleTombolaStart = async () => { await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() }); };
 
     const handleTransferGameFunds = async (amount: number, gameName: string) => {
         if (amount <= 0) return;
@@ -306,9 +292,11 @@ const App: React.FC = () => {
         switch (view) {
             case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
-            case 'tombola': return <TombolaView 
+            case 'tombola': 
+                if (!tombolaConfig) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
+                return <TombolaView 
                 onGoBack={handleGoBack} 
-                config={tombolaConfig!} 
+                config={tombolaConfig} 
                 tickets={tombolaTickets} 
                 wins={tombolaWins} 
                 onBuyTicket={handleBuyTombolaTicket} 

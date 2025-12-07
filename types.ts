@@ -1,3 +1,4 @@
+
 export interface Product {
     id: string;
     name: string;
@@ -8,8 +9,6 @@ export interface Product {
     isFavorite: boolean;
     icon?: string;
     costPrice?: number;
-    createdAt?: string;
-    createdBy?: string;
 }
 
 export interface OrderItem {
@@ -70,8 +69,8 @@ export interface AdminUser {
 
 export interface TombolaConfig {
     status: 'pending' | 'active' | 'completed';
-    maxTickets: number; // Default 168 (es. 2 serie da 90 o 90+riserva)
-    minTicketsToStart: number; // Soglia avvio
+    maxTickets: number;
+    minTicketsToStart?: number;
     ticketPriceSingle: number;
     ticketPriceBundle: number;
     jackpot: number;
