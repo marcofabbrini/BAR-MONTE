@@ -129,6 +129,8 @@ const App: React.FC = () => {
             const now = new Date().getTime();
             const last = new Date(tombolaConfig.lastExtraction).getTime();
             const diffHours = (now - last) / (1000 * 60 * 60);
+            
+            // Check extraction every 2 hours (logic kept from original)
             if (diffHours >= 2) {
                 try {
                     await runTransaction(db, async (t) => {
@@ -264,6 +266,8 @@ const App: React.FC = () => {
                 if (!ticketSnap.exists()) throw new Error("Cartella non trovata");
 
                 const ticketData = ticketSnap.data() as TombolaTicket;
+                
+                // Rimborso sicuro basato sul prezzo pagato
                 const refundAmount = ticketData.pricePaid !== undefined ? ticketData.pricePaid : currentConfig.ticketPriceSingle;
                 const jackpotDeduction = refundAmount * 0.80;
                 const revenueDeduction = refundAmount * 0.20;
@@ -277,7 +281,7 @@ const App: React.FC = () => {
                 const cashRef = doc(collection(db, 'cash_movements'));
                 t.set(cashRef, { 
                     amount: refundAmount, 
-                    reason: `Rimborso Cartella (Annullamento)`, 
+                    reason: "Rimborso Cartella (Annullamento)", 
                     timestamp: new Date().toISOString(), 
                     type: 'withdrawal', 
                     category: 'tombola' 
@@ -286,7 +290,7 @@ const App: React.FC = () => {
                 const barCashRef = doc(collection(db, 'cash_movements'));
                 t.set(barCashRef, { 
                     amount: revenueDeduction, 
-                    reason: `Storno Utile Tombola (Rimborso)`, 
+                    reason: "Storno Utile Tombola (Rimborso)", 
                     timestamp: new Date().toISOString(), 
                     type: 'withdrawal', 
                     category: 'bar' 

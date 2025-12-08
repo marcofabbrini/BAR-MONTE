@@ -41,6 +41,8 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
     const minStart = config?.minTicketsToStart || 0;
     const ticketsNeededToStart = Math.max(0, minStart - totalTickets);
     
+    const extractedNumbersSafe = useMemo(() => config?.extractedNumbers || [], [config]);
+
     const nextExtractionTime = useMemo(() => {
         if (!config?.lastExtraction) return new Date();
         return new Date(new Date(config.lastExtraction).getTime() + 2 * 60 * 60 * 1000);
@@ -111,18 +113,21 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
     const selectedStaffMember = staff.find(s => s.id === selectedStaffId);
 
     const formatTicketToGrid = (numbers: number[]) => {
-        if (!numbers || !Array.isArray(numbers)) return Array(3).fill(Array(9).fill(null));
+        if (!numbers || !Array.isArray(numbers)) return Array.from({length: 3}, () => Array(9).fill(null));
 
-        const grid: (number | null)[][] = [[], [], []];
+        // Creiamo 3 righe indipendenti
+        const grid: (number | null)[][] = Array.from({length: 3}, () => Array(9).fill(null));
         const cols: number[][] = Array.from({length: 9}, () => []);
+        
         numbers.forEach(n => {
             const colIdx = n === 90 ? 8 : Math.floor(n / 10);
             cols[colIdx].push(n);
         });
-        for(let r=0; r<3; r++) grid[r] = Array(9).fill(null);
+
         cols.forEach((colNums, colIdx) => {
-            colNums.forEach((n, i) => {
+            colNums.forEach((n) => {
                 let placed = false;
+                // Prova a piazzare in una riga vuota per quella colonna
                 for(let r=0; r<3; r++) {
                     const countRow = grid[r].filter(x => x !== null).length;
                     if (grid[r][colIdx] === null && countRow < 5) {
@@ -131,6 +136,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                         break;
                     }
                 }
+                // Fallback: piazza dove c'è spazio
                 if(!placed) {
                      for(let r=0; r<3; r++) {
                         if (grid[r][colIdx] === null) { grid[r][colIdx] = n; break; }
@@ -178,7 +184,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
 
     const handleTransfer = async () => {
         if((config?.jackpot || 0) <= 0) return;
-        if(window.confirm(`Versare €${config.jackpot.toFixed(2)} in Cassa Bar?`)) {
+        if(window.confirm(`Versare €${(config.jackpot || 0).toFixed(2)} in Cassa Bar?`)) {
             await onTransferFunds(config.jackpot, 'Tombola');
         }
     };
@@ -312,7 +318,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                 {Array.from({ length: 90 }, (_, i) => i + 1).map(num => (
                                     <div 
                                         key={num} 
-                                        className={`aspect-square flex items-center justify-center font-bold rounded-full text-xs md:text-sm shadow-sm transition-all duration-500 ${config.extractedNumbers.includes(num) ? 'bg-red-500 text-white scale-110 shadow-md ring-2 ring-red-200' : 'bg-slate-50 text-slate-300'}`}
+                                        className={`aspect-square flex items-center justify-center font-bold rounded-full text-xs md:text-sm shadow-sm transition-all duration-500 ${extractedNumbersSafe.includes(num) ? 'bg-red-500 text-white scale-110 shadow-md ring-2 ring-red-200' : 'bg-slate-50 text-slate-300'}`}
                                     >
                                         {num}
                                     </div>
@@ -407,7 +413,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                                 {formatTicketToGrid(ticket.numbers).map((row, rIdx) => (
                                                     <div key={rIdx} className="grid grid-cols-9 gap-0.5 mb-0.5 last:mb-0">
                                                         {row.map((num, cIdx) => (
-                                                            <div key={cIdx} className={`aspect-square flex items-center justify-center text-[9px] font-bold rounded-sm border ${num ? (config.extractedNumbers.includes(num) ? 'bg-red-500 text-white border-red-600' : 'bg-slate-50 text-slate-700 border-slate-200') : 'bg-transparent border-transparent'}`}
+                                                            <div key={cIdx} className={`aspect-square flex items-center justify-center text-[9px] font-bold rounded-sm border ${num ? (extractedNumbersSafe.includes(num) ? 'bg-red-500 text-white border-red-600' : 'bg-slate-50 text-slate-700 border-slate-200') : 'bg-transparent border-transparent'}`}
                                                             >
                                                                 {num}
                                                             </div>
