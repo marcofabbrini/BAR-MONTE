@@ -169,17 +169,18 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row relative">
-            {/* ATTENDANCE MODAL */}
+            {/* ATTENDANCE MODAL (MINIMALE & NO SCROLLBARS) */}
             {isAttendanceModalOpen && (
-                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up">
-                        <div className="bg-slate-800 p-6 text-white text-center relative">
-                            <h2 className="text-2xl font-black uppercase tracking-wide">Foglio Presenze</h2>
-                            <p className="text-sm opacity-80 mt-1">Seleziona il personale in servizio per il Turno {till.shift.toUpperCase()}</p>
-                            <div className="absolute top-4 right-4 text-4xl opacity-10">📋</div>
+                <div className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-lg overflow-hidden animate-slide-up">
+                        <div className="p-6 text-center border-b border-slate-50">
+                            <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Presenze Turno {till.shift.toUpperCase()}</h2>
+                            <p className="text-xs text-slate-400 mt-1 font-medium">Chi è in servizio oggi?</p>
                         </div>
+                        
                         <div className="p-6">
-                            <div className="grid grid-cols-1 gap-3 max-h-[50vh] overflow-y-auto mb-6">
+                            {/* GRIGLIA UTENTI (No scrollbar visiva) */}
+                            <div className="grid grid-cols-2 gap-3 mb-6 max-h-[50vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
                                 {staffForShift.map(member => {
                                     const isSelected = presentStaffIds.includes(member.id);
                                     return (
@@ -187,31 +188,25 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                             key={member.id} 
                                             onClick={() => handleToggleAttendance(member.id)}
                                             className={`
-                                                flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-200
+                                                flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200
                                                 ${isSelected 
-                                                    ? 'border-green-500 bg-green-50 shadow-md transform scale-[1.02]' 
-                                                    : 'border-slate-200 bg-slate-50 text-slate-400 grayscale hover:grayscale-0 hover:bg-white'}
+                                                    ? 'border-green-500 bg-green-50 shadow-sm' 
+                                                    : 'border-slate-100 bg-slate-50 text-slate-300'}
                                             `}
                                         >
-                                            <div className="flex items-center gap-4">
-                                                <div className="text-2xl">{member.icon || '👤'}</div>
-                                                <div className="text-left">
-                                                    <p className={`font-bold ${isSelected ? 'text-slate-800' : 'text-slate-500'}`}>{member.name}</p>
-                                                    <p className="text-[10px] uppercase font-bold text-slate-400">Turno {member.shift.toUpperCase()}</p>
-                                                </div>
-                                            </div>
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${isSelected ? 'bg-green-500 border-green-500 text-white' : 'border-slate-300'}`}>
-                                                {isSelected && <CheckIcon className="h-5 w-5" />}
-                                            </div>
+                                            <div className="text-3xl mb-1 filter drop-shadow-sm">{member.icon || '👤'}</div>
+                                            <p className={`font-bold text-sm leading-tight ${isSelected ? 'text-slate-800' : 'text-slate-400'}`}>{member.name}</p>
+                                            {isSelected && <div className="mt-1 text-green-500"><CheckIcon className="h-4 w-4" /></div>}
                                         </button>
                                     );
                                 })}
                             </div>
+
                             <button 
                                 onClick={confirmAttendance}
-                                className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl text-lg shadow-lg uppercase tracking-wider transition-colors"
+                                className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl text-sm shadow-md uppercase tracking-wider transition-colors"
                             >
-                                Conferma Presenze
+                                Conferma e Accedi
                             </button>
                         </div>
                     </div>
@@ -235,26 +230,26 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         <h1 className="text-sm font-bold tracking-tight">{till.name}</h1>
                     </div>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 h-8">
                         {selectedStaffId && selectedStaffMember && (
                             <button 
                                 onClick={handleStaffDeselection}
-                                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-full pr-3 pl-1 py-1 transition-all animate-fade-in"
+                                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-full pr-3 pl-1 py-1 transition-all animate-fade-in h-full"
                             >
-                                <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-xs shadow-sm text-slate-800">
+                                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs shadow-sm text-slate-800">
                                     {selectedStaffMember.icon || getInitials(selectedStaffMember.name)}
                                 </div>
                                 <span className="font-bold text-xs">{selectedStaffMember.name}</span>
                             </button>
                         )}
-                        <div className="flex items-center gap-1 bg-white/20 rounded-full pl-3 pr-1 py-0.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wide mr-1">Turno {till.shift}</span>
+                        <div className="flex items-center bg-white/20 rounded-full pl-3 pr-1 py-0 h-full">
+                            <span className="text-[10px] font-bold uppercase tracking-wide mr-2 flex items-center h-full">Turno {till.shift}</span>
                             <button 
                                 onClick={() => setIsAttendanceModalOpen(true)}
-                                className="w-6 h-6 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition-colors text-white"
+                                className="w-6 h-6 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow-sm"
                                 title="Modifica Presenze"
                             >
-                                <UsersIcon className="h-3 w-3" />
+                                <UsersIcon className="h-3 w-3 text-black" />
                             </button>
                         </div>
                     </div>
@@ -285,7 +280,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                                         key={staff.id} 
                                                         onClick={() => handleStaffSelection(staff.id)}
                                                         disabled={!isPresent}
-                                                        className={`group flex flex-col items-center gap-1 transition-all ${!isPresent ? 'opacity-30 grayscale cursor-not-allowed' : 'hover:scale-110 cursor-pointer'}`}
+                                                        className={`group flex flex-col items-center gap-1 transition-all ${!isPresent ? 'opacity-30 grayscale cursor-not-allowed hidden' : 'hover:scale-110 cursor-pointer'}`}
                                                     >
                                                         <div className={`w-14 h-14 rounded-full shadow-md border-2 flex items-center justify-center text-2xl transition-all ${!isPresent ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-100 group-hover:border-primary'}`}>
                                                             {staff.icon || <span className="text-lg font-bold text-slate-600">{getInitials(staff.name)}</span>}

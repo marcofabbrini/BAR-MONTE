@@ -26,13 +26,10 @@ const LineChart: React.FC<LineChartProps> = ({ data, height = 300 }) => {
                 label: '', // Label vuota per placeholder
                 value: 0
             }));
-            // Uniamo i placeholder (solo per layout) ai dati reali
-            // Nota: Se volessimo date reali dovremmo parsare l'ultima data, ma per layout grafico basta questo
             chartData = [...prefix, ...chartData];
         }
 
         // GENERAZIONE PREVISIONE (FORECAST - Grigio Tratteggiato)
-        // Semplice regressione sugli ultimi punti
         if (data.length >= 2) {
             const lastValues = data.slice(-5).map(d => d.value); // Ultimi 5 valori reali
             const n = lastValues.length;
@@ -127,16 +124,32 @@ const LineChart: React.FC<LineChartProps> = ({ data, height = 300 }) => {
 
     return (
         <div className="w-full relative overflow-hidden" style={{ height: `${height}px` }}>
-            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
+            <style>{`
+                @keyframes draw {
+                    from { stroke-dashoffset: 2000; }
+                    to { stroke-dashoffset: 0; }
+                }
+                .path-animate {
+                    stroke-dasharray: 2000;
+                    stroke-dashoffset: 0;
+                    animation: draw 2s ease-out forwards;
+                }
+                @keyframes fadeArea {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                .area-animate {
+                    animation: fadeArea 2s ease-out forwards;
+                }
+            `}</style>
+            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
                 
                 {/* Griglia Y e Label */}
                 {[0, 0.25, 0.5, 0.75, 1].map((p, i) => {
                     const yVal = getY(maxValue * p);
                     return (
                         <g key={i}>
-                            {/* Linea Orizzontale */}
                             <line x1={paddingLeft} y1={yVal} x2={width - paddingRight} y2={yVal} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" />
-                            {/* Label Valore */}
                             <text x={paddingLeft - 8} y={yVal + 3} textAnchor="end" className="text-[10px] fill-slate-400 font-sans font-medium">
                                 €{(maxValue * p).toFixed(0)}
                             </text>
@@ -144,10 +157,8 @@ const LineChart: React.FC<LineChartProps> = ({ data, height = 300 }) => {
                     )
                 })}
 
-                {/* Asse Y Linea Verticale */}
+                {/* Assi */}
                 <line x1={paddingLeft} y1={paddingTop} x2={paddingLeft} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1" />
-                
-                {/* Asse X Linea Orizzontale */}
                 <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1" />
 
                 {/* Area Sfumata (Solo Real Data) */}
@@ -157,21 +168,19 @@ const LineChart: React.FC<LineChartProps> = ({ data, height = 300 }) => {
                         <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
                     </linearGradient>
                 </defs>
-                <path d={fillPath} fill="url(#chartGradient)" stroke="none" />
+                <path d={fillPath} fill="url(#chartGradient)" stroke="none" className="area-animate" />
 
-                {/* Linea Reale (Arancione) */}
-                <path d={realPath} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                {/* Linea Reale (Arancione) - Animata */}
+                <path d={realPath} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="path-animate" />
                 
-                {/* Linea Previsione (Grigio Tratteggiato) */}
-                <path d={forecastPath} fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="5 5" />
+                {/* Linea Previsione (Grigio Tratteggiato) - Animata */}
+                <path d={forecastPath} fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="5 5" className="path-animate" />
 
                 {/* Punti e Label Asse X */}
                 {allPoints.map((p, i) => (
-                    <g key={i}>
-                        {/* Punto */}
+                    <g key={i} className="animate-fade-in" style={{ animationDelay: `${i * 0.1}s` }}>
                         <circle cx={p.x} cy={p.y} r={p.isForecast ? "2" : "3"} fill={p.isForecast ? "#cbd5e1" : "#fff"} stroke={p.isForecast ? "none" : "#f97316"} strokeWidth="2" />
                         
-                        {/* Label Asse X (Data) - Mostra solo se non si sovrappone troppo */}
                         {(i % Math.ceil(allPoints.length / 8) === 0 || i === allPoints.length -1) && (
                             <text x={p.x} y={height - 10} textAnchor="middle" className={`text-[9px] font-sans ${p.isForecast ? 'fill-slate-300 italic' : 'fill-slate-500 font-bold'}`}>
                                 {p.label}
