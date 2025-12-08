@@ -144,3 +144,11 @@ export interface ShiftSettings {
     rcAnchorShift?: Shift; // Quale turno era di servizio (e quindi ha generato il salto per un sottogruppo)
     rcAnchorSubGroup?: number; // Quale sottogruppo (1-8) stava riposando in quella data
 }
+
+export interface AttendanceRecord {
+    id: string;
+    tillId: string; // es. "TA", "TB"
+    date: string; // YYYY-MM-DD
+    timestamp: string;
+    presentStaffIds: string[];
+}

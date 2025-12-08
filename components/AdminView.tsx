@@ -1,13 +1,14 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings } from '../types';
+import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord } from '../types';
 import { User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
 import CashManagement from './CashManagement';
 import GamesHub from './GamesHub';
+import AttendanceCalendar from './AttendanceCalendar';
 
 interface AdminViewProps {
     onGoBack: () => void;
@@ -52,9 +53,11 @@ interface AdminViewProps {
 
     shiftSettings: ShiftSettings;
     onUpdateShiftSettings: (cfg: ShiftSettings) => Promise<void>;
+    
+    attendanceRecords: AttendanceRecord[];
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins';
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'attendance';
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
@@ -66,7 +69,8 @@ const AdminView: React.FC<AdminViewProps> = ({
     isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin,
     tombolaConfig, onNavigateToTombola,
     seasonalityConfig, onUpdateSeasonality,
-    shiftSettings, onUpdateShiftSettings
+    shiftSettings, onUpdateShiftSettings,
+    attendanceRecords
 }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -271,6 +275,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <TabButton tab="admins" label="Admin" icon={<UserPlusIcon className="h-6 w-6" />} />
                             <TabButton tab="staff" label="Staff" icon={<StaffIcon className="h-6 w-6" />} />
                             <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-6 w-6" />} />
+                            <TabButton tab="attendance" label="Presenze" icon={<ClipboardIcon className="h-6 w-6" />} />
                         </div>
                     </div>
                 </div>
@@ -331,6 +336,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
+                {activeTab === 'attendance' && <AttendanceCalendar attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} />}
                 
                 {activeTab === 'settings' && (
                     <div className="space-y-6">

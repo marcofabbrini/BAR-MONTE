@@ -13,7 +13,7 @@ import AnalottoView from './components/AnalottoView';
 import DiceGame from './components/DiceGame'; // Nuovo componente
 import ShiftCalendar from './components/ShiftCalendar';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
-import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings, AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel } from './types';
+import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings, AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel, AttendanceRecord } from './types';
 
 type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice';
 
@@ -41,6 +41,9 @@ const App: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
     const [cashMovements, setCashMovements] = useState<CashMovement[]>([]);
     const [tillColors, setTillColors] = useState<TillColors>({});
+    
+    // Attendance State
+    const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
 
     // Tombola State
     const [tombolaConfig, setTombolaConfig] = useState<TombolaConfig | undefined>(undefined);
@@ -113,6 +116,9 @@ const App: React.FC = () => {
 
         const unsubSettings = onSnapshot(doc(db, 'settings', 'tillColors'), (d) => { if(d.exists()) setTillColors(d.data() as TillColors); });
         
+        // ATTENDANCE
+        const unsubAttendance = onSnapshot(collection(db, 'shift_attendance'), (s) => setAttendanceRecords(s.docs.map(d => ({ ...d.data(), id: d.id } as AttendanceRecord))));
+
         // TOMBOLA
         const unsubTombolaConfig = onSnapshot(doc(db, 'tombola', 'config'), (d) => { 
             if (d.exists()) setTombolaConfig(d.data() as TombolaConfig); 
@@ -178,7 +184,7 @@ const App: React.FC = () => {
         });
         
         return () => { 
-            unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); 
+            unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); unsubAttendance();
             unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); 
             unsubAnalottoConfig(); unsubAnalottoBets(); unsubAnalottoExtractions();
             unsubSeasonality(); unsubShiftSettings(); 
@@ -658,6 +664,7 @@ const App: React.FC = () => {
                 onUpdateSeasonality={handleUpdateSeasonality}
                 shiftSettings={shiftSettings}
                 onUpdateShiftSettings={handleUpdateShiftSettings}
+                attendanceRecords={attendanceRecords} // Passaggio dati presenze
             />;
             default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectGames={handleSelectGames} onSelectCalendar={handleSelectCalendar} tillColors={tillColors} seasonalityConfig={seasonalityConfig} shiftSettings={shiftSettings} tombolaConfig={tombolaConfig} />;
         }
