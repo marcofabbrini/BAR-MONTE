@@ -1,15 +1,16 @@
 
 import React from 'react';
 import { TombolaConfig } from '../types';
-import { TicketIcon, TrophyIcon, BackArrowIcon, GamepadIcon } from './Icons';
+import { TicketIcon, TrophyIcon, BackArrowIcon, GamepadIcon, TruckIcon } from './Icons';
 
 interface GamesHubProps {
     onGoBack?: () => void;
     onPlayTombola: () => void;
+    onPlayParking?: () => void;
     tombolaConfig?: TombolaConfig;
 }
 
-const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, tombolaConfig }) => {
+const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, onPlayParking, tombolaConfig }) => {
     return (
         <div className="flex flex-col min-h-screen bg-slate-50">
             {onGoBack && (
@@ -47,6 +48,27 @@ const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, tombolaCon
                                 <div className="flex justify-between items-end">
                                     <span className="text-xs text-yellow-200 font-bold uppercase">Montepremi Attuale</span>
                                     <span className="text-xl font-black text-yellow-400">€{tombolaConfig?.jackpot.toFixed(2) || '0.00'}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white/10 p-3 text-center text-xs font-bold text-white uppercase tracking-widest group-hover:bg-white/20 transition-colors">
+                            Gioca Ora →
+                        </div>
+                    </div>
+
+                    {/* CARD FIRE PARKING JAM */}
+                    <div onClick={onPlayParking} className="bg-gradient-to-br from-slate-700 to-slate-900 rounded-2xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-4 border-orange-500">
+                        <div className="p-6 relative">
+                            <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
+                                <TruckIcon className="h-24 w-24 text-white" />
+                            </div>
+                            <h3 className="text-2xl font-black text-white uppercase tracking-wider mb-2 drop-shadow-md">Fire Parking Jam</h3>
+                            <p className="text-slate-300 text-sm font-medium mb-4">Libera l'APS dal parcheggio bloccato!</p>
+                            
+                            <div className="bg-black/20 rounded-lg p-3 backdrop-blur-sm">
+                                <div className="flex justify-between items-end">
+                                    <span className="text-xs text-orange-200 font-bold uppercase">Livelli</span>
+                                    <span className="text-xl font-black text-orange-400">3+</span>
                                 </div>
                             </div>
                         </div>

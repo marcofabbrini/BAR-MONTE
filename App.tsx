@@ -9,11 +9,12 @@ import ReportsView from './components/ReportsView';
 import AdminView from './components/AdminView';
 import TombolaView from './components/TombolaView';
 import GamesHub from './components/GamesHub';
+import ParkingJam from './components/ParkingJam';
 import ShiftCalendar from './components/ShiftCalendar';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
 import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings } from './types';
 
-type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar';
+type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'parking';
 
 // Helper per mescolare un array
 const shuffleArray = (array: any[]) => {
@@ -260,6 +261,7 @@ const App: React.FC = () => {
     const handleSelectAdmin = useCallback(() => setView('admin'), []);
     const handleSelectGames = useCallback(() => setView('games'), []);
     const handleSelectTombola = useCallback(() => setView('tombola'), []);
+    const handleSelectParking = useCallback(() => setView('parking'), []);
     const handleSelectCalendar = useCallback(() => setView('calendar'), []);
     const handleGoBack = useCallback(() => { setSelectedTillId(null); setView('selection'); }, []);
 
@@ -491,7 +493,9 @@ const App: React.FC = () => {
                 onUpdateTombolaConfig={handleUpdateTombolaConfig}
             />;
             case 'games':
-                return <GamesHub onGoBack={handleGoBack} onPlayTombola={handleSelectTombola} tombolaConfig={tombolaConfig} />;
+                return <GamesHub onGoBack={handleGoBack} onPlayTombola={handleSelectTombola} onPlayParking={handleSelectParking} tombolaConfig={tombolaConfig} />;
+            case 'parking':
+                return <ParkingJam onGoBack={handleGoBack} />;
             case 'calendar':
                 return <ShiftCalendar onGoBack={handleGoBack} tillColors={tillColors} shiftSettings={shiftSettings} />;
             case 'admin': return <AdminView 
