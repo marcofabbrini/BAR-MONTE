@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { TombolaConfig, TombolaTicket, TombolaWin, StaffMember } from '../types';
-import { BackArrowIcon, TrophyIcon, TicketIcon, GridIcon, CashIcon, TrashIcon } from './Icons';
+import { BackArrowIcon, TrophyIcon, TicketIcon, GridIcon, CashIcon, TrashIcon, SettingsIcon, SaveIcon } from './Icons';
 
 interface TombolaViewProps {
     onGoBack: () => void;
@@ -14,13 +14,26 @@ interface TombolaViewProps {
     onStartGame: () => Promise<void>;
     isSuperAdmin: boolean | null;
     onTransferFunds: (amount: number, gameName: string) => Promise<void>;
+    onUpdateTombolaConfig: (cfg: Partial<TombolaConfig>) => Promise<void>;
 }
 
-const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wins, onBuyTicket, onRefundTicket, staff, onStartGame, isSuperAdmin, onTransferFunds }) => {
+const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wins, onBuyTicket, onRefundTicket, staff, onStartGame, isSuperAdmin, onTransferFunds, onUpdateTombolaConfig }) => {
     const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
     const [buyQuantity, setBuyQuantity] = useState(1);
     
-    // Calcolo statistiche con controlli di sicurezza (FIXED)
+    // Stati locali per la configurazione (visibile solo ai super admin)
+    const [editPriceSingle, setEditPriceSingle] = useState(config?.ticketPriceSingle || 1);
+    const [editPriceBundle, setEditPriceBundle] = useState(config?.ticketPriceBundle || 5);
+    
+    // Aggiorna gli stati locali se la config cambia esternamente
+    useEffect(() => {
+        if(config) {
+            setEditPriceSingle(config.ticketPriceSingle);
+            setEditPriceBundle(config.ticketPriceBundle);
+        }
+    }, [config]);
+
+    // Calcolo statistiche con controlli di sicurezza
     const totalTickets = tickets ? tickets.length : 0;
     const maxTickets = config?.maxTickets || 168; // fallback
     const progressPercent = maxTickets > 0 ? Math.min((totalTickets / maxTickets) * 100, 100) : 0;
@@ -57,17 +70,34 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
 
     const handleBuy = async () => {
         if (!selectedStaffId) return;
-        await onBuyTicket(selectedStaffId, buyQuantity);
-        alert(`Acquistate ${buyQuantity} cartelle!`);
+        try {
+            await onBuyTicket(selectedStaffId, buyQuantity);
+            alert(`Acquistate ${buyQuantity} cartelle!`);
+        } catch (e: any) {
+            alert(e.message || "Errore durante l'acquisto.");
+        }
     };
 
     const handleDelete = async (ticketId: string) => {
         if (window.confirm("Sei sicuro di voler ANNULLARE questa cartella? L'importo verrà rimborsato.")) {
             try {
                 await onRefundTicket(ticketId);
-            } catch (e) {
-                alert("Errore durante l'annullamento.");
+            } catch (e: any) {
+                alert(e.message || "Errore durante l'annullamento.");
             }
+        }
+    };
+
+    const handleSaveConfig = async () => {
+        try {
+            await onUpdateTombolaConfig({
+                ticketPriceSingle: Number(editPriceSingle),
+                ticketPriceBundle: Number(editPriceBundle)
+            });
+            alert("Configurazione prezzi aggiornata!");
+        } catch (e) {
+            console.error(e);
+            alert("Errore nel salvataggio della configurazione.");
         }
     };
 
@@ -79,7 +109,6 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
     const selectedStaffMember = staff.find(s => s.id === selectedStaffId);
 
     const formatTicketToGrid = (numbers: number[]) => {
-        // Safety check
         if (!numbers || !Array.isArray(numbers)) return Array(3).fill(Array(9).fill(null));
 
         const grid: (number | null)[][] = [[], [], []];
@@ -110,7 +139,6 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         return grid;
     };
 
-    // CALCOLO GIOCATORI ATTIVI CON SICUREZZA
     const activePlayers = useMemo(() => {
         if (!tickets) return [];
         const playersMap = new Map<string, { id:string, name: string, icon: string, ticketCount: number, spent: number, wins: number }>();
@@ -153,7 +181,6 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         }
     };
     
-    // Safety
     if (!config) return <div className="flex items-center justify-center min-h-screen">Caricamento Tombola...</div>;
 
     return (
@@ -202,6 +229,43 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                         </div>
                     )}
                 </div>
+
+                {/* SUPER ADMIN CONFIG PANEL */}
+                {isSuperAdmin && (
+                    <div className="bg-indigo-600 text-white p-4 rounded-xl shadow-lg border-2 border-indigo-400">
+                        <h3 className="font-bold text-sm uppercase mb-3 flex items-center gap-2">
+                            <SettingsIcon className="h-4 w-4" /> Configurazione Rapida (Admin)
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+                            <div>
+                                <label className="text-[10px] font-bold uppercase opacity-80 mb-1 block">Prezzo Singola (€)</label>
+                                <input 
+                                    type="number" 
+                                    step="0.5" 
+                                    value={editPriceSingle} 
+                                    onChange={(e) => setEditPriceSingle(Number(e.target.value))} 
+                                    className="w-full bg-indigo-800 border border-indigo-500 text-white rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold uppercase opacity-80 mb-1 block">Prezzo Bundle 6x (€)</label>
+                                <input 
+                                    type="number" 
+                                    step="0.5" 
+                                    value={editPriceBundle} 
+                                    onChange={(e) => setEditPriceBundle(Number(e.target.value))} 
+                                    className="w-full bg-indigo-800 border border-indigo-500 text-white rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                />
+                            </div>
+                            <button 
+                                onClick={handleSaveConfig}
+                                className="bg-white text-indigo-700 font-bold py-2 rounded shadow hover:bg-indigo-50 flex items-center justify-center gap-2 transition-colors"
+                            >
+                                <SaveIcon className="h-4 w-4" /> Aggiorna Prezzi
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Dashboard Giocatori */}
                 {activePlayers.length > 0 && (
@@ -334,7 +398,8 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                                 {formatTicketToGrid(ticket.numbers).map((row, rIdx) => (
                                                     <div key={rIdx} className="grid grid-cols-9 gap-0.5 mb-0.5 last:mb-0">
                                                         {row.map((num, cIdx) => (
-                                                            <div key={cIdx} className={`aspect-square flex items-center justify-center text-[9px] font-bold rounded-sm border ${num ? (config.extractedNumbers.includes(num) ? 'bg-red-500 text-white border-red-600' : 'bg-slate-50 text-slate-700 border-slate-200') : 'bg-transparent border-transparent'}`}>
+                                                            <div key={cIdx} className={`aspect-square flex items-center justify-center text-[9px] font-bold rounded-sm border ${num ? (config.extractedNumbers.includes(num) ? 'bg-red-500 text-white border-red-600' : 'bg-slate-50 text-slate-700 border-slate-200') : 'bg-transparent border-transparent'}`}
+                                                            >
                                                                 {num}
                                                             </div>
                                                         ))}

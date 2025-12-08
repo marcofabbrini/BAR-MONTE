@@ -44,7 +44,6 @@ interface AdminViewProps {
     onRemoveAdmin: (id: string) => Promise<void>;
 
     tombolaConfig?: TombolaConfig;
-    onUpdateTombolaConfig: (cfg: Partial<TombolaConfig>) => Promise<void>;
     onNavigateToTombola: () => void;
 
     seasonalityConfig?: SeasonalityConfig;
@@ -60,7 +59,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     onAddStaff, onUpdateStaff, onDeleteStaff,
     onAddCashMovement, onUpdateMovement, onDeleteMovement, onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
     isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin,
-    tombolaConfig, onUpdateTombolaConfig, onNavigateToTombola,
+    tombolaConfig, onNavigateToTombola,
     seasonalityConfig, onUpdateSeasonality
 }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
@@ -72,7 +71,6 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [massDeleteDate, setMassDeleteDate] = useState('');
     const [colors, setColors] = useState<TillColors>(tillColors);
     const [newAdminEmail, setNewAdminEmail] = useState('');
-    const [tombolaPrice, setTombolaPrice] = useState(tombolaConfig?.ticketPriceSingle || 1);
 
     // Seasonality
     const [seasonStart, setSeasonStart] = useState(seasonalityConfig?.startDate || '');
@@ -147,7 +145,6 @@ const AdminView: React.FC<AdminViewProps> = ({
     const saveSettings = async () => { await onUpdateTillColors(colors); alert('Impostazioni salvate!'); };
     const handleAddAdminSubmit = async (e: React.FormEvent) => { e.preventDefault(); if(!newAdminEmail.trim()) return; await onAddAdmin(newAdminEmail.trim()); setNewAdminEmail(''); };
     const handleMassDelete = async (type: 'orders' | 'movements') => { if (!massDeleteDate) return alert("Seleziona data."); if (window.confirm(`ATTENZIONE: Eliminazione DEFINITIVA antecedenti a ${massDeleteDate}. Confermi?`)) await onMassDelete(massDeleteDate, type); };
-    const handleUpdateTombolaPrice = async () => { await onUpdateTombolaConfig({ ticketPriceSingle: Number(tombolaPrice) }); alert("Prezzo aggiornato!"); };
     
     const handleSaveSeasonality = async () => {
         await onUpdateSeasonality({ startDate: seasonStart, endDate: seasonEnd, theme: seasonTheme as any });
@@ -323,12 +320,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 ))}
                             </ul>
                         </div>
-                        {isSuperAdmin && tombolaConfig && (
-                            <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100">
-                                <h2 className="text-lg font-bold text-indigo-800 mb-4">Configurazione Tombola</h2>
-                                <div><label className="text-xs font-bold text-indigo-600 uppercase">Prezzo Cartella Singola (€)</label><div className="flex gap-2 mt-1"><input type="number" step="0.5" value={tombolaPrice} onChange={e => setTombolaPrice(Number(e.target.value))} className="w-full border border-indigo-200 rounded p-2" /><button onClick={handleUpdateTombolaPrice} className="bg-indigo-600 text-white px-4 py-2 rounded font-bold hover:bg-indigo-700">Salva</button></div></div>
-                            </div>
-                        )}
                      </div>
                 )}
             </main>

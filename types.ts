@@ -84,6 +84,7 @@ export interface TombolaTicket {
     playerName: string;
     numbers: number[];
     purchaseTime: string;
+    pricePaid?: number; // Importante per rimborsi corretti
 }
 
 export interface TombolaWin {
