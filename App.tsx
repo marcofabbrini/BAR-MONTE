@@ -120,8 +120,8 @@ const App: React.FC = () => {
                 status: 'pending',
                 maxTickets: 168,
                 minTicketsToStart: 84,
-                ticketPriceSingle: 1, 
-                ticketPriceBundle: 5,
+                ticketPriceSingle: 2, // DEFAULT AGGIORNATO
+                ticketPriceBundle: 5, // DEFAULT AGGIORNATO
                 jackpot: 0, 
                 lastExtraction: new Date().toISOString(), 
                 extractedNumbers: [] 
@@ -566,6 +566,9 @@ const App: React.FC = () => {
                 tillColors={tillColors} 
                 onSaveAttendance={handleSaveAttendance} 
                 onPlaceAnalottoBet={handlePlaceAnalottoBet} // Passaggio funzione giocata diretta
+                tombolaConfig={tombolaConfig} // Passaggio Config Tombola
+                tombolaTickets={tombolaTickets} // Passaggio Biglietti Tombola
+                onBuyTombolaTicket={handleBuyTombolaTicket} // Passaggio funzione acquisto Tombola
             />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
             case 'tombola': 

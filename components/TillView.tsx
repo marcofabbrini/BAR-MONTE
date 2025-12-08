@@ -1,10 +1,10 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel } from '../types';
+import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel, TombolaConfig, TombolaTicket } from '../types';
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
-import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon } from './Icons';
+import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon, TicketIcon } from './Icons';
 
 interface TillViewProps {
     till: Till;
@@ -16,9 +16,12 @@ interface TillViewProps {
     tillColors?: TillColors;
     onSaveAttendance?: (tillId: string, presentStaffIds: string[]) => Promise<void>;
     onPlaceAnalottoBet?: (bet: Omit<AnalottoBet, 'id' | 'timestamp'>) => Promise<void>;
+    tombolaConfig?: TombolaConfig;
+    tombolaTickets?: TombolaTicket[];
+    onBuyTombolaTicket?: (staffId: string, quantity: number) => Promise<void>;
 }
 
-const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet }) => {
+const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet, tombolaConfig, tombolaTickets, onBuyTombolaTicket }) => {
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
@@ -192,6 +195,30 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         }
     };
 
+    // --- TOMBOLA LOGIC ---
+    const handleQuickTombola = async (quantity: number) => {
+        if (!selectedStaffId) {
+            alert("Seleziona prima un utente per giocare.");
+            return;
+        }
+        if (!onBuyTombolaTicket || !tombolaTickets) return;
+
+        // Controllo Limite 18 cartelle
+        const currentTickets = tombolaTickets.filter(t => t.playerId === selectedStaffId).length;
+        if (currentTickets + quantity > 18) {
+            alert(`Limite raggiunto! L'utente ha già ${currentTickets} cartelle. Il massimo è 18.`);
+            return;
+        }
+
+        try {
+            await onBuyTombolaTicket(selectedStaffId, quantity);
+            alert(`Acquisto confermato: ${quantity} cartella/e!`);
+        } catch (error: any) {
+            console.error(error);
+            alert("Errore acquisto Tombola: " + (error.message || 'Sconosciuto'));
+        }
+    };
+
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row relative">
             
@@ -333,12 +360,42 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                                     onClick={() => handleQuickAnalotto(amt)}
                                                     className="bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col items-center justify-center p-2 shadow-sm hover:shadow-md hover:bg-emerald-100 transition-all h-36 relative group"
                                                 >
-                                                    <div className="absolute top-2 right-2 text-emerald-400 opacity-50"><CloverIcon className="h-4 w-4" /></div>
-                                                    <div className="text-4xl mb-2 filter drop-shadow-sm group-hover:scale-110 transition-transform">🍑</div>
+                                                    <div className="absolute top-0 right-2">
+                                                        <div className="bg-red-500 w-3 h-4 rounded-b-md shadow-sm flex items-center justify-center">
+                                                            <div className="text-[8px] text-white">★</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="absolute top-2 right-6 text-emerald-400 opacity-50"><CloverIcon className="h-4 w-4" /></div>
+                                                    <div className="text-4xl mb-2 filter drop-shadow-sm group-hover:scale-110 transition-transform">🍀</div>
                                                     <h3 className="font-black text-emerald-800 text-xs uppercase mb-1">Analotto</h3>
                                                     <span className="bg-emerald-600 text-white px-3 py-1 rounded-full font-black text-sm">€{amt}</span>
                                                 </button>
                                             ))}
+
+                                            {/* TOMBOLA CARDS (Integrazione prodotti - ACQUISTO RAPIDO) */}
+                                            {tombolaConfig?.status === 'pending' && (
+                                                <>
+                                                    <button 
+                                                        onClick={() => handleQuickTombola(1)}
+                                                        className="bg-red-50 border border-red-200 rounded-2xl flex flex-col items-center justify-center p-2 shadow-sm hover:shadow-md hover:bg-red-100 transition-all h-36 relative group"
+                                                    >
+                                                        <div className="absolute top-2 right-2 text-red-400 opacity-50"><TicketIcon className="h-4 w-4" /></div>
+                                                        <div className="text-4xl mb-2 filter drop-shadow-sm group-hover:scale-110 transition-transform">🎟️</div>
+                                                        <h3 className="font-black text-red-800 text-xs uppercase mb-1">1 Cartella</h3>
+                                                        <span className="bg-red-600 text-white px-3 py-1 rounded-full font-black text-sm">€{tombolaConfig.ticketPriceSingle}</span>
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleQuickTombola(6)}
+                                                        className="bg-red-50 border border-red-200 rounded-2xl flex flex-col items-center justify-center p-2 shadow-sm hover:shadow-md hover:bg-red-100 transition-all h-36 relative group"
+                                                    >
+                                                        <div className="absolute top-0 left-0 bg-yellow-400 text-red-900 text-[9px] font-bold px-2 py-0.5 rounded-br-lg z-10">OFFERTA</div>
+                                                        <div className="absolute top-2 right-2 text-red-400 opacity-50"><TicketIcon className="h-4 w-4" /></div>
+                                                        <div className="text-4xl mb-2 filter drop-shadow-sm group-hover:scale-110 transition-transform">🎟️x6</div>
+                                                        <h3 className="font-black text-red-800 text-xs uppercase mb-1">6 Cartelle</h3>
+                                                        <span className="bg-red-600 text-white px-3 py-1 rounded-full font-black text-sm">€{tombolaConfig.ticketPriceBundle}</span>
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 )}
