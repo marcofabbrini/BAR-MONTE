@@ -51,7 +51,10 @@ const App: React.FC = () => {
     // Shift Settings (Calibration)
     const [shiftSettings, setShiftSettings] = useState<ShiftSettings>({
         anchorDate: new Date().toISOString().split('T')[0], // Default provvisorio
-        anchorShift: 'b' // Default richiesto
+        anchorShift: 'b', // Default richiesto
+        rcAnchorDate: '',
+        rcAnchorShift: 'a',
+        rcCycleDays: 36
     });
 
     // Calcolo Super Admin
@@ -128,7 +131,10 @@ const App: React.FC = () => {
                 const today = new Date().toISOString().split('T')[0];
                 setDoc(doc(db, 'settings', 'shift'), {
                     anchorDate: today,
-                    anchorShift: 'b'
+                    anchorShift: 'b',
+                    rcAnchorDate: '',
+                    rcAnchorShift: 'a',
+                    rcCycleDays: 36
                 });
             }
         });

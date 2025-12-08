@@ -42,9 +42,6 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         // VVF Standard:
         // Se la squadra X fa il giorno (8-20), la notte (20-8) è coperta dalla squadra 
         // che ha fatto il giorno IERI.
-        // Esempio: 
-        // Lunedì Giorno: A. Notte: D.
-        // Martedì Giorno: B. Notte: A.
         let nightIndex = dayIndex - 1;
         if (nightIndex < 0) nightIndex += 4;
 
@@ -52,6 +49,35 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
             day: shifts[dayIndex],
             night: shifts[nightIndex]
         };
+    };
+
+    // CALCOLO RIPOSO COMPENSATIVO
+    // Verifica se un dato turno, in una data data, è in "Salto" (Riposo Compensativo)
+    const isRestDay = (shift: string, date: Date) => {
+        if (!shiftSettings?.rcAnchorDate) return false;
+        
+        const cycle = shiftSettings.rcCycleDays || 36;
+        const stagger = cycle / 4; // Standard VVF: 9 giorni tra un turno e l'altro
+        
+        const anchorDate = new Date(shiftSettings.rcAnchorDate);
+        anchorDate.setHours(12, 0, 0, 0);
+        const targetDate = new Date(date);
+        targetDate.setHours(12, 0, 0, 0);
+        
+        const diffTime = targetDate.getTime() - anchorDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        
+        const shifts = ['A', 'B', 'C', 'D'];
+        const targetIdx = shifts.indexOf(shift.toUpperCase());
+        const anchorIdx = shifts.indexOf((shiftSettings.rcAnchorShift || 'A').toUpperCase());
+        
+        // Calcola l'offset di ciclo per questo turno relativo all'ancora
+        // Esempio: Se A riposa a 0, B riposa a 9.
+        let shiftOffset = (targetIdx - anchorIdx) * stagger;
+        
+        // Normalizziamo i giorni per trovare se siamo sul multiplo del ciclo
+        const adjustedDiff = diffDays - shiftOffset;
+        return (adjustedDiff % cycle) === 0;
     };
 
     const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
@@ -83,11 +109,32 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
     };
 
     // Helper per renderizzare la cella turno (Giorno o Notte) con layout responsive
-    const renderShiftRow = (shift: string, type: 'day' | 'night', isDimmed: boolean) => {
+    const renderShiftRow = (shift: string, type: 'day' | 'night', isDimmed: boolean, date: Date) => {
+        // Controllo Riposo (Solo se non è oscurato, cioè se è il turno che stiamo cercando)
+        // Se non stiamo filtrando (isDimmed false per tutti), controlliamo comunque il riposo?
+        // Sì, mostriamo se quel turno sta riposando.
+        
+        // Se stiamo filtrando, ci interessa solo se il turno evidenziato è in riposo.
+        // Se non stiamo filtrando, mostriamo il turno normale (la logica VVF mostra chi lavora, non chi riposa, nel calendario generale)
+        // PERO', se filtro per "A", e oggi A ha riposo, voglio vedere "RIPOSO".
+        
+        let isRest = false;
+        if (highlightShift && shift === highlightShift) {
+            isRest = isRestDay(shift, date);
+        }
+
         const color = getShiftColor(shift);
-        const icon = type === 'day' ? '☀️' : '🌙';
-        const labelText = type === 'day' ? 'Giorno' : 'Notte';
-        const bgColor = type === 'day' ? 'bg-orange-50/50 border-orange-100' : 'bg-slate-100/50 border-slate-100';
+        const icon = isRest ? '🏖️' : (type === 'day' ? '☀️' : '🌙');
+        const labelText = isRest ? 'RIPOSO' : (type === 'day' ? 'Giorno' : 'Notte');
+        
+        // Se è riposo, diventa viola
+        const bgColor = isRest 
+            ? 'bg-purple-100 border-purple-200' 
+            : (type === 'day' ? 'bg-orange-50/50 border-orange-100' : 'bg-slate-100/50 border-slate-100');
+
+        // Se è riposo, il badge è viola
+        const badgeStyle = isRest ? { backgroundColor: '#9333ea' } : { backgroundColor: color };
+        const textStyle = isRest ? { color: '#9333ea' } : { color: color };
 
         return (
             <div 
@@ -99,23 +146,23 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                     ${isDimmed ? 'opacity-10 grayscale' : 'opacity-100'}
                 `}
             >
-                {/* DESKTOP VIEW: Icona + Testo a sinistra, Badge a destra */}
+                {/* DESKTOP VIEW */}
                 <div className="hidden md:flex items-center w-full justify-between">
                     <span className="text-xs font-bold text-slate-600 flex items-center gap-1">
                         <span className="text-lg leading-none">{icon}</span> {labelText}
                     </span>
                     <span 
                         className="font-black text-xs px-2 rounded text-white shadow-sm"
-                        style={{ backgroundColor: color }}
+                        style={badgeStyle}
                     >
-                        {shift}
+                        {isRest ? 'RC' : shift}
                     </span>
                 </div>
 
-                {/* MOBILE VIEW: Lettera Grande Colorata, Icona Apice */}
+                {/* MOBILE VIEW */}
                 <div className="md:hidden relative w-full h-7 flex items-center justify-center">
-                    <span className="font-black text-xl leading-none" style={{ color: color }}>
-                        {shift}
+                    <span className="font-black text-xl leading-none" style={textStyle}>
+                        {isRest ? 'R' : shift}
                     </span>
                     <span className="absolute -top-0.5 -right-0.5 text-[8px] opacity-60">
                         {icon}
@@ -219,10 +266,10 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                                     </div>
                                     
                                     {/* Turno Giorno */}
-                                    {renderShiftRow(shifts.day, 'day', isDayDimmed)}
+                                    {renderShiftRow(shifts.day, 'day', isDayDimmed, date)}
 
                                     {/* Turno Notte */}
-                                    {renderShiftRow(shifts.night, 'night', isNightDimmed)}
+                                    {renderShiftRow(shifts.night, 'night', isNightDimmed, date)}
                                     
                                 </div>
                             );

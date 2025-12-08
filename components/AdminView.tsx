@@ -89,6 +89,11 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [calibDate, setCalibDate] = useState(shiftSettings.anchorDate || new Date().toISOString().split('T')[0]);
     const [calibShift, setCalibShift] = useState<Shift>(shiftSettings.anchorShift || 'a');
 
+    // RC Calibration State
+    const [rcDate, setRcDate] = useState(shiftSettings.rcAnchorDate || '');
+    const [rcShift, setRcShift] = useState<Shift>(shiftSettings.rcAnchorShift || 'a');
+    const [rcCycle, setRcCycle] = useState(shiftSettings.rcCycleDays || 36);
+
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
 
@@ -199,10 +204,21 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     const handleSaveShiftCalibration = async () => {
         await onUpdateShiftSettings({
+            ...shiftSettings, // mantieni RC
             anchorDate: calibDate,
             anchorShift: calibShift
         });
         alert("Turnario calibrato! Tutti i calcoli futuri partiranno da questa data.");
+    };
+
+    const handleSaveRcCalibration = async () => {
+        await onUpdateShiftSettings({
+            ...shiftSettings,
+            rcAnchorDate: rcDate,
+            rcAnchorShift: rcShift,
+            rcCycleDays: rcCycle
+        });
+        alert("Riposo Compensativo salvato! Il calendario ora mostrerà i salti turno.");
     };
 
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
@@ -323,7 +339,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <button onClick={saveSettings} className="mt-4 w-full bg-slate-800 text-white font-bold py-2 rounded-lg">Salva Colori</button>
                         </div>
 
-                        {/* CALIBRAZIONE TURNARIO (NUOVO) */}
+                        {/* CALIBRAZIONE TURNARIO (VERDE) */}
                         <div className="bg-green-50 p-6 rounded-xl border border-green-100 relative overflow-hidden">
                             <h2 className="text-lg font-bold text-green-800 mb-4 flex items-center gap-2">
                                 <CalendarIcon className="h-5 w-5" /> Calibrazione Turnario
@@ -352,7 +368,40 @@ const AdminView: React.FC<AdminViewProps> = ({
                             </button>
                         </div>
 
-                        {/* CONFIGURAZIONE STAGIONALITÀ AVANZATA */}
+                        {/* CONFIGURAZIONE RIPOSO COMPENSATIVO (VIOLA) */}
+                        <div className="bg-purple-50 p-6 rounded-xl border border-purple-100 relative overflow-hidden">
+                            <h2 className="text-lg font-bold text-purple-800 mb-4 flex items-center gap-2">
+                                <CalendarIcon className="h-5 w-5" /> Configurazione Riposo Compensativo
+                            </h2>
+                            <p className="text-xs text-slate-500 mb-4">
+                                Imposta una data in cui una squadra ha effettuato il SALTO turno (Riposo). Il sistema calcolerà le ricorrenze.
+                                VVF Standard: Ogni 36 giorni.
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-purple-700 block mb-1">Data di un Riposo (Salto)</label>
+                                    <input type="date" value={rcDate} onChange={e => setRcDate(e.target.value)} className="w-full border p-2 rounded" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-purple-700 block mb-1">Turno che ha riposato</label>
+                                    <select value={rcShift} onChange={e => setRcShift(e.target.value as Shift)} className="w-full border p-2 rounded bg-white">
+                                        <option value="a">Turno A</option>
+                                        <option value="b">Turno B</option>
+                                        <option value="c">Turno C</option>
+                                        <option value="d">Turno D</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-purple-700 block mb-1">Ciclo (giorni)</label>
+                                    <input type="number" value={rcCycle} onChange={e => setRcCycle(parseInt(e.target.value))} className="w-full border p-2 rounded" />
+                                </div>
+                            </div>
+                            <button onClick={handleSaveRcCalibration} className="bg-purple-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-purple-700 w-full mt-4 shadow-sm">
+                                Salva Configurazione Riposo
+                            </button>
+                        </div>
+
+                        {/* CONFIGURAZIONE STAGIONALITÀ AVANZATA (BLU) */}
                         <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 relative overflow-hidden">
                             <h2 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
                                 <SparklesIcon className="h-5 w-5" /> Configurazione Stagionale

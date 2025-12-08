@@ -109,4 +109,9 @@ export interface SeasonalityConfig {
 export interface ShiftSettings {
     anchorDate: string; // Data di riferimento YYYY-MM-DD
     anchorShift: Shift; // Turno diurno attivo in quella data
+    
+    // Configurazione Riposo Compensativo (Salto Turno)
+    rcAnchorDate?: string; // Data nota di un riposo
+    rcAnchorShift?: Shift; // Quale turno ha riposato in quella data
+    rcCycleDays?: number;  // Ogni quanti giorni (default 36)
 }
