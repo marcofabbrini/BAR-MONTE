@@ -4,7 +4,7 @@ import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, 
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
-import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon, TicketIcon } from './Icons';
+import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon, TicketIcon, LockIcon } from './Icons';
 
 interface TillViewProps {
     till: Till;
@@ -100,7 +100,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         const storageKey = `attendance_v1_${till.id}_${today}`;
         localStorage.setItem(storageKey, JSON.stringify(presentStaffIds));
         
-        // Save to DB for statistics
+        // Save to DB for statistics (using unique ID logic in App.tsx to overwrite)
         if (onSaveAttendance) {
             onSaveAttendance(till.id, presentStaffIds);
         }
@@ -256,9 +256,10 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
                             <button 
                                 onClick={confirmAttendance}
-                                className="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl text-sm shadow-md uppercase tracking-wider transition-colors"
+                                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl text-sm shadow-md uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
                             >
-                                Conferma e Accedi
+                                <LockIcon className="h-4 w-4" />
+                                Chiudi Turno e Conferma
                             </button>
                         </div>
                     </div>

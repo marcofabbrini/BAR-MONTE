@@ -313,11 +313,15 @@ const App: React.FC = () => {
         } catch (error) { console.error(error); throw error; }
     }, []);
     
+    // UPDATED: Use setDoc with deterministic ID (Date + Till) to avoid duplicates
     const handleSaveAttendance = useCallback(async (tillId: string, presentStaffIds: string[]) => {
         try {
-            await addDoc(collection(db, 'shift_attendance'), {
+            const today = new Date().toISOString().split('T')[0];
+            const docId = `${today}_${tillId}`; // Unique ID per day per till
+            
+            await setDoc(doc(db, 'shift_attendance', docId), {
                 tillId,
-                date: new Date().toISOString().split('T')[0],
+                date: today,
                 timestamp: new Date().toISOString(),
                 presentStaffIds
             });
