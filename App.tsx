@@ -8,10 +8,11 @@ import TillView from './components/TillView';
 import ReportsView from './components/ReportsView';
 import AdminView from './components/AdminView';
 import TombolaView from './components/TombolaView';
+import GamesHub from './components/GamesHub';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
 import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig } from './types';
 
-type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola';
+type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games';
 
 // Helper per mescolare un array
 const shuffleArray = (array: any[]) => {
@@ -189,6 +190,7 @@ const App: React.FC = () => {
     const handleSelectTill = useCallback((tillId: string) => { setSelectedTillId(tillId); setView('till'); }, []);
     const handleSelectReports = useCallback(() => setView('reports'), []);
     const handleSelectAdmin = useCallback(() => setView('admin'), []);
+    const handleSelectGames = useCallback(() => setView('games'), []);
     const handleSelectTombola = useCallback(() => setView('tombola'), []);
     const handleGoBack = useCallback(() => { setSelectedTillId(null); setView('selection'); }, []);
 
@@ -404,6 +406,8 @@ const App: React.FC = () => {
                 onTransferFunds={handleTransferGameFunds}
                 onUpdateTombolaConfig={handleUpdateTombolaConfig}
             />;
+            case 'games':
+                return <GamesHub onGoBack={handleGoBack} onPlayTombola={handleSelectTombola} tombolaConfig={tombolaConfig} />;
             case 'admin': return <AdminView 
                 onGoBack={handleGoBack} 
                 orders={orders} 
@@ -441,7 +445,7 @@ const App: React.FC = () => {
                 seasonalityConfig={seasonalityConfig}
                 onUpdateSeasonality={handleUpdateSeasonality}
             />;
-            default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectTombola={handleSelectTombola} tillColors={tillColors} seasonalityConfig={seasonalityConfig} />;
+            default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectGames={handleSelectGames} tillColors={tillColors} seasonalityConfig={seasonalityConfig} />;
         }
     };
 

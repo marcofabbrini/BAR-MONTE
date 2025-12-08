@@ -23,25 +23,42 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     const salesByStaff = useMemo(() => {
         const staffSales: { [key: string]: number } = {};
         activeOrders.forEach(o => { staffSales[o.staffName || 'Sconosciuto'] = (staffSales[o.staffName || 'Sconosciuto'] || 0) + o.total; });
-        return Object.entries(staffSales).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-    }, [activeOrders]);
+        
+        return Object.entries(staffSales)
+            .map(([name, value]) => {
+                const member = allStaff.find(s => s.name === name);
+                return { name, value, icon: member?.icon || '👤' };
+            })
+            .sort((a, b) => b.value - a.value);
+    }, [activeOrders, allStaff]);
 
     const salesByProduct = useMemo(() => {
-        const prodSales: { [key: string]: { name: string, value: number } } = {};
+        const prodSales: { [key: string]: { name: string, value: number, icon: string } } = {};
         activeOrders.forEach(o => o.items.forEach(i => {
-            if (!prodSales[i.product.id]) prodSales[i.product.id] = { name: i.product.name, value: 0 };
+            if (!prodSales[i.product.id]) {
+                const prod = allProducts.find(p => p.id === i.product.id);
+                prodSales[i.product.id] = { name: i.product.name, value: 0, icon: prod?.icon || '📦' };
+            }
             prodSales[i.product.id].value += i.quantity;
         }));
         return Object.values(prodSales).sort((a, b) => b.value - a.value).slice(0, 10);
-    }, [activeOrders]);
+    }, [activeOrders, allProducts]);
 
     const salesTrend = useMemo(() => {
         const trend: { [key: string]: number } = {};
-        activeOrders.forEach(o => {
+        
+        // Ordina gli ordini per data per assicurare sequenzialità
+        const sortedOrders = [...activeOrders].sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+        sortedOrders.forEach(o => {
             const dateKey = new Date(o.timestamp).toISOString().split('T')[0];
             trend[dateKey] = (trend[dateKey] || 0) + o.total;
         });
-        return Object.entries(trend).sort().map(([date, value]) => ({ label: new Date(date).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), value }));
+        
+        return Object.entries(trend).map(([date, value]) => ({ 
+            label: new Date(date).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
+            value 
+        }));
     }, [activeOrders]);
 
     const handlePrintPdf = () => window.print();
@@ -94,12 +111,18 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
 
             <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
                  <h3 className="text-xl font-bold text-slate-800 mb-6">Trend Vendite</h3>
-                 <div className="h-64 w-full"><LineChart data={salesTrend} height={250} /></div>
+                 <div className="h-[300px] w-full"><LineChart data={salesTrend} height={300} /></div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none"><h3 className="text-xl font-bold mb-4">Vendite per Utente</h3><BarChart data={salesByStaff} format="currency" /></div>
-                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none"><h3 className="text-xl font-bold mb-4">Prodotti Top</h3><BarChart data={salesByProduct} format="integer" /></div>
+                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
+                    <h3 className="text-xl font-bold mb-4">Vendite per Utente</h3>
+                    <BarChart data={salesByStaff} format="currency" barColor="bg-blue-500" />
+                </div>
+                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
+                    <h3 className="text-xl font-bold mb-4">Prodotti Top</h3>
+                    <BarChart data={salesByProduct} format="integer" barColor="bg-primary" />
+                </div>
             </div>
         </div>
     );

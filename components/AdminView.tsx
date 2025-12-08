@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig } from '../types';
 import { User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, SparklesIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, SparklesIcon, BanknoteIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -227,7 +227,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="stock" label="Stock" icon={<BoxIcon className="h-6 w-6" />} />
                         <TabButton tab="products" label="Prodotti" icon={<StarIcon className="h-6 w-6" />} />
                         <TabButton tab="staff" label="Staff" icon={<StaffIcon className="h-6 w-6" />} />
-                        <TabButton tab="cash" label="Cassa" icon={<CashIcon className="h-6 w-6" />} />
+                        <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon className="h-6 w-6" />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-6 w-6" />} />
                         <TabButton tab="admins" label="Admin" icon={<UserPlusIcon className="h-6 w-6" />} />
                         <TabButton tab="extra" label="Extra" icon={<SparklesIcon className="h-6 w-6" />} />
@@ -290,7 +290,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
-                {activeTab === 'extra' && <GamesHub onPlayTombola={onNavigateToTombola} tombolaConfig={tombolaConfig} />}
+                {activeTab === 'extra' && <GamesHub onGoBack={() => {}} onPlayTombola={onNavigateToTombola} tombolaConfig={tombolaConfig} />}
                 
                 {activeTab === 'settings' && (
                     <div className="space-y-6">

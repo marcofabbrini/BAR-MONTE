@@ -1,19 +1,19 @@
 
 import React, { useMemo } from 'react';
 import { Till, TillColors, SeasonalityConfig } from '../types';
-import { ModernChartIcon, LockIcon, TicketIcon } from './Icons';
+import { ModernChartIcon, LockIcon, TrophyIcon } from './Icons';
 
 interface TillSelectionProps {
     tills: Till[];
     onSelectTill: (tillId: string) => void;
     onSelectReports: () => void;
     onSelectAdmin: () => void;
-    onSelectTombola: () => void;
+    onSelectGames: () => void;
     tillColors: TillColors;
     seasonalityConfig?: SeasonalityConfig;
 }
 
-const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectTombola, tillColors, seasonalityConfig }) => {
+const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, tillColors, seasonalityConfig }) => {
     
     // Generazione emoji animate basata sulla config avanzata
     const animatedEmojis = useMemo(() => {
@@ -84,13 +84,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         <span className="text-3xl md:text-5xl lg:text-6xl font-black text-slate-800 tracking-tighter mb-2 drop-shadow-sm transition-all">BAR VVF</span>
                         <span className="text-xl md:text-3xl lg:text-4xl font-extrabold text-primary tracking-tight drop-shadow-sm transition-all">Montepulciano</span>
                     </h1>
-                    <p className="text-slate-500 font-medium text-xs md:text-lg mt-3 bg-white/90 px-4 py-1.5 rounded-full inline-block backdrop-blur-sm shadow-sm border border-slate-100">
-                        Seleziona la tua postazione
+                    <p className="text-slate-500 font-medium text-xs md:text-lg mt-3 bg-white/90 px-6 py-1.5 rounded-full inline-block backdrop-blur-sm shadow-sm border border-slate-100 uppercase tracking-widest">
+                        Benvenuto!
                     </p>
                 </div>
 
-                {/* GRIGLIA CASSE - LARGEZZA MAGGIORATA SU DESKTOP */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full md:w-3/4 lg:w-2/3 mb-6 px-4 transition-all">
+                {/* GRIGLIA CASSE */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full md:w-3/4 lg:w-2/3 mb-4 px-4 transition-all">
                     {tills.map((till) => {
                         const bgColor = tillColors[till.id] || '#f97316';
                         return (
@@ -103,17 +103,20 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         );
                     })}
                 </div>
+
+                {/* GAMES HUB BUTTON - WIDE */}
+                <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-4 transition-all">
+                    <button onClick={onSelectGames} className="w-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white rounded-2xl md:rounded-3xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 h-20 md:h-24 flex items-center justify-center gap-4 group border border-white/20">
+                        <TrophyIcon className="h-8 w-8 md:h-12 md:w-12 text-white animate-pulse" />
+                        <span className="text-lg md:text-3xl font-black uppercase tracking-widest drop-shadow-md">Games Hub & Extra</span>
+                    </button>
+                </div>
                 
-                {/* MENU FUNZIONI - GRID ADATTIVA */}
-                <div className="grid grid-cols-3 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
+                {/* MENU FUNZIONI - BOTTOM */}
+                <div className="grid grid-cols-2 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
                     <button onClick={onSelectReports} className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-md hover:shadow-xl border border-slate-100 text-slate-600 font-bold flex flex-col items-center justify-center gap-2 hover:bg-slate-50 transition-all active:scale-95 h-20 md:h-32 lg:h-40 group">
                         <ModernChartIcon className="h-6 w-6 md:h-10 md:w-10 text-primary group-hover:scale-110 transition-transform" />
                         <span className="text-[10px] md:text-base uppercase tracking-widest">Report</span>
-                    </button>
-
-                    <button onClick={onSelectTombola} className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-md hover:shadow-xl border border-slate-100 text-slate-600 font-bold flex flex-col items-center justify-center gap-2 hover:bg-slate-50 transition-all active:scale-95 h-20 md:h-32 lg:h-40 group border-b-4 border-b-red-500">
-                        <TicketIcon className="h-6 w-6 md:h-10 md:w-10 text-red-500 group-hover:scale-110 transition-transform animate-bounce-slow" />
-                        <span className="text-[10px] md:text-base uppercase tracking-widest text-red-600">Tombola</span>
                     </button>
                     
                     <button onClick={onSelectAdmin} className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-md hover:shadow-xl border border-slate-100 text-slate-400 hover:text-slate-800 hover:bg-slate-50 transition-all active:scale-95 flex flex-col items-center justify-center gap-2 h-20 md:h-32 lg:h-40 group" title="Area Riservata">

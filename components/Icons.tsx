@@ -104,6 +104,12 @@ export const CashIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+export const BanknoteIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6h19.5c.621 0 1.125.504 1.125 1.125v10.5c0 .621-.504 1.125-1.125 1.125H2.25c-.621 0-1.125-.504-1.125-1.125V7.125C1.125 6.504 1.629 6 2.25 6ZM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm-6.75.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM18.75 9a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM5.25 12.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM18.75 12.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z" />
+    </svg>
+);
+
 export const ListIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
