@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
 import { collection, onSnapshot, doc, getDocs, writeBatch, runTransaction, addDoc, updateDoc, deleteDoc, setDoc, orderBy, query, getDoc, where } from 'firebase/firestore';
@@ -12,6 +13,7 @@ import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser,
 
 type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola';
 
+// Helper per mescolare un array
 const shuffleArray = (array: any[]) => {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -44,8 +46,10 @@ const App: React.FC = () => {
     // Seasonality State
     const [seasonalityConfig, setSeasonalityConfig] = useState<SeasonalityConfig | undefined>(undefined);
 
+    // Calcolo Super Admin
     const isSuperAdmin = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
 
+    // Auth Listener
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
@@ -65,6 +69,7 @@ const App: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
+    // Data Listeners
     useEffect(() => {
         setIsLoading(true);
         const unsubProducts = onSnapshot(collection(db, 'products'), (s) => setProducts(s.docs.map(d => ({ ...d.data(), id: d.id } as Product))));
@@ -89,29 +94,11 @@ const App: React.FC = () => {
         });
         const unsubTombolaTickets = onSnapshot(collection(db, 'tombola_tickets'), (s) => setTombolaTickets(s.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket))));
         const unsubTombolaWins = onSnapshot(collection(db, 'tombola_wins'), (s) => setTombolaWins(s.docs.map(d => ({...d.data(), id: d.id} as TombolaWin))));
-        
-        // Configurazione Stagionale Avanzata
-        const unsubSeasonality = onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { 
-            if(d.exists()) setSeasonalityConfig(d.data() as SeasonalityConfig); 
-            else {
-                const defaultConfig: SeasonalityConfig = {
-                    mode: 'auto',
-                    currentManualSeason: 'winter',
-                    seasons: {
-                        winter: { name: 'Inverno', backgroundColor: '#1e293b', animationType: 'snow', emojis: ['❄️', '⛄', '🎄'] },
-                        spring: { name: 'Primavera', backgroundColor: '#f0fdf4', animationType: 'float', emojis: ['🌸', '🦋', '🌱'] },
-                        summer: { name: 'Estate', backgroundColor: '#fefce8', animationType: 'float', emojis: ['☀️', '🍦', '🌊'] },
-                        autumn: { name: 'Autunno', backgroundColor: '#fff7ed', animationType: 'leaves', emojis: ['🍂', '🍄', '🌰'] }
-                    }
-                };
-                setDoc(doc(db, 'settings', 'seasonality'), defaultConfig);
-            }
-        });
+        const unsubSeasonality = onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { if(d.exists()) setSeasonalityConfig(d.data() as SeasonalityConfig); else setDoc(doc(db, 'settings', 'seasonality'), { startDate: '', endDate: '', theme: 'none' }); });
         
         return () => { unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); unsubSeasonality(); };
     }, []);
 
-    // ... (rest of useEffects like Seeding, Tombola Extraction, Handlers remain the same) ...
     // Seeding
     useEffect(() => {
         const seedDatabase = async () => {
@@ -138,6 +125,7 @@ const App: React.FC = () => {
         const runTombolaExtraction = async () => {
             if (!tombolaConfig || !tombolaConfig.extractedNumbers || tombolaConfig.extractedNumbers.length >= 90) return;
             if (tombolaConfig.status !== 'active') return;
+            
             const now = new Date().getTime();
             const last = new Date(tombolaConfig.lastExtraction).getTime();
             const diffHours = (now - last) / (1000 * 60 * 60);
@@ -147,14 +135,17 @@ const App: React.FC = () => {
                         const configRef = doc(db, 'tombola', 'config');
                         const configSnap = await t.get(configRef);
                         const currentConfig = configSnap.data() as TombolaConfig;
+                        // Safety check inside transaction
                         if (!currentConfig.extractedNumbers) currentConfig.extractedNumbers = [];
+
                         let nextNum;
                         do { nextNum = Math.floor(Math.random() * 90) + 1; } while (currentConfig.extractedNumbers.includes(nextNum));
                         const newExtracted = [...currentConfig.extractedNumbers, nextNum];
+                        
                         const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
                         ticketsSnap.forEach(ticketDoc => {
                             const ticket = ticketDoc.data() as TombolaTicket;
-                            if (!ticket.numbers) return;
+                            if (!ticket.numbers) return; // Skip broken tickets
                             const matches = ticket.numbers.filter(n => newExtracted.includes(n));
                             const count = matches.length;
                             if ([2,3,4,5,15].includes(count)) {
@@ -197,12 +188,6 @@ const App: React.FC = () => {
     
     const handleBuyTombolaTicket = async (staffId: string, quantity: number) => {
         if (!tombolaConfig) return;
-        const currentTicketsCount = tombolaTickets.length;
-        if (currentTicketsCount + quantity > tombolaConfig.maxTickets) {
-            alert(`Impossibile acquistare. Rimangono solo ${tombolaConfig.maxTickets - currentTicketsCount} cartelle.`);
-            return;
-        }
-
         const staffMember = staff.find(s => s.id === staffId);
         if (!staffMember) return;
 
@@ -226,6 +211,7 @@ const App: React.FC = () => {
                         t.set(ticketRef, { playerId: staffId, playerName: staffMember.name, numbers: ticketNumbers, purchaseTime: new Date().toISOString() });
                     }
                 }
+                
                 t.update(doc(db, 'tombola', 'config'), { jackpot: tombolaConfig.jackpot + jackpotAdd });
                 const cashRef = doc(collection(db, 'cash_movements'));
                 t.set(cashRef, { amount: totalCost, reason: `Tombola: ${quantity} cartelle (${staffMember.name})`, timestamp: new Date().toISOString(), type: 'deposit', category: 'tombola' });
@@ -235,6 +221,59 @@ const App: React.FC = () => {
         } catch (e) { console.error(e); throw e; }
     };
     
+    const handleRefundTombolaTicket = async (ticketId: string) => {
+        if (!tombolaConfig) return;
+        // Impedisci rimborso se il gioco è già iniziato per evitare brogli sui numeri usciti
+        if (tombolaConfig.status === 'active' || tombolaConfig.status === 'completed') {
+            alert("Impossibile annullare cartelle a gioco iniziato.");
+            return;
+        }
+
+        // Per semplicità di calcolo e politica di reso, rimborsiamo il prezzo della cartella singola
+        // In questo modo il jackpot scende in modo coerente per singola unità
+        const refundAmount = tombolaConfig.ticketPriceSingle;
+        const jackpotDeduction = refundAmount * 0.80;
+        const revenueDeduction = refundAmount * 0.20;
+
+        try {
+            await runTransaction(db, async (t) => {
+                const ticketRef = doc(db, 'tombola_tickets', ticketId);
+                const ticketSnap = await t.get(ticketRef);
+                if (!ticketSnap.exists()) throw new Error("Cartella non trovata");
+
+                t.delete(ticketRef);
+                
+                // Aggiorna jackpot
+                t.update(doc(db, 'tombola', 'config'), { 
+                    jackpot: Math.max(0, tombolaConfig.jackpot - jackpotDeduction) 
+                });
+
+                // Movimento Cassa Tombola (Prelievo per rimborso)
+                const cashRef = doc(collection(db, 'cash_movements'));
+                t.set(cashRef, { 
+                    amount: refundAmount, 
+                    reason: `Rimborso Cartella (Annullamento)`, 
+                    timestamp: new Date().toISOString(), 
+                    type: 'withdrawal', 
+                    category: 'tombola' 
+                });
+
+                // Movimento Cassa Bar (Storno Utile)
+                const barCashRef = doc(collection(db, 'cash_movements'));
+                t.set(barCashRef, { 
+                    amount: revenueDeduction, 
+                    reason: `Storno Utile Tombola (Rimborso)`, 
+                    timestamp: new Date().toISOString(), 
+                    type: 'withdrawal', 
+                    category: 'bar' 
+                });
+            });
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
+    };
+
     const generateSingleTicket = () => {
         const ticket: number[] = [];
         const cols: number[][] = Array.from({ length: 9 }, () => []);
@@ -260,13 +299,7 @@ const App: React.FC = () => {
     };
 
     const handleUpdateTombolaConfig = async (cfg: TombolaConfig) => { await setDoc(doc(db, 'tombola', 'config'), cfg); };
-    const handleTombolaStart = async () => { 
-        if (!tombolaConfig) return;
-        if (tombolaTickets.length < (tombolaConfig.minTicketsToStart || 0)) {
-             if(!window.confirm(`Attenzione: vendute solo ${tombolaTickets.length} cartelle su min ${tombolaConfig.minTicketsToStart}. Avviare comunque?`)) return;
-        }
-        await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() }); 
-    };
+    const handleTombolaStart = async () => { await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() }); };
 
     const handleTransferGameFunds = async (amount: number, gameName: string) => {
         if (amount <= 0) return;
@@ -320,6 +353,7 @@ const App: React.FC = () => {
                 tickets={tombolaTickets} 
                 wins={tombolaWins} 
                 onBuyTicket={handleBuyTombolaTicket} 
+                onRefundTicket={handleRefundTombolaTicket}
                 staff={staff} 
                 onStartGame={handleTombolaStart} 
                 isSuperAdmin={isSuperAdmin} 
