@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { Till, TillColors, SeasonalityConfig } from '../types';
-import { ModernChartIcon, LockIcon } from './Icons';
+import { ModernChartIcon, LockIcon, TicketIcon } from './Icons';
 
 interface TillSelectionProps {
     tills: Till[];
@@ -13,7 +13,7 @@ interface TillSelectionProps {
     seasonalityConfig?: SeasonalityConfig;
 }
 
-const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, tillColors, seasonalityConfig }) => {
+const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectTombola, tillColors, seasonalityConfig }) => {
     
     // Generazione emoji cadenti
     const fallingEmojis = useMemo(() => {
@@ -48,49 +48,59 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 ))}
             </div>
 
-            <div className="flex-grow flex flex-col items-center justify-center p-2 z-10 w-full max-w-4xl mx-auto pb-16">
+            <div className="flex-grow flex flex-col items-center justify-center p-4 z-10 w-full max-w-7xl mx-auto pb-16">
                 
-                <div className="mb-2 relative group">
-                    <img src="/logo.png" alt="Logo" className="h-16 w-auto object-contain drop-shadow-md transition-transform duration-500 hover:scale-105" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                {/* LOGO E TITOLO - SCALABILI */}
+                <div className="mb-4 md:mb-8 relative group transform transition-all duration-500">
+                    <img src="/logo.png" alt="Logo" className="h-20 w-auto md:h-32 object-contain drop-shadow-lg hover:scale-105" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 </div>
 
-                <div className="text-center mb-4">
+                <div className="text-center mb-8 md:mb-12">
                     <h1 className="flex flex-col items-center leading-none">
-                        <span className="text-3xl md:text-4xl font-black text-slate-800 tracking-tighter mb-1 drop-shadow-sm">BAR VVF</span>
-                        <span className="text-xl md:text-2xl font-extrabold text-primary tracking-tight drop-shadow-sm">Montepulciano</span>
+                        <span className="text-3xl md:text-5xl lg:text-6xl font-black text-slate-800 tracking-tighter mb-2 drop-shadow-sm transition-all">BAR VVF</span>
+                        <span className="text-xl md:text-3xl lg:text-4xl font-extrabold text-primary tracking-tight drop-shadow-sm transition-all">Montepulciano</span>
                     </h1>
-                    <p className="text-slate-500 font-medium text-[10px] md:text-xs mt-1 bg-white/90 px-3 py-1 rounded-full inline-block backdrop-blur-sm shadow-sm border border-slate-100">Scegli il turno per iniziare</p>
+                    <p className="text-slate-500 font-medium text-xs md:text-lg mt-3 bg-white/90 px-4 py-1.5 rounded-full inline-block backdrop-blur-sm shadow-sm border border-slate-100">
+                        Seleziona la tua postazione
+                    </p>
                 </div>
 
-                {/* GRIGLIA CASSE */}
-                <div className="flex flex-wrap justify-center gap-2 w-full mb-3 px-2">
+                {/* GRIGLIA CASSE - LARGEZZA MAGGIORATA SU DESKTOP */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full md:w-3/4 lg:w-2/3 mb-6 px-4 transition-all">
                     {tills.map((till) => {
                         const bgColor = tillColors[till.id] || '#f97316';
                         return (
-                            <button key={till.id} onClick={() => onSelectTill(till.id)} className="group relative bg-white rounded-xl p-1 shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 ease-out flex flex-col items-center justify-center w-16 h-20 border border-slate-100">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-inner mb-1 transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: bgColor }}>
-                                    <span className="text-xl font-black text-white select-none">{till.shift.toUpperCase()}</span>
+                            <button key={till.id} onClick={() => onSelectTill(till.id)} className="group relative bg-white rounded-2xl md:rounded-3xl p-2 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 ease-out flex flex-col items-center justify-center w-full h-32 md:h-48 lg:h-56 border border-slate-100">
+                                <div className="w-14 h-14 md:w-24 md:h-24 rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: bgColor }}>
+                                    <span className="text-2xl md:text-4xl lg:text-5xl font-black text-white select-none">{till.shift.toUpperCase()}</span>
                                 </div>
-                                <span className="text-[9px] font-bold text-slate-700 leading-tight">{till.name}</span>
+                                <span className="text-xs md:text-lg font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg">{till.name}</span>
                             </button>
                         );
                     })}
                 </div>
                 
-                {/* MENU FUNZIONI */}
-                <div className="flex gap-2 w-full justify-center px-2 flex-wrap mb-3">
-                    <button onClick={onSelectReports} className="bg-white w-16 h-12 rounded-xl shadow-md hover:shadow-lg border border-slate-100 text-slate-600 font-bold flex flex-col items-center justify-center gap-0.5 hover:bg-slate-50 transition-all active:scale-95">
-                        <ModernChartIcon className="h-4 w-4 text-primary" />
-                        <span className="text-[8px] uppercase">Report</span>
+                {/* MENU FUNZIONI - GRID ADATTIVA */}
+                <div className="grid grid-cols-3 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
+                    <button onClick={onSelectReports} className="bg-white rounded-2xl md:rounded-3xl shadow-md hover:shadow-xl border border-slate-100 text-slate-600 font-bold flex flex-col items-center justify-center gap-2 hover:bg-slate-50 transition-all active:scale-95 h-20 md:h-32 lg:h-40 group">
+                        <ModernChartIcon className="h-6 w-6 md:h-10 md:w-10 text-primary group-hover:scale-110 transition-transform" />
+                        <span className="text-[10px] md:text-base uppercase tracking-widest">Report</span>
                     </button>
-                    <button onClick={onSelectAdmin} className="bg-white w-12 h-12 rounded-xl shadow-md hover:shadow-lg border border-slate-100 text-slate-400 hover:text-slate-800 hover:bg-slate-50 transition-all active:scale-95 flex items-center justify-center" title="Area Riservata">
-                        <LockIcon className="h-4 w-4" />
+
+                    <button onClick={onSelectTombola} className="bg-white rounded-2xl md:rounded-3xl shadow-md hover:shadow-xl border border-slate-100 text-slate-600 font-bold flex flex-col items-center justify-center gap-2 hover:bg-slate-50 transition-all active:scale-95 h-20 md:h-32 lg:h-40 group border-b-4 border-b-red-500">
+                        <TicketIcon className="h-6 w-6 md:h-10 md:w-10 text-red-500 group-hover:scale-110 transition-transform animate-bounce-slow" />
+                        <span className="text-[10px] md:text-base uppercase tracking-widest text-red-600">Tombola</span>
+                    </button>
+                    
+                    <button onClick={onSelectAdmin} className="bg-white rounded-2xl md:rounded-3xl shadow-md hover:shadow-xl border border-slate-100 text-slate-400 hover:text-slate-800 hover:bg-slate-50 transition-all active:scale-95 flex flex-col items-center justify-center gap-2 h-20 md:h-32 lg:h-40 group" title="Area Riservata">
+                        <LockIcon className="h-6 w-6 md:h-10 md:w-10 group-hover:scale-110 transition-transform" />
+                        <span className="text-[10px] md:text-base uppercase tracking-widest">Admin</span>
                     </button>
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 text-center z-50 shadow-lg">
-                <p className="text-[10px] text-slate-400 font-medium">Gestionale Bar v2.7 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+            <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg">
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v2.8 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );
