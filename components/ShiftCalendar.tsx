@@ -13,7 +13,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
     const [highlightShift, setHighlightShift] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
 
     // ANCORA PER IL CALCOLO
-    // Riferimento VVF: 1 Gennaio 2024 = Turno A (Giorno)
+    // Riferimento Sincronizzato: Oggi (Feb 2025) = Turno B
     const getShiftsForDate = (date: Date) => {
         const anchorDate = new Date('2024-01-01T12:00:00');
         const targetDate = new Date(date);
@@ -26,15 +26,15 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
         // Sequenza
         const shifts = ['A', 'B', 'C', 'D'];
         
-        // OFFSET VVF: 1 Gennaio (diffDays=0) deve essere A (index 0)
-        const BASE_OFFSET_DAY = 0;
-        const BASE_OFFSET_NIGHT = 3; 
+        // OFFSET CALCOLATO PER TURNO B OGGI:
+        // Se diffDays % 4 dà un certo resto, dobbiamo aggiungere 3 per ottenere B (1) oggi.
+        const BASE_OFFSET = 3; 
 
-        let dayIndex = (BASE_OFFSET_DAY + diffDays) % 4;
+        let dayIndex = (BASE_OFFSET + diffDays) % 4;
         if (dayIndex < 0) dayIndex += 4;
         
-        let nightIndex = (BASE_OFFSET_NIGHT + diffDays) % 4;
-        if (nightIndex < 0) nightIndex += 4;
+        // Nel sistema VVF 12-24 12-48 standard, la notte appartiene alla stessa squadra del giorno
+        let nightIndex = dayIndex;
 
         return {
             day: shifts[dayIndex],
@@ -74,6 +74,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
     const renderShiftRow = (shift: string, type: 'day' | 'night', isDimmed: boolean) => {
         const color = getShiftColor(shift);
         const icon = type === 'day' ? '☀️' : '🌙';
+        const labelText = type === 'day' ? 'Giorno' : 'Notte';
         const bgColor = type === 'day' ? 'bg-orange-50/50 border-orange-100' : 'bg-slate-100/50 border-slate-100';
 
         return (
@@ -86,9 +87,11 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                     ${isDimmed ? 'opacity-10 grayscale' : 'opacity-100'}
                 `}
             >
-                {/* DESKTOP VIEW: Icona sinistra, Badge destra */}
+                {/* DESKTOP VIEW: Icona + Testo a sinistra, Badge a destra */}
                 <div className="hidden md:flex items-center w-full justify-between">
-                    <span className="text-lg leading-none">{icon}</span>
+                    <span className="text-xs font-bold text-slate-600 flex items-center gap-1">
+                        <span className="text-lg leading-none">{icon}</span> {labelText}
+                    </span>
                     <span 
                         className="font-black text-xs px-2 rounded text-white shadow-sm"
                         style={{ backgroundColor: color }}
@@ -216,7 +219,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                 </div>
                 
                 <div className="mt-6 text-center text-xs text-slate-400">
-                    <p>Schema turni perpetuo: Ancora 01/01/2024 = Turno A.</p>
+                    <p>Schema turni perpetuo VVF 12-24 12-48</p>
                 </div>
             </main>
         </div>

@@ -65,19 +65,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         
         const shifts = ['a', 'b', 'c', 'd'];
         
-        // OFFSET VVF: 1 Gennaio 2024 = Turno A (Giorno)
-        // Se diffDays = 0 -> A (index 0)
-        const BASE_OFFSET_DAY = 0;
-        const BASE_OFFSET_NIGHT = 3;
+        // OFFSET VVF Sincronizzato con il Calendario
+        // Oggi (Feb 2025) = Turno B. Calcolo: (BASE_OFFSET + diffDays) % 4
+        const BASE_OFFSET = 3; 
 
-        let shiftIndex;
-        if (hour >= 8 && hour < 20) {
-            shiftIndex = (BASE_OFFSET_DAY + diffDays) % 4;
-        } else {
-            shiftIndex = (BASE_OFFSET_NIGHT + diffDays) % 4;
-        }
-        
+        // Indipendentemente se è Giorno (>=8) o Notte (<8), il turno è lo stesso "lettera"
+        // La logica per gestire il "giorno prima" è già fatta sopra con `calculationDate`
+        let shiftIndex = (BASE_OFFSET + diffDays) % 4;
         if (shiftIndex < 0) shiftIndex += 4;
+        
         return shifts[shiftIndex];
     }, []);
 
@@ -185,46 +181,46 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 {/* GESTIONE & EXTRA - GRIGLIA UNIFICATA E COERENTE */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
                     {/* Pulsante 1: Games Hub */}
-                    <button onClick={onSelectGames} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-row items-center gap-4 transition-all duration-300 group h-24">
-                        <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center group-hover:bg-amber-100 group-hover:scale-110 transition-all shrink-0">
-                            <TrophyIcon className="h-6 w-6" />
+                    <button onClick={onSelectGames} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center group-hover:bg-amber-100 group-hover:scale-110 transition-all shrink-0">
+                            <TrophyIcon className="h-5 w-5 md:h-6 md:w-6" />
                         </div>
-                        <div className="flex flex-col items-start min-w-0">
-                            <span className="block font-bold text-slate-700 text-sm uppercase tracking-wider group-hover:text-amber-600 transition-colors">Games Hub</span>
-                            <span className="block text-[10px] text-slate-400 font-medium truncate w-full">Svago & Extra</span>
+                        <div className="flex flex-col items-center md:items-start min-w-0">
+                            <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-amber-600 transition-colors">Games Hub</span>
+                            <span className="hidden md:block text-[10px] text-slate-400 font-medium truncate w-full">Svago & Extra</span>
                         </div>
                     </button>
 
                     {/* Pulsante 2: Turnario */}
-                    <button onClick={onSelectCalendar} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-row items-center gap-4 transition-all duration-300 group h-24">
-                        <div className="w-12 h-12 bg-sky-50 text-sky-500 rounded-xl flex items-center justify-center group-hover:bg-sky-100 group-hover:scale-110 transition-all shrink-0">
-                            <CalendarIcon className="h-6 w-6" />
+                    <button onClick={onSelectCalendar} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-sky-50 text-sky-500 rounded-xl flex items-center justify-center group-hover:bg-sky-100 group-hover:scale-110 transition-all shrink-0">
+                            <CalendarIcon className="h-5 w-5 md:h-6 md:w-6" />
                         </div>
-                        <div className="flex flex-col items-start min-w-0">
-                            <span className="block font-bold text-slate-700 text-sm uppercase tracking-wider group-hover:text-sky-600 transition-colors">Turnario</span>
-                            <span className="block text-[10px] text-slate-400 font-medium truncate w-full">Calendario VVF</span>
+                        <div className="flex flex-col items-center md:items-start min-w-0">
+                            <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-sky-600 transition-colors">Turnario</span>
+                            <span className="hidden md:block text-[10px] text-slate-400 font-medium truncate w-full">Calendario VVF</span>
                         </div>
                     </button>
 
                     {/* Pulsante 3: Report */}
-                    <button onClick={onSelectReports} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-row items-center gap-4 transition-all duration-300 group h-24">
-                        <div className="w-12 h-12 bg-violet-50 text-violet-500 rounded-xl flex items-center justify-center group-hover:bg-violet-100 group-hover:scale-110 transition-all shrink-0">
-                            <ChartBarIcon className="h-6 w-6" />
+                    <button onClick={onSelectReports} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-violet-50 text-violet-500 rounded-xl flex items-center justify-center group-hover:bg-violet-100 group-hover:scale-110 transition-all shrink-0">
+                            <ChartBarIcon className="h-5 w-5 md:h-6 md:w-6" />
                         </div>
-                        <div className="flex flex-col items-start min-w-0">
-                            <span className="block font-bold text-slate-700 text-sm uppercase tracking-wider group-hover:text-violet-600 transition-colors">Report</span>
-                            <span className="block text-[10px] text-slate-400 font-medium truncate w-full">Statistiche</span>
+                        <div className="flex flex-col items-center md:items-start min-w-0">
+                            <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-violet-600 transition-colors">Report</span>
+                            <span className="hidden md:block text-[10px] text-slate-400 font-medium truncate w-full">Statistiche</span>
                         </div>
                     </button>
                     
                     {/* Pulsante 4: Admin */}
-                    <button onClick={onSelectAdmin} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-row items-center gap-4 transition-all duration-300 group h-24">
-                        <div className="w-12 h-12 bg-slate-50 text-slate-500 rounded-xl flex items-center justify-center group-hover:bg-slate-100 group-hover:scale-110 transition-all shrink-0">
-                            <LockIcon className="h-6 w-6" />
+                    <button onClick={onSelectAdmin} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 text-slate-500 rounded-xl flex items-center justify-center group-hover:bg-slate-100 group-hover:scale-110 transition-all shrink-0">
+                            <LockIcon className="h-5 w-5 md:h-6 md:w-6" />
                         </div>
-                        <div className="flex flex-col items-start min-w-0">
-                            <span className="block font-bold text-slate-700 text-sm uppercase tracking-wider group-hover:text-slate-900 transition-colors">Admin</span>
-                            <span className="block text-[10px] text-slate-400 font-medium truncate w-full">Area Riservata</span>
+                        <div className="flex flex-col items-center md:items-start min-w-0">
+                            <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-slate-900 transition-colors">Admin</span>
+                            <span className="hidden md:block text-[10px] text-slate-400 font-medium truncate w-full">Area Riservata</span>
                         </div>
                     </button>
                 </div>
