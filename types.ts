@@ -96,7 +96,7 @@ export interface TombolaWin {
     timestamp: string;
 }
 
-// NUOVI TIPI PER STAGIONALITÀ AVANZATA
+// STRUTTURA AVANZATA PER LE 4 STAGIONI
 export interface SeasonTheme {
     name: string;
     backgroundColor: string;
