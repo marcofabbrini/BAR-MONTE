@@ -62,9 +62,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         
         const shifts = ['a', 'b', 'c', 'd'];
         
-        // 08:00 - 20:00 = Giorno 
-        // 20:00 - 08:00 = Notte
-        
         // OFFSET VVF (Sincronizzato: Oggi = B)
         const BASE_OFFSET_DAY = 3;
         const BASE_OFFSET_NIGHT = 2;
@@ -80,7 +77,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return shifts[shiftIndex];
     }, []);
 
-    // Ordina le casse: prima quella attiva, poi le altre (per mobile/accessibilità, visualmente gestito da grid)
+    // Ordina le casse: prima quella attiva, poi le altre
     const sortedTills = useMemo(() => {
         const active = tills.find(t => t.shift === activeShift);
         const others = tills.filter(t => t.shift !== activeShift);
@@ -118,7 +115,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
             <div className="flex-grow flex flex-col items-center justify-center p-4 z-10 w-full max-w-7xl mx-auto pb-16">
                 
-                {/* LOGO E TITOLO - SCALABILI */}
+                {/* LOGO E TITOLO */}
                 <div className="mb-4 md:mb-8 relative group transform transition-all duration-500">
                     <img src="/logo.png" alt="Logo" className="h-20 w-auto md:h-32 object-contain drop-shadow-lg hover:scale-105" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 </div>
@@ -134,16 +131,11 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
 
                 {/* GRIGLIA CASSE DINAMICA */}
-                {/* 
-                    Mobile: 2 colonne. Cassa attiva col-span-2 (riga intera). Altre 1x1.
-                    Desktop: 3 colonne. Cassa attiva col-span-3 (riga intera). Altre 1x1 (3 in riga).
-                */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-3/4 lg:w-2/3 mb-4 px-4 transition-all">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-3/4 lg:w-2/3 mb-6 px-4 transition-all">
                     {sortedTills.map((till) => {
                         const bgColor = tillColors[till.id] || '#f97316';
                         const isActiveShift = till.shift === activeShift;
 
-                        // Se è il turno attivo: full width e più alto
                         const gridClass = isActiveShift 
                             ? "col-span-2 md:col-span-3 h-40 md:h-64 shadow-xl border-primary/20 scale-[1.02] z-10 order-first" 
                             : "col-span-1 h-32 md:h-48 opacity-90 hover:opacity-100 hover:scale-[1.02]";
@@ -184,39 +176,56 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     })}
                 </div>
 
-                {/* GAMES HUB & CALENDAR - STILE SOBRIO (BIANCO/GRIGIO) */}
-                <div className="flex flex-col md:flex-row gap-4 w-full md:w-3/4 lg:w-2/3 px-4 mb-4 transition-all">
-                    <button onClick={onSelectGames} className="flex-1 bg-slate-50/90 hover:bg-white text-slate-600 border border-slate-200 rounded-2xl md:rounded-3xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-20 md:h-24 flex items-center justify-center gap-4 group backdrop-blur-sm">
-                        <div className="bg-white p-2 rounded-full shadow-sm group-hover:scale-110 transition-transform border border-slate-100">
-                             <TrophyIcon className="h-6 w-6 md:h-8 md:w-8 text-slate-400 group-hover:text-yellow-500 transition-colors" />
+                {/* GESTIONE & EXTRA - GRIGLIA UNIFICATA 2x2 */}
+                <div className="grid grid-cols-2 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
+                    {/* Pulsante 1: Games Hub */}
+                    <button onClick={onSelectGames} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-row items-center gap-4 transition-all duration-300 group h-24 md:h-28">
+                        <div className="bg-amber-50 text-amber-500 p-3 rounded-xl group-hover:bg-amber-100 group-hover:scale-110 transition-all">
+                            <TrophyIcon className="h-6 w-6 md:h-8 md:w-8" />
                         </div>
-                        <span className="text-sm md:text-xl font-bold uppercase tracking-widest text-slate-500 group-hover:text-slate-800 transition-colors">Games Hub</span>
+                        <div className="text-left">
+                            <span className="block font-bold text-slate-700 text-sm md:text-lg uppercase tracking-wide group-hover:text-amber-600 transition-colors">Games Hub</span>
+                            <span className="block text-[10px] md:text-xs text-slate-400 font-medium">Svago & Extra</span>
+                        </div>
                     </button>
 
-                    <button onClick={onSelectCalendar} className="flex-1 bg-slate-50/90 hover:bg-white text-slate-600 border border-slate-200 rounded-2xl md:rounded-3xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 h-20 md:h-24 flex items-center justify-center gap-4 group backdrop-blur-sm">
-                         <div className="bg-white p-2 rounded-full shadow-sm group-hover:scale-110 transition-transform border border-slate-100">
-                             <CalendarIcon className="h-6 w-6 md:h-8 md:w-8 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                    {/* Pulsante 2: Turnario */}
+                    <button onClick={onSelectCalendar} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-row items-center gap-4 transition-all duration-300 group h-24 md:h-28">
+                        <div className="bg-sky-50 text-sky-500 p-3 rounded-xl group-hover:bg-sky-100 group-hover:scale-110 transition-all">
+                            <CalendarIcon className="h-6 w-6 md:h-8 md:w-8" />
                         </div>
-                        <span className="text-sm md:text-xl font-bold uppercase tracking-widest text-slate-500 group-hover:text-slate-800 transition-colors">Turnario VVF</span>
+                        <div className="text-left">
+                            <span className="block font-bold text-slate-700 text-sm md:text-lg uppercase tracking-wide group-hover:text-sky-600 transition-colors">Turnario</span>
+                            <span className="block text-[10px] md:text-xs text-slate-400 font-medium">Calendario VVF</span>
+                        </div>
                     </button>
-                </div>
-                
-                {/* MENU FUNZIONI - BOTTOM */}
-                <div className="grid grid-cols-2 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
-                    <button onClick={onSelectReports} className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-md hover:shadow-xl border border-slate-100 text-slate-600 font-bold flex flex-col items-center justify-center gap-2 hover:bg-slate-50 transition-all active:scale-95 h-20 md:h-32 lg:h-40 group">
-                        <ModernChartIcon className="h-6 w-6 md:h-10 md:w-10 text-primary group-hover:scale-110 transition-transform" />
-                        <span className="text-[10px] md:text-base uppercase tracking-widest">Report</span>
+
+                    {/* Pulsante 3: Report */}
+                    <button onClick={onSelectReports} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-row items-center gap-4 transition-all duration-300 group h-24 md:h-28">
+                        <div className="bg-violet-50 text-violet-500 p-3 rounded-xl group-hover:bg-violet-100 group-hover:scale-110 transition-all">
+                            <ModernChartIcon className="h-6 w-6 md:h-8 md:w-8" />
+                        </div>
+                        <div className="text-left">
+                            <span className="block font-bold text-slate-700 text-sm md:text-lg uppercase tracking-wide group-hover:text-violet-600 transition-colors">Report</span>
+                            <span className="block text-[10px] md:text-xs text-slate-400 font-medium">Statistiche</span>
+                        </div>
                     </button>
                     
-                    <button onClick={onSelectAdmin} className="bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-md hover:shadow-xl border border-slate-100 text-slate-400 hover:text-slate-800 hover:bg-slate-50 transition-all active:scale-95 flex flex-col items-center justify-center gap-2 h-20 md:h-32 lg:h-40 group" title="Area Riservata">
-                        <LockIcon className="h-6 w-6 md:h-10 md:w-10 group-hover:scale-110 transition-transform" />
-                        <span className="text-[10px] md:text-base uppercase tracking-widest">Admin</span>
+                    {/* Pulsante 4: Admin */}
+                    <button onClick={onSelectAdmin} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl md:rounded-3xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-row items-center gap-4 transition-all duration-300 group h-24 md:h-28">
+                        <div className="bg-slate-50 text-slate-500 p-3 rounded-xl group-hover:bg-slate-100 group-hover:scale-110 transition-all">
+                            <LockIcon className="h-6 w-6 md:h-8 md:w-8" />
+                        </div>
+                        <div className="text-left">
+                            <span className="block font-bold text-slate-700 text-sm md:text-lg uppercase tracking-wide group-hover:text-slate-900 transition-colors">Admin</span>
+                            <span className="block text-[10px] md:text-xs text-slate-400 font-medium">Area Riservata</span>
+                        </div>
                     </button>
                 </div>
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.0 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.1 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );
