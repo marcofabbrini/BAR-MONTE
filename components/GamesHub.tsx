@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { TombolaConfig } from '../types';
 import { TicketIcon, TrophyIcon } from './Icons';
@@ -29,7 +28,7 @@ const GamesHub: React.FC<GamesHubProps> = ({ onPlayTombola, tombolaConfig }) => 
                         <div className="bg-black/20 rounded-lg p-3 backdrop-blur-sm">
                             <div className="flex justify-between items-end">
                                 <span className="text-xs text-yellow-200 font-bold uppercase">Montepremi Attuale</span>
-                                <span className="text-xl font-black text-yellow-400">€{tombolaConfig?.jackpot.toFixed(2) || '0.00'}</span>
+                                <span className="text-xl font-black text-yellow-400">€{tombolaConfig?.jackpot?.toFixed(2) || '0.00'}</span>
                             </div>
                         </div>
                     </div>
