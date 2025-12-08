@@ -67,31 +67,27 @@ const App: React.FC = () => {
             if (user && user.email) {
                 try {
                     const adminsRef = collection(db, 'admins');
-                    
-                    // 1. Prima controlla se l'utente è già un admin (query specifica)
                     const q = query(adminsRef, where("email", "==", user.email));
-                    const querySnapshot = await getDocs(q);
-
-                    if (!querySnapshot.empty) {
-                        setIsAdmin(true);
-                    } else {
-                        // 2. Se non è admin, controlla se la collezione è vuota (Bootstrap)
-                        // Nota: questo potrebbe fallire se le regole di sicurezza sono strette, quindi è nel try/catch
-                        const allAdminsSnap = await getDocs(adminsRef);
-                        if (allAdminsSnap.empty) {
-                            await addDoc(adminsRef, { 
-                                email: user.email, 
-                                addedBy: 'SYSTEM_BOOTSTRAP', 
-                                timestamp: new Date().toISOString() 
-                            });
+                    
+                    // Tentativo di lettura sicuro
+                    try {
+                        const querySnapshot = await getDocs(q);
+                        if (!querySnapshot.empty) {
                             setIsAdmin(true);
                         } else {
+                            // Bootstrap check (solo se la lettura non è fallita per permessi)
                             setIsAdmin(false);
+                            // Nota: Se le regole di sicurezza bloccano la lettura ai non-admin, 
+                            // non arriveremo mai qui se la collezione non è vuota.
+                            // Il bootstrap manuale deve essere fatto da console Firebase se le regole sono strette.
                         }
+                    } catch (readError) {
+                        console.log("Verifica admin: Permesso negato o errore lettura (utente normale).");
+                        setIsAdmin(false);
                     }
                 } catch (error) {
-                    console.error("Errore durante la verifica dei permessi admin:", error);
-                    setIsAdmin(false); // Fail safe
+                    console.error("Errore generale auth check:", error);
+                    setIsAdmin(false);
                 }
             } else { 
                 setIsAdmin(false); 
@@ -107,7 +103,13 @@ const App: React.FC = () => {
         const unsubStaff = onSnapshot(collection(db, 'staff'), (s) => setStaff(s.docs.map(d => ({ ...d.data(), id: d.id } as StaffMember))));
         const unsubOrders = onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc')), (s) => { setOrders(s.docs.map(d => ({ ...d.data(), id: d.id } as Order))); setIsLoading(false); });
         const unsubCash = onSnapshot(query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc')), (s) => setCashMovements(s.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement))));
-        const unsubAdmins = onSnapshot(collection(db, 'admins'), (s) => setAdminList(s.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser))));
+        
+        // Listener Admins con gestione errori permessi
+        const unsubAdmins = onSnapshot(collection(db, 'admins'), 
+            (s) => setAdminList(s.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser))),
+            (error) => console.log("Admin list sync paused (permission denied)")
+        );
+
         const unsubSettings = onSnapshot(doc(db, 'settings', 'tillColors'), (d) => { if(d.exists()) setTillColors(d.data() as TillColors); });
         
         const unsubTombolaConfig = onSnapshot(doc(db, 'tombola', 'config'), (d) => { 
@@ -233,7 +235,11 @@ const App: React.FC = () => {
             await signInWithPopup(auth, googleProvider); 
         } catch (error: any) { 
             console.error("Login Error:", error);
-            alert(`Errore durante il login: ${error.message}`); 
+            let msg = "Errore sconosciuto.";
+            if (error.code === 'auth/popup-closed-by-user') msg = "Popup chiuso prima del completamento.";
+            else if (error.code === 'auth/popup-blocked') msg = "Popup bloccato dal browser. Abilita i popup.";
+            else if (error.message) msg = error.message;
+            alert(`Login fallito: ${msg}`); 
         } 
     };
 
