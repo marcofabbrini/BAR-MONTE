@@ -55,7 +55,7 @@ export interface CashMovement {
     reason: string;
     timestamp: string;
     type: 'withdrawal' | 'deposit';
-    category?: 'bar' | 'tombola' | 'analotto'; // Aggiunto analotto
+    category?: 'bar' | 'tombola' | 'analotto';
     isDeleted?: boolean;
     deletedBy?: string;
     deletedAt?: string;
@@ -85,7 +85,7 @@ export interface TombolaTicket {
     playerName: string;
     numbers: number[];
     purchaseTime: string;
-    pricePaid?: number; // Importante per rimborsi corretti
+    pricePaid?: number;
 }
 
 export interface TombolaWin {
@@ -101,8 +101,8 @@ export interface TombolaWin {
 export interface AnalottoConfig {
     jackpot: number;
     lastExtraction: string;
-    rules?: string; // HTML/Text del regolamento
-    extractionSchedule?: string; // Es: "Ogni Venerdì alle 20:00"
+    rules?: string;
+    extractionSchedule?: string;
 }
 
 export type AnalottoWheel = 'APS' | 'Campagnola' | 'Autoscala' | 'Autobotte' | 'Direttivo';
@@ -111,9 +111,9 @@ export interface AnalottoBet {
     id: string;
     playerId: string;
     playerName: string;
-    numbers?: number[]; // 1-10 numeri scelti (Opzionale se pending)
-    wheels?: AnalottoWheel[]; // Ruote su cui si gioca (Opzionale se pending)
-    amount: number; // Importo giocato
+    numbers?: number[];
+    wheels?: AnalottoWheel[];
+    amount: number;
     timestamp: string;
     status: 'pending' | 'active' | 'completed';
 }
@@ -121,7 +121,7 @@ export interface AnalottoBet {
 export interface AnalottoExtraction {
     id: string;
     timestamp: string;
-    numbers: Record<AnalottoWheel, number[]>; // Es: { APS: [1, 5, 90, 23, 11], ... }
+    numbers: Record<AnalottoWheel, number[]>;
 }
 // ====================
 
@@ -131,24 +131,24 @@ export interface SeasonalityConfig {
     preset: 'custom' | 'christmas' | 'easter' | 'summer' | 'halloween';
     animationType: 'snow' | 'rain' | 'float' | 'none';
     emojis: string[];
-    opacity: number;      // 0.1 a 1.0
-    backgroundColor: string; // Hex color
+    opacity: number;
+    backgroundColor: string;
 }
 
 export interface ShiftSettings {
-    anchorDate: string; // Data di riferimento YYYY-MM-DD
-    anchorShift: Shift; // Turno diurno attivo in quella data
+    anchorDate: string;
+    anchorShift: Shift;
     
     // Configurazione Riposo Compensativo (Salto Turno)
-    rcAnchorDate?: string; // Data nota di un riposo
-    rcAnchorShift?: Shift; // Quale turno era di servizio (e quindi ha generato il salto per un sottogruppo)
-    rcAnchorSubGroup?: number; // Quale sottogruppo (1-8) stava riposando in quella data
+    rcAnchorDate?: string;
+    rcAnchorShift?: Shift;
+    rcAnchorSubGroup?: number;
 }
 
 export interface AttendanceRecord {
     id: string;
-    tillId: string; // es. "TA", "TB"
-    date: string; // YYYY-MM-DD
+    tillId: string;
+    date: string;
     timestamp: string;
     presentStaffIds: string[];
 }

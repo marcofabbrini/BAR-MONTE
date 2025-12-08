@@ -37,7 +37,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift), [allStaff, till.shift]);
     const selectedStaffMember = useMemo(() => allStaff.find(s => s.id === selectedStaffId), [allStaff, selectedStaffId]);
     
-    // Filtro storico
     const ordersForHistory = useMemo(() => {
         const tillOrders = allOrders.filter(o => o.tillId === till.id);
         if (selectedStaffId) {
@@ -95,7 +94,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         );
     };
 
-    // Conferma Provvisoria (Solo Locale)
     const handleProvisionalAttendance = () => {
         const today = new Date().toISOString().split('T')[0];
         const storageKey = `attendance_v1_${till.id}_${today}`;
@@ -103,13 +101,11 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         setIsAttendanceModalOpen(false);
     };
 
-    // Conferma Definitiva (Locale + DB)
     const confirmAttendance = () => {
         const today = new Date().toISOString().split('T')[0];
         const storageKey = `attendance_v1_${till.id}_${today}`;
         localStorage.setItem(storageKey, JSON.stringify(presentStaffIds));
         
-        // Save to DB for statistics (using unique ID logic in App.tsx to overwrite)
         if (onSaveAttendance) {
             onSaveAttendance(till.id, presentStaffIds);
         }
@@ -162,9 +158,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     }, [currentOrder, cartTotal, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder, clearOrder]);
 
     const handleStaffSelection = (id: string) => {
-        // Prevent selection of absent staff
         if (!presentStaffIds.includes(id)) return;
-
         setIsAnimatingSelection(true);
         setTimeout(() => {
             setSelectedStaffId(id);
@@ -180,7 +174,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
 
-    // --- ANALOTTO LOGIC (Direct Purchase - Pending) ---
+    // --- ANALOTTO LOGIC ---
     const handleQuickAnalotto = async (amount: number) => {
         if (!selectedStaffId) {
             alert("Seleziona prima un utente per giocare.");
@@ -193,7 +187,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                 playerId: selectedStaffId,
                 playerName: selectedStaffMember?.name || 'Utente',
                 amount: amount,
-                status: 'pending', // TICKET IN BIANCO DA COMPLETARE
+                status: 'pending',
                 numbers: [],
                 wheels: []
             });
@@ -212,7 +206,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         }
         if (!onBuyTombolaTicket || !tombolaTickets) return;
 
-        // Controllo Limite 18 cartelle
         const currentTickets = tombolaTickets.filter(t => t.playerId === selectedStaffId).length;
         if (currentTickets + quantity > 18) {
             alert(`Limite raggiunto! L'utente ha già ${currentTickets} cartelle. Il massimo è 18.`);
@@ -372,7 +365,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                                 return <ProductCard key={product.id} product={product} onAddToCart={addToOrder} inCart={inCart} />;
                                             })}
                                             
-                                            {/* ANALOTTO CARDS (Integrazione prodotti - ACQUISTO RAPIDO) */}
+                                            {/* ANALOTTO CARDS */}
                                             {[1, 2, 5, 10].map(amt => (
                                                 <button 
                                                     key={`analotto-${amt}`}
@@ -391,7 +384,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                                 </button>
                                             ))}
 
-                                            {/* TOMBOLA CARDS (Integrazione prodotti - ACQUISTO RAPIDO) */}
+                                            {/* TOMBOLA CARDS */}
                                             {tombolaConfig?.status === 'pending' && (
                                                 <>
                                                     <button 

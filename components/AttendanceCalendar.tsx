@@ -26,24 +26,21 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
 
-    // Colori Default se non presenti
     const defaultColors: {[key: string]: string} = {
-        'TA': '#ef4444', // Red
-        'TB': '#3b82f6', // Blue
-        'TC': '#22c55e', // Green
-        'TD': '#eab308'  // Yellow
+        'TA': '#ef4444', 
+        'TB': '#3b82f6', 
+        'TC': '#22c55e', 
+        'TD': '#eab308'  
     };
 
     const getShiftColor = (tillId: string) => {
         return tillColors[tillId] || defaultColors[tillId] || '#94a3b8';
     };
 
-    // --- LOGICA REPORT ---
     const attendanceStats = useMemo(() => {
         const stats: Record<string, { name: string, count: number, shift: string, icon: string }> = {};
         
         attendanceRecords.forEach(record => {
-            // Filtro per Anno e Mese corrente se necessario, o globale
             const recDate = new Date(record.date);
             if (recDate.getMonth() === currentDate.getMonth() && recDate.getFullYear() === currentDate.getFullYear()) {
                 record.presentStaffIds.forEach(staffId => {
@@ -75,8 +72,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
-            
-            {/* Header */}
             <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center bg-slate-50 gap-4">
                 <div className="flex gap-2">
                     <button 
@@ -102,9 +97,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 </div>
             </div>
 
-            {/* Content */}
             <div className="flex-grow overflow-auto p-4">
-                
                 {viewMode === 'calendar' && (
                     <div className="grid grid-cols-7 border-l border-t border-slate-200">
                         {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => (
@@ -134,7 +127,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
                                             const color = getShiftColor(tillId);
                                             const presentNames = record.presentStaffIds
-                                                .map(id => staff.find(s => s.id === id)?.name.split(' ')[0]) // Solo nome
+                                                .map(id => staff.find(s => s.id === id)?.name.split(' ')[0]) 
                                                 .filter(Boolean)
                                                 .join(', ');
 
@@ -189,7 +182,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                         </div>
                     </div>
                 )}
-
             </div>
         </div>
     );

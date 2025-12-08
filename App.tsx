@@ -10,7 +10,7 @@ import AdminView from './components/AdminView';
 import TombolaView from './components/TombolaView';
 import GamesHub from './components/GamesHub';
 import AnalottoView from './components/AnalottoView';
-import DiceGame from './components/DiceGame'; // Nuovo componente
+import DiceGame from './components/DiceGame';
 import ShiftCalendar from './components/ShiftCalendar';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
 import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings, AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel, AttendanceRecord } from './types';
@@ -60,8 +60,8 @@ const App: React.FC = () => {
 
     // Shift Settings (Calibration)
     const [shiftSettings, setShiftSettings] = useState<ShiftSettings>({
-        anchorDate: new Date().toISOString().split('T')[0], // Default provvisorio
-        anchorShift: 'b', // Default richiesto
+        anchorDate: new Date().toISOString().split('T')[0],
+        anchorShift: 'b',
         rcAnchorDate: '',
         rcAnchorShift: 'a',
         rcAnchorSubGroup: 1
@@ -126,8 +126,8 @@ const App: React.FC = () => {
                 status: 'pending',
                 maxTickets: 168,
                 minTicketsToStart: 84,
-                ticketPriceSingle: 2, // DEFAULT AGGIORNATO
-                ticketPriceBundle: 5, // DEFAULT AGGIORNATO
+                ticketPriceSingle: 2,
+                ticketPriceBundle: 5,
                 jackpot: 0, 
                 lastExtraction: new Date().toISOString(), 
                 extractedNumbers: [] 
@@ -238,7 +238,6 @@ const App: React.FC = () => {
                     if ([2,3,4,5,15].includes(count)) {
                         const type = count === 2 ? 'Ambo' : count === 3 ? 'Terno' : count === 4 ? 'Quaterna' : count === 5 ? 'Cinquina' : 'Tombola';
                         const winRef = doc(collection(db, 'tombola_wins'));
-                        // Nota: qui potremmo aggiungere un controllo per non duplicare le vincite se la logica lo richiede
                         t.set(winRef, { ticketId: ticketDoc.id, playerName: ticket.playerName, type, numbers: matches, timestamp: new Date().toISOString() });
                     }
                 });
@@ -313,11 +312,10 @@ const App: React.FC = () => {
         } catch (error) { console.error(error); throw error; }
     }, []);
     
-    // UPDATED: Use setDoc with deterministic ID (Date + Till) to avoid duplicates
     const handleSaveAttendance = useCallback(async (tillId: string, presentStaffIds: string[]) => {
         try {
             const today = new Date().toISOString().split('T')[0];
-            const docId = `${today}_${tillId}`; // Unique ID per day per till
+            const docId = `${today}_${tillId}`; 
             
             await setDoc(doc(db, 'shift_attendance', docId), {
                 tillId,
@@ -400,11 +398,10 @@ const App: React.FC = () => {
         } catch (e) { console.error(e); throw e; }
     };
     
-    // === ANALOTTO LOGIC (FIXED) ===
+    // === ANALOTTO LOGIC ===
     const handlePlaceAnalottoBet = async (betData: Omit<AnalottoBet, 'id' | 'timestamp'>) => {
         try {
             await runTransaction(db, async (t) => {
-                // IMPORTANT: Read operations must come first
                 const configRef = doc(db, 'analotto', 'config');
                 const configSnap = await t.get(configRef);
                 const currentJackpot = configSnap.exists() ? (configSnap.data().jackpot || 0) : 0;
@@ -415,7 +412,6 @@ const App: React.FC = () => {
                 const jackpotPart = betData.amount * 0.8;
                 const barPart = betData.amount * 0.2;
 
-                // Usa set con merge: se il documento non esiste lo crea, se esiste aggiorna
                 t.set(configRef, { jackpot: currentJackpot + jackpotPart }, { merge: true });
 
                 const cashRef = doc(collection(db, 'cash_movements'));
@@ -595,10 +591,10 @@ const App: React.FC = () => {
                 onCompleteOrder={handleCompleteOrder} 
                 tillColors={tillColors} 
                 onSaveAttendance={handleSaveAttendance} 
-                onPlaceAnalottoBet={handlePlaceAnalottoBet} // Passaggio funzione giocata diretta
-                tombolaConfig={tombolaConfig} // Passaggio Config Tombola
-                tombolaTickets={tombolaTickets} // Passaggio Biglietti Tombola
-                onBuyTombolaTicket={handleBuyTombolaTicket} // Passaggio funzione acquisto Tombola
+                onPlaceAnalottoBet={handlePlaceAnalottoBet} 
+                tombolaConfig={tombolaConfig} 
+                tombolaTickets={tombolaTickets} 
+                onBuyTombolaTicket={handleBuyTombolaTicket} 
             />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
             case 'tombola': 
@@ -630,7 +626,7 @@ const App: React.FC = () => {
                     isSuperAdmin={isSuperAdmin}
                     onTransferFunds={handleTransferGameFunds}
                     onUpdateConfig={handleUpdateAnalottoConfig}
-                    onConfirmTicket={handleConfirmAnalottoTicket} // New Prop
+                    onConfirmTicket={handleConfirmAnalottoTicket}
                 />;
             case 'dice':
                 return <DiceGame onGoBack={handleGoBack} staff={staff} />;
@@ -659,7 +655,7 @@ const App: React.FC = () => {
                 onAddCashMovement={addCashMovement} 
                 onUpdateMovement={updateCashMovement} 
                 onDeleteMovement={deleteCashMovement} 
-                onPermanentDeleteMovement={permanentDeleteMovement} // Passaggio funzione HARD DELETE
+                onPermanentDeleteMovement={permanentDeleteMovement}
                 onStockPurchase={handleStockPurchase} 
                 onStockCorrection={handleStockCorrection} 
                 onResetCash={handleResetCash} 
@@ -677,8 +673,8 @@ const App: React.FC = () => {
                 onUpdateSeasonality={handleUpdateSeasonality}
                 shiftSettings={shiftSettings}
                 onUpdateShiftSettings={handleUpdateShiftSettings}
-                attendanceRecords={attendanceRecords} // Passaggio dati presenze
-                onDeleteAttendance={handleDeleteAttendance} // Nuova prop
+                attendanceRecords={attendanceRecords}
+                onDeleteAttendance={handleDeleteAttendance}
             />;
             default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectGames={handleSelectGames} onSelectCalendar={handleSelectCalendar} tillColors={tillColors} seasonalityConfig={seasonalityConfig} shiftSettings={shiftSettings} tombolaConfig={tombolaConfig} />;
         }

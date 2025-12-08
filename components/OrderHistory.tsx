@@ -10,8 +10,8 @@ interface OrderHistoryProps {
 
 const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
     // Stati per i filtri
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]); // Default Oggi
-    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);     // Default Oggi
+    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]); 
+    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);     
     const [filterStaffId, setFilterStaffId] = useState('all');
 
     const setDateRange = (range: 'today' | 'week' | 'month' | 'all') => {
@@ -22,7 +22,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
         if (range === 'today') {
             start = end;
         } else if (range === 'week') {
-            const day = today.getDay() || 7; // Lunedì=1, Domenica=7
+            const day = today.getDay() || 7; 
             if (day !== 1) today.setHours(-24 * (day - 1));
             start = today.toISOString().split('T')[0];
         } else if (range === 'month') {
@@ -41,9 +41,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
         const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : Date.now() + 86400000;
 
         return orders.filter(order => {
-            // Nascondi ordini cancellati nella vista cassa
             if (order.isDeleted) return false;
-
             const orderTimestamp = new Date(order.timestamp).getTime();
             const dateMatch = orderTimestamp >= start && orderTimestamp <= end;
             const staffMatch = filterStaffId === 'all' || order.staffId === filterStaffId;
@@ -51,7 +49,6 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
         });
     }, [orders, startDate, endDate, filterStaffId]);
 
-    // Calcola il totale degli ordini filtrati
     const filteredTotal = useMemo(() => {
         return filteredOrders.reduce((acc, order) => acc + order.total, 0);
     }, [filteredOrders]);
@@ -69,7 +66,6 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
             groups[name].total += order.total;
         });
 
-        // Ordina per nome utente
         return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
     }, [filteredOrders]);
 
@@ -79,7 +75,6 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
     
     return (
         <div className="space-y-4">
-            {/* Sezione Filtri */}
             <div className="space-y-4 mb-6">
                 <div className="flex gap-2 overflow-x-auto pb-1">
                     <button onClick={() => setDateRange('today')} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold whitespace-nowrap">Oggi</button>

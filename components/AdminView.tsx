@@ -55,7 +55,7 @@ interface AdminViewProps {
     onUpdateShiftSettings: (cfg: ShiftSettings) => Promise<void>;
     
     attendanceRecords: AttendanceRecord[];
-    onDeleteAttendance: (id: string) => Promise<void>; // Nuova prop
+    onDeleteAttendance: (id: string) => Promise<void>;
 }
 
 type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'attendance';
@@ -211,7 +211,7 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     const handleSaveShiftCalibration = async () => {
         await onUpdateShiftSettings({
-            ...shiftSettings, // mantieni RC
+            ...shiftSettings,
             anchorDate: calibDate,
             anchorShift: calibShift
         });
@@ -262,7 +262,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <div className="text-right"><p className="text-[9px] text-slate-400 uppercase font-bold">{isSuperAdmin ? 'Super Admin' : 'Admin'}</p><button onClick={onLogout} className="text-[10px] text-red-500 font-bold hover:underline">LOGOUT</button></div>
                     </div>
                     
-                    {/* MENU ADMIN SU DUE RIGHE */}
                     <div className="flex flex-col gap-2 w-full">
                         {/* RIGA 1: OPERATIVITÀ */}
                         <div className="flex flex-wrap justify-center gap-2 border-b border-slate-100 pb-2">
@@ -354,7 +353,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <button onClick={saveSettings} className="mt-4 w-full bg-slate-800 text-white font-bold py-2 rounded-lg">Salva Colori</button>
                         </div>
 
-                        {/* CALIBRAZIONE TURNARIO (VERDE) */}
                         <div className="bg-green-50 p-6 rounded-xl border border-green-100 relative overflow-hidden">
                             <h2 className="text-lg font-bold text-green-800 mb-4 flex items-center gap-2">
                                 <CalendarIcon className="h-5 w-5" /> Calibrazione Turnario
@@ -383,7 +381,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                             </button>
                         </div>
 
-                        {/* CONFIGURAZIONE RIPOSO COMPENSATIVO (VIOLA) */}
                         <div className="bg-purple-50 p-6 rounded-xl border border-purple-100 relative overflow-hidden">
                             <h2 className="text-lg font-bold text-purple-800 mb-4 flex items-center gap-2">
                                 <CalendarIcon className="h-5 w-5" /> Configurazione Salto Turno (RC)
@@ -419,13 +416,11 @@ const AdminView: React.FC<AdminViewProps> = ({
                             </button>
                         </div>
 
-                        {/* CONFIGURAZIONE STAGIONALITÀ AVANZATA (BLU) */}
                         <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 relative overflow-hidden">
                             <h2 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
                                 <SparklesIcon className="h-5 w-5" /> Configurazione Stagionale
                             </h2>
                             
-                            {/* Griglia Date e Preset */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                 <div><label className="text-xs font-bold text-blue-600 block mb-1">Inizio Evento</label><input type="date" value={seasonStart} onChange={e => setSeasonStart(e.target.value)} className="w-full border p-2 rounded" /></div>
                                 <div><label className="text-xs font-bold text-blue-600 block mb-1">Fine Evento</label><input type="date" value={seasonEnd} onChange={e => setSeasonEnd(e.target.value)} className="w-full border p-2 rounded" /></div>
@@ -441,7 +436,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 </div>
                             </div>
 
-                            {/* Dettagli Animazione */}
                             <div className="bg-white/50 rounded-lg p-4 border border-blue-200 space-y-4">
                                 <div>
                                     <label className="text-xs font-bold text-blue-600 block mb-1">Emoji (separate da virgola)</label>
