@@ -343,7 +343,7 @@ const App: React.FC = () => {
                             playerId: staffId, 
                             playerName: staffMember.name, 
                             numbers: ticketNumbers, 
-                            purchaseTime: new Date().toISOString(),
+                            purchaseTime: new Date().toISOString(), 
                             pricePaid: pricePerTicket 
                         });
                     }
@@ -370,7 +370,7 @@ const App: React.FC = () => {
         } catch (e) { console.error(e); throw e; }
     };
     
-    // === ANALOTTO LOGIC ===
+    // === ANALOTTO LOGIC (FIXED) ===
     const handlePlaceAnalottoBet = async (betData: Omit<AnalottoBet, 'id' | 'timestamp'>) => {
         try {
             await runTransaction(db, async (t) => {
@@ -384,6 +384,7 @@ const App: React.FC = () => {
                 const jackpotPart = betData.amount * 0.8;
                 const barPart = betData.amount * 0.2;
 
+                // Usa set con merge: se il documento non esiste lo crea, se esiste aggiorna
                 t.set(configRef, { jackpot: currentJackpot + jackpotPart }, { merge: true });
 
                 const cashRef = doc(collection(db, 'cash_movements'));
@@ -513,7 +514,17 @@ const App: React.FC = () => {
     const renderContent = () => {
         if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
         switch (view) {
-            case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} onSaveAttendance={handleSaveAttendance} onPlayAnalotto={handleSelectAnalotto} />;
+            case 'till': return <TillView 
+                till={TILLS.find(t=>t.id===selectedTillId)!} 
+                onGoBack={handleGoBack} 
+                products={products} 
+                allStaff={staff} 
+                allOrders={orders} 
+                onCompleteOrder={handleCompleteOrder} 
+                tillColors={tillColors} 
+                onSaveAttendance={handleSaveAttendance} 
+                onPlaceAnalottoBet={handlePlaceAnalottoBet} // Passaggio funzione giocata diretta
+            />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
             case 'tombola': 
                 if (!tombolaConfig) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
