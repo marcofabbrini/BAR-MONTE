@@ -55,7 +55,7 @@ export interface CashMovement {
     reason: string;
     timestamp: string;
     type: 'withdrawal' | 'deposit';
-    category?: 'bar' | 'tombola';
+    category?: 'bar' | 'tombola' | 'analotto'; // Aggiunto analotto
     isDeleted?: boolean;
     deletedBy?: string;
     deletedAt?: string;
@@ -96,6 +96,31 @@ export interface TombolaWin {
     numbers: number[];
     timestamp: string;
 }
+
+// === ANALOTTO VVF ===
+export interface AnalottoConfig {
+    jackpot: number;
+    lastExtraction: string;
+}
+
+export type AnalottoWheel = 'APS' | 'Campagnola' | 'Autoscala' | 'Autobotte' | 'Direttivo';
+
+export interface AnalottoBet {
+    id: string;
+    playerId: string;
+    playerName: string;
+    numbers: number[]; // 1-10 numeri scelti
+    wheels: AnalottoWheel[]; // Ruote su cui si gioca
+    amount: number; // Importo giocato
+    timestamp: string;
+}
+
+export interface AnalottoExtraction {
+    id: string;
+    timestamp: string;
+    numbers: Record<AnalottoWheel, number[]>; // Es: { APS: [1, 5, 90, 23, 11], ... }
+}
+// ====================
 
 export interface SeasonalityConfig {
     startDate: string;

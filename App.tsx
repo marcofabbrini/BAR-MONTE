@@ -9,12 +9,12 @@ import ReportsView from './components/ReportsView';
 import AdminView from './components/AdminView';
 import TombolaView from './components/TombolaView';
 import GamesHub from './components/GamesHub';
-import ParkingJam from './components/ParkingJam';
+import AnalottoView from './components/AnalottoView'; // Nuovo componente
 import ShiftCalendar from './components/ShiftCalendar';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
-import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings } from './types';
+import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings, AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel } from './types';
 
-type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'parking';
+type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto';
 
 // Helper per mescolare un array
 const shuffleArray = (array: any[]) => {
@@ -46,6 +46,11 @@ const App: React.FC = () => {
     const [tombolaTickets, setTombolaTickets] = useState<TombolaTicket[]>([]);
     const [tombolaWins, setTombolaWins] = useState<TombolaWin[]>([]);
 
+    // Analotto State
+    const [analottoConfig, setAnalottoConfig] = useState<AnalottoConfig | undefined>(undefined);
+    const [analottoBets, setAnalottoBets] = useState<AnalottoBet[]>([]);
+    const [analottoExtractions, setAnalottoExtractions] = useState<AnalottoExtraction[]>([]);
+
     // Seasonality State
     const [seasonalityConfig, setSeasonalityConfig] = useState<SeasonalityConfig | undefined>(undefined);
 
@@ -70,17 +75,12 @@ const App: React.FC = () => {
                     const adminsRef = collection(db, 'admins');
                     const q = query(adminsRef, where("email", "==", user.email));
                     
-                    // Tentativo di lettura sicuro
                     try {
                         const querySnapshot = await getDocs(q);
                         if (!querySnapshot.empty) {
                             setIsAdmin(true);
                         } else {
-                            // Bootstrap check (solo se la lettura non è fallita per permessi)
                             setIsAdmin(false);
-                            // Nota: Se le regole di sicurezza bloccano la lettura ai non-admin, 
-                            // non arriveremo mai qui se la collezione non è vuota.
-                            // Il bootstrap manuale deve essere fatto da console Firebase se le regole sono strette.
                         }
                     } catch (readError) {
                         console.log("Verifica admin: Permesso negato o errore lettura (utente normale).");
@@ -105,7 +105,6 @@ const App: React.FC = () => {
         const unsubOrders = onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc')), (s) => { setOrders(s.docs.map(d => ({ ...d.data(), id: d.id } as Order))); setIsLoading(false); });
         const unsubCash = onSnapshot(query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc')), (s) => setCashMovements(s.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement))));
         
-        // Listener Admins con gestione errori permessi
         const unsubAdmins = onSnapshot(collection(db, 'admins'), 
             (s) => setAdminList(s.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser))),
             (error) => console.log("Admin list sync paused (permission denied)")
@@ -113,6 +112,7 @@ const App: React.FC = () => {
 
         const unsubSettings = onSnapshot(doc(db, 'settings', 'tillColors'), (d) => { if(d.exists()) setTillColors(d.data() as TillColors); });
         
+        // TOMBOLA
         const unsubTombolaConfig = onSnapshot(doc(db, 'tombola', 'config'), (d) => { 
             if (d.exists()) setTombolaConfig(d.data() as TombolaConfig); 
             else setDoc(doc(db, 'tombola', 'config'), { 
@@ -128,12 +128,19 @@ const App: React.FC = () => {
         });
         const unsubTombolaTickets = onSnapshot(collection(db, 'tombola_tickets'), (s) => setTombolaTickets(s.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket))));
         const unsubTombolaWins = onSnapshot(collection(db, 'tombola_wins'), (s) => setTombolaWins(s.docs.map(d => ({...d.data(), id: d.id} as TombolaWin))));
+
+        // ANALOTTO LISTENERS
+        const unsubAnalottoConfig = onSnapshot(doc(db, 'analotto', 'config'), (d) => {
+            if (d.exists()) setAnalottoConfig(d.data() as AnalottoConfig);
+            else setDoc(doc(db, 'analotto', 'config'), { jackpot: 0, lastExtraction: '' });
+        });
+        const unsubAnalottoBets = onSnapshot(query(collection(db, 'analotto_bets'), orderBy('timestamp', 'desc')), (s) => setAnalottoBets(s.docs.map(d => ({...d.data(), id: d.id} as AnalottoBet))));
+        const unsubAnalottoExtractions = onSnapshot(query(collection(db, 'analotto_extractions'), orderBy('timestamp', 'desc')), (s) => setAnalottoExtractions(s.docs.map(d => ({...d.data(), id: d.id} as AnalottoExtraction))));
         
         const unsubSeasonality = onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { 
             if(d.exists()) {
                 setSeasonalityConfig(d.data() as SeasonalityConfig); 
             } else { 
-                // Default sicuro
                 setDoc(doc(db, 'settings', 'seasonality'), { 
                     startDate: '', 
                     endDate: '', 
@@ -141,7 +148,7 @@ const App: React.FC = () => {
                     animationType: 'none',
                     emojis: [],
                     opacity: 0.5,
-                    backgroundColor: '#f8fafc' // slate-50
+                    backgroundColor: '#f8fafc' 
                 }); 
             }
         });
@@ -150,7 +157,6 @@ const App: React.FC = () => {
             if(d.exists()) {
                 setShiftSettings(d.data() as ShiftSettings);
             } else {
-                // Default richiesto: OGGI è TURNO B
                 const today = new Date().toISOString().split('T')[0];
                 setDoc(doc(db, 'settings', 'shift'), {
                     anchorDate: today,
@@ -162,7 +168,12 @@ const App: React.FC = () => {
             }
         });
         
-        return () => { unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); unsubSeasonality(); unsubShiftSettings(); };
+        return () => { 
+            unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); 
+            unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); 
+            unsubAnalottoConfig(); unsubAnalottoBets(); unsubAnalottoExtractions();
+            unsubSeasonality(); unsubShiftSettings(); 
+        };
     }, []);
 
     // Seeding
@@ -186,7 +197,7 @@ const App: React.FC = () => {
         seedDatabase();
     }, []);
 
-    // Tombola Extraction
+    // Tombola Extraction Logic (kept same)
     useEffect(() => {
         const runTombolaExtraction = async () => {
             if (!tombolaConfig || !tombolaConfig.extractedNumbers || tombolaConfig.extractedNumbers.length >= 90) return;
@@ -196,14 +207,12 @@ const App: React.FC = () => {
             const last = new Date(tombolaConfig.lastExtraction).getTime();
             const diffHours = (now - last) / (1000 * 60 * 60);
             
-            // Check extraction every 2 hours (logic kept from original)
             if (diffHours >= 2) {
                 try {
                     await runTransaction(db, async (t) => {
                         const configRef = doc(db, 'tombola', 'config');
                         const configSnap = await t.get(configRef);
                         const currentConfig = configSnap.data() as TombolaConfig;
-                        // Safety check inside transaction
                         if (!currentConfig.extractedNumbers) currentConfig.extractedNumbers = [];
 
                         let nextNum;
@@ -213,7 +222,7 @@ const App: React.FC = () => {
                         const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
                         ticketsSnap.forEach(ticketDoc => {
                             const ticket = ticketDoc.data() as TombolaTicket;
-                            if (!ticket.numbers) return; // Skip broken tickets
+                            if (!ticket.numbers) return;
                             const matches = ticket.numbers.filter(n => newExtracted.includes(n));
                             const count = matches.length;
                             if ([2,3,4,5,15].includes(count)) {
@@ -261,7 +270,7 @@ const App: React.FC = () => {
     const handleSelectAdmin = useCallback(() => setView('admin'), []);
     const handleSelectGames = useCallback(() => setView('games'), []);
     const handleSelectTombola = useCallback(() => setView('tombola'), []);
-    const handleSelectParking = useCallback(() => setView('parking'), []);
+    const handleSelectAnalotto = useCallback(() => setView('analotto'), []);
     const handleSelectCalendar = useCallback(() => setView('calendar'), []);
     const handleGoBack = useCallback(() => { setSelectedTillId(null); setView('selection'); }, []);
 
@@ -277,7 +286,6 @@ const App: React.FC = () => {
         } catch (error) { console.error(error); throw error; }
     }, []);
     
-    // Funzione per salvare le presenze per statistiche future
     const handleSaveAttendance = useCallback(async (tillId: string, presentStaffIds: string[]) => {
         try {
             await addDoc(collection(db, 'shift_attendance'), {
@@ -352,6 +360,87 @@ const App: React.FC = () => {
         } catch (e) { console.error(e); throw e; }
     };
     
+    // === ANALOTTO LOGIC ===
+    const handlePlaceAnalottoBet = async (betData: Omit<AnalottoBet, 'id' | 'timestamp'>) => {
+        try {
+            await runTransaction(db, async (t) => {
+                // 1. Aggiungi Schedina
+                const betRef = doc(collection(db, 'analotto_bets'));
+                t.set(betRef, {
+                    ...betData,
+                    timestamp: new Date().toISOString()
+                });
+
+                // 2. Aggiorna Montepremi Analotto (separato)
+                const configRef = doc(db, 'analotto', 'config');
+                const configSnap = await t.get(configRef);
+                const currentJackpot = configSnap.exists() ? (configSnap.data().jackpot || 0) : 0;
+                
+                // Tutto l'incasso va nel montepremi? O tratteniamo una %? 
+                // Per ora assumiamo 100% nel montepremi come da richiesta "incasso nel fondo gioco"
+                // Se serve, possiamo dividere come nella tombola (80/20).
+                // Mettiamo 80/20 anche qui per coerenza con la Tombola.
+                const jackpotPart = betData.amount * 0.8;
+                const barPart = betData.amount * 0.2;
+
+                t.set(configRef, { jackpot: currentJackpot + jackpotPart }, { merge: true });
+
+                // 3. Registra Movimento Cassa
+                const cashRef = doc(collection(db, 'cash_movements'));
+                t.set(cashRef, {
+                    amount: betData.amount,
+                    reason: `Analotto: Giocata (${betData.playerName})`,
+                    timestamp: new Date().toISOString(),
+                    type: 'deposit',
+                    category: 'analotto'
+                });
+                
+                // Utile Bar
+                const barCashRef = doc(collection(db, 'cash_movements'));
+                t.set(barCashRef, { 
+                    amount: barPart, 
+                    reason: `Utile Analotto (20%)`, 
+                    timestamp: new Date().toISOString(), 
+                    type: 'deposit', 
+                    category: 'bar' 
+                });
+            });
+        } catch (e) {
+            console.error("Errore giocata analotto:", e);
+            throw e;
+        }
+    };
+
+    const handleAnalottoExtraction = async () => {
+        if (!isSuperAdmin) return;
+        try {
+            const wheels: AnalottoWheel[] = ['APS', 'Campagnola', 'Autoscala', 'Autobotte', 'Direttivo'];
+            const extractionData: Record<string, number[]> = {};
+
+            wheels.forEach(wheel => {
+                const nums = new Set<number>();
+                while(nums.size < 5) {
+                    nums.add(Math.floor(Math.random() * 90) + 1);
+                }
+                extractionData[wheel] = Array.from(nums);
+            });
+
+            await addDoc(collection(db, 'analotto_extractions'), {
+                timestamp: new Date().toISOString(),
+                numbers: extractionData
+            });
+
+            await updateDoc(doc(db, 'analotto', 'config'), {
+                lastExtraction: new Date().toISOString()
+            });
+
+        } catch (e) {
+            console.error(e);
+            throw e;
+        }
+    };
+    // ======================
+
     const handleRefundTombolaTicket = async (ticketId: string) => {
         try {
             await runTransaction(db, async (t) => {
@@ -438,6 +527,8 @@ const App: React.FC = () => {
             await runTransaction(db, async (t) => {
                 if (gameName.toLowerCase().includes('tombola')) {
                     t.update(doc(db, 'tombola', 'config'), { jackpot: 0 });
+                } else if (gameName.toLowerCase().includes('analotto')) {
+                    t.update(doc(db, 'analotto', 'config'), { jackpot: 0 });
                 }
                 const cashRef = doc(collection(db, 'cash_movements'));
                 t.set(cashRef, {
@@ -475,7 +566,7 @@ const App: React.FC = () => {
     const renderContent = () => {
         if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
         switch (view) {
-            case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} onSaveAttendance={handleSaveAttendance} />;
+            case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} onSaveAttendance={handleSaveAttendance} onPlayAnalotto={handleSelectAnalotto} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
             case 'tombola': 
                 if (!tombolaConfig) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
@@ -492,10 +583,20 @@ const App: React.FC = () => {
                 onTransferFunds={handleTransferGameFunds}
                 onUpdateTombolaConfig={handleUpdateTombolaConfig}
             />;
+            case 'analotto':
+                return <AnalottoView 
+                    onGoBack={handleGoBack}
+                    config={analottoConfig}
+                    bets={analottoBets}
+                    extractions={analottoExtractions}
+                    staff={staff}
+                    onPlaceBet={handlePlaceAnalottoBet}
+                    onRunExtraction={handleAnalottoExtraction}
+                    isSuperAdmin={isSuperAdmin}
+                    onTransferFunds={handleTransferGameFunds}
+                />;
             case 'games':
-                return <GamesHub onGoBack={handleGoBack} onPlayTombola={handleSelectTombola} onPlayParking={handleSelectParking} tombolaConfig={tombolaConfig} />;
-            case 'parking':
-                return <ParkingJam onGoBack={handleGoBack} />;
+                return <GamesHub onGoBack={handleGoBack} onPlayTombola={handleSelectTombola} onPlayAnalotto={handleSelectAnalotto} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} />;
             case 'calendar':
                 return <ShiftCalendar onGoBack={handleGoBack} tillColors={tillColors} shiftSettings={shiftSettings} />;
             case 'admin': return <AdminView 

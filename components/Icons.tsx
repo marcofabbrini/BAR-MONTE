@@ -79,13 +79,6 @@ export const ChartBarIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-export const ModernChartIcon = (props: React.SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
-    </svg>
-);
-
 export const LockIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
@@ -214,6 +207,19 @@ export const DropletIcon = (props: React.SVGProps<SVGSVGElement>) => (
 export const LayersIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75l8.25-4.5 8.25 4.5-8.25 4.5-8.25-4.5zM3.75 12l8.25 4.5 8.25-4.5M3.75 17.25l8.25 4.5 8.25-4.5" />
+    </svg>
+);
+
+export const CloverIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 5.25a3 3 0 0 1 3 3v2.25h-4.5V6a3 3 0 0 1 1.5-2.6m-6 0a3 3 0 0 0-1.5 2.6v4.5h4.5V6a3 3 0 0 0-1.5-2.6m6 13.5a3 3 0 0 0 1.5-2.6v-2.25h-4.5V18a3 3 0 0 0 1.5 2.6m-6 0a3 3 0 0 1-1.5-2.6v-4.5h4.5V18a3 3 0 0 1-1.5 2.6M12 10.5v3m0-3h3m-3 0h-3" />
+    </svg>
+);
+
+export const BallIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <text x="12" y="16" fontSize="10" textAnchor="middle" fill="currentColor" fontWeight="bold">90</text>
     </svg>
 );
 

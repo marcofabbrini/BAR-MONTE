@@ -4,7 +4,7 @@ import { Order, OrderItem, Till, Product, StaffMember, TillColors } from '../typ
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
-import { BackArrowIcon, UsersIcon, CheckIcon } from './Icons';
+import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon } from './Icons';
 
 interface TillViewProps {
     till: Till;
@@ -15,9 +15,10 @@ interface TillViewProps {
     onCompleteOrder: (newOrder: Omit<Order, 'id'>) => Promise<void>;
     tillColors?: TillColors;
     onSaveAttendance?: (tillId: string, presentStaffIds: string[]) => Promise<void>;
+    onPlayAnalotto?: () => void;
 }
 
-const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance }) => {
+const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlayAnalotto }) => {
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
@@ -169,7 +170,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row relative">
-            {/* ATTENDANCE MODAL (MINIMALE & NO SCROLLBARS) */}
+            {/* ATTENDANCE MODAL */}
             {isAttendanceModalOpen && (
                 <div className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
                     <div className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-lg overflow-hidden animate-slide-up">
@@ -179,7 +180,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         </div>
                         
                         <div className="p-6">
-                            {/* GRIGLIA UTENTI (No scrollbar visiva) */}
                             <div className="grid grid-cols-2 gap-3 mb-6 max-h-[50vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
                                 {staffForShift.map(member => {
                                     const isSelected = presentStaffIds.includes(member.id);
@@ -256,13 +256,18 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                 </header>
                 
                 <main className="flex-grow flex flex-col relative w-full pb-20 md:pb-4">
-                    <div className="px-4 py-2 z-20 sticky top-[50px]">
+                    <div className="px-4 py-2 z-20 sticky top-[50px] flex gap-2 overflow-x-auto">
                          <div className="bg-white/90 backdrop-blur p-1 rounded-xl shadow-sm inline-flex w-full md:w-auto border border-slate-100">
                             <button onClick={() => setActiveTab('order')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${activeTab === 'order' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>Al bar...</button>
                             <button onClick={() => setActiveTab('history')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${activeTab === 'history' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>
                                 {selectedStaffMember ? `Storico ${selectedStaffMember.name}` : `Storico Turno ${till.shift.toUpperCase()}`}
                             </button>
                         </div>
+                        {onPlayAnalotto && (
+                            <button onClick={onPlayAnalotto} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl shadow-md font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-colors">
+                                <CloverIcon className="h-4 w-4" /> Gioca Analotto
+                            </button>
+                        )}
                     </div>
 
                     <div className="px-4 w-full max-w-7xl mx-auto flex-grow">
@@ -271,7 +276,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                 {!selectedStaffId && (
                                     <div className={`mb-4 transition-all duration-300 ${isAnimatingSelection ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                                         <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Chi sei?</h3>
-                                        {/* GRIGLIA UTENTI CON FILTRO PRESENZE */}
                                         <div className={`grid grid-cols-4 sm:grid-cols-6 gap-3 p-4 rounded-xl ${!selectedStaffId ? 'animate-red-pulse' : ''}`}>
                                             {staffForShift.map(staff => {
                                                 const isPresent = presentStaffIds.includes(staff.id);
@@ -293,7 +297,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                     </div>
                                 )}
 
-                                {/* GRIGLIA PREFERITI (Quadrati Grandi) */}
                                 {favoriteProducts.length > 0 && (
                                     <div className="mb-4">
                                         <h3 className="text-[10px] font-bold text-slate-400 uppercase mb-2 px-1">Preferiti</h3>
@@ -306,7 +309,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                     </div>
                                 )}
 
-                                {/* LISTA ALTRI PRODOTTI - LAYOUT COMPATTO (Rettangolari) */}
                                 {otherProducts.length > 0 && (
                                     <div>
                                         <h3 className="text-[10px] font-bold text-slate-400 uppercase mb-2 px-1">Altri Prodotti</h3>
