@@ -54,7 +54,7 @@ const App: React.FC = () => {
         anchorShift: 'b', // Default richiesto
         rcAnchorDate: '',
         rcAnchorShift: 'a',
-        rcCycleDays: 36
+        rcAnchorSubGroup: 1
     });
 
     // Calcolo Super Admin
@@ -134,7 +134,7 @@ const App: React.FC = () => {
                     anchorShift: 'b',
                     rcAnchorDate: '',
                     rcAnchorShift: 'a',
-                    rcCycleDays: 36
+                    rcAnchorSubGroup: 1
                 });
             }
         });

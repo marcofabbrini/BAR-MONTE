@@ -13,7 +13,7 @@ interface StaffManagementProps {
 const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, onUpdateStaff, onDeleteStaff }) => {
     const [name, setName] = useState('');
     const [shift, setShift] = useState<Shift>('a');
-    const [rcShift, setRcShift] = useState<Shift>('a'); // RC Shift state
+    const [rcSubGroup, setRcSubGroup] = useState<number>(1); // 1-8
     const [icon, setIcon] = useState('');
     const [isEditing, setIsEditing] = useState<string | null>(null);
     
@@ -26,24 +26,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             if (memberToEdit) {
                 setName(memberToEdit.name);
                 setShift(memberToEdit.shift);
-                setRcShift(memberToEdit.rcShift || memberToEdit.shift);
+                setRcSubGroup(memberToEdit.rcSubGroup || 1);
                 setIcon(memberToEdit.icon || '');
             }
         } else {
             setName('');
             setShift('a');
-            setRcShift('a');
+            setRcSubGroup(1);
             setIcon('');
         }
     }, [isEditing, staff]);
-
-    // Quando cambio il turno di servizio, allineo anche l'RC per comodità (se non sto modificando)
-    const handleShiftChange = (newShift: Shift) => {
-        setShift(newShift);
-        if (!isEditing) {
-            setRcShift(newShift);
-        }
-    };
 
     const toggleFilter = (s: Shift) => {
         const newFilters = new Set(filterShifts);
@@ -60,16 +52,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         try {
             if (isEditing) {
                 const memberToUpdate = staff.find(m => m.id === isEditing);
-                if (memberToUpdate) await onUpdateStaff({ ...memberToUpdate, name: name.trim(), shift, rcShift, icon });
+                if (memberToUpdate) await onUpdateStaff({ ...memberToUpdate, name: name.trim(), shift, rcSubGroup, icon });
             } else {
-                await onAddStaff({ name: name.trim(), shift, rcShift, icon });
+                await onAddStaff({ name: name.trim(), shift, rcSubGroup, icon });
             }
             handleCancel();
         } catch (error) { console.error(error); alert("Errore nel salvataggio."); }
     };
     
     const handleEdit = (member: StaffMember) => { setIsEditing(member.id); };
-    const handleCancel = () => { setIsEditing(null); setName(''); setShift('a'); setRcShift('a'); setIcon(''); };
+    const handleCancel = () => { setIsEditing(null); setName(''); setShift('a'); setRcSubGroup(1); setIcon(''); };
     const handleDeleteStaff = async (id: string) => { if (window.confirm('Eliminare membro?')) await onDeleteStaff(id); };
 
     return (
@@ -88,7 +80,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                     </div>
                     <div className="col-span-1 md:col-span-3">
                         <label className="text-sm font-medium text-slate-600">Turno Servizio</label>
-                        <select value={shift} onChange={(e) => handleShiftChange(e.target.value as Shift)} className="w-full mt-1 bg-slate-100 rounded-md px-4 py-2">
+                        <select value={shift} onChange={(e) => setShift(e.target.value as Shift)} className="w-full mt-1 bg-slate-100 rounded-md px-4 py-2">
                             <option value="a">Turno A</option>
                             <option value="b">Turno B</option>
                             <option value="c">Turno C</option>
@@ -96,12 +88,11 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                         </select>
                     </div>
                     <div className="col-span-1 md:col-span-3">
-                        <label className="text-sm font-medium text-slate-600">Rif. Riposo (RC)</label>
-                        <select value={rcShift} onChange={(e) => setRcShift(e.target.value as Shift)} className="w-full mt-1 bg-purple-50 text-purple-700 font-bold border border-purple-200 rounded-md px-4 py-2">
-                            <option value="a">Gruppo RC A</option>
-                            <option value="b">Gruppo RC B</option>
-                            <option value="c">Gruppo RC C</option>
-                            <option value="d">Gruppo RC D</option>
+                        <label className="text-sm font-medium text-slate-600">Gruppo Salto (1-8)</label>
+                        <select value={rcSubGroup} onChange={(e) => setRcSubGroup(parseInt(e.target.value))} className="w-full mt-1 bg-purple-50 text-purple-700 font-bold border border-purple-200 rounded-md px-4 py-2">
+                            {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                                <option key={num} value={num}>Gruppo {num}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="col-span-1 md:col-span-12 flex gap-2 mt-2">
@@ -146,7 +137,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                                 Turno: <span className="font-bold text-primary">{member.shift.toUpperCase()}</span>
                                             </span>
                                             <span className="bg-purple-100 px-2 py-0.5 rounded border border-purple-200 text-purple-700 font-bold text-xs flex items-center gap-1">
-                                                RC: {member.rcShift ? member.rcShift.toUpperCase() : member.shift.toUpperCase()}
+                                                Salto: {member.rcSubGroup || 1}
                                             </span>
                                         </div>
                                     </div>

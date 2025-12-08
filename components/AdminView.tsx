@@ -92,7 +92,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     // RC Calibration State
     const [rcDate, setRcDate] = useState(shiftSettings.rcAnchorDate || '');
     const [rcShift, setRcShift] = useState<Shift>(shiftSettings.rcAnchorShift || 'a');
-    const [rcCycle, setRcCycle] = useState(shiftSettings.rcCycleDays || 36);
+    const [rcSubGroup, setRcSubGroup] = useState<number>(shiftSettings.rcAnchorSubGroup || 1);
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
@@ -216,9 +216,9 @@ const AdminView: React.FC<AdminViewProps> = ({
             ...shiftSettings,
             rcAnchorDate: rcDate,
             rcAnchorShift: rcShift,
-            rcCycleDays: rcCycle
+            rcAnchorSubGroup: rcSubGroup
         });
-        alert("Riposo Compensativo salvato! Il calendario ora mostrerà i salti turno.");
+        alert("Riposo Compensativo (Salto) salvato!");
     };
 
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
@@ -371,19 +371,18 @@ const AdminView: React.FC<AdminViewProps> = ({
                         {/* CONFIGURAZIONE RIPOSO COMPENSATIVO (VIOLA) */}
                         <div className="bg-purple-50 p-6 rounded-xl border border-purple-100 relative overflow-hidden">
                             <h2 className="text-lg font-bold text-purple-800 mb-4 flex items-center gap-2">
-                                <CalendarIcon className="h-5 w-5" /> Configurazione Riposo Compensativo
+                                <CalendarIcon className="h-5 w-5" /> Configurazione Salto Turno (RC)
                             </h2>
                             <p className="text-xs text-slate-500 mb-4">
-                                Imposta una data in cui una squadra ha effettuato il SALTO turno (Riposo). Il sistema calcolerà le ricorrenze.
-                                VVF Standard: Ogni 36 giorni.
+                                Configura la rotazione dei salti (sottogruppi 1-8). Indica una data passata o futura dove conosci il gruppo esatto che era a riposo.
                             </p>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label className="text-xs font-bold text-purple-700 block mb-1">Data di un Riposo (Salto)</label>
+                                    <label className="text-xs font-bold text-purple-700 block mb-1">Data Riferimento</label>
                                     <input type="date" value={rcDate} onChange={e => setRcDate(e.target.value)} className="w-full border p-2 rounded" />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-purple-700 block mb-1">Turno che ha riposato</label>
+                                    <label className="text-xs font-bold text-purple-700 block mb-1">Turno in Servizio</label>
                                     <select value={rcShift} onChange={e => setRcShift(e.target.value as Shift)} className="w-full border p-2 rounded bg-white">
                                         <option value="a">Turno A</option>
                                         <option value="b">Turno B</option>
@@ -392,12 +391,16 @@ const AdminView: React.FC<AdminViewProps> = ({
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-purple-700 block mb-1">Ciclo (giorni)</label>
-                                    <input type="number" value={rcCycle} onChange={e => setRcCycle(parseInt(e.target.value))} className="w-full border p-2 rounded" />
+                                    <label className="text-xs font-bold text-purple-700 block mb-1">Gruppo a Riposo (1-8)</label>
+                                    <select value={rcSubGroup} onChange={e => setRcSubGroup(parseInt(e.target.value))} className="w-full border p-2 rounded bg-white">
+                                        {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                                            <option key={n} value={n}>Gruppo {n}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
                             <button onClick={handleSaveRcCalibration} className="bg-purple-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-purple-700 w-full mt-4 shadow-sm">
-                                Salva Configurazione Riposo
+                                Salva Configurazione Salto
                             </button>
                         </div>
 

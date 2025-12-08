@@ -41,7 +41,7 @@ export interface StaffMember {
     id: string;
     name: string;
     shift: Shift;
-    rcShift?: Shift; // Turno di riferimento per il Riposo Compensativo
+    rcSubGroup?: number; // Gruppo di salto 1-8
     icon?: string;
 }
 
@@ -113,6 +113,6 @@ export interface ShiftSettings {
     
     // Configurazione Riposo Compensativo (Salto Turno)
     rcAnchorDate?: string; // Data nota di un riposo
-    rcAnchorShift?: Shift; // Quale turno ha riposato in quella data
-    rcCycleDays?: number;  // Ogni quanti giorni (default 36)
+    rcAnchorShift?: Shift; // Quale turno era di servizio (e quindi ha generato il salto per un sottogruppo)
+    rcAnchorSubGroup?: number; // Quale sottogruppo (1-8) stava riposando in quella data
 }

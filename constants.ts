@@ -47,8 +47,8 @@ export const INITIAL_MENU_ITEMS: Product[] = [
 
 // Dati iniziali per il personale con emoji
 export const INITIAL_STAFF_MEMBERS: StaffMember[] = [
-    { id: 'staff-1', name: 'Mario Rossi', shift: 'a', rcShift: 'a', icon: '👨‍🍳' },
-    { id: 'staff-2', name: 'Laura Bianchi', shift: 'b', rcShift: 'b', icon: '👩‍💼' },
-    { id: 'staff-3', name: 'Paolo Verdi', shift: 'c', rcShift: 'c', icon: '👨‍💻' },
-    { id: 'staff-4', name: 'Anna Neri', shift: 'd', rcShift: 'd', icon: '👩‍🎨' },
+    { id: 'staff-1', name: 'Mario Rossi', shift: 'a', rcSubGroup: 1, icon: '👨‍🍳' },
+    { id: 'staff-2', name: 'Laura Bianchi', shift: 'b', rcSubGroup: 1, icon: '👩‍💼' },
+    { id: 'staff-3', name: 'Paolo Verdi', shift: 'c', rcSubGroup: 1, icon: '👨‍💻' },
+    { id: 'staff-4', name: 'Anna Neri', shift: 'd', rcSubGroup: 1, icon: '👩‍🎨' },
 ];

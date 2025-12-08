@@ -12,10 +12,10 @@ interface ShiftCalendarProps {
 const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shiftSettings }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [highlightShift, setHighlightShift] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
+    const [userSubGroup, setUserSubGroup] = useState<number | 'none'>('none');
 
     // ANCORA DINAMICA
     const getShiftsForDate = (date: Date) => {
-        // Usa impostazioni dinamiche o fallback
         const anchorDateStr = shiftSettings?.anchorDate || new Date().toISOString().split('T')[0];
         const anchorShift = shiftSettings?.anchorShift || 'b';
 
@@ -25,23 +25,17 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         const targetDate = new Date(date);
         targetDate.setHours(12, 0, 0, 0); // Fix DST
         
-        // Calcolo giorni di differenza
         const diffTime = targetDate.getTime() - anchorDate.getTime();
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); // Usa round
         
-        // Sequenza
         const shifts = ['A', 'B', 'C', 'D'];
-        
-        // Trova l'indice del turno di ancoraggio
         const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
 
         // Calcolo Turno Giorno
         let dayIndex = (anchorIndex + diffDays) % 4;
         if (dayIndex < 0) dayIndex += 4;
         
-        // VVF Standard:
-        // Se la squadra X fa il giorno (8-20), la notte (20-8) è coperta dalla squadra 
-        // che ha fatto il giorno IERI.
+        // VVF Standard: 12-24 12-48.
         let nightIndex = dayIndex - 1;
         if (nightIndex < 0) nightIndex += 4;
 
@@ -51,38 +45,37 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         };
     };
 
-    // CALCOLO RIPOSO COMPENSATIVO
-    // Verifica se un dato turno, in una data data, è in "Salto" (Riposo Compensativo)
-    const isRestDay = (shift: string, date: Date) => {
-        if (!shiftSettings?.rcAnchorDate) return false;
+    // CALCOLO SOTTOGRUPPO DI SALTO (1-8)
+    const getRestingSubGroup = (shift: string, date: Date) => {
+        if (!shiftSettings?.rcAnchorDate) return null;
         
-        const cycle = shiftSettings.rcCycleDays || 36;
-        const stagger = cycle / 4; // Standard VVF: 9 giorni tra un turno e l'altro
+        // La logica è: il gruppo di salto avanza di 1 ogni 4 giorni (ogni volta che quel turno torna in servizio diurno)
+        // Dobbiamo calcolare quanti "cicli turno" sono passati dalla data di ancoraggio.
         
         const anchorDate = new Date(shiftSettings.rcAnchorDate);
         anchorDate.setHours(12, 0, 0, 0);
         const targetDate = new Date(date);
         targetDate.setHours(12, 0, 0, 0);
-        
+
         const diffTime = targetDate.getTime() - anchorDate.getTime();
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         
-        const shifts = ['A', 'B', 'C', 'D'];
-        const targetIdx = shifts.indexOf(shift.toUpperCase());
-        const anchorIdx = shifts.indexOf((shiftSettings.rcAnchorShift || 'A').toUpperCase());
+        // Calcoliamo quante rotazioni complete (4 giorni) sono avvenute globalmente
+        const rotationCycles = Math.floor(diffDays / 4);
         
-        // Calcola l'offset di ciclo per questo turno relativo all'ancora
-        // Esempio: Se A riposa a 0, B riposa a 9.
-        let shiftOffset = (targetIdx - anchorIdx) * stagger;
+        // Ancora RC
+        const anchorSubGroup = shiftSettings.rcAnchorSubGroup || 1;
         
-        // Normalizziamo i giorni per trovare se siamo sul multiplo del ciclo
-        const adjustedDiff = diffDays - shiftOffset;
-        return (adjustedDiff % cycle) === 0;
+        // Poiché i turni ruotano parallelamente (A1, B1, C1, D1 -> A2, B2...), il numero del salto 
+        // è dato dall'offset globale di cicli.
+        let currentSubGroup = (anchorSubGroup + rotationCycles) % 8;
+        if (currentSubGroup <= 0) currentSubGroup += 8;
+        
+        return currentSubGroup;
     };
 
     const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-    const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay(); // 0 = Sun
-    // Adjust for Monday start (Monday=0, Sunday=6)
+    const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
     const startingBlankDays = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
 
     const changeMonth = (delta: number) => {
@@ -95,7 +88,6 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
 
     const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
 
-    // Colori di Default se non personalizzati
     const defaultColors: {[key: string]: string} = {
         'TA': '#ef4444', // Red
         'TB': '#3b82f6', // Blue
@@ -108,33 +100,34 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         return tillColors[tillId] || defaultColors[tillId] || '#94a3b8';
     };
 
-    // Helper per renderizzare la cella turno (Giorno o Notte) con layout responsive
+    // Helper per renderizzare la cella turno
     const renderShiftRow = (shift: string, type: 'day' | 'night', isDimmed: boolean, date: Date) => {
-        // Controllo Riposo (Solo se non è oscurato, cioè se è il turno che stiamo cercando)
-        // Se non stiamo filtrando (isDimmed false per tutti), controlliamo comunque il riposo?
-        // Sì, mostriamo se quel turno sta riposando.
         
-        // Se stiamo filtrando, ci interessa solo se il turno evidenziato è in riposo.
-        // Se non stiamo filtrando, mostriamo il turno normale (la logica VVF mostra chi lavora, non chi riposa, nel calendario generale)
-        // PERO', se filtro per "A", e oggi A ha riposo, voglio vedere "RIPOSO".
+        const restingGroup = getRestingSubGroup(shift, date);
         
-        let isRest = false;
-        if (highlightShift && shift === highlightShift) {
-            isRest = isRestDay(shift, date);
-        }
+        // Determina se questo specifico utente è a riposo
+        // Se userSubGroup è 'none', non evidenziamo i salti come viola (ma mostriamo il numero)
+        // Se userSubGroup è selezionato, ed è uguale a restingGroup, ALLORA è un salto personale.
+        const isMyRest = userSubGroup !== 'none' && restingGroup === userSubGroup;
+        
+        // Se non ho selezionato un gruppo, mostro il salto come info, ma non come "riposo attivo"
+        const showAsRest = isMyRest;
 
         const color = getShiftColor(shift);
-        const icon = isRest ? '🏖️' : (type === 'day' ? '☀️' : '🌙');
-        const labelText = isRest ? 'RIPOSO' : (type === 'day' ? 'Giorno' : 'Notte');
+        const icon = showAsRest ? '💤' : (type === 'day' ? '☀️' : '🌙');
         
-        // Se è riposo, diventa viola
-        const bgColor = isRest 
+        // Etichetta: Se riposo "SALTO", altrimenti "Giorno/Notte"
+        // Se non è il mio riposo ma c'è un numero salto, mostro quello
+        const labelText = showAsRest ? 'SALTO' : (type === 'day' ? 'Giorno' : 'Notte');
+        
+        // Colore Sfondo
+        const bgColor = showAsRest 
             ? 'bg-purple-100 border-purple-200' 
             : (type === 'day' ? 'bg-orange-50/50 border-orange-100' : 'bg-slate-100/50 border-slate-100');
 
-        // Se è riposo, il badge è viola
-        const badgeStyle = isRest ? { backgroundColor: '#9333ea' } : { backgroundColor: color };
-        const textStyle = isRest ? { color: '#9333ea' } : { color: color };
+        // Badge a destra
+        const badgeStyle = showAsRest ? { backgroundColor: '#9333ea' } : { backgroundColor: color };
+        const textStyle = showAsRest ? { color: '#9333ea' } : { color: color };
 
         return (
             <div 
@@ -149,23 +142,26 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                 {/* DESKTOP VIEW */}
                 <div className="hidden md:flex items-center w-full justify-between">
                     <span className="text-xs font-bold text-slate-600 flex items-center gap-1">
-                        <span className="text-lg leading-none">{icon}</span> {labelText}
+                        <span className="text-lg leading-none">{icon}</span> 
+                        {labelText}
+                        {!showAsRest && restingGroup && <span className="text-[9px] text-slate-400 ml-1">(S{restingGroup})</span>}
                     </span>
                     <span 
                         className="font-black text-xs px-2 rounded text-white shadow-sm"
                         style={badgeStyle}
                     >
-                        {isRest ? 'RC' : shift}
+                        {showAsRest ? `S${restingGroup}` : shift}
                     </span>
                 </div>
 
                 {/* MOBILE VIEW */}
                 <div className="md:hidden relative w-full h-7 flex items-center justify-center">
                     <span className="font-black text-xl leading-none" style={textStyle}>
-                        {isRest ? 'R' : shift}
+                        {showAsRest ? 'S' : shift}
                     </span>
-                    <span className="absolute -top-0.5 -right-0.5 text-[8px] opacity-60">
-                        {icon}
+                    <span className="absolute -top-0.5 -right-0.5 text-[8px] opacity-60 flex flex-col items-end leading-tight">
+                        <span>{icon}</span>
+                        {!showAsRest && restingGroup && <span className="text-[6px] text-slate-400 font-bold">{restingGroup}</span>}
                     </span>
                 </div>
             </div>
@@ -195,7 +191,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
 
             <main className="flex-grow p-2 md:p-8 max-w-5xl mx-auto w-full">
                 
-                {/* Controlli e Legenda */}
+                {/* Controlli e Filtri */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-4">
                         <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-100 rounded-full">←</button>
@@ -205,27 +201,37 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                         <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-100 rounded-full">→</button>
                     </div>
 
-                    <div className="flex gap-2 items-center">
-                        <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase mr-2">Filtra Turno:</span>
-                        {['A', 'B', 'C', 'D'].map(shift => (
-                            <button
-                                key={shift}
-                                onClick={() => setHighlightShift(highlightShift === shift ? null : shift as any)}
-                                className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center transition-all shadow-sm ${highlightShift === shift ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : 'opacity-70 hover:opacity-100'}`}
-                                style={{ backgroundColor: getShiftColor(shift), color: '#fff' }}
-                            >
-                                {shift}
-                            </button>
-                        ))}
-                        {highlightShift && (
-                             <button onClick={() => setHighlightShift(null)} className="ml-2 text-[10px] text-red-400 underline">Reset</button>
-                        )}
+                    <div className="flex flex-col md:flex-row gap-4 items-center">
+                        <div className="flex gap-2 items-center">
+                            <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase mr-2">Turno:</span>
+                            {['A', 'B', 'C', 'D'].map(shift => (
+                                <button
+                                    key={shift}
+                                    onClick={() => setHighlightShift(highlightShift === shift ? null : shift as any)}
+                                    className={`w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center transition-all shadow-sm ${highlightShift === shift ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : 'opacity-70 hover:opacity-100'}`}
+                                    style={{ backgroundColor: getShiftColor(shift), color: '#fff' }}
+                                >
+                                    {shift}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="flex items-center gap-2 border-l pl-4 border-slate-200">
+                             <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase">Il mio Gruppo:</span>
+                             <select 
+                                value={userSubGroup} 
+                                onChange={(e) => setUserSubGroup(e.target.value === 'none' ? 'none' : parseInt(e.target.value))}
+                                className="bg-purple-50 border border-purple-200 text-purple-700 font-bold text-xs rounded px-2 py-1"
+                             >
+                                <option value="none">Nessuno</option>
+                                {[1,2,3,4,5,6,7,8].map(n => <option key={n} value={n}>{n}</option>)}
+                             </select>
+                        </div>
                     </div>
                 </div>
 
                 {/* Griglia Calendario */}
                 <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                    {/* Intestazione Giorni */}
                     <div className="grid grid-cols-7 bg-slate-100 border-b border-slate-200">
                         {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((d, i) => (
                             <div key={i} className={`py-3 text-center text-[10px] md:text-xs font-black uppercase ${i===6 ? 'text-red-500' : 'text-slate-500'}`}>
@@ -235,19 +241,16 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                     </div>
 
                     <div className="grid grid-cols-7 auto-rows-fr">
-                        {/* Giorni vuoti inizio mese */}
                         {Array.from({ length: startingBlankDays }).map((_, i) => (
                             <div key={`blank-${i}`} className="bg-slate-50/50 border-b border-r border-slate-100 min-h-[80px] md:min-h-[100px]"></div>
                         ))}
 
-                        {/* Giorni del mese */}
                         {Array.from({ length: daysInMonth }).map((_, i) => {
                             const dayNum = i + 1;
                             const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
                             const shifts = getShiftsForDate(date);
                             const isToday = new Date().toDateString() === date.toDateString();
                             
-                            // Highlight Logic
                             const isFilterActive = highlightShift !== null;
                             const isDayDimmed = isFilterActive && shifts.day !== highlightShift;
                             const isNightDimmed = isFilterActive && shifts.night !== highlightShift;
@@ -265,10 +268,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                                         {isToday && <span className="text-[8px] md:text-[9px] font-black text-green-700 uppercase bg-green-200 px-1 rounded hidden md:inline">OGGI</span>}
                                     </div>
                                     
-                                    {/* Turno Giorno */}
                                     {renderShiftRow(shifts.day, 'day', isDayDimmed, date)}
-
-                                    {/* Turno Notte */}
                                     {renderShiftRow(shifts.night, 'night', isNightDimmed, date)}
                                     
                                 </div>
@@ -278,8 +278,8 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                 </div>
                 
                 <div className="mt-6 text-center text-xs text-slate-400">
-                    <p>Schema turni perpetuo VVF 12-24 12-48</p>
-                    {shiftSettings && <p className="mt-1 opacity-50">Calibrato su: {new Date(shiftSettings.anchorDate).toLocaleDateString()} = {shiftSettings.anchorShift.toUpperCase()}</p>}
+                    <p>Schema turni perpetuo VVF 12-24 12-48 • Rotazione Salto 1-8</p>
+                    {shiftSettings?.rcAnchorDate && <p className="mt-1 opacity-50">Salto calibrato su: {new Date(shiftSettings.rcAnchorDate).toLocaleDateString()} = Gruppo {shiftSettings.rcAnchorSubGroup}</p>}
                 </div>
             </main>
         </div>
