@@ -41,6 +41,7 @@ export interface StaffMember {
     id: string;
     name: string;
     shift: Shift;
+    rcShift?: Shift; // Turno di riferimento per il Riposo Compensativo
     icon?: string;
 }
 

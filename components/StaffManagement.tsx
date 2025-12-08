@@ -13,6 +13,7 @@ interface StaffManagementProps {
 const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, onUpdateStaff, onDeleteStaff }) => {
     const [name, setName] = useState('');
     const [shift, setShift] = useState<Shift>('a');
+    const [rcShift, setRcShift] = useState<Shift>('a'); // RC Shift state
     const [icon, setIcon] = useState('');
     const [isEditing, setIsEditing] = useState<string | null>(null);
     
@@ -25,14 +26,24 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             if (memberToEdit) {
                 setName(memberToEdit.name);
                 setShift(memberToEdit.shift);
+                setRcShift(memberToEdit.rcShift || memberToEdit.shift);
                 setIcon(memberToEdit.icon || '');
             }
         } else {
             setName('');
             setShift('a');
+            setRcShift('a');
             setIcon('');
         }
     }, [isEditing, staff]);
+
+    // Quando cambio il turno di servizio, allineo anche l'RC per comodità (se non sto modificando)
+    const handleShiftChange = (newShift: Shift) => {
+        setShift(newShift);
+        if (!isEditing) {
+            setRcShift(newShift);
+        }
+    };
 
     const toggleFilter = (s: Shift) => {
         const newFilters = new Set(filterShifts);
@@ -49,16 +60,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         try {
             if (isEditing) {
                 const memberToUpdate = staff.find(m => m.id === isEditing);
-                if (memberToUpdate) await onUpdateStaff({ ...memberToUpdate, name: name.trim(), shift, icon });
+                if (memberToUpdate) await onUpdateStaff({ ...memberToUpdate, name: name.trim(), shift, rcShift, icon });
             } else {
-                await onAddStaff({ name: name.trim(), shift, icon });
+                await onAddStaff({ name: name.trim(), shift, rcShift, icon });
             }
             handleCancel();
         } catch (error) { console.error(error); alert("Errore nel salvataggio."); }
     };
     
     const handleEdit = (member: StaffMember) => { setIsEditing(member.id); };
-    const handleCancel = () => { setIsEditing(null); setName(''); setShift('a'); setIcon(''); };
+    const handleCancel = () => { setIsEditing(null); setName(''); setShift('a'); setRcShift('a'); setIcon(''); };
     const handleDeleteStaff = async (id: string) => { if (window.confirm('Eliminare membro?')) await onDeleteStaff(id); };
 
     return (
@@ -66,29 +77,38 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             {/* Form Aggiunta */}
             <div className="bg-white p-6 rounded-lg shadow-lg mb-8 border border-slate-200 print:hidden">
                 <h2 className="text-2xl font-bold text-slate-800 mb-4">{isEditing ? 'Modifica Personale' : 'Aggiungi Personale'}</h2>
-                <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-end">
-                    <div className="w-24">
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                    <div className="col-span-1 md:col-span-2">
                         <label className="text-sm font-medium text-slate-600">Icona</label>
                          <input type="text" placeholder="😀" value={icon} onChange={(e) => setIcon(e.target.value)} className="w-full mt-1 bg-slate-100 rounded-md px-4 py-2 text-center text-xl" />
                     </div>
-                    <div className="flex-grow w-full">
+                    <div className="col-span-1 md:col-span-4">
                          <label className="text-sm font-medium text-slate-600">Nome e Cognome</label>
                         <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full mt-1 bg-slate-100 rounded-md px-4 py-2" required />
                     </div>
-                    <div className="w-full md:w-auto">
-                        <label className="text-sm font-medium text-slate-600">Turno</label>
-                        <select value={shift} onChange={(e) => setShift(e.target.value as Shift)} className="w-full mt-1 bg-slate-100 rounded-md px-4 py-2">
+                    <div className="col-span-1 md:col-span-3">
+                        <label className="text-sm font-medium text-slate-600">Turno Servizio</label>
+                        <select value={shift} onChange={(e) => handleShiftChange(e.target.value as Shift)} className="w-full mt-1 bg-slate-100 rounded-md px-4 py-2">
                             <option value="a">Turno A</option>
                             <option value="b">Turno B</option>
                             <option value="c">Turno C</option>
                             <option value="d">Turno D</option>
                         </select>
                     </div>
-                    <div className="w-full md:w-auto flex gap-2">
-                        <button type="submit" className="flex-grow bg-secondary hover:bg-secondary-dark text-white font-bold py-2 px-6 rounded-md flex items-center justify-center gap-2">
-                           {isEditing ? <SaveIcon className="h-5 w-5" /> : <PlusIcon className="h-5 w-5" />} {isEditing ? 'Salva' : 'Aggiungi'}
+                    <div className="col-span-1 md:col-span-3">
+                        <label className="text-sm font-medium text-slate-600">Rif. Riposo (RC)</label>
+                        <select value={rcShift} onChange={(e) => setRcShift(e.target.value as Shift)} className="w-full mt-1 bg-purple-50 text-purple-700 font-bold border border-purple-200 rounded-md px-4 py-2">
+                            <option value="a">Gruppo RC A</option>
+                            <option value="b">Gruppo RC B</option>
+                            <option value="c">Gruppo RC C</option>
+                            <option value="d">Gruppo RC D</option>
+                        </select>
+                    </div>
+                    <div className="col-span-1 md:col-span-12 flex gap-2 mt-2">
+                        <button type="submit" className="flex-grow bg-secondary hover:bg-secondary-dark text-white font-bold py-3 px-6 rounded-md flex items-center justify-center gap-2 transition-colors">
+                           {isEditing ? <SaveIcon className="h-5 w-5" /> : <PlusIcon className="h-5 w-5" />} {isEditing ? 'Salva Modifiche' : 'Aggiungi Membro'}
                         </button>
-                        {isEditing && <button type="button" onClick={handleCancel} className="flex-grow bg-slate-500 text-white font-bold py-2 px-6 rounded-md">Annulla</button>}
+                        {isEditing && <button type="button" onClick={handleCancel} className="flex-grow bg-slate-500 text-white font-bold py-3 px-6 rounded-md hover:bg-slate-600 transition-colors">Annulla</button>}
                     </div>
                 </form>
             </div>
@@ -116,15 +136,22 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                 {filteredStaff.length === 0 ? <p className="text-slate-500">Nessun membro trovato.</p> : (
                     <ul className="space-y-3">
                         {filteredStaff.map(member => (
-                            <li key={member.id} className="flex justify-between items-center bg-slate-50 p-3 rounded-md border border-slate-200">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center text-xl shadow-sm border border-orange-100">{member.icon || member.name.charAt(0)}</div>
+                            <li key={member.id} className="flex flex-col sm:flex-row justify-between items-center bg-slate-50 p-3 rounded-md border border-slate-200 gap-3">
+                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                    <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-2xl shadow-sm border border-slate-200 flex-shrink-0">{member.icon || member.name.charAt(0)}</div>
                                     <div>
-                                        <p className="font-semibold text-slate-800">{member.name}</p>
-                                        <p className="text-sm text-slate-600">Turno: <span className="font-bold text-primary">{member.shift.toUpperCase()}</span></p>
+                                        <p className="font-bold text-slate-800 text-lg">{member.name}</p>
+                                        <div className="flex gap-2 items-center text-sm">
+                                            <span className="bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-600">
+                                                Turno: <span className="font-bold text-primary">{member.shift.toUpperCase()}</span>
+                                            </span>
+                                            <span className="bg-purple-100 px-2 py-0.5 rounded border border-purple-200 text-purple-700 font-bold text-xs flex items-center gap-1">
+                                                RC: {member.rcShift ? member.rcShift.toUpperCase() : member.shift.toUpperCase()}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 print:hidden">
+                                <div className="flex items-center gap-2 print:hidden w-full sm:w-auto justify-end">
                                      <button onClick={() => handleEdit(member)} className="w-9 h-9 flex items-center justify-center rounded-full text-blue-600 hover:bg-blue-100 transition-colors"><EditIcon className="h-5 w-5" /></button>
                                     <button onClick={() => handleDeleteStaff(member.id)} className="w-9 h-9 flex items-center justify-center rounded-full text-red-600 hover:bg-red-100 transition-colors"><TrashIcon className="h-5 w-5" /></button>
                                 </div>
