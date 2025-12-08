@@ -30,9 +30,10 @@ interface AdminViewProps {
     onAddCashMovement: (m: Omit<CashMovement, 'id'>) => Promise<void>;
     onUpdateMovement: (m: CashMovement) => Promise<void>;
     onDeleteMovement: (id: string, email: string) => Promise<void>;
+    onPermanentDeleteMovement: (id: string) => Promise<void>;
     onStockPurchase: (productId: string, quantity: number, unitCost: number) => Promise<void>;
     onStockCorrection: (productId: string, newStock: number) => Promise<void>;
-    onResetCash: () => Promise<void>;
+    onResetCash: (type: 'bar' | 'games') => Promise<void>;
     onMassDelete: (date: string, type: 'orders' | 'movements') => Promise<void>;
     
     isAuthenticated: boolean;
@@ -60,7 +61,8 @@ const AdminView: React.FC<AdminViewProps> = ({
     onUpdateTillColors, onDeleteOrders, onPermanentDeleteOrder, onUpdateOrder,
     onAddProduct, onUpdateProduct, onDeleteProduct,
     onAddStaff, onUpdateStaff, onDeleteStaff,
-    onAddCashMovement, onUpdateMovement, onDeleteMovement, onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
+    onAddCashMovement, onUpdateMovement, onDeleteMovement, onPermanentDeleteMovement,
+    onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
     isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin,
     tombolaConfig, onNavigateToTombola,
     seasonalityConfig, onUpdateSeasonality,
@@ -329,7 +331,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'stock' && <StockControl products={products} onStockPurchase={onStockPurchase} onStockCorrection={onStockCorrection} />}
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
-                {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
+                {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
                 {activeTab === 'extra' && <GamesHub onGoBack={() => {}} onPlayTombola={onNavigateToTombola} tombolaConfig={tombolaConfig} />}
                 
                 {activeTab === 'settings' && (

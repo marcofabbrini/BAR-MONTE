@@ -510,14 +510,45 @@ const App: React.FC = () => {
     const deleteStaff = async (id: string) => { await deleteDoc(doc(db, 'staff', id)); };
     const addCashMovement = async (d: any) => { await addDoc(collection(db, 'cash_movements'), d); };
     const updateCashMovement = async (m: CashMovement) => { const { id, ...d } = m; await updateDoc(doc(db, 'cash_movements', id), d); };
+    
+    // SOFT DELETE
     const deleteCashMovement = async (id: string, email: string) => { await updateDoc(doc(db, 'cash_movements', id), { isDeleted: true, deletedBy: email, deletedAt: new Date().toISOString() }); };
+    
+    // HARD DELETE (PERMANENT)
+    const permanentDeleteMovement = async (id: string) => { await deleteDoc(doc(db, 'cash_movements', id)); };
+
     const updateTillColors = async (c: TillColors) => { await setDoc(doc(db, 'settings', 'tillColors'), c, { merge: true }); };
     const deleteOrders = async (ids: string[], email: string) => { const batch = writeBatch(db); ids.forEach(id => batch.update(doc(db, 'orders', id), { isDeleted: true, deletedBy: email, deletedAt: new Date().toISOString() })); await batch.commit(); };
     const permanentDeleteOrder = async (id: string) => { await deleteDoc(doc(db, 'orders', id)); };
     const updateOrder = async (o: Order) => { const { id, ...d } = o; await updateDoc(doc(db, 'orders', id), d); };
     const handleStockPurchase = async (pid: string, qty: number, cost: number) => { const pRef = doc(db, 'products', pid); const pSnap = await getDoc(pRef); if(pSnap.exists()) { await updateDoc(pRef, { stock: pSnap.data().stock + qty, costPrice: cost }); await addDoc(collection(db, 'cash_movements'), { amount: qty*cost, reason: `Acquisto Stock: ${pSnap.data().name}`, timestamp: new Date().toISOString(), type: 'withdrawal', category: 'bar' }); } };
     const handleStockCorrection = async (pid: string, stock: number) => { await updateDoc(doc(db, 'products', pid), { stock }); };
-    const handleResetCash = async () => { const batch = writeBatch(db); cashMovements.forEach(m => batch.update(doc(db, 'cash_movements', m.id), { amount: 0, reason: m.reason + ' (RESET)' })); await batch.commit(); };
+    
+    // RESET CASH (Differenziato per Bar e Giochi)
+    const handleResetCash = async (type: 'bar' | 'games') => { 
+        try {
+            const batch = writeBatch(db);
+            const movementsToReset = cashMovements.filter(m => {
+                if (type === 'bar') return (m.category === 'bar' || !m.category);
+                if (type === 'games') return (m.category === 'tombola' || m.category === 'analotto');
+                return false;
+            });
+
+            movementsToReset.forEach(m => batch.update(doc(db, 'cash_movements', m.id), { amount: 0, reason: m.reason + ' (RESET)' }));
+            
+            // Se resettiamo i giochi, dobbiamo azzerare anche i Jackpot nel DB
+            if (type === 'games') {
+                batch.update(doc(db, 'tombola', 'config'), { jackpot: 0 });
+                batch.update(doc(db, 'analotto', 'config'), { jackpot: 0 });
+            }
+
+            await batch.commit();
+        } catch (e) {
+            console.error("Errore reset cassa:", e);
+            throw e;
+        }
+    };
+
     const handleMassDelete = async (date: string, type: 'orders'|'movements') => { const q = query(collection(db, type === 'orders' ? 'orders' : 'cash_movements'), where('timestamp', '<=', new Date(date).toISOString())); const s = await getDocs(q); const batch = writeBatch(db); s.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); };
     const handleUpdateSeasonality = async (cfg: SeasonalityConfig) => { await setDoc(doc(db, 'settings', 'seasonality'), cfg); };
     const handleUpdateShiftSettings = async (cfg: ShiftSettings) => { await setDoc(doc(db, 'settings', 'shift'), cfg); };
@@ -593,6 +624,7 @@ const App: React.FC = () => {
                 onAddCashMovement={addCashMovement} 
                 onUpdateMovement={updateCashMovement} 
                 onDeleteMovement={deleteCashMovement} 
+                onPermanentDeleteMovement={permanentDeleteMovement} // Passaggio funzione HARD DELETE
                 onStockPurchase={handleStockPurchase} 
                 onStockCorrection={handleStockCorrection} 
                 onResetCash={handleResetCash} 
