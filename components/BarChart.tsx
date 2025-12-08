@@ -10,7 +10,7 @@ interface ChartData {
 interface BarChartProps {
     data: ChartData[];
     format?: 'currency' | 'integer';
-    barColor?: string; // Classe CSS per il colore della barra (es. 'bg-blue-500')
+    barColor?: string; // Classe CSS per il colore della barra
 }
 
 const BarChart: React.FC<BarChartProps> = ({ data, format = 'integer', barColor = 'bg-primary' }) => {
@@ -27,16 +27,24 @@ const BarChart: React.FC<BarChartProps> = ({ data, format = 'integer', barColor 
         <div className="w-full space-y-3">
             {data.map((item, index) => (
                 <div key={index} className="flex items-center gap-3 group">
-                    <div className="w-32 text-sm text-slate-600 truncate text-right flex items-center justify-end gap-2">
-                        {item.icon && <span className="text-lg">{item.icon}</span>}
-                        <span className="truncate">{item.name}</span>
+                    {/* Nome esterno per leggibilità */}
+                    <div className="w-28 text-xs font-bold text-slate-500 truncate text-right">
+                        {item.name}
                     </div>
-                    <div className="flex-1 bg-slate-100 rounded-full h-7 overflow-hidden">
+                    
+                    {/* Barra */}
+                    <div className="flex-1 bg-slate-100 rounded-full h-8 overflow-hidden relative">
                         <div
-                            className={`${barColor} h-full rounded-full flex items-center justify-end px-3 transition-all duration-700 ease-out relative`}
-                            style={{ width: `${(item.value / maxValue) * 100}%`, minWidth: '2rem' }}
+                            className={`${barColor} h-full rounded-full flex items-center justify-between px-2 transition-all duration-700 ease-out`}
+                            style={{ width: `${Math.max((item.value / maxValue) * 100, 10)}%` }} // Min width 10% per mostrare l'icona
                         >
-                            <span className="text-white font-bold text-xs">
+                            {/* Icona interna a sinistra */}
+                            <span className="text-base filter drop-shadow-sm select-none">
+                                {item.icon || '📦'}
+                            </span>
+                            
+                            {/* Valore interno a destra */}
+                            <span className="text-white font-bold text-xs whitespace-nowrap drop-shadow-md">
                                {formatValue(item.value)}
                             </span>
                         </div>

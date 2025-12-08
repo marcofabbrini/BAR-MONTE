@@ -104,11 +104,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     })}
                 </div>
 
-                {/* GAMES HUB BUTTON - WIDE */}
+                {/* GAMES HUB BUTTON - WIDE & SOBER COLORS */}
                 <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-4 transition-all">
-                    <button onClick={onSelectGames} className="w-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white rounded-2xl md:rounded-3xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 h-20 md:h-24 flex items-center justify-center gap-4 group border border-white/20">
-                        <TrophyIcon className="h-8 w-8 md:h-12 md:w-12 text-white animate-pulse" />
-                        <span className="text-lg md:text-3xl font-black uppercase tracking-widest drop-shadow-md">Games Hub & Extra</span>
+                    <button onClick={onSelectGames} className="w-full bg-slate-50 hover:bg-white text-slate-600 rounded-2xl md:rounded-3xl shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-20 md:h-24 flex items-center justify-center gap-4 group border border-slate-200">
+                        <div className="bg-white p-2 rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                             <TrophyIcon className="h-6 w-6 md:h-8 md:w-8 text-yellow-500" />
+                        </div>
+                        <span className="text-lg md:text-3xl font-bold uppercase tracking-widest text-slate-500 group-hover:text-slate-800 transition-colors">Games Hub & Extra</span>
                     </button>
                 </div>
                 

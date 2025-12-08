@@ -104,23 +104,28 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 </div>
             </div>
 
-            <div className="bg-gradient-to-r from-primary to-secondary p-6 rounded-xl shadow-lg text-white print:bg-white print:text-black print:border flex justify-between items-center">
-                 <div><h2 className="text-3xl font-black">Totale: €{totalSales.toFixed(2)}</h2><p className="text-sm opacity-80">{activeOrders.length} transazioni</p></div>
-                 <button onClick={handlePrintPdf} className="bg-white/20 hover:bg-white/30 text-white font-bold py-2 px-4 rounded text-sm print:hidden">Stampa PDF</button>
+            {/* TOTAL CARD - SOBRI COLORS */}
+            <div className="bg-white border-l-4 border-slate-800 p-6 rounded-xl shadow-lg text-slate-800 print:bg-white print:text-black print:border flex justify-between items-center">
+                 <div>
+                    <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Incasso Totale</h2>
+                    <h2 className="text-4xl font-black text-slate-800">€{totalSales.toFixed(2)}</h2>
+                    <p className="text-xs text-slate-400 mt-1">{activeOrders.length} transazioni registrate</p>
+                </div>
+                 <button onClick={handlePrintPdf} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 px-4 rounded text-sm print:hidden transition-colors">Stampa PDF</button>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
-                 <h3 className="text-xl font-bold text-slate-800 mb-6">Trend Vendite</h3>
+                 <h3 className="text-xl font-bold text-slate-800 mb-6">Trend Vendite & Previsioni</h3>
                  <div className="h-[300px] w-full"><LineChart data={salesTrend} height={300} /></div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
-                    <h3 className="text-xl font-bold mb-4">Vendite per Utente</h3>
+                    <h3 className="text-xl font-bold mb-4 text-slate-700">Vendite per Utente</h3>
                     <BarChart data={salesByStaff} format="currency" barColor="bg-blue-500" />
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
-                    <h3 className="text-xl font-bold mb-4">Prodotti Top</h3>
+                    <h3 className="text-xl font-bold mb-4 text-slate-700">Prodotti Top</h3>
                     <BarChart data={salesByProduct} format="integer" barColor="bg-primary" />
                 </div>
             </div>

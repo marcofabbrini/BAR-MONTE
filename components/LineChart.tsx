@@ -1,36 +1,86 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 
-interface ChartPoint { label: string; value: number; }
+interface ChartPoint { label: string; value: number; isForecast?: boolean; }
 interface LineChartProps { data: ChartPoint[]; height?: number; }
 
 const LineChart: React.FC<LineChartProps> = ({ data, height = 300 }) => {
-    if (data.length < 2) return <div className="h-[200px] flex items-center justify-center text-slate-400 bg-slate-50 rounded-lg">Dati insufficienti</div>;
+    
+    // Logica per estendere i dati ad almeno una settimana e creare previsioni
+    const processedData = useMemo(() => {
+        let chartData = [...data];
+        
+        // Se non ci sono dati, creiamo una settimana vuota
+        if (chartData.length === 0) {
+            const today = new Date();
+            for(let i=6; i>=0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                chartData.push({ label: d.toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), value: 0 });
+            }
+        } 
+        // Se ci sono pochi dati (meno di 7), estendiamo l'asse X nel passato
+        else if (chartData.length < 7) {
+            const firstDateStr = chartData[0].label; // Assumiamo formato DD/MM
+            // Non possiamo parsare facilmente DD/MM senza anno, quindi usiamo un approccio fittizio per riempire
+            // Se i dati reali sono pochi, aggiungiamo placeholder all'inizio per non "stirare"
+            const missing = 7 - chartData.length;
+            const prefix = Array.from({length: missing}).map((_, i) => ({
+                label: '.', // Label vuota o placeholder
+                value: 0
+            }));
+            chartData = [...prefix, ...chartData];
+        }
 
-    const maxValue = Math.max(...data.map(d => d.value)) * 1.1; // Add 10% headroom
+        // GENERAZIONE PREVISIONE (FORECAST)
+        // Semplice regressione lineare sugli ultimi punti per proiettare i prossimi 3 giorni
+        if (data.length >= 2) {
+            const lastValues = data.slice(-5).map(d => d.value); // Ultimi 5 valori reali
+            const n = lastValues.length;
+            // Calcolo pendenza media (molto semplificato)
+            let slope = 0;
+            if (n > 1) {
+                slope = (lastValues[n-1] - lastValues[0]) / (n-1);
+            }
+            
+            const lastRealPoint = chartData[chartData.length - 1];
+            let lastValue = lastRealPoint.value;
+
+            // Aggiungiamo 3 punti di previsione
+            for(let i=1; i<=3; i++) {
+                const nextVal = Math.max(0, lastValue + (slope * i)); // Non andare sotto zero
+                chartData.push({
+                    label: `+${i}g`, // Label previsione
+                    value: nextVal,
+                    isForecast: true
+                });
+            }
+        }
+
+        return chartData;
+    }, [data]);
+
+    const maxValue = Math.max(...processedData.map(d => d.value)) * 1.1 || 100; // Scala minima 100
     const padding = 40;
     const width = 800; // viewBox width
     const chartHeight = height - padding * 2;
     const chartWidth = width - padding * 2;
 
     // Helper to calculate coords
-    const getX = (index: number) => padding + (index / (data.length - 1)) * chartWidth;
+    const getX = (index: number) => padding + (index / (processedData.length - 1)) * chartWidth;
     const getY = (value: number) => height - padding - (value / maxValue) * chartHeight;
 
     // Generate Points
-    const points = data.map((d, i) => ({ x: getX(i), y: getY(d.value) }));
+    const allPoints = processedData.map((d, i) => ({ x: getX(i), y: getY(d.value), isForecast: d.isForecast, val: d.value, label: d.label }));
+    
+    // Separiamo i punti reali da quelli forecast
+    // Troviamo l'indice dove inizia il forecast
+    const firstForecastIndex = allPoints.findIndex(p => p.isForecast);
+    const realPoints = firstForecastIndex === -1 ? allPoints : allPoints.slice(0, firstForecastIndex + 1); // +1 per collegare la linea
+    const forecastPoints = firstForecastIndex === -1 ? [] : allPoints.slice(firstForecastIndex - 1); // -1 per collegare all'ultimo reale
 
-    // Bezier Curve Logic
-    const svgPath = (points: {x:number, y:number}[], command: (point: {x:number, y:number}, i: number, a: {x:number, y:number}[]) => string) => {
-        const d = points.reduce((acc, point, i, a) => i === 0
-            ? `M ${point.x},${point.y}`
-            : `${acc} ${command(point, i, a)}`
-        , '');
-        return d;
-    }
-
+    // Funzioni per disegnare curve
     const lineCommand = (point: {x:number, y:number}, i: number, a: {x:number, y:number}[]) => {
-        // Catmull-Rom to Bezier control points
         const cps = controlPoint(a[i - 1], a[i - 2], point);
         const cpe = controlPoint(point, a[i - 1], a[i + 1], true);
         return `C ${cps[0]},${cps[1]} ${cpe[0]},${cpe[1]} ${point.x},${point.y}`;
@@ -57,8 +107,21 @@ const LineChart: React.FC<LineChartProps> = ({ data, height = 300 }) => {
         };
     }
 
-    const pathD = svgPath(points, lineCommand);
-    const fillD = `${pathD} L ${points[points.length - 1].x},${height - padding} L ${points[0].x},${height - padding} Z`;
+    const svgPath = (points: {x:number, y:number}[]) => {
+        if (points.length === 0) return '';
+        return points.reduce((acc, point, i, a) => i === 0
+            ? `M ${point.x},${point.y}`
+            : `${acc} ${lineCommand(point, i, a)}`
+        , '');
+    }
+
+    const realPath = svgPath(realPoints);
+    const forecastPath = svgPath(forecastPoints);
+    
+    // Area fill solo per dati reali
+    const fillPath = realPoints.length > 0 
+        ? `${realPath} L ${realPoints[realPoints.length - 1].x},${height - padding} L ${realPoints[0].x},${height - padding} Z` 
+        : '';
 
     return (
         <div className="w-full relative overflow-hidden" style={{ height: `${height}px` }}>
@@ -76,34 +139,32 @@ const LineChart: React.FC<LineChartProps> = ({ data, height = 300 }) => {
                     )
                 })}
 
-                {/* Area Sfumata */}
+                {/* Area Sfumata (Solo Real Data) */}
                 <defs>
                     <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#f97316" stopOpacity="0.3" />
                         <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
                     </linearGradient>
                 </defs>
-                <path d={fillD} fill="url(#chartGradient)" stroke="none" />
+                <path d={fillPath} fill="url(#chartGradient)" stroke="none" />
 
-                {/* Linea Curva */}
-                <path d={pathD} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                {/* Linea Reale */}
+                <path d={realPath} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                
+                {/* Linea Previsione (Grigio Tratteggiato) */}
+                <path d={forecastPath} fill="none" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6 4" />
 
                 {/* Punti */}
-                {points.map((p, i) => (
-                    <circle key={i} cx={p.x} cy={p.y} r="3" fill="#fff" stroke="#f97316" strokeWidth="2" />
-                ))}
-
-                {/* Assi X Labels */}
-                {points.map((p, i) => {
-                    // Mostra solo alcune date se sono troppe
-                    const showLabel = data.length > 10 ? i % Math.ceil(data.length / 6) === 0 : true;
-                    if(!showLabel) return null;
-                    return (
-                        <text key={i} x={p.x} y={height - 15} textAnchor="middle" className="text-[10px] fill-slate-500 font-sans">
-                            {data[i].label}
+                {allPoints.map((p, i) => (
+                    <g key={i}>
+                        <circle cx={p.x} cy={p.y} r={p.isForecast ? "2" : "3"} fill={p.isForecast ? "#cbd5e1" : "#fff"} stroke={p.isForecast ? "none" : "#f97316"} strokeWidth="2" />
+                        
+                        {/* Label Asse X */}
+                        <text x={p.x} y={height - 15} textAnchor="middle" className={`text-[9px] font-sans ${p.isForecast ? 'fill-slate-300 italic' : 'fill-slate-500'}`}>
+                            {p.label}
                         </text>
-                    );
-                })}
+                    </g>
+                ))}
             </svg>
         </div>
     );
