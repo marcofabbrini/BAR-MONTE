@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { TombolaConfig } from '../types';
-import { TicketIcon, TrophyIcon, BackArrowIcon } from './Icons';
+import { TicketIcon, TrophyIcon, BackArrowIcon, GamepadIcon } from './Icons';
 
 interface GamesHubProps {
     onGoBack?: () => void;
@@ -28,7 +28,7 @@ const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, tombolaCon
             <div className="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full animate-fade-in">
                 {!onGoBack && (
                     <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                        <TrophyIcon className="h-8 w-8 text-yellow-500" /> Extra Hub
+                        <GamepadIcon className="h-8 w-8 text-yellow-500" /> Extra Hub
                     </h2>
                 )}
                 

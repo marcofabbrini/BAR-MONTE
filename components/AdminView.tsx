@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings } from '../types';
 import { User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, SparklesIcon, BanknoteIcon, CalendarIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -262,7 +262,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon className="h-6 w-6" />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-6 w-6" />} />
                         <TabButton tab="admins" label="Admin" icon={<UserPlusIcon className="h-6 w-6" />} />
-                        <TabButton tab="extra" label="Extra" icon={<SparklesIcon className="h-6 w-6" />} />
+                        <TabButton tab="extra" label="Extra" icon={<GamepadIcon className="h-6 w-6" />} />
                     </div>
                 </div>
             </header>

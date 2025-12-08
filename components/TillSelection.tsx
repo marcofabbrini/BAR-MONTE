@@ -1,7 +1,7 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings } from '../types';
-import { ChartBarIcon, LockIcon, TrophyIcon, CalendarIcon } from './Icons';
+import { ChartBarIcon, LockIcon, CalendarIcon, GamepadIcon, SunIcon, CloudSunIcon, RainIcon, SnowIcon, BoltIcon } from './Icons';
 
 interface TillSelectionProps {
     tills: Till[];
@@ -15,8 +15,54 @@ interface TillSelectionProps {
     shiftSettings?: ShiftSettings;
 }
 
+interface WeatherData {
+    temperature: number;
+    weathercode: number;
+}
+
 const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, tillColors, seasonalityConfig, shiftSettings }) => {
     
+    // WEATHER & DATE STATE
+    const [currentDate, setCurrentDate] = useState<string>('');
+    const [weather, setWeather] = useState<WeatherData | null>(null);
+
+    useEffect(() => {
+        // Format Date (es. "Lunedì, 27 Ottobre 2025")
+        const now = new Date();
+        const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+        setCurrentDate(now.toLocaleDateString('it-IT', options));
+
+        // Fetch Weather for Montepulciano (SI)
+        // Lat: 43.1017, Lon: 11.7868
+        const fetchWeather = async () => {
+            try {
+                const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=43.1017&longitude=11.7868&current_weather=true');
+                const data = await response.json();
+                if (data.current_weather) {
+                    setWeather(data.current_weather);
+                }
+            } catch (error) {
+                console.error("Failed to fetch weather", error);
+            }
+        };
+
+        fetchWeather();
+        // Refresh weather every 30 mins
+        const interval = setInterval(fetchWeather, 30 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const getWeatherIcon = (code: number) => {
+        if (code === 0) return <SunIcon className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />;
+        if (code >= 1 && code <= 3) return <CloudSunIcon className="h-5 w-5 md:h-6 md:w-6 text-slate-400" />;
+        if (code >= 45 && code <= 48) return <CloudSunIcon className="h-5 w-5 md:h-6 md:w-6 text-slate-500" />; // Fog
+        if (code >= 51 && code <= 67) return <RainIcon className="h-5 w-5 md:h-6 md:w-6 text-blue-400" />;
+        if (code >= 71 && code <= 77) return <SnowIcon className="h-5 w-5 md:h-6 md:w-6 text-sky-300" />;
+        if (code >= 80 && code <= 82) return <RainIcon className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />;
+        if (code >= 95) return <BoltIcon className="h-5 w-5 md:h-6 md:w-6 text-purple-500" />;
+        return <SunIcon className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />; // Default
+    };
+
     // Generazione emoji animate basata sulla config avanzata
     const animatedEmojis = useMemo(() => {
         if (!seasonalityConfig || seasonalityConfig.animationType === 'none' || !seasonalityConfig.emojis || seasonalityConfig.emojis.length === 0) {
@@ -127,9 +173,22 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         <span className="text-3xl md:text-5xl lg:text-6xl font-black text-slate-800 tracking-tighter mb-2 drop-shadow-sm transition-all">BAR VVF</span>
                         <span className="text-xl md:text-3xl lg:text-4xl font-extrabold text-primary tracking-tight drop-shadow-sm transition-all">Montepulciano</span>
                     </h1>
-                    <p className="text-slate-500 font-medium text-lg md:text-2xl mt-4 px-6 py-2 rounded-full inline-block tracking-wide">
-                        Benvenuto!
-                    </p>
+                    
+                    {/* DATA E METEO */}
+                    <div className="mt-4 px-6 py-2 rounded-full inline-flex items-center gap-3 md:gap-4 bg-white/50 backdrop-blur-sm shadow-sm border border-white/40">
+                        <p className="text-slate-600 font-bold text-sm md:text-xl tracking-wide capitalize">
+                            {currentDate}
+                        </p>
+                        {weather && (
+                            <>
+                                <div className="h-4 w-px bg-slate-300"></div>
+                                <div className="flex items-center gap-1 md:gap-2">
+                                    {getWeatherIcon(weather.weathercode)}
+                                    <span className="text-slate-700 font-black text-sm md:text-xl">{Math.round(weather.temperature)}°</span>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* GRIGLIA CASSE DINAMICA */}
@@ -183,7 +242,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     {/* Pulsante 1: Extra Hub */}
                     <button onClick={onSelectGames} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center group-hover:bg-amber-100 group-hover:scale-110 transition-all shrink-0">
-                            <TrophyIcon className="h-5 w-5 md:h-6 md:w-6" />
+                            <GamepadIcon className="h-5 w-5 md:h-6 md:w-6" />
                         </div>
                         <div className="flex flex-col items-center md:items-start min-w-0">
                             <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-amber-600 transition-colors">Extra Hub</span>
@@ -227,7 +286,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.3 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.4 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );
