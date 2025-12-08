@@ -94,7 +94,23 @@ const App: React.FC = () => {
         });
         const unsubTombolaTickets = onSnapshot(collection(db, 'tombola_tickets'), (s) => setTombolaTickets(s.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket))));
         const unsubTombolaWins = onSnapshot(collection(db, 'tombola_wins'), (s) => setTombolaWins(s.docs.map(d => ({...d.data(), id: d.id} as TombolaWin))));
-        const unsubSeasonality = onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { if(d.exists()) setSeasonalityConfig(d.data() as SeasonalityConfig); else setDoc(doc(db, 'settings', 'seasonality'), { startDate: '', endDate: '', theme: 'none' }); });
+        
+        const unsubSeasonality = onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { 
+            if(d.exists()) {
+                setSeasonalityConfig(d.data() as SeasonalityConfig); 
+            } else { 
+                // Default sicuro
+                setDoc(doc(db, 'settings', 'seasonality'), { 
+                    startDate: '', 
+                    endDate: '', 
+                    preset: 'custom',
+                    animationType: 'none',
+                    emojis: [],
+                    opacity: 0.5,
+                    backgroundColor: '#f8fafc' // slate-50
+                }); 
+            }
+        });
         
         return () => { unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); unsubSeasonality(); };
     }, []);

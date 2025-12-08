@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Product } from '../types';
-import { BoxIcon, SaveIcon, EditIcon } from './Icons';
+import { BoxIcon, SaveIcon, EditIcon, SortIcon, FilterIcon } from './Icons';
 
 interface StockControlProps {
     products: Product[];
@@ -14,12 +14,57 @@ const StockControl: React.FC<StockControlProps> = ({ products, onStockPurchase, 
     const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
     const [actionType, setActionType] = useState<'purchase' | 'correction'>('purchase');
     
+    // Sort & Filter State
+    const [sortBy, setSortBy] = useState<'name' | 'stock' | 'category' | 'price' | 'default'>('name');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [filterCategory, setFilterCategory] = useState<string>('all');
+    
     // Purchase Form
     const [purchaseForm, setPurchaseForm] = useState({ quantity: 0, cost: 0 });
     // Correction Form
     const [correctionStock, setCorrectionStock] = useState(0);
 
-    const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    const categories = useMemo(() => ['all', ...new Set(products.map(p => p.category))], [products]);
+
+    const filteredProducts = useMemo(() => {
+        let result = [...products];
+
+        // 1. Search
+        if (searchTerm) {
+            result = result.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        }
+
+        // 2. Category Filter
+        if (filterCategory !== 'all') {
+            result = result.filter(p => p.category === filterCategory);
+        }
+
+        // 3. Sorting
+        result.sort((a, b) => {
+            let comparison = 0;
+            switch (sortBy) {
+                case 'name':
+                    comparison = a.name.localeCompare(b.name);
+                    break;
+                case 'stock':
+                    comparison = a.stock - b.stock;
+                    break;
+                case 'category':
+                    comparison = a.category.localeCompare(b.category);
+                    break;
+                case 'price':
+                    comparison = a.price - b.price;
+                    break;
+                case 'default':
+                default:
+                    // Fallback to original order (often by insertion ID if string sorted)
+                    return 0; 
+            }
+            return sortOrder === 'asc' ? comparison : -comparison;
+        });
+
+        return result;
+    }, [products, searchTerm, filterCategory, sortBy, sortOrder]);
 
     const handleOpenAction = (product: Product, type: 'purchase' | 'correction') => {
         setSelectedProduct(product.id);
@@ -44,6 +89,8 @@ const StockControl: React.FC<StockControlProps> = ({ products, onStockPurchase, 
         setSelectedProduct(null);
     };
 
+    const toggleSortOrder = () => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+
     const currentProduct = products.find(p => p.id === selectedProduct);
     const totalExpense = purchaseForm.quantity * purchaseForm.cost;
     const margin = currentProduct ? currentProduct.price - purchaseForm.cost : 0;
@@ -51,8 +98,53 @@ const StockControl: React.FC<StockControlProps> = ({ products, onStockPurchase, 
 
     return (
         <div className="space-y-6">
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                <input type="text" placeholder="Cerca prodotto..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary" />
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-4">
+                {/* Search Bar */}
+                <input 
+                    type="text" 
+                    placeholder="Cerca prodotto..." 
+                    value={searchTerm} 
+                    onChange={e => setSearchTerm(e.target.value)} 
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-primary" 
+                />
+
+                {/* Filters & Sorting Toolbar */}
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                        <FilterIcon className="h-5 w-5 text-slate-400" />
+                        <select 
+                            value={filterCategory} 
+                            onChange={(e) => setFilterCategory(e.target.value)}
+                            className="bg-white border border-slate-200 rounded px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary w-full md:w-auto"
+                        >
+                            <option value="all">Tutte le Categorie</option>
+                            {categories.filter(c => c !== 'all').map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full md:w-auto">
+                        <SortIcon className="h-5 w-5 text-slate-400" />
+                        <div className="flex gap-1 w-full md:w-auto">
+                            <select 
+                                value={sortBy} 
+                                onChange={(e) => setSortBy(e.target.value as any)}
+                                className="bg-white border border-slate-200 rounded-l px-3 py-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-primary flex-grow"
+                            >
+                                <option value="name">Nome (A-Z)</option>
+                                <option value="stock">Quantità</option>
+                                <option value="category">Categoria</option>
+                                <option value="price">Prezzo</option>
+                                <option value="default">Inserimento</option>
+                            </select>
+                            <button 
+                                onClick={toggleSortOrder}
+                                className="bg-white border border-l-0 border-slate-200 rounded-r px-3 py-2 text-slate-600 hover:bg-slate-100 transition-colors font-bold text-sm"
+                            >
+                                {sortOrder === 'asc' ? '↑' : '↓'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {selectedProduct && currentProduct && (
@@ -94,7 +186,7 @@ const StockControl: React.FC<StockControlProps> = ({ products, onStockPurchase, 
                             <div className="flex-grow">
                                 <h3 className="font-bold text-slate-800">{p.name}</h3>
                                 <div className="flex gap-2 text-[10px] text-slate-500 mt-1">
-                                    <span className="bg-slate-100 px-2 py-1 rounded">Stock: <b>{p.stock}</b></span>
+                                    <span className={`px-2 py-1 rounded ${p.stock <= 5 ? 'bg-red-100 text-red-600 font-bold' : 'bg-slate-100'}`}>Stock: <b>{p.stock}</b></span>
                                     <span className="bg-slate-100 px-2 py-1 rounded">Costo: <b>€{p.costPrice?.toFixed(2) || '0.00'}</b></span>
                                 </div>
                             </div>
@@ -105,6 +197,7 @@ const StockControl: React.FC<StockControlProps> = ({ products, onStockPurchase, 
                         </div>
                     </div>
                 ))}
+                {filteredProducts.length === 0 && <p className="col-span-full text-center text-slate-400 py-10 italic">Nessun prodotto trovato con i criteri selezionati.</p>}
             </div>
         </div>
     );

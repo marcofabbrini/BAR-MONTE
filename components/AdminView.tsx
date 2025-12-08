@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig } from '../types';
 import { User } from 'firebase/auth';
 import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, SparklesIcon } from './Icons';
@@ -72,13 +72,42 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [colors, setColors] = useState<TillColors>(tillColors);
     const [newAdminEmail, setNewAdminEmail] = useState('');
 
-    // Seasonality
+    // Seasonality State
     const [seasonStart, setSeasonStart] = useState(seasonalityConfig?.startDate || '');
     const [seasonEnd, setSeasonEnd] = useState(seasonalityConfig?.endDate || '');
-    const [seasonTheme, setSeasonTheme] = useState(seasonalityConfig?.theme || 'none');
+    const [seasonPreset, setSeasonPreset] = useState(seasonalityConfig?.preset || 'custom');
+    const [seasonAnim, setSeasonAnim] = useState<'snow'|'rain'|'float'|'none'>(seasonalityConfig?.animationType || 'none');
+    const [seasonEmojis, setSeasonEmojis] = useState(seasonalityConfig?.emojis?.join(', ') || '');
+    const [seasonOpacity, setSeasonOpacity] = useState(seasonalityConfig?.opacity || 0.5);
+    const [seasonBg, setSeasonBg] = useState(seasonalityConfig?.backgroundColor || '#f8fafc');
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
+
+    // Gestione Preset Stagionali
+    useEffect(() => {
+        if (seasonPreset === 'christmas') {
+            setSeasonAnim('snow');
+            setSeasonEmojis('❄️, 🎅, 🎄, 🎁, ⛄, 🦌, 🍪');
+            setSeasonBg('#f0f9ff'); // Light Blue
+            setSeasonOpacity(0.8);
+        } else if (seasonPreset === 'easter') {
+            setSeasonAnim('float');
+            setSeasonEmojis('🐰, 🥚, 🐣, 🌷, 🍫, 🍬');
+            setSeasonBg('#fff7ed'); // Orange 50
+            setSeasonOpacity(0.7);
+        } else if (seasonPreset === 'summer') {
+            setSeasonAnim('float');
+            setSeasonEmojis('☀️, 🏖️, 🍦, 🍉, 🕶️, 🍹, 🌴');
+            setSeasonBg('#fefce8'); // Yellow 50
+            setSeasonOpacity(0.6);
+        } else if (seasonPreset === 'halloween') {
+            setSeasonAnim('float');
+            setSeasonEmojis('🎃, 👻, 🕷️, 🍬, 🦇');
+            setSeasonBg('#fef2f2'); // Red 50/Darkish
+            setSeasonOpacity(0.8);
+        }
+    }, [seasonPreset]);
 
     const filteredOrders = useMemo(() => {
         return orders.filter(o => {
@@ -147,8 +176,17 @@ const AdminView: React.FC<AdminViewProps> = ({
     const handleMassDelete = async (type: 'orders' | 'movements') => { if (!massDeleteDate) return alert("Seleziona data."); if (window.confirm(`ATTENZIONE: Eliminazione DEFINITIVA antecedenti a ${massDeleteDate}. Confermi?`)) await onMassDelete(massDeleteDate, type); };
     
     const handleSaveSeasonality = async () => {
-        await onUpdateSeasonality({ startDate: seasonStart, endDate: seasonEnd, theme: seasonTheme as any });
-        alert("Stagionalità salvata!");
+        const emojiArray = seasonEmojis.split(',').map(s => s.trim()).filter(s => s !== '');
+        await onUpdateSeasonality({ 
+            startDate: seasonStart, 
+            endDate: seasonEnd, 
+            preset: seasonPreset as any,
+            animationType: seasonAnim,
+            emojis: emojiArray,
+            opacity: seasonOpacity,
+            backgroundColor: seasonBg
+        });
+        alert("Stagionalità salvata con successo!");
     };
 
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
@@ -269,22 +307,62 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <button onClick={saveSettings} className="mt-4 w-full bg-slate-800 text-white font-bold py-2 rounded-lg">Salva Colori</button>
                         </div>
 
-                        <div className="bg-blue-50 p-6 rounded-xl border border-blue-100">
-                            <h2 className="text-lg font-bold text-blue-800 mb-4">Stagionalità & Temi</h2>
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div><label className="text-xs font-bold text-blue-600">Inizio</label><input type="date" value={seasonStart} onChange={e => setSeasonStart(e.target.value)} className="w-full border p-2 rounded" /></div>
-                                <div><label className="text-xs font-bold text-blue-600">Fine</label><input type="date" value={seasonEnd} onChange={e => setSeasonEnd(e.target.value)} className="w-full border p-2 rounded" /></div>
+                        {/* CONFIGURAZIONE STAGIONALITÀ AVANZATA */}
+                        <div className="bg-blue-50 p-6 rounded-xl border border-blue-100 relative overflow-hidden">
+                            <h2 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
+                                <SparklesIcon className="h-5 w-5" /> Configurazione Stagionale
+                            </h2>
+                            
+                            {/* Griglia Date e Preset */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div><label className="text-xs font-bold text-blue-600 block mb-1">Inizio Evento</label><input type="date" value={seasonStart} onChange={e => setSeasonStart(e.target.value)} className="w-full border p-2 rounded" /></div>
+                                <div><label className="text-xs font-bold text-blue-600 block mb-1">Fine Evento</label><input type="date" value={seasonEnd} onChange={e => setSeasonEnd(e.target.value)} className="w-full border p-2 rounded" /></div>
+                                <div>
+                                    <label className="text-xs font-bold text-blue-600 block mb-1">Preset Rapido</label>
+                                    <select value={seasonPreset} onChange={e => setSeasonPreset(e.target.value as any)} className="w-full border p-2 rounded bg-white">
+                                        <option value="custom">Personalizzato</option>
+                                        <option value="christmas">Natale</option>
+                                        <option value="easter">Pasqua</option>
+                                        <option value="summer">Estate</option>
+                                        <option value="halloween">Halloween</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div className="mb-4">
-                                <label className="text-xs font-bold text-blue-600">Tema Attivo</label>
-                                <select value={seasonTheme} onChange={e => setSeasonTheme(e.target.value as any)} className="w-full border p-2 rounded">
-                                    <option value="none">Nessuno</option>
-                                    <option value="christmas">Natale (Neve + Logo)</option>
-                                    <option value="easter">Pasqua</option>
-                                    <option value="summer">Estate</option>
-                                </select>
+
+                            {/* Dettagli Animazione */}
+                            <div className="bg-white/50 rounded-lg p-4 border border-blue-200 space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-blue-600 block mb-1">Emoji (separate da virgola)</label>
+                                    <input type="text" value={seasonEmojis} onChange={e => setSeasonEmojis(e.target.value)} placeholder="Es. ❄️, ⛄, 🎄" className="w-full border p-2 rounded" />
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-blue-600 block mb-1">Animazione</label>
+                                        <select value={seasonAnim} onChange={e => setSeasonAnim(e.target.value as any)} className="w-full border p-2 rounded bg-white">
+                                            <option value="none">Nessuna</option>
+                                            <option value="snow">Neve (Lenta + Oscillazione)</option>
+                                            <option value="rain">Pioggia (Veloce)</option>
+                                            <option value="float">Volo (Casuale)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-blue-600 block mb-1">Opacità Emoji ({seasonOpacity})</label>
+                                        <input type="range" min="0.1" max="1" step="0.1" value={seasonOpacity} onChange={e => setSeasonOpacity(parseFloat(e.target.value))} className="w-full h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-blue-600 block mb-1">Colore Sfondo</label>
+                                        <div className="flex items-center gap-2">
+                                            <input type="color" value={seasonBg} onChange={e => setSeasonBg(e.target.value)} className="h-9 w-12 cursor-pointer border rounded" />
+                                            <span className="text-xs text-slate-500 font-mono">{seasonBg}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <button onClick={handleSaveSeasonality} className="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 w-full">Salva Stagionalità</button>
+
+                            <button onClick={handleSaveSeasonality} className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 w-full mt-4 shadow-sm">
+                                Salva Configurazioni Stagionali
+                            </button>
                         </div>
 
                         {isSuperAdmin && (

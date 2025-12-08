@@ -99,5 +99,9 @@ export interface TombolaWin {
 export interface SeasonalityConfig {
     startDate: string;
     endDate: string;
-    theme: 'none' | 'christmas' | 'easter' | 'summer';
+    preset: 'custom' | 'christmas' | 'easter' | 'summer' | 'halloween';
+    animationType: 'snow' | 'rain' | 'float' | 'none';
+    emojis: string[];
+    opacity: number;      // 0.1 a 1.0
+    backgroundColor: string; // Hex color
 }
