@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Order, StaffMember } from '../types';
+import { PrinterIcon } from './Icons';
 
 interface OrderHistoryProps {
     orders: Order[];
@@ -54,6 +55,20 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
     const filteredTotal = useMemo(() => {
         return filteredOrders.reduce((acc, order) => acc + order.total, 0);
     }, [filteredOrders]);
+
+    // Aggregazione per Stampa (Versamenti)
+    const salesByStaffForPrint = useMemo(() => {
+        const stats: Record<string, number> = {};
+        filteredOrders.forEach(o => {
+            const name = o.staffName || 'Sconosciuto';
+            stats[name] = (stats[name] || 0) + o.total;
+        });
+        return Object.entries(stats).sort((a,b) => b[1] - a[1]);
+    }, [filteredOrders]);
+
+    const handlePrint = () => {
+        window.print();
+    };
     
     return (
         <div className="space-y-4">
@@ -86,11 +101,20 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
                 
                 <div className="mt-4 pt-3 border-t border-slate-200 flex justify-between items-center">
                     <span className="text-sm font-medium text-slate-500">{filteredOrders.length} movimenti</span>
-                    <span className="text-lg font-bold text-slate-800">Totale: <span className="text-primary">€{filteredTotal.toFixed(2)}</span></span>
+                    <div className="flex items-center gap-3">
+                        <span className="text-lg font-bold text-slate-800">Totale: <span className="text-primary">€{filteredTotal.toFixed(2)}</span></span>
+                        <button 
+                            onClick={handlePrint} 
+                            className="bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-full shadow-sm transition-colors"
+                            title="Stampa Resoconto Versamenti"
+                        >
+                            <PrinterIcon className="h-5 w-5" />
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* Lista Ordini */}
+            {/* Lista Ordini (Schermo) */}
             {filteredOrders.length === 0 ? (
                 <div className="text-center text-slate-400 mt-10"><p>Nessun ordine trovato.</p></div>
             ) : (
@@ -116,6 +140,46 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
                     ))}
                 </div>
             )}
+
+            {/* VISTA DI STAMPA NASCOSTA (Print Only) */}
+            <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-8 font-sans">
+                <div className="text-center mb-8 border-b-2 border-black pb-4">
+                    <h1 className="text-2xl font-black uppercase tracking-widest">Resoconto Versamenti</h1>
+                    <p className="text-sm mt-2">BAR VVF Montepulciano</p>
+                    <p className="text-xs mt-1 text-slate-500">
+                        Periodo: {startDate || 'Inizio'} - {endDate || 'Oggi'}
+                    </p>
+                </div>
+
+                <div className="mb-8">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b-2 border-black">
+                                <th className="py-2 text-sm uppercase">Nominativo</th>
+                                <th className="py-2 text-sm uppercase text-right">Da Versare</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {salesByStaffForPrint.map(([name, total]) => (
+                                <tr key={name} className="border-b border-slate-300">
+                                    <td className="py-3 font-bold">{name}</td>
+                                    <td className="py-3 text-right font-mono">€{total.toFixed(2)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                        <tfoot>
+                            <tr className="border-t-2 border-black">
+                                <td className="py-4 text-lg font-black uppercase">Totale Periodo</td>
+                                <td className="py-4 text-lg font-black text-right">€{filteredTotal.toFixed(2)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div className="text-center text-xs text-slate-400 mt-12">
+                    Generato il {new Date().toLocaleString()}
+                </div>
+            </div>
         </div>
     );
 };
