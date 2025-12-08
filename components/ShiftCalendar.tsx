@@ -46,29 +46,46 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
     };
 
     // CALCOLO SOTTOGRUPPO DI SALTO (1-8)
-    const getRestingSubGroup = (shift: string, date: Date) => {
+    const getRestingSubGroup = (shift: string, date: Date, type: 'day' | 'night') => {
         if (!shiftSettings?.rcAnchorDate) return null;
-        
-        // La logica è: il gruppo di salto avanza di 1 ogni 4 giorni (ogni volta che quel turno torna in servizio diurno)
-        // Dobbiamo calcolare quanti "cicli turno" sono passati dalla data di ancoraggio.
         
         const anchorDate = new Date(shiftSettings.rcAnchorDate);
         anchorDate.setHours(12, 0, 0, 0);
-        const targetDate = new Date(date);
-        targetDate.setHours(12, 0, 0, 0);
+        
+        // Data EFFICACE per il calcolo del ciclo.
+        // Se è turno di GIORNO, la data è quella corrente.
+        // Se è turno di NOTTE, la data efficace è quella del GIORNO PRECEDENTE (inizio del blocco lavorativo 12-24).
+        // Esempio: A lavora Giorno 11 (8-20) e Notte 12 (20-8). Il "Salto" è associato al blocco iniziato l'11.
+        const effectiveDate = new Date(date);
+        effectiveDate.setHours(12, 0, 0, 0);
+        if (type === 'night') {
+            effectiveDate.setDate(effectiveDate.getDate() - 1);
+        }
 
-        const diffTime = targetDate.getTime() - anchorDate.getTime();
+        // Calcolo Base Date: quando questo specifico turno 'shift' sarebbe stato Giorno rispetto all'ancora.
+        const shifts = ['A', 'B', 'C', 'D'];
+        const shiftIndex = shifts.indexOf(shift.toUpperCase());
+        const anchorShiftIndex = shifts.indexOf((shiftSettings.rcAnchorShift || 'A').toUpperCase());
+        
+        // Offset in giorni all'interno del ciclo di 4 giorni
+        const shiftOffset = shiftIndex - anchorShiftIndex;
+        
+        // Proiettiamo la data di ancoraggio per allinearla allo shift corrente
+        const baseDateForShift = new Date(anchorDate);
+        baseDateForShift.setDate(baseDateForShift.getDate() + shiftOffset);
+        
+        // Calcoliamo la differenza giorni tra la data efficace e la data base proiettata
+        const diffTime = effectiveDate.getTime() - baseDateForShift.getTime();
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         
-        // Calcoliamo quante rotazioni complete (4 giorni) sono avvenute globalmente
-        const rotationCycles = Math.floor(diffDays / 4);
+        // Ogni 4 giorni scatta una nuova rotazione (A, B, C, D sono un blocco, poi si ricomincia con indice +1)
+        const cycles = Math.floor(diffDays / 4);
         
-        // Ancora RC
+        // Calcolo Gruppo (1-8)
         const anchorSubGroup = shiftSettings.rcAnchorSubGroup || 1;
         
-        // Poiché i turni ruotano parallelamente (A1, B1, C1, D1 -> A2, B2...), il numero del salto 
-        // è dato dall'offset globale di cicli.
-        let currentSubGroup = (anchorSubGroup + rotationCycles) % 8;
+        // Modulo 8 gestendo numeri negativi
+        let currentSubGroup = (anchorSubGroup + cycles) % 8;
         if (currentSubGroup <= 0) currentSubGroup += 8;
         
         return currentSubGroup;
@@ -103,23 +120,19 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
     // Helper per renderizzare la cella turno
     const renderShiftRow = (shift: string, type: 'day' | 'night', isDimmed: boolean, date: Date) => {
         
-        const restingGroup = getRestingSubGroup(shift, date);
+        const restingGroup = getRestingSubGroup(shift, date, type);
         
         // Determina se questo specifico utente è a riposo
-        // Se userSubGroup è 'none', non evidenziamo i salti come viola (ma mostriamo il numero)
-        // Se userSubGroup è selezionato, ed è uguale a restingGroup, ALLORA è un salto personale.
         const isMyRest = userSubGroup !== 'none' && restingGroup === userSubGroup;
-        
-        // Se non ho selezionato un gruppo, mostro il salto come info, ma non come "riposo attivo"
         const showAsRest = isMyRest;
 
         const color = getShiftColor(shift);
         const icon = showAsRest ? '💤' : (type === 'day' ? '☀️' : '🌙');
-        
-        // Etichetta: Se riposo "SALTO", altrimenti "Giorno/Notte"
-        // Se non è il mio riposo ma c'è un numero salto, mostro quello
         const labelText = showAsRest ? 'SALTO' : (type === 'day' ? 'Giorno' : 'Notte');
         
+        // Visualizzazione combinata (es. A1, B5)
+        const displayShift = restingGroup ? `${shift}${restingGroup}` : shift;
+
         // Colore Sfondo
         const bgColor = showAsRest 
             ? 'bg-purple-100 border-purple-200' 
@@ -144,24 +157,22 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                     <span className="text-xs font-bold text-slate-600 flex items-center gap-1">
                         <span className="text-lg leading-none">{icon}</span> 
                         {labelText}
-                        {!showAsRest && restingGroup && <span className="text-[9px] text-slate-400 ml-1">(S{restingGroup})</span>}
                     </span>
                     <span 
-                        className="font-black text-xs px-2 rounded text-white shadow-sm"
+                        className="font-black text-xs px-2 rounded text-white shadow-sm min-w-[2.5em] text-center"
                         style={badgeStyle}
                     >
-                        {showAsRest ? `S${restingGroup}` : shift}
+                        {showAsRest ? `S-${restingGroup}` : displayShift}
                     </span>
                 </div>
 
                 {/* MOBILE VIEW */}
                 <div className="md:hidden relative w-full h-7 flex items-center justify-center">
-                    <span className="font-black text-xl leading-none" style={textStyle}>
-                        {showAsRest ? 'S' : shift}
+                    <span className="font-black text-lg leading-none tracking-tighter" style={textStyle}>
+                        {showAsRest ? 'S' : displayShift}
                     </span>
                     <span className="absolute -top-0.5 -right-0.5 text-[8px] opacity-60 flex flex-col items-end leading-tight">
                         <span>{icon}</span>
-                        {!showAsRest && restingGroup && <span className="text-[6px] text-slate-400 font-bold">{restingGroup}</span>}
                     </span>
                 </div>
             </div>
@@ -279,7 +290,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                 
                 <div className="mt-6 text-center text-xs text-slate-400">
                     <p>Schema turni perpetuo VVF 12-24 12-48 • Rotazione Salto 1-8</p>
-                    {shiftSettings?.rcAnchorDate && <p className="mt-1 opacity-50">Salto calibrato su: {new Date(shiftSettings.rcAnchorDate).toLocaleDateString()} = Gruppo {shiftSettings.rcAnchorSubGroup}</p>}
+                    {shiftSettings?.rcAnchorDate && <p className="mt-1 opacity-50">Salto calibrato su: {new Date(shiftSettings.rcAnchorDate).toLocaleDateString()} = Turno {shiftSettings.rcAnchorShift} (Gruppo {shiftSettings.rcAnchorSubGroup})</p>}
                 </div>
             </main>
         </div>
