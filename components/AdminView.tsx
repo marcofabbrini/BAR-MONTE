@@ -54,7 +54,7 @@ interface AdminViewProps {
     onUpdateShiftSettings: (cfg: ShiftSettings) => Promise<void>;
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'extra';
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins';
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
@@ -271,7 +271,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <TabButton tab="admins" label="Admin" icon={<UserPlusIcon className="h-6 w-6" />} />
                             <TabButton tab="staff" label="Staff" icon={<StaffIcon className="h-6 w-6" />} />
                             <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-6 w-6" />} />
-                            <TabButton tab="extra" label="Extra" icon={<GamepadIcon className="h-6 w-6" />} />
                         </div>
                     </div>
                 </div>
@@ -332,7 +331,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
-                {activeTab === 'extra' && <GamesHub onGoBack={() => {}} onPlayTombola={onNavigateToTombola} tombolaConfig={tombolaConfig} />}
                 
                 {activeTab === 'settings' && (
                     <div className="space-y-6">

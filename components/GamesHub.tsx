@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { TombolaConfig, AnalottoConfig } from '../types';
-import { TicketIcon, BackArrowIcon, GamepadIcon, CloverIcon, DiceIcon } from './Icons';
+import { BackArrowIcon, GamepadIcon, CloverIcon, DiceIcon } from './Icons';
 
 interface GamesHubProps {
     onGoBack?: () => void;
@@ -40,7 +40,7 @@ const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, onPlayAnal
                     {/* CARD TOMBOLA */}
                     <div onClick={onPlayTombola} className="relative bg-white rounded-3xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-2 border-red-100 h-64 flex flex-col items-center justify-center">
                         <div className="absolute top-0 left-0 w-full h-2 bg-red-500"></div>
-                        <div className="text-[100px] leading-none mb-2 filter drop-shadow-lg group-hover:rotate-12 transition-transform">
+                        <div className="text-[70px] leading-none mb-2 filter drop-shadow-lg group-hover:rotate-12 transition-transform">
                             🎟️
                         </div>
                         <h3 className="text-2xl font-black text-slate-800 uppercase tracking-wider mb-1">Tombola</h3>
@@ -55,10 +55,12 @@ const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, onPlayAnal
                     {/* CARD ANALOTTO VVF */}
                     <div onClick={onPlayAnalotto} className="relative bg-white rounded-3xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-2 border-emerald-100 h-64 flex flex-col items-center justify-center">
                         <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500"></div>
-                        <div className="text-[100px] leading-none mb-2 filter drop-shadow-lg group-hover:-rotate-12 transition-transform">
+                        <div className="text-[70px] leading-none mb-2 filter drop-shadow-lg group-hover:-rotate-12 transition-transform">
                             🎱
                         </div>
-                        <h3 className="text-2xl font-black text-slate-800 uppercase tracking-wider mb-1">Analotto</h3>
+                        <h3 className="text-2xl font-black text-slate-800 uppercase tracking-wider mb-1">
+                            <span className="text-[#fca5a5]">ANAL</span>OTTO
+                        </h3>
                         <p className="text-slate-400 text-xs font-bold mb-4 uppercase tracking-widest">Lotto VVF</p>
                         
                         <div className="bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
@@ -70,7 +72,7 @@ const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, onPlayAnal
                     {/* CARD DADI (CHI PAGA) */}
                     <div onClick={onPlayDice} className="relative bg-white rounded-3xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-2 border-blue-100 h-64 flex flex-col items-center justify-center">
                         <div className="absolute top-0 left-0 w-full h-2 bg-blue-500"></div>
-                        <div className="text-[100px] leading-none mb-2 filter drop-shadow-lg group-hover:scale-110 transition-transform">
+                        <div className="text-[70px] leading-none mb-2 filter drop-shadow-lg group-hover:scale-110 transition-transform">
                             🎲
                         </div>
                         <h3 className="text-2xl font-black text-slate-800 uppercase tracking-wider mb-1">Chi Paga?</h3>
