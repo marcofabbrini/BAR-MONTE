@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, SeasonTheme } from '../types';
+import React, { useState, useMemo } from 'react';
+import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig } from '../types';
 import { User } from 'firebase/auth';
 import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, TicketIcon, SparklesIcon } from './Icons';
 import ProductManagement from './ProductManagement';
@@ -78,33 +78,25 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [tombolaMinStart, setTombolaMinStart] = useState(tombolaConfig?.minTicketsToStart || 84);
 
     // Seasonality State
-    const [seasonConfigForm, setSeasonConfigForm] = useState<SeasonalityConfig | null>(null);
-    const [activeSeasonTab, setActiveSeasonTab] = useState<'winter'|'spring'|'summer'|'autumn'>('winter');
-    const [emojiInput, setEmojiInput] = useState('');
+    const [seasonForm, setSeasonForm] = useState<SeasonalityConfig>({
+        isActive: seasonalityConfig?.isActive || false,
+        startDate: seasonalityConfig?.startDate || '',
+        endDate: seasonalityConfig?.endDate || '',
+        themeName: seasonalityConfig?.themeName || '',
+        backgroundColor: seasonalityConfig?.backgroundColor || '#f8fafc',
+        animationType: seasonalityConfig?.animationType || 'none',
+        emojis: seasonalityConfig?.emojis || [],
+        speed: seasonalityConfig?.speed || 5,
+        size: seasonalityConfig?.size || 5,
+        opacity: seasonalityConfig?.opacity || 0.6
+    });
+    
+    const [emojiInput, setEmojiInput] = useState(seasonalityConfig?.emojis.join(', ') || '');
 
-    // FIX CRASH: Inizializzazione sicura del form stagionalità
-    useEffect(() => {
-        if (seasonalityConfig && !seasonConfigForm) {
-            // Se la config nel DB è vecchia (non ha 'seasons'), creiamo un default per evitare il crash
-            if (!seasonalityConfig.seasons) {
-                 const defaultConfig: SeasonalityConfig = {
-                    mode: 'auto',
-                    currentManualSeason: 'winter',
-                    seasons: {
-                        winter: { name: 'Inverno', backgroundColor: '#1e293b', animationType: 'snow', emojis: ['❄️', '⛄', '🎄'] },
-                        spring: { name: 'Primavera', backgroundColor: '#f0fdf4', animationType: 'float', emojis: ['🌸', '🦋', '🌱'] },
-                        summer: { name: 'Estate', backgroundColor: '#fefce8', animationType: 'float', emojis: ['☀️', '🍦', '🌊'] },
-                        autumn: { name: 'Autunno', backgroundColor: '#fff7ed', animationType: 'leaves', emojis: ['🍂', '🍄', '🌰'] }
-                    }
-                };
-                setSeasonConfigForm(defaultConfig);
-                setEmojiInput(defaultConfig.seasons.winter.emojis.join(', '));
-            } else {
-                setSeasonConfigForm(seasonalityConfig);
-                if (seasonalityConfig.seasons && seasonalityConfig.seasons[activeSeasonTab]) {
-                     setEmojiInput(seasonalityConfig.seasons[activeSeasonTab].emojis.join(', '));
-                }
-            }
+    useMemo(() => {
+        if (seasonalityConfig) {
+            setSeasonForm(seasonalityConfig);
+            setEmojiInput(seasonalityConfig.emojis.join(', '));
         }
     }, [seasonalityConfig]);
 
@@ -149,32 +141,15 @@ const AdminView: React.FC<AdminViewProps> = ({
     const handleUpdateTombolaConfig = async () => { await onUpdateTombolaConfig({ ticketPriceSingle: Number(tombolaPriceSingle), ticketPriceBundle: Number(tombolaPriceBundle), maxTickets: Number(tombolaMaxTickets), minTicketsToStart: Number(tombolaMinStart) }); alert("Configurazione Tombola aggiornata!"); };
 
     // Seasonality Handlers
-    const handleSeasonChange = (field: keyof SeasonTheme, value: any) => {
-        if (!seasonConfigForm) return;
-        setSeasonConfigForm({
-            ...seasonConfigForm,
-            seasons: {
-                ...seasonConfigForm.seasons,
-                [activeSeasonTab]: { ...seasonConfigForm.seasons[activeSeasonTab], [field]: value }
-            }
-        });
-    };
     const handleEmojiChange = (val: string) => {
         setEmojiInput(val);
         const emojis = val.split(',').map(e => e.trim()).filter(e => e !== '');
-        handleSeasonChange('emojis', emojis);
+        setSeasonForm(prev => ({ ...prev, emojis }));
     };
-    const saveSeasonality = async () => {
-        if (seasonConfigForm) {
-            await onUpdateSeasonality(seasonConfigForm);
-            alert("Configurazione stagionale salvata!");
-        }
-    };
-    const changeSeasonTab = (season: 'winter'|'spring'|'summer'|'autumn') => {
-        setActiveSeasonTab(season);
-        if(seasonConfigForm && seasonConfigForm.seasons && seasonConfigForm.seasons[season]) {
-            setEmojiInput(seasonConfigForm.seasons[season].emojis.join(', '));
-        }
+    
+    const handleSaveSeasonality = async () => {
+        await onUpdateSeasonality(seasonForm);
+        alert("Configurazione stagionale salvata!");
     };
 
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
@@ -278,42 +253,48 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <button onClick={saveSettings} className="mt-4 w-full bg-slate-800 text-white font-bold py-2 rounded-lg">Salva Colori</button>
                         </div>
 
-                        {/* CONFIGURAZIONE STAGIONALITA' A SCHEDE */}
-                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100 shadow-sm">
+                        {/* CONFIGURAZIONE STAGIONALITA' AVANZATA */}
+                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100 shadow-sm mt-6">
                             <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-lg font-bold text-blue-800 flex items-center gap-2"><SparklesIcon className="h-5 w-5" /> Personalizzazione Stagionale</h2>
-                                <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
-                                    <button onClick={() => setSeasonConfigForm(prev => prev ? {...prev, mode: 'auto'} : null)} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${seasonConfigForm?.mode === 'auto' ? 'bg-white shadow text-purple-600' : 'text-slate-400'}`}>Auto</button>
-                                    <button onClick={() => setSeasonConfigForm(prev => prev ? {...prev, mode: 'manual'} : null)} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${seasonConfigForm?.mode === 'manual' ? 'bg-white shadow text-purple-600' : 'text-slate-400'}`}>Manuale</button>
-                                </div>
+                                <h2 className="text-lg font-bold text-blue-800 flex items-center gap-2">
+                                    <SparklesIcon className="h-5 w-5" /> Personalizzazione Home Page
+                                </h2>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" checked={seasonForm.isActive} onChange={e => setSeasonForm({...seasonForm, isActive: e.target.checked})} className="sr-only peer" />
+                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    <span className="ml-3 text-sm font-medium text-blue-900">Attiva</span>
+                                </label>
                             </div>
-                            <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                                {(['winter', 'spring', 'summer', 'autumn'] as const).map(s => (
-                                    <button key={s} onClick={() => changeSeasonTab(s)} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${activeSeasonTab === s ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}`}>
-                                        {s === 'winter' ? '❄️ Inverno' : s === 'spring' ? '🌸 Primavera' : s === 'summer' ? '☀️ Estate' : '🍂 Autunno'}
-                                    </button>
-                                ))}
-                            </div>
-                            {seasonConfigForm && seasonConfigForm.seasons && seasonConfigForm.seasons[activeSeasonTab] && (
-                                <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-100 animate-fade-in">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div><label className="text-[10px] font-bold text-slate-400 uppercase">Sfondo</label><div className="flex gap-2 mt-1"><input type="color" value={seasonConfigForm.seasons[activeSeasonTab].backgroundColor} onChange={e => handleSeasonChange('backgroundColor', e.target.value)} className="h-8 w-12 cursor-pointer rounded border" /><input type="text" value={seasonConfigForm.seasons[activeSeasonTab].backgroundColor} onChange={e => handleSeasonChange('backgroundColor', e.target.value)} className="w-full border rounded p-1 text-xs font-mono" /></div></div>
-                                        <div><label className="text-[10px] font-bold text-slate-400 uppercase">Animazione</label><select value={seasonConfigForm.seasons[activeSeasonTab].animationType} onChange={e => handleSeasonChange('animationType', e.target.value)} className="w-full border rounded p-1.5 text-sm mt-1"><option value="none">Nessuna</option><option value="snow">Neve (Lenta)</option><option value="rain">Pioggia (Veloce)</option><option value="float">Farfalle</option><option value="leaves">Foglie</option></select></div>
-                                    </div>
-                                    <div><label className="text-[10px] font-bold text-slate-400 uppercase">Emoji (virgola separati)</label><input type="text" value={emojiInput} onChange={e => handleEmojiChange(e.target.value)} className="w-full border rounded p-2 text-lg mt-1" /></div>
-                                    {seasonConfigForm.mode === 'manual' && (
-                                        <div className="mt-4 pt-4 border-t border-slate-200">
-                                            <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="currentManual" checked={seasonConfigForm.currentManualSeason === activeSeasonTab} onChange={() => setSeasonConfigForm({...seasonConfigForm, currentManualSeason: activeSeasonTab})} className="text-purple-600 focus:ring-purple-500" /><span className="text-sm font-bold text-slate-700">Imposta {activeSeasonTab} come stagione attiva</span></label>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase">Periodo</label>
+                                        <div className="flex gap-2 mt-1">
+                                            <input type="date" value={seasonForm.startDate} onChange={e => setSeasonForm({...seasonForm, startDate: e.target.value})} className="w-full border rounded p-2 text-sm" />
+                                            <span className="self-center text-slate-400">→</span>
+                                            <input type="date" value={seasonForm.endDate} onChange={e => setSeasonForm({...seasonForm, endDate: e.target.value})} className="w-full border rounded p-2 text-sm" />
                                         </div>
-                                    )}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Sfondo</label><div className="flex gap-2 mt-1"><input type="color" value={seasonForm.backgroundColor} onChange={e => setSeasonForm({...seasonForm, backgroundColor: e.target.value})} className="h-9 w-12 cursor-pointer rounded border" /><input type="text" value={seasonForm.backgroundColor} onChange={e => setSeasonForm({...seasonForm, backgroundColor: e.target.value})} className="w-full border rounded p-2 text-xs font-mono" /></div></div>
+                                        <div><label className="text-[10px] font-bold text-slate-500 uppercase">Animazione</label><select value={seasonForm.animationType} onChange={e => setSeasonForm({...seasonForm, animationType: e.target.value as any})} className="w-full border rounded p-2 text-sm mt-1"><option value="none">Nessuna</option><option value="snow">Neve (Caduta)</option><option value="rain">Pioggia</option><option value="float">Fluttuante</option></select></div>
+                                    </div>
+                                    <div><label className="text-[10px] font-bold text-slate-500 uppercase">Oggetti (Emoji separate da virgola)</label><input type="text" value={emojiInput} onChange={e => handleEmojiChange(e.target.value)} className="w-full border rounded p-2 text-lg mt-1" placeholder="Es. ❄️, ⛄" /></div>
                                 </div>
-                            )}
-                            <button onClick={saveSeasonality} className="mt-4 w-full bg-purple-600 text-white font-bold py-3 rounded-lg hover:bg-purple-700 shadow-md">Salva Tutto</button>
+                                <div className="space-y-6 bg-white p-4 rounded-lg border border-slate-100">
+                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Parametri Fisici</h3>
+                                    <div><div className="flex justify-between text-xs mb-1"><span>Velocità</span> <span className="font-bold">{seasonForm.speed}</span></div><input type="range" min="1" max="20" value={seasonForm.speed} onChange={e => setSeasonForm({...seasonForm, speed: Number(e.target.value)})} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" /></div>
+                                    <div><div className="flex justify-between text-xs mb-1"><span>Dimensione</span> <span className="font-bold">{seasonForm.size}</span></div><input type="range" min="1" max="20" value={seasonForm.size} onChange={e => setSeasonForm({...seasonForm, size: Number(e.target.value)})} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" /></div>
+                                    <div><div className="flex justify-between text-xs mb-1"><span>Trasparenza</span> <span className="font-bold">{seasonForm.opacity}</span></div><input type="range" min="0.1" max="1" step="0.1" value={seasonForm.opacity} onChange={e => setSeasonForm({...seasonForm, opacity: Number(e.target.value)})} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer" /></div>
+                                </div>
+                            </div>
+                            <button onClick={handleSaveSeasonality} className="mt-6 w-full bg-blue-600 text-white font-bold py-3 rounded-xl shadow-md hover:bg-blue-700 transition-colors">Salva Configurazione</button>
                         </div>
 
                         {isSuperAdmin && (
                             <div className="bg-red-50 p-6 rounded-xl border border-red-100">
-                                <h2 className="text-lg font-bold text-red-800 mb-4">Zona Pericolo</h2>
+                                <h2 className="text-lg font-bold text-red-800 mb-4">Zona Pericolo (Super Admin)</h2>
                                 <div className="flex gap-2 items-end">
                                     <div className="flex-grow"><label className="text-xs font-bold text-red-400 uppercase">Data Limite</label><input type="date" value={massDeleteDate} onChange={e => setMassDeleteDate(e.target.value)} className="w-full border border-red-200 rounded p-2 text-sm" /></div>
                                     <button onClick={() => handleMassDelete('orders')} className="bg-red-600 text-white px-4 py-2 rounded text-xs font-bold hover:bg-red-700">Elimina Ordini</button>
