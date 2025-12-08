@@ -13,7 +13,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
     const [highlightShift, setHighlightShift] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
 
     // ANCORA PER IL CALCOLO
-    // Riferimento VVF: 1 Gennaio 2024
+    // Riferimento VVF: 1 Gennaio 2024 = Turno A (Giorno)
     const getShiftsForDate = (date: Date) => {
         const anchorDate = new Date('2024-01-01T00:00:00');
         
@@ -24,9 +24,12 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
         // Sequenza
         const shifts = ['A', 'B', 'C', 'D'];
         
-        // OFFSET VVF (Sincronizzato con Home Page: Oggi = B)
-        const BASE_OFFSET_DAY = 3;
-        const BASE_OFFSET_NIGHT = 2;
+        // OFFSET VVF: 1 Gennaio (diffDays=0) deve essere A (index 0)
+        const BASE_OFFSET_DAY = 0;
+        // Se Giorno è A (0), la notte è tipicamente quella che segue?
+        // Assumiamo una rotazione standard dove se oggi giorno è A, notte è D (del giorno prima) o A?
+        // Manteniamo la logica precedente shiftata correttamente
+        const BASE_OFFSET_NIGHT = 3; 
 
         let dayIndex = (BASE_OFFSET_DAY + diffDays) % 4;
         if (dayIndex < 0) dayIndex += 4;
@@ -195,7 +198,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                 </div>
                 
                 <div className="mt-6 text-center text-xs text-slate-400">
-                    <p>Schema turni: 12/24 - 12/48. Sequenza ciclica 4 giorni.</p>
+                    <p>Schema turni perpetuo: Ancora 01/01/2024 = Turno A.</p>
                 </div>
             </main>
         </div>
