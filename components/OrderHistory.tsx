@@ -56,14 +56,21 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
         return filteredOrders.reduce((acc, order) => acc + order.total, 0);
     }, [filteredOrders]);
 
-    // Aggregazione per Stampa (Versamenti)
-    const salesByStaffForPrint = useMemo(() => {
-        const stats: Record<string, number> = {};
-        filteredOrders.forEach(o => {
-            const name = o.staffName || 'Sconosciuto';
-            stats[name] = (stats[name] || 0) + o.total;
+    // Raggruppamento per dettaglio stampa
+    const groupedOrders = useMemo(() => {
+        const groups: Record<string, { orders: Order[], total: number }> = {};
+        
+        filteredOrders.forEach(order => {
+            const name = order.staffName || 'Sconosciuto';
+            if (!groups[name]) {
+                groups[name] = { orders: [], total: 0 };
+            }
+            groups[name].orders.push(order);
+            groups[name].total += order.total;
         });
-        return Object.entries(stats).sort((a,b) => b[1] - a[1]);
+
+        // Ordina per nome utente
+        return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
     }, [filteredOrders]);
 
     const handlePrint = () => {
@@ -114,7 +121,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
                 </div>
             </div>
 
-            {/* Lista Ordini (Schermo) */}
+            {/* Lista Ordini (Vista a Schermo) */}
             {filteredOrders.length === 0 ? (
                 <div className="text-center text-slate-400 mt-10"><p>Nessun ordine trovato.</p></div>
             ) : (
@@ -141,43 +148,69 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
                 </div>
             )}
 
-            {/* VISTA DI STAMPA NASCOSTA (Print Only) */}
-            <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-8 font-sans">
-                <div className="text-center mb-8 border-b-2 border-black pb-4">
-                    <h1 className="text-2xl font-black uppercase tracking-widest">Resoconto Versamenti</h1>
-                    <p className="text-sm mt-2">BAR VVF Montepulciano</p>
-                    <p className="text-xs mt-1 text-slate-500">
-                        Periodo: {startDate || 'Inizio'} - {endDate || 'Oggi'}
-                    </p>
+            {/* VISTA DI STAMPA DETTAGLIATA (Print Only) */}
+            <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-8 font-sans overflow-auto text-black">
+                <div className="flex justify-between items-end border-b-2 border-black pb-4 mb-6">
+                    <div>
+                        <h1 className="text-3xl font-black uppercase tracking-widest text-black">Resoconto</h1>
+                        <p className="text-sm font-bold text-gray-600 mt-1">Dettaglio Movimenti & Versamenti</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-xs text-gray-500">Periodo</p>
+                        <p className="font-mono font-bold text-sm">{startDate || 'Inizio'} / {endDate || 'Oggi'}</p>
+                    </div>
                 </div>
 
-                <div className="mb-8">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b-2 border-black">
-                                <th className="py-2 text-sm uppercase">Nominativo</th>
-                                <th className="py-2 text-sm uppercase text-right">Da Versare</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {salesByStaffForPrint.map(([name, total]) => (
-                                <tr key={name} className="border-b border-slate-300">
-                                    <td className="py-3 font-bold">{name}</td>
-                                    <td className="py-3 text-right font-mono">€{total.toFixed(2)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                        <tfoot>
-                            <tr className="border-t-2 border-black">
-                                <td className="py-4 text-lg font-black uppercase">Totale Periodo</td>
-                                <td className="py-4 text-lg font-black text-right">€{filteredTotal.toFixed(2)}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                <div className="space-y-8">
+                    {groupedOrders.map(([name, data]) => (
+                        <div key={name} className="break-inside-avoid">
+                            <div className="flex justify-between items-center bg-gray-100 border-t border-b border-gray-300 py-2 px-2 mb-2">
+                                <h3 className="font-black text-lg uppercase">{name}</h3>
+                                <span className="font-mono font-bold text-lg">€{data.total.toFixed(2)}</span>
+                            </div>
+                            
+                            <table className="w-full text-xs text-left mb-4">
+                                <thead>
+                                    <tr className="border-b border-gray-200">
+                                        <th className="py-1 w-24">Data/Ora</th>
+                                        <th className="py-1">Dettaglio Articoli</th>
+                                        <th className="py-1 text-right w-16">Totale</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.orders.map(order => (
+                                        <tr key={order.id} className="border-b border-gray-100">
+                                            <td className="py-1 align-top text-gray-500">
+                                                {new Date(order.timestamp).toLocaleDateString()} <br/>
+                                                {new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                            </td>
+                                            <td className="py-1 align-top">
+                                                {order.items.map(i => (
+                                                    <span key={i.product.id} className="mr-3 inline-block">
+                                                        <b>{i.quantity}</b> {i.product.name}
+                                                    </span>
+                                                ))}
+                                            </td>
+                                            <td className="py-1 align-top text-right font-mono font-medium">
+                                                €{order.total.toFixed(2)}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ))}
                 </div>
 
-                <div className="text-center text-xs text-slate-400 mt-12">
-                    Generato il {new Date().toLocaleString()}
+                <div className="mt-8 border-t-4 border-black pt-4 flex justify-between items-center break-inside-avoid">
+                    <div className="text-xs text-gray-400">
+                        Generato il {new Date().toLocaleString()} <br/>
+                        Gestione Bar VVF
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm font-bold uppercase text-gray-600">Totale Complessivo</p>
+                        <p className="text-4xl font-black tracking-tight">€{filteredTotal.toFixed(2)}</p>
+                    </div>
                 </div>
             </div>
         </div>
