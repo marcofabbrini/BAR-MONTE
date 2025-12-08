@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { Till, TillColors, SeasonalityConfig } from '../types';
+import { Till, TillColors, SeasonalityConfig, ShiftSettings } from '../types';
 import { ChartBarIcon, LockIcon, TrophyIcon, CalendarIcon } from './Icons';
 
 interface TillSelectionProps {
@@ -12,9 +12,10 @@ interface TillSelectionProps {
     onSelectCalendar: () => void;
     tillColors: TillColors;
     seasonalityConfig?: SeasonalityConfig;
+    shiftSettings?: ShiftSettings;
 }
 
-const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, tillColors, seasonalityConfig }) => {
+const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, tillColors, seasonalityConfig, shiftSettings }) => {
     
     // Generazione emoji animate basata sulla config avanzata
     const animatedEmojis = useMemo(() => {
@@ -44,38 +45,39 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         });
     }, [seasonalityConfig]);
 
-    // Algoritmo per calcolare il turno attivo ADESSO
+    // Algoritmo per calcolare il turno attivo ADESSO usando ANCORA DINAMICA
     const activeShift = useMemo(() => {
         const now = new Date();
         const hour = now.getHours();
         
         // Se è tra mezzanotte e le 8:00, stiamo ancora "vivendo" il turno di notte iniziato ieri sera
-        // Quindi per il calcolo VVF usiamo la data di ieri
         const calculationDate = new Date(now);
         if (hour < 8) {
             calculationDate.setDate(calculationDate.getDate() - 1);
         }
-
-        // Fix DST: Impostiamo entrambe le date a mezzogiorno per evitare problemi di ora legale/solare
+        
+        // Normalize time to noon to avoid DST issues
         calculationDate.setHours(12, 0, 0, 0);
-        const anchorDate = new Date('2024-01-01T12:00:00'); // 1 Gennaio 2024 ore 12:00
+
+        // Se non abbiamo settings, fallback a B oggi (come richiesto)
+        // Ma grazie a App.tsx, shiftSettings avrà un default
+        const anchorDateStr = shiftSettings?.anchorDate || new Date().toISOString().split('T')[0];
+        const anchorShift = shiftSettings?.anchorShift || 'b';
+
+        const anchorDate = new Date(anchorDateStr);
+        anchorDate.setHours(12, 0, 0, 0); // Importantissimo
 
         const diffTime = calculationDate.getTime() - anchorDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); // Round è più sicuro di Floor con i millisecondi
-        
-        const shifts = ['a', 'b', 'c', 'd'];
-        
-        // OFFSET VVF Sincronizzato con il Calendario
-        // Oggi (Feb 2025) = Turno B. Calcolo: (BASE_OFFSET + diffDays) % 4
-        const BASE_OFFSET = 3; 
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); // Round è più sicuro
 
-        // Indipendentemente se è Giorno (>=8) o Notte (<8), il turno è lo stesso "lettera"
-        // La logica per gestire il "giorno prima" è già fatta sopra con `calculationDate`
-        let shiftIndex = (BASE_OFFSET + diffDays) % 4;
+        const shifts = ['a', 'b', 'c', 'd'];
+        const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
+        
+        let shiftIndex = (anchorIndex + diffDays) % 4;
         if (shiftIndex < 0) shiftIndex += 4;
         
         return shifts[shiftIndex];
-    }, []);
+    }, [shiftSettings]);
 
     // Ordina le casse: prima quella attiva, poi le altre
     const sortedTills = useMemo(() => {
@@ -131,13 +133,11 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
 
                 {/* GRIGLIA CASSE DINAMICA */}
-                {/* Modifica Layout Mobile: grid-cols-3 permette ai pulsanti piccoli di stare sulla stessa riga */}
                 <div className="grid grid-cols-3 md:grid-cols-3 gap-4 w-full md:w-3/4 lg:w-2/3 mb-6 px-4 transition-all">
                     {sortedTills.map((till) => {
                         const bgColor = tillColors[till.id] || '#f97316';
                         const isActiveShift = till.shift === activeShift;
 
-                        // Se attivo: col-span-3 (intera larghezza). Se inattivo: col-span-1 (1/3 larghezza)
                         const gridClass = isActiveShift 
                             ? "col-span-3 h-40 md:h-64 shadow-xl border-primary/20 scale-[1.02] z-10 order-first" 
                             : "col-span-1 h-32 md:h-48 opacity-90 hover:opacity-100 hover:scale-[1.02]";

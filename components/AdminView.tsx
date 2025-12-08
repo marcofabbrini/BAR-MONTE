@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig } from '../types';
+import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings } from '../types';
 import { User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, SparklesIcon, BanknoteIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, SparklesIcon, BanknoteIcon, CalendarIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -48,6 +48,9 @@ interface AdminViewProps {
 
     seasonalityConfig?: SeasonalityConfig;
     onUpdateSeasonality: (cfg: SeasonalityConfig) => Promise<void>;
+
+    shiftSettings: ShiftSettings;
+    onUpdateShiftSettings: (cfg: ShiftSettings) => Promise<void>;
 }
 
 type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'extra';
@@ -60,7 +63,8 @@ const AdminView: React.FC<AdminViewProps> = ({
     onAddCashMovement, onUpdateMovement, onDeleteMovement, onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
     isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin,
     tombolaConfig, onNavigateToTombola,
-    seasonalityConfig, onUpdateSeasonality
+    seasonalityConfig, onUpdateSeasonality,
+    shiftSettings, onUpdateShiftSettings
 }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -80,6 +84,10 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [seasonEmojis, setSeasonEmojis] = useState(seasonalityConfig?.emojis?.join(', ') || '');
     const [seasonOpacity, setSeasonOpacity] = useState(seasonalityConfig?.opacity || 0.5);
     const [seasonBg, setSeasonBg] = useState(seasonalityConfig?.backgroundColor || '#f8fafc');
+
+    // Shift Calibration State
+    const [calibDate, setCalibDate] = useState(shiftSettings.anchorDate || new Date().toISOString().split('T')[0]);
+    const [calibShift, setCalibShift] = useState<Shift>(shiftSettings.anchorShift || 'a');
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
@@ -187,6 +195,14 @@ const AdminView: React.FC<AdminViewProps> = ({
             backgroundColor: seasonBg
         });
         alert("Stagionalità salvata con successo!");
+    };
+
+    const handleSaveShiftCalibration = async () => {
+        await onUpdateShiftSettings({
+            anchorDate: calibDate,
+            anchorShift: calibShift
+        });
+        alert("Turnario calibrato! Tutti i calcoli futuri partiranno da questa data.");
     };
 
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
@@ -305,6 +321,35 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 ))}
                             </div>
                             <button onClick={saveSettings} className="mt-4 w-full bg-slate-800 text-white font-bold py-2 rounded-lg">Salva Colori</button>
+                        </div>
+
+                        {/* CALIBRAZIONE TURNARIO (NUOVO) */}
+                        <div className="bg-green-50 p-6 rounded-xl border border-green-100 relative overflow-hidden">
+                            <h2 className="text-lg font-bold text-green-800 mb-4 flex items-center gap-2">
+                                <CalendarIcon className="h-5 w-5" /> Calibrazione Turnario
+                            </h2>
+                            <p className="text-xs text-slate-500 mb-4">
+                                Se il turnario non è sincronizzato correttamente, imposta qui la data di riferimento.
+                                Scegli una data e il turno che era attivo in quel giorno. Il sistema ricalcolerà tutto automaticamente.
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-bold text-green-700 block mb-1">Data Riferimento</label>
+                                    <input type="date" value={calibDate} onChange={e => setCalibDate(e.target.value)} className="w-full border p-2 rounded" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-green-700 block mb-1">Turno attivo in questa data</label>
+                                    <select value={calibShift} onChange={e => setCalibShift(e.target.value as Shift)} className="w-full border p-2 rounded bg-white">
+                                        <option value="a">Turno A</option>
+                                        <option value="b">Turno B</option>
+                                        <option value="c">Turno C</option>
+                                        <option value="d">Turno D</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button onClick={handleSaveShiftCalibration} className="bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 w-full mt-4 shadow-sm">
+                                Salva e Calibra Turnario
+                            </button>
                         </div>
 
                         {/* CONFIGURAZIONE STAGIONALITÀ AVANZATA */}

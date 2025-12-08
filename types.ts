@@ -105,3 +105,8 @@ export interface SeasonalityConfig {
     opacity: number;      // 0.1 a 1.0
     backgroundColor: string; // Hex color
 }
+
+export interface ShiftSettings {
+    anchorDate: string; // Data di riferimento YYYY-MM-DD
+    anchorShift: Shift; // Turno diurno attivo in quella data
+}

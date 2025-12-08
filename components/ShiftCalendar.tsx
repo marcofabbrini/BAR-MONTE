@@ -1,23 +1,29 @@
 
 import React, { useState, useEffect } from 'react';
-import { TillColors } from '../types';
+import { TillColors, ShiftSettings } from '../types';
 import { BackArrowIcon, CalendarIcon } from './Icons';
 
 interface ShiftCalendarProps {
     onGoBack: () => void;
     tillColors: TillColors;
+    shiftSettings?: ShiftSettings;
 }
 
-const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) => {
+const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shiftSettings }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [highlightShift, setHighlightShift] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
 
-    // ANCORA PER IL CALCOLO
-    // Riferimento Sincronizzato: Oggi (Feb 2025) = Turno B
+    // ANCORA DINAMICA
     const getShiftsForDate = (date: Date) => {
-        const anchorDate = new Date('2024-01-01T12:00:00');
+        // Usa impostazioni dinamiche o fallback
+        const anchorDateStr = shiftSettings?.anchorDate || new Date().toISOString().split('T')[0];
+        const anchorShift = shiftSettings?.anchorShift || 'b';
+
+        const anchorDate = new Date(anchorDateStr);
+        anchorDate.setHours(12, 0, 0, 0); // Fix DST
+        
         const targetDate = new Date(date);
-        targetDate.setHours(12, 0, 0, 0); // Fix DST: Imposta a mezzogiorno
+        targetDate.setHours(12, 0, 0, 0); // Fix DST
         
         // Calcolo giorni di differenza
         const diffTime = targetDate.getTime() - anchorDate.getTime();
@@ -26,14 +32,13 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
         // Sequenza
         const shifts = ['A', 'B', 'C', 'D'];
         
-        // OFFSET CALCOLATO PER TURNO B OGGI:
-        // Se diffDays % 4 dà un certo resto, dobbiamo aggiungere 3 per ottenere B (1) oggi.
-        const BASE_OFFSET = 3; 
+        // Trova l'indice del turno di ancoraggio
+        const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
 
-        let dayIndex = (BASE_OFFSET + diffDays) % 4;
+        let dayIndex = (anchorIndex + diffDays) % 4;
         if (dayIndex < 0) dayIndex += 4;
         
-        // Nel sistema VVF 12-24 12-48 standard, la notte appartiene alla stessa squadra del giorno
+        // VVF Standard: Notte uguale al Giorno
         let nightIndex = dayIndex;
 
         return {
@@ -220,6 +225,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                 
                 <div className="mt-6 text-center text-xs text-slate-400">
                     <p>Schema turni perpetuo VVF 12-24 12-48</p>
+                    {shiftSettings && <p className="mt-1 opacity-50">Calibrato su: {new Date(shiftSettings.anchorDate).toLocaleDateString()} = {shiftSettings.anchorShift.toUpperCase()}</p>}
                 </div>
             </main>
         </div>

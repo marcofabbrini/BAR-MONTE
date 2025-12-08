@@ -11,7 +11,7 @@ import TombolaView from './components/TombolaView';
 import GamesHub from './components/GamesHub';
 import ShiftCalendar from './components/ShiftCalendar';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
-import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig } from './types';
+import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings } from './types';
 
 type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar';
 
@@ -47,6 +47,12 @@ const App: React.FC = () => {
 
     // Seasonality State
     const [seasonalityConfig, setSeasonalityConfig] = useState<SeasonalityConfig | undefined>(undefined);
+
+    // Shift Settings (Calibration)
+    const [shiftSettings, setShiftSettings] = useState<ShiftSettings>({
+        anchorDate: new Date().toISOString().split('T')[0], // Default provvisorio
+        anchorShift: 'b' // Default richiesto
+    });
 
     // Calcolo Super Admin
     const isSuperAdmin = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
@@ -113,8 +119,21 @@ const App: React.FC = () => {
                 }); 
             }
         });
+
+        const unsubShiftSettings = onSnapshot(doc(db, 'settings', 'shift'), (d) => {
+            if(d.exists()) {
+                setShiftSettings(d.data() as ShiftSettings);
+            } else {
+                // Default richiesto: OGGI è TURNO B
+                const today = new Date().toISOString().split('T')[0];
+                setDoc(doc(db, 'settings', 'shift'), {
+                    anchorDate: today,
+                    anchorShift: 'b'
+                });
+            }
+        });
         
-        return () => { unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); unsubSeasonality(); };
+        return () => { unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); unsubSeasonality(); unsubShiftSettings(); };
     }, []);
 
     // Seeding
@@ -387,6 +406,7 @@ const App: React.FC = () => {
     const handleResetCash = async () => { const batch = writeBatch(db); cashMovements.forEach(m => batch.update(doc(db, 'cash_movements', m.id), { amount: 0, reason: m.reason + ' (RESET)' })); await batch.commit(); };
     const handleMassDelete = async (date: string, type: 'orders'|'movements') => { const q = query(collection(db, type === 'orders' ? 'orders' : 'cash_movements'), where('timestamp', '<=', new Date(date).toISOString())); const s = await getDocs(q); const batch = writeBatch(db); s.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); };
     const handleUpdateSeasonality = async (cfg: SeasonalityConfig) => { await setDoc(doc(db, 'settings', 'seasonality'), cfg); };
+    const handleUpdateShiftSettings = async (cfg: ShiftSettings) => { await setDoc(doc(db, 'settings', 'shift'), cfg); };
 
     const renderContent = () => {
         if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
@@ -411,7 +431,7 @@ const App: React.FC = () => {
             case 'games':
                 return <GamesHub onGoBack={handleGoBack} onPlayTombola={handleSelectTombola} tombolaConfig={tombolaConfig} />;
             case 'calendar':
-                return <ShiftCalendar onGoBack={handleGoBack} tillColors={tillColors} />;
+                return <ShiftCalendar onGoBack={handleGoBack} tillColors={tillColors} shiftSettings={shiftSettings} />;
             case 'admin': return <AdminView 
                 onGoBack={handleGoBack} 
                 orders={orders} 
@@ -448,8 +468,10 @@ const App: React.FC = () => {
                 onNavigateToTombola={handleSelectTombola}
                 seasonalityConfig={seasonalityConfig}
                 onUpdateSeasonality={handleUpdateSeasonality}
+                shiftSettings={shiftSettings}
+                onUpdateShiftSettings={handleUpdateShiftSettings}
             />;
-            default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectGames={handleSelectGames} onSelectCalendar={handleSelectCalendar} tillColors={tillColors} seasonalityConfig={seasonalityConfig} />;
+            default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectGames={handleSelectGames} onSelectCalendar={handleSelectCalendar} tillColors={tillColors} seasonalityConfig={seasonalityConfig} shiftSettings={shiftSettings} />;
         }
     };
 
