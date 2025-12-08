@@ -56,9 +56,12 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             calculationDate.setDate(calculationDate.getDate() - 1);
         }
 
-        const anchorDate = new Date('2024-01-01T00:00:00');
+        // Fix DST: Impostiamo entrambe le date a mezzogiorno per evitare problemi di ora legale/solare
+        calculationDate.setHours(12, 0, 0, 0);
+        const anchorDate = new Date('2024-01-01T12:00:00'); // 1 Gennaio 2024 ore 12:00
+
         const diffTime = calculationDate.getTime() - anchorDate.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); // Round è più sicuro di Floor con i millisecondi
         
         const shifts = ['a', 'b', 'c', 'd'];
         
@@ -132,13 +135,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
 
                 {/* GRIGLIA CASSE DINAMICA */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-3/4 lg:w-2/3 mb-6 px-4 transition-all">
+                {/* Modifica Layout Mobile: grid-cols-3 permette ai pulsanti piccoli di stare sulla stessa riga */}
+                <div className="grid grid-cols-3 md:grid-cols-3 gap-4 w-full md:w-3/4 lg:w-2/3 mb-6 px-4 transition-all">
                     {sortedTills.map((till) => {
                         const bgColor = tillColors[till.id] || '#f97316';
                         const isActiveShift = till.shift === activeShift;
 
+                        // Se attivo: col-span-3 (intera larghezza). Se inattivo: col-span-1 (1/3 larghezza)
                         const gridClass = isActiveShift 
-                            ? "col-span-2 md:col-span-3 h-40 md:h-64 shadow-xl border-primary/20 scale-[1.02] z-10 order-first" 
+                            ? "col-span-3 h-40 md:h-64 shadow-xl border-primary/20 scale-[1.02] z-10 order-first" 
                             : "col-span-1 h-32 md:h-48 opacity-90 hover:opacity-100 hover:scale-[1.02]";
 
                         return (
@@ -161,15 +166,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                 <div 
                                     className={`
                                         rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110
-                                        ${isActiveShift ? 'w-20 h-20 md:w-32 md:h-32' : 'w-14 h-14 md:w-20 md:h-20'}
+                                        ${isActiveShift ? 'w-20 h-20 md:w-32 md:h-32' : 'w-10 h-10 md:w-20 md:h-20'}
                                     `} 
                                     style={{ backgroundColor: bgColor }}
                                 >
-                                    <span className={`font-black text-white select-none ${isActiveShift ? 'text-4xl md:text-6xl' : 'text-2xl md:text-4xl'}`}>
+                                    <span className={`font-black text-white select-none ${isActiveShift ? 'text-4xl md:text-6xl' : 'text-xl md:text-4xl'}`}>
                                         {till.shift.toUpperCase()}
                                     </span>
                                 </div>
-                                <span className={`font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg ${isActiveShift ? 'text-xl md:text-2xl' : 'text-xs md:text-lg'}`}>
+                                <span className={`font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg ${isActiveShift ? 'text-xl md:text-2xl' : 'hidden md:block text-xs md:text-lg'}`}>
                                     {till.name}
                                 </span>
                             </button>
@@ -226,7 +231,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.2 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.3 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );

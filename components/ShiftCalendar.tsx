@@ -15,11 +15,13 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
     // ANCORA PER IL CALCOLO
     // Riferimento VVF: 1 Gennaio 2024 = Turno A (Giorno)
     const getShiftsForDate = (date: Date) => {
-        const anchorDate = new Date('2024-01-01T00:00:00');
+        const anchorDate = new Date('2024-01-01T12:00:00');
+        const targetDate = new Date(date);
+        targetDate.setHours(12, 0, 0, 0); // Fix DST: Imposta a mezzogiorno
         
         // Calcolo giorni di differenza
-        const diffTime = date.getTime() - anchorDate.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        const diffTime = targetDate.getTime() - anchorDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); // Usa round
         
         // Sequenza
         const shifts = ['A', 'B', 'C', 'D'];
