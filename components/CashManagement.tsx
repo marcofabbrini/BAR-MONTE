@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Order, CashMovement } from '../types';
 import { User } from 'firebase/auth';
@@ -23,12 +24,14 @@ const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAd
     const activeOrders = useMemo(() => orders.filter(o => !o.isDeleted), [orders]);
     const salesRevenue = activeOrders.reduce((sum, o) => sum + o.total, 0) || 0;
     
+    // Filtra movimenti "BAR" e non cancellati
     const activeMovements = useMemo(() => movements.filter(m => !m.isDeleted), [movements]);
     const cashMovementsBar = useMemo(() => activeMovements.filter(m => m.category === 'bar' || !m.category), [activeMovements]);
     const deposits = cashMovementsBar.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0) || 0;
     const withdrawals = cashMovementsBar.filter(m => m.type === 'withdrawal').reduce((sum, m) => sum + m.amount, 0) || 0;
     const operationalBalance = salesRevenue + deposits - withdrawals;
 
+    // FONDO GIOCO
     const cashMovementsTombola = useMemo(() => activeMovements.filter(m => m.category === 'tombola'), [activeMovements]);
     const depositsTombola = cashMovementsTombola.filter(m => m.type === 'deposit').reduce((sum, m) => sum + m.amount, 0) || 0;
     const jackpotFund = depositsTombola * 0.8; 

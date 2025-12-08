@@ -1,3 +1,4 @@
+
 export interface Product {
     id: string;
     name: string;
@@ -8,8 +9,6 @@ export interface Product {
     isFavorite: boolean;
     icon?: string;
     costPrice?: number;
-    createdAt?: string;
-    createdBy?: string;
 }
 
 export interface OrderItem {
@@ -96,21 +95,8 @@ export interface TombolaWin {
     timestamp: string;
 }
 
-// ADVANCED SEASONALITY TYPES
-export interface SeasonTheme {
-    name: string;
-    backgroundColor: string;
-    animationType: 'none' | 'snow' | 'rain' | 'float' | 'leaves';
-    emojis: string[];
-}
-
 export interface SeasonalityConfig {
-    mode: 'auto' | 'manual';
-    currentManualSeason: 'winter' | 'spring' | 'summer' | 'autumn';
-    seasons: {
-        winter: SeasonTheme;
-        spring: SeasonTheme;
-        summer: SeasonTheme;
-        autumn: SeasonTheme;
-    };
+    startDate: string;
+    endDate: string;
+    theme: 'none' | 'christmas' | 'easter' | 'summer';
 }
