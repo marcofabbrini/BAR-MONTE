@@ -40,6 +40,19 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
 
     const availableWheels: AnalottoWheel[] = ['APS', 'Campagnola', 'Autoscala', 'Autobotte', 'Direttivo'];
 
+    // Calcola quali giocatori hanno scommesse attive (fatte dopo l'ultima estrazione)
+    const activePlayerData = useMemo(() => {
+        const lastExtractionTime = new Date(config?.lastExtraction || 0).getTime();
+        const activeBets = bets.filter(b => new Date(b.timestamp).getTime() > lastExtractionTime);
+        
+        const playerStats: Record<string, number> = {};
+        activeBets.forEach(b => {
+            playerStats[b.playerId] = (playerStats[b.playerId] || 0) + 1;
+        });
+        
+        return playerStats;
+    }, [bets, config]);
+
     const toggleNumber = (n: number) => {
         if (selectedNumbers.includes(n)) {
             setSelectedNumbers(selectedNumbers.filter(x => x !== n));
@@ -189,85 +202,119 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
             <main className="flex-grow p-4 w-full max-w-5xl mx-auto space-y-6">
 
                 {viewMode === 'play' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        
-                        {/* COLONNA SX: SCHEDINA */}
-                        <div className="lg:col-span-2 bg-white rounded-xl shadow-lg border border-emerald-200 overflow-hidden">
-                            <div className="bg-emerald-100 p-3 border-b border-emerald-200 flex justify-between items-center">
-                                <span className="font-bold text-emerald-900 uppercase">1. Scegli i Numeri</span>
-                                <span className="text-xs font-bold bg-white text-emerald-800 px-2 py-0.5 rounded-full">{selectedNumbers.length}/10</span>
-                            </div>
-                            <div className="p-4 grid grid-cols-10 gap-2">
-                                {Array.from({length: 90}, (_, i) => i + 1).map(n => (
-                                    <button 
-                                        key={n} 
-                                        onClick={() => toggleNumber(n)}
-                                        className={`aspect-square rounded-lg font-bold text-sm flex items-center justify-center transition-all ${selectedNumbers.includes(n) ? 'bg-emerald-600 text-white shadow-inner scale-95 ring-2 ring-emerald-300' : 'bg-slate-50 text-slate-600 hover:bg-emerald-50'}`}
-                                    >
-                                        {n}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* COLONNA DX: OPZIONI E CONFERMA */}
-                        <div className="space-y-6">
-                            
-                            {/* SELEZIONE RUOTE */}
-                            <div className="bg-white rounded-xl shadow-lg border border-emerald-200 overflow-hidden">
-                                <div className="bg-emerald-100 p-3 border-b border-emerald-200">
-                                    <span className="font-bold text-emerald-900 uppercase">2. Scegli Ruote</span>
+                    <>
+                        {/* LISTA RAPIDA PARTECIPANTI ATTIVI */}
+                        {Object.keys(activePlayerData).length > 0 && (
+                            <div className="bg-white p-3 rounded-xl border border-emerald-200 shadow-sm animate-fade-in">
+                                <p className="text-xs font-bold text-emerald-800 uppercase mb-2">Partecipanti per la prossima estrazione:</p>
+                                <div className="flex gap-2 overflow-x-auto pb-1">
+                                    {Object.keys(activePlayerData).map(pid => {
+                                        const s = staff.find(staff => staff.id === pid);
+                                        return (
+                                            <div key={pid} className="flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100 flex-shrink-0">
+                                                <div className="text-sm">{s?.icon || '👤'}</div>
+                                                <span className="text-xs font-bold text-emerald-700">{s?.name.split(' ')[0]}</span>
+                                                <span className="bg-emerald-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+                                                    {activePlayerData[pid]}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                                <div className="p-4 space-y-2">
-                                    {availableWheels.map(w => (
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            
+                            {/* COLONNA SX: SCHEDINA */}
+                            <div className="lg:col-span-2 bg-white rounded-xl shadow-lg border border-emerald-200 overflow-hidden">
+                                <div className="bg-emerald-100 p-3 border-b border-emerald-200 flex justify-between items-center">
+                                    <span className="font-bold text-emerald-900 uppercase">1. Scegli i Numeri</span>
+                                    <span className="text-xs font-bold bg-white text-emerald-800 px-2 py-0.5 rounded-full">{selectedNumbers.length}/10</span>
+                                </div>
+                                <div className="p-4 grid grid-cols-10 gap-2">
+                                    {Array.from({length: 90}, (_, i) => i + 1).map(n => (
                                         <button 
-                                            key={w} 
-                                            onClick={() => toggleWheel(w)}
-                                            className={`w-full text-left px-4 py-3 rounded-lg font-bold text-sm border flex justify-between items-center transition-all ${selectedWheels.includes(w) ? 'bg-emerald-50 border-emerald-500 text-emerald-800' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                                            key={n} 
+                                            onClick={() => toggleNumber(n)}
+                                            className={`aspect-square rounded-lg font-bold text-sm flex items-center justify-center transition-all ${selectedNumbers.includes(n) ? 'bg-emerald-600 text-white shadow-inner scale-95 ring-2 ring-emerald-300' : 'bg-slate-50 text-slate-600 hover:bg-emerald-50'}`}
                                         >
-                                            <span>Ruota {w}</span>
-                                            {selectedWheels.includes(w) && <CheckIcon className="h-5 w-5 text-emerald-600" />}
+                                            {n}
                                         </button>
                                     ))}
                                 </div>
                             </div>
 
-                            {/* SELEZIONE GIOCATORE E IMPORTO */}
-                            <div className="bg-white rounded-xl shadow-lg border border-emerald-200 overflow-hidden">
-                                <div className="bg-emerald-100 p-3 border-b border-emerald-200">
-                                    <span className="font-bold text-emerald-900 uppercase">3. Conferma Giocata</span>
+                            {/* COLONNA DX: OPZIONI E CONFERMA */}
+                            <div className="space-y-6">
+                                
+                                {/* SELEZIONE RUOTE */}
+                                <div className="bg-white rounded-xl shadow-lg border border-emerald-200 overflow-hidden">
+                                    <div className="bg-emerald-100 p-3 border-b border-emerald-200">
+                                        <span className="font-bold text-emerald-900 uppercase">2. Scegli Ruote</span>
+                                    </div>
+                                    <div className="p-4 space-y-2">
+                                        {availableWheels.map(w => (
+                                            <button 
+                                                key={w} 
+                                                onClick={() => toggleWheel(w)}
+                                                className={`w-full text-left px-4 py-3 rounded-lg font-bold text-sm border flex justify-between items-center transition-all ${selectedWheels.includes(w) ? 'bg-emerald-50 border-emerald-500 text-emerald-800' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                                            >
+                                                <span>Ruota {w}</span>
+                                                {selectedWheels.includes(w) && <CheckIcon className="h-5 w-5 text-emerald-600" />}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="p-4 space-y-4">
-                                    <div>
-                                        <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Chi Gioca?</label>
-                                        <select 
-                                            value={selectedPlayerId} 
-                                            onChange={(e) => setSelectedPlayerId(e.target.value)} 
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-bold text-slate-700"
-                                        >
-                                            <option value="">Seleziona...</option>
-                                            {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        </select>
+
+                                {/* SELEZIONE GIOCATORE E IMPORTO */}
+                                <div className="bg-white rounded-xl shadow-lg border border-emerald-200 overflow-hidden">
+                                    <div className="bg-emerald-100 p-3 border-b border-emerald-200">
+                                        <span className="font-bold text-emerald-900 uppercase">3. Conferma Giocata</span>
                                     </div>
-                                    <div>
-                                        <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Importo (€)</label>
-                                        <div className="flex gap-2">
-                                            {[1, 2, 5, 10].map(amt => (
-                                                <button key={amt} onClick={() => setBetAmount(amt)} className={`flex-1 py-2 rounded-lg font-bold text-sm border ${betAmount === amt ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-600 border-slate-200'}`}>€{amt}</button>
-                                            ))}
+                                    <div className="p-4 space-y-4">
+                                        <div>
+                                            <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Chi Gioca?</label>
+                                            <select 
+                                                value={selectedPlayerId} 
+                                                onChange={(e) => setSelectedPlayerId(e.target.value)} 
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-bold text-slate-700"
+                                            >
+                                                <option value="">Seleziona...</option>
+                                                {staff.map(s => (
+                                                    <option key={s.id} value={s.id}>
+                                                        {s.name} {activePlayerData[s.id] ? '✅' : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {/* VISUAL INDICATOR IF ACTIVE */}
+                                            {selectedPlayerId && activePlayerData[selectedPlayerId] && (
+                                                <div className="mt-2 bg-green-100 border border-green-200 text-green-800 px-3 py-2 rounded-lg text-xs flex items-center gap-2">
+                                                    <CheckIcon className="h-4 w-4" />
+                                                    <span>Questo utente ha già <strong>{activePlayerData[selectedPlayerId]}</strong> ticket attivi.</span>
+                                                </div>
+                                            )}
                                         </div>
+                                        <div>
+                                            <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Importo (€)</label>
+                                            <div className="flex gap-2">
+                                                {[1, 2, 5, 10].map(amt => (
+                                                    <button key={amt} onClick={() => setBetAmount(amt)} className={`flex-1 py-2 rounded-lg font-bold text-sm border ${betAmount === amt ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-600 border-slate-200'}`}>€{amt}</button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        <button 
+                                            onClick={handleConfirmBet}
+                                            className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black py-4 rounded-xl shadow-md uppercase tracking-wide text-lg transition-colors mt-2"
+                                        >
+                                            Gioca €{betAmount}
+                                        </button>
                                     </div>
-                                    
-                                    <button 
-                                        onClick={handleConfirmBet}
-                                        className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black py-4 rounded-xl shadow-md uppercase tracking-wide text-lg transition-colors mt-2"
-                                    >
-                                        Gioca €{betAmount}
-                                    </button>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </>
                 )}
 
                 {viewMode === 'extractions' && (
