@@ -55,6 +55,7 @@ interface AdminViewProps {
     onUpdateShiftSettings: (cfg: ShiftSettings) => Promise<void>;
     
     attendanceRecords: AttendanceRecord[];
+    onDeleteAttendance: (id: string) => Promise<void>; // Nuova prop
 }
 
 type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'attendance';
@@ -70,7 +71,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     tombolaConfig, onNavigateToTombola,
     seasonalityConfig, onUpdateSeasonality,
     shiftSettings, onUpdateShiftSettings,
-    attendanceRecords
+    attendanceRecords, onDeleteAttendance
 }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -336,7 +337,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
-                {activeTab === 'attendance' && <AttendanceCalendar attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} />}
+                {activeTab === 'attendance' && <AttendanceCalendar attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} onDeleteRecord={onDeleteAttendance} />}
                 
                 {activeTab === 'settings' && (
                     <div className="space-y-6">

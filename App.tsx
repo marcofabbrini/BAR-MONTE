@@ -329,6 +329,15 @@ const App: React.FC = () => {
             console.error("Errore salvataggio presenze:", error);
         }
     }, []);
+
+    const handleDeleteAttendance = useCallback(async (id: string) => {
+        try {
+            await deleteDoc(doc(db, 'shift_attendance', id));
+        } catch (error) {
+            console.error("Errore cancellazione presenza:", error);
+            alert("Errore durante la cancellazione della presenza.");
+        }
+    }, []);
     
     const handleBuyTombolaTicket = async (staffId: string, quantity: number) => {
         const staffMember = staff.find(s => s.id === staffId);
@@ -669,6 +678,7 @@ const App: React.FC = () => {
                 shiftSettings={shiftSettings}
                 onUpdateShiftSettings={handleUpdateShiftSettings}
                 attendanceRecords={attendanceRecords} // Passaggio dati presenze
+                onDeleteAttendance={handleDeleteAttendance} // Nuova prop
             />;
             default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectGames={handleSelectGames} onSelectCalendar={handleSelectCalendar} tillColors={tillColors} seasonalityConfig={seasonalityConfig} shiftSettings={shiftSettings} tombolaConfig={tombolaConfig} />;
         }

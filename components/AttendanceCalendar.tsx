@@ -1,15 +1,16 @@
 
 import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors } from '../types';
-import { ClipboardIcon, CalendarIcon } from './Icons';
+import { ClipboardIcon, CalendarIcon, TrashIcon } from './Icons';
 
 interface AttendanceCalendarProps {
     attendanceRecords: AttendanceRecord[];
     staff: StaffMember[];
     tillColors: TillColors;
+    onDeleteRecord?: (id: string) => Promise<void>;
 }
 
-const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors }) => {
+const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'calendar' | 'report'>('calendar');
 
@@ -64,6 +65,13 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
         return Object.values(stats).sort((a,b) => b.count - a.count);
     }, [attendanceRecords, staff, currentDate]);
+
+    const handleDelete = async (id: string) => {
+        if (!onDeleteRecord) return;
+        if (window.confirm("Vuoi resettare le presenze per questo turno specifico?")) {
+            await onDeleteRecord(id);
+        }
+    };
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
@@ -131,9 +139,18 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                 .join(', ');
 
                                             return (
-                                                <div key={tillId} className="text-[10px] bg-slate-50 border rounded p-1" style={{ borderLeftColor: color, borderLeftWidth: '3px' }}>
+                                                <div key={tillId} className="group relative text-[10px] bg-slate-50 border rounded p-1 pr-5 transition-all hover:bg-white hover:shadow-sm" style={{ borderLeftColor: color, borderLeftWidth: '3px' }}>
                                                     <span className="font-bold" style={{ color: color }}>Turno {tillId.replace('T', '')}:</span>
                                                     <span className="text-slate-600 ml-1">{presentNames}</span>
+                                                    {onDeleteRecord && (
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }}
+                                                            className="absolute top-0.5 right-0.5 text-slate-300 hover:text-red-500 p-0.5 rounded hover:bg-red-50 transition-colors hidden group-hover:block"
+                                                            title="Resetta Presenze Turno"
+                                                        >
+                                                            <TrashIcon className="h-3 w-3" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             );
                                         })}
