@@ -237,30 +237,8 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     })}
                 </div>
 
-                {/* GESTIONE & EXTRA - GRIGLIA UNIFICATA E COERENTE */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
-                    {/* Pulsante 1: Extra Hub */}
-                    <button onClick={onSelectGames} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center group-hover:bg-amber-100 group-hover:scale-110 transition-all shrink-0">
-                            <GamepadIcon className="h-5 w-5 md:h-6 md:w-6" />
-                        </div>
-                        <div className="flex flex-col items-center md:items-start min-w-0">
-                            <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-amber-600 transition-colors">Extra Hub</span>
-                            <span className="hidden md:block text-[10px] text-slate-400 font-medium truncate w-full">Svago & Extra</span>
-                        </div>
-                    </button>
-
-                    {/* Pulsante 2: Turnario */}
-                    <button onClick={onSelectCalendar} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-sky-50 text-sky-500 rounded-xl flex items-center justify-center group-hover:bg-sky-100 group-hover:scale-110 transition-all shrink-0">
-                            <CalendarIcon className="h-5 w-5 md:h-6 md:w-6" />
-                        </div>
-                        <div className="flex flex-col items-center md:items-start min-w-0">
-                            <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-sky-600 transition-colors">Turnario</span>
-                            <span className="hidden md:block text-[10px] text-slate-400 font-medium truncate w-full">Calendario VVF</span>
-                        </div>
-                    </button>
-
+                {/* GESTIONE (PRIMA RIGA) - REPORT & ADMIN */}
+                <div className="grid grid-cols-2 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
                     {/* Pulsante 3: Report */}
                     <button onClick={onSelectReports} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-violet-50 text-violet-500 rounded-xl flex items-center justify-center group-hover:bg-violet-100 group-hover:scale-110 transition-all shrink-0">
@@ -283,10 +261,40 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                     </button>
                 </div>
+
+                {/* SEPARATORE */}
+                <div className="w-full md:w-3/4 lg:w-2/3 px-8 my-4">
+                    <div className="h-px bg-slate-300/50 shadow-sm"></div>
+                </div>
+
+                {/* EXTRA (SECONDA RIGA) - EXTRA HUB & TURNARIO */}
+                <div className="grid grid-cols-2 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
+                    {/* Pulsante 1: Extra Hub */}
+                    <button onClick={onSelectGames} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center group-hover:bg-amber-100 group-hover:scale-110 transition-all shrink-0">
+                            <GamepadIcon className="h-5 w-5 md:h-6 md:w-6" />
+                        </div>
+                        <div className="flex flex-col items-center md:items-start min-w-0">
+                            <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-amber-600 transition-colors">Extra Hub</span>
+                            <span className="hidden md:block text-[10px] text-slate-400 font-medium truncate w-full">Svago & Extra</span>
+                        </div>
+                    </button>
+
+                    {/* Pulsante 2: Turnario */}
+                    <button onClick={onSelectCalendar} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
+                        <div className="w-10 h-10 md:w-12 md:h-12 bg-sky-50 text-sky-500 rounded-xl flex items-center justify-center group-hover:bg-sky-100 group-hover:scale-110 transition-all shrink-0">
+                            <CalendarIcon className="h-5 w-5 md:h-6 md:w-6" />
+                        </div>
+                        <div className="flex flex-col items-center md:items-start min-w-0">
+                            <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-sky-600 transition-colors">Turnario</span>
+                            <span className="hidden md:block text-[10px] text-slate-400 font-medium truncate w-full">Calendario VVF</span>
+                        </div>
+                    </button>
+                </div>
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.4 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.5 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );
