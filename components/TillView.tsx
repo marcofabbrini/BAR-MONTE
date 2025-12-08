@@ -4,7 +4,7 @@ import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, 
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
-import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon, TicketIcon, LockIcon } from './Icons';
+import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon, TicketIcon, LockIcon, EyeIcon } from './Icons';
 
 interface TillViewProps {
     till: Till;
@@ -95,6 +95,15 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         );
     };
 
+    // Conferma Provvisoria (Solo Locale)
+    const handleProvisionalAttendance = () => {
+        const today = new Date().toISOString().split('T')[0];
+        const storageKey = `attendance_v1_${till.id}_${today}`;
+        localStorage.setItem(storageKey, JSON.stringify(presentStaffIds));
+        setIsAttendanceModalOpen(false);
+    };
+
+    // Conferma Definitiva (Locale + DB)
     const confirmAttendance = () => {
         const today = new Date().toISOString().split('T')[0];
         const storageKey = `attendance_v1_${till.id}_${today}`;
@@ -254,13 +263,22 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                 })}
                             </div>
 
-                            <button 
-                                onClick={confirmAttendance}
-                                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl text-sm shadow-md uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                            >
-                                <LockIcon className="h-4 w-4" />
-                                Chiudi Turno e Conferma
-                            </button>
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={handleProvisionalAttendance}
+                                    className="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-4 rounded-xl text-sm shadow-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <EyeIcon className="h-4 w-4" />
+                                    Provvisorio
+                                </button>
+                                <button 
+                                    onClick={confirmAttendance}
+                                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl text-sm shadow-md uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <LockIcon className="h-4 w-4" />
+                                    Chiudi Turno
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
