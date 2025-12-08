@@ -37,8 +37,31 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         return tillOrders;
     }, [allOrders, till.id, selectedStaffId]);
 
-    const favoriteProducts = useMemo(() => products.filter(p => p.isFavorite), [products]);
-    const otherProducts = useMemo(() => products.filter(p => !p.isFavorite), [products]);
+    // ALGORITMO POPOLARITÀ PRODOTTI
+    const productPopularity = useMemo(() => {
+        const counts: Record<string, number> = {};
+        allOrders.forEach(order => {
+            if (!order.isDeleted) {
+                order.items.forEach(item => {
+                    counts[item.product.id] = (counts[item.product.id] || 0) + item.quantity;
+                });
+            }
+        });
+        return counts;
+    }, [allOrders]);
+
+    const sortProductsBySales = (list: Product[]) => {
+        return [...list].sort((a, b) => {
+            const countA = productPopularity[a.id] || 0;
+            const countB = productPopularity[b.id] || 0;
+            // Prima per vendite (Decrescente), poi per nome (Alfabetico) per stabilità
+            if (countB !== countA) return countB - countA;
+            return a.name.localeCompare(b.name);
+        });
+    };
+
+    const favoriteProducts = useMemo(() => sortProductsBySales(products.filter(p => p.isFavorite)), [products, productPopularity]);
+    const otherProducts = useMemo(() => sortProductsBySales(products.filter(p => !p.isFavorite)), [products, productPopularity]);
 
     const cartTotal = useMemo(() => currentOrder.reduce((sum, item) => sum + item.product.price * item.quantity, 0), [currentOrder]);
     const cartItemCount = useMemo(() => currentOrder.reduce((sum, item) => sum + item.quantity, 0), [currentOrder]);
@@ -114,9 +137,9 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
             <div className="flex-grow flex flex-col w-full md:w-auto min-h-screen z-10">
                 <header className="sticky top-0 px-4 py-2 flex justify-between items-center shadow-sm z-30 border-b border-white/20 text-white transition-colors duration-300 backdrop-blur-md bg-opacity-90" style={{ backgroundColor: themeColor + 'E6' }}>
                      <div className="flex items-center gap-2">
-                         <button onClick={onGoBack} className="group flex items-center gap-1 text-white/80 hover:text-white transition-colors">
-                            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center transition-colors">
-                                <BackArrowIcon className="h-5 w-5" />
+                         <button onClick={onGoBack} className="group flex items-center gap-1 transition-colors">
+                            <div className="w-8 h-8 rounded-full bg-white/40 hover:bg-white/60 flex items-center justify-center transition-colors">
+                                <BackArrowIcon className="h-5 w-5 text-black" />
                             </div>
                         </button>
                         <h1 className="text-sm font-bold tracking-tight">{till.name}</h1>
@@ -143,8 +166,10 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                 <main className="flex-grow flex flex-col relative w-full pb-20 md:pb-4">
                     <div className="px-4 py-2 z-20 sticky top-[50px]">
                          <div className="bg-white/90 backdrop-blur p-1 rounded-xl shadow-sm inline-flex w-full md:w-auto border border-slate-100">
-                            <button onClick={() => setActiveTab('order')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${activeTab === 'order' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>Acquista</button>
-                            <button onClick={() => setActiveTab('history')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${activeTab === 'history' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>Storico</button>
+                            <button onClick={() => setActiveTab('order')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${activeTab === 'order' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>Al bar...</button>
+                            <button onClick={() => setActiveTab('history')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${activeTab === 'history' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>
+                                {selectedStaffMember ? `Storico ${selectedStaffMember.name}` : `Storico Turno ${till.shift.toUpperCase()}`}
+                            </button>
                         </div>
                     </div>
 
