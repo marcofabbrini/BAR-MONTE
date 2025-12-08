@@ -96,16 +96,21 @@ export interface TombolaWin {
     timestamp: string;
 }
 
-// STAGIONALITÀ CONFIGURABILE (Parametri Diretti)
-export interface SeasonalityConfig {
-    isActive: boolean;
-    startDate: string;
-    endDate: string;
-    themeName: string;
+// NUOVI TIPI PER STAGIONALITÀ AVANZATA
+export interface SeasonTheme {
+    name: string;
     backgroundColor: string;
-    animationType: 'none' | 'snow' | 'rain' | 'float';
+    animationType: 'none' | 'snow' | 'rain' | 'float' | 'leaves';
     emojis: string[];
-    speed: number;
-    size: number;
-    opacity: number;
+}
+
+export interface SeasonalityConfig {
+    mode: 'auto' | 'manual';
+    currentManualSeason: 'winter' | 'spring' | 'summer' | 'autumn';
+    seasons: {
+        winter: SeasonTheme;
+        spring: SeasonTheme;
+        summer: SeasonTheme;
+        autumn: SeasonTheme;
+    };
 }
