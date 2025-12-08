@@ -62,21 +62,25 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         
         const shifts = ['a', 'b', 'c', 'd'];
         
-        // 08:00 - 20:00 = Giorno (Formula: (1 + diffDays) % 4)
-        // 20:00 - 08:00 = Notte (Formula: (0 + diffDays) % 4)
+        // 08:00 - 20:00 = Giorno 
+        // 20:00 - 08:00 = Notte
         
+        // OFFSET VVF (Sincronizzato: Oggi = B)
+        const BASE_OFFSET_DAY = 3;
+        const BASE_OFFSET_NIGHT = 2;
+
         let shiftIndex;
         if (hour >= 8 && hour < 20) {
-            shiftIndex = (1 + diffDays) % 4;
+            shiftIndex = (BASE_OFFSET_DAY + diffDays) % 4;
         } else {
-            shiftIndex = (0 + diffDays) % 4;
+            shiftIndex = (BASE_OFFSET_NIGHT + diffDays) % 4;
         }
         
         if (shiftIndex < 0) shiftIndex += 4;
         return shifts[shiftIndex];
     }, []);
 
-    // Ordina le casse: prima quella attiva, poi le altre
+    // Ordina le casse: prima quella attiva, poi le altre (per mobile/accessibilità, visualmente gestito da grid)
     const sortedTills = useMemo(() => {
         const active = tills.find(t => t.shift === activeShift);
         const others = tills.filter(t => t.shift !== activeShift);
@@ -130,14 +134,18 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
 
                 {/* GRIGLIA CASSE DINAMICA */}
+                {/* 
+                    Mobile: 2 colonne. Cassa attiva col-span-2 (riga intera). Altre 1x1.
+                    Desktop: 3 colonne. Cassa attiva col-span-3 (riga intera). Altre 1x1 (3 in riga).
+                */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-3/4 lg:w-2/3 mb-4 px-4 transition-all">
-                    {sortedTills.map((till, index) => {
+                    {sortedTills.map((till) => {
                         const bgColor = tillColors[till.id] || '#f97316';
                         const isActiveShift = till.shift === activeShift;
 
                         // Se è il turno attivo: full width e più alto
                         const gridClass = isActiveShift 
-                            ? "col-span-2 md:col-span-3 h-40 md:h-64 shadow-xl border-primary/20 scale-[1.02] z-10" 
+                            ? "col-span-2 md:col-span-3 h-40 md:h-64 shadow-xl border-primary/20 scale-[1.02] z-10 order-first" 
                             : "col-span-1 h-32 md:h-48 opacity-90 hover:opacity-100 hover:scale-[1.02]";
 
                         return (
@@ -208,7 +216,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v2.9 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.0 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );

@@ -14,8 +14,6 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
 
     // ANCORA PER IL CALCOLO
     // Riferimento VVF: 1 Gennaio 2024
-    // 01/01/2024 -> Giorno: B, Notte: A
-    // Sequenza Turni: A -> B -> C -> D
     const getShiftsForDate = (date: Date) => {
         const anchorDate = new Date('2024-01-01T00:00:00');
         
@@ -26,17 +24,14 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
         // Sequenza
         const shifts = ['A', 'B', 'C', 'D'];
         
-        // Calcolo indice per turno di GIORNO
-        // 01/01/2024 (Diff 0) -> B (Index 1)
-        // Formula: (1 + diffDays) % 4
-        // Gestione numeri negativi per date passate
-        let dayIndex = (1 + diffDays) % 4;
+        // OFFSET VVF (Sincronizzato con Home Page: Oggi = B)
+        const BASE_OFFSET_DAY = 3;
+        const BASE_OFFSET_NIGHT = 2;
+
+        let dayIndex = (BASE_OFFSET_DAY + diffDays) % 4;
         if (dayIndex < 0) dayIndex += 4;
         
-        // Calcolo indice per turno di NOTTE
-        // 01/01/2024 (Diff 0) -> A (Index 0)
-        // Formula: (0 + diffDays) % 4
-        let nightIndex = (0 + diffDays) % 4;
+        let nightIndex = (BASE_OFFSET_NIGHT + diffDays) % 4;
         if (nightIndex < 0) nightIndex += 4;
 
         return {
@@ -155,11 +150,14 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                                     key={dayNum} 
                                     className={`
                                         relative border-b border-r border-slate-100 min-h-[100px] p-2 flex flex-col gap-1 transition-all duration-300
-                                        ${isToday ? 'bg-green-50 border-green-300 ring-2 ring-inset ring-green-300 shadow-inner z-10' : 'bg-white hover:bg-slate-50'}
+                                        ${isToday ? 'bg-green-100 border-green-400 ring-2 ring-inset ring-green-500 shadow-md z-10' : 'bg-white hover:bg-slate-50'}
                                         ${isDimmed ? 'opacity-40 grayscale-[50%]' : ''}
                                     `}
                                 >
-                                    <span className={`text-sm font-bold mb-2 ${isToday ? 'text-green-700' : 'text-slate-700'}`}>{dayNum}</span>
+                                    <div className="flex justify-between items-start">
+                                        <span className={`text-sm font-bold mb-2 ${isToday ? 'text-green-800' : 'text-slate-700'}`}>{dayNum}</span>
+                                        {isToday && <span className="text-[9px] font-black text-green-700 uppercase bg-green-200 px-1 rounded">OGGI</span>}
+                                    </div>
                                     
                                     {/* Turno Giorno */}
                                     <div className="flex items-center justify-between bg-slate-50 rounded px-2 py-1 mb-1 shadow-sm border border-slate-100">
@@ -185,7 +183,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                                     
                                     {/* Indicatore "Riposo" per highlight */}
                                     {highlightShift && !isDayHighlighted && !isNightHighlighted && (
-                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none bg-white/80">
                                             <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded shadow transform -rotate-12 border border-green-200">RIPOSO</span>
                                         </div>
                                     )}
