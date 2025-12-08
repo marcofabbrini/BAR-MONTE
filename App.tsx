@@ -60,22 +60,42 @@ const App: React.FC = () => {
     // Calcolo Super Admin
     const isSuperAdmin = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
 
-    // Auth Listener
+    // Auth Listener Robusto
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
             if (user && user.email) {
-                const adminsRef = collection(db, 'admins');
-                const adminsSnapshot = await getDocs(adminsRef);
-                if (adminsSnapshot.empty) {
-                    await addDoc(adminsRef, { email: user.email, addedBy: 'SYSTEM_BOOTSTRAP', timestamp: new Date().toISOString() });
-                    setIsAdmin(true);
-                } else {
+                try {
+                    const adminsRef = collection(db, 'admins');
+                    
+                    // 1. Prima controlla se l'utente è già un admin (query specifica)
                     const q = query(adminsRef, where("email", "==", user.email));
                     const querySnapshot = await getDocs(q);
-                    setIsAdmin(!querySnapshot.empty);
+
+                    if (!querySnapshot.empty) {
+                        setIsAdmin(true);
+                    } else {
+                        // 2. Se non è admin, controlla se la collezione è vuota (Bootstrap)
+                        // Nota: questo potrebbe fallire se le regole di sicurezza sono strette, quindi è nel try/catch
+                        const allAdminsSnap = await getDocs(adminsRef);
+                        if (allAdminsSnap.empty) {
+                            await addDoc(adminsRef, { 
+                                email: user.email, 
+                                addedBy: 'SYSTEM_BOOTSTRAP', 
+                                timestamp: new Date().toISOString() 
+                            });
+                            setIsAdmin(true);
+                        } else {
+                            setIsAdmin(false);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Errore durante la verifica dei permessi admin:", error);
+                    setIsAdmin(false); // Fail safe
                 }
-            } else { setIsAdmin(false); }
+            } else { 
+                setIsAdmin(false); 
+            }
         });
         return () => unsubscribe();
     }, []);
@@ -208,8 +228,24 @@ const App: React.FC = () => {
         return () => clearInterval(interval);
     }, [tombolaConfig]);
 
-    const handleGoogleLogin = async () => { try { await signInWithPopup(auth, googleProvider); } catch (error) { alert("Errore login."); } };
-    const handleLogout = async () => { await signOut(auth); setView('selection'); };
+    const handleGoogleLogin = async () => { 
+        try { 
+            await signInWithPopup(auth, googleProvider); 
+        } catch (error: any) { 
+            console.error("Login Error:", error);
+            alert(`Errore durante il login: ${error.message}`); 
+        } 
+    };
+
+    const handleLogout = async () => { 
+        try {
+            await signOut(auth); 
+            setView('selection'); 
+        } catch (error) {
+            console.error("Logout Error:", error);
+        }
+    };
+
     const handleAddAdmin = async (email: string) => { if (isAdmin) await addDoc(collection(db, 'admins'), { email, addedBy: currentUser?.email, timestamp: new Date().toISOString() }); };
     const handleRemoveAdmin = async (id: string) => { if (isAdmin) await deleteDoc(doc(db, 'admins', id)); };
 
