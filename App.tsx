@@ -12,7 +12,6 @@ import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser,
 
 type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola';
 
-// Helper per mescolare un array
 const shuffleArray = (array: any[]) => {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -45,10 +44,8 @@ const App: React.FC = () => {
     // Seasonality State
     const [seasonalityConfig, setSeasonalityConfig] = useState<SeasonalityConfig | undefined>(undefined);
 
-    // Calcolo Super Admin
     const isSuperAdmin = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
 
-    // Auth Listener
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
@@ -68,7 +65,6 @@ const App: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
-    // Data Listeners
     useEffect(() => {
         setIsLoading(true);
         const unsubProducts = onSnapshot(collection(db, 'products'), (s) => setProducts(s.docs.map(d => ({ ...d.data(), id: d.id } as Product))));
@@ -94,21 +90,19 @@ const App: React.FC = () => {
         const unsubTombolaTickets = onSnapshot(collection(db, 'tombola_tickets'), (s) => setTombolaTickets(s.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket))));
         const unsubTombolaWins = onSnapshot(collection(db, 'tombola_wins'), (s) => setTombolaWins(s.docs.map(d => ({...d.data(), id: d.id} as TombolaWin))));
         
-        // CONFIGURAZIONE STAGIONALE (NUOVO DEFAULT)
+        // Configurazione Stagionale Avanzata
         const unsubSeasonality = onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { 
             if(d.exists()) setSeasonalityConfig(d.data() as SeasonalityConfig); 
             else {
                 const defaultConfig: SeasonalityConfig = {
-                    isActive: false,
-                    startDate: '',
-                    endDate: '',
-                    themeName: 'Default',
-                    backgroundColor: '#f8fafc',
-                    animationType: 'none',
-                    emojis: [],
-                    speed: 5,
-                    size: 5,
-                    opacity: 0.6
+                    mode: 'auto',
+                    currentManualSeason: 'winter',
+                    seasons: {
+                        winter: { name: 'Inverno', backgroundColor: '#1e293b', animationType: 'snow', emojis: ['❄️', '⛄', '🎄'] },
+                        spring: { name: 'Primavera', backgroundColor: '#f0fdf4', animationType: 'float', emojis: ['🌸', '🦋', '🌱'] },
+                        summer: { name: 'Estate', backgroundColor: '#fefce8', animationType: 'float', emojis: ['☀️', '🍦', '🌊'] },
+                        autumn: { name: 'Autunno', backgroundColor: '#fff7ed', animationType: 'leaves', emojis: ['🍂', '🍄', '🌰'] }
+                    }
                 };
                 setDoc(doc(db, 'settings', 'seasonality'), defaultConfig);
             }
@@ -117,6 +111,7 @@ const App: React.FC = () => {
         return () => { unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); unsubSeasonality(); };
     }, []);
 
+    // ... (rest of useEffects like Seeding, Tombola Extraction, Handlers remain the same) ...
     // Seeding
     useEffect(() => {
         const seedDatabase = async () => {
@@ -143,7 +138,6 @@ const App: React.FC = () => {
         const runTombolaExtraction = async () => {
             if (!tombolaConfig || !tombolaConfig.extractedNumbers || tombolaConfig.extractedNumbers.length >= 90) return;
             if (tombolaConfig.status !== 'active') return;
-            
             const now = new Date().getTime();
             const last = new Date(tombolaConfig.lastExtraction).getTime();
             const diffHours = (now - last) / (1000 * 60 * 60);
@@ -154,11 +148,9 @@ const App: React.FC = () => {
                         const configSnap = await t.get(configRef);
                         const currentConfig = configSnap.data() as TombolaConfig;
                         if (!currentConfig.extractedNumbers) currentConfig.extractedNumbers = [];
-
                         let nextNum;
                         do { nextNum = Math.floor(Math.random() * 90) + 1; } while (currentConfig.extractedNumbers.includes(nextNum));
                         const newExtracted = [...currentConfig.extractedNumbers, nextNum];
-                        
                         const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
                         ticketsSnap.forEach(ticketDoc => {
                             const ticket = ticketDoc.data() as TombolaTicket;
@@ -234,7 +226,6 @@ const App: React.FC = () => {
                         t.set(ticketRef, { playerId: staffId, playerName: staffMember.name, numbers: ticketNumbers, purchaseTime: new Date().toISOString() });
                     }
                 }
-                
                 t.update(doc(db, 'tombola', 'config'), { jackpot: tombolaConfig.jackpot + jackpotAdd });
                 const cashRef = doc(collection(db, 'cash_movements'));
                 t.set(cashRef, { amount: totalCost, reason: `Tombola: ${quantity} cartelle (${staffMember.name})`, timestamp: new Date().toISOString(), type: 'deposit', category: 'tombola' });

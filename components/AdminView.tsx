@@ -82,7 +82,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [activeSeasonTab, setActiveSeasonTab] = useState<'winter'|'spring'|'summer'|'autumn'>('winter');
     const [emojiInput, setEmojiInput] = useState('');
 
-    // FIX CRASH: Usiamo useEffect invece di useMemo per gestire side-effects e check di sicurezza
+    // FIX CRASH: Inizializzazione sicura del form stagionalità
     useEffect(() => {
         if (seasonalityConfig && !seasonConfigForm) {
             // Se la config nel DB è vecchia (non ha 'seasons'), creiamo un default per evitare il crash
@@ -101,13 +101,12 @@ const AdminView: React.FC<AdminViewProps> = ({
                 setEmojiInput(defaultConfig.seasons.winter.emojis.join(', '));
             } else {
                 setSeasonConfigForm(seasonalityConfig);
-                // Check ulteriore se la tab attiva esiste
                 if (seasonalityConfig.seasons[activeSeasonTab]) {
                      setEmojiInput(seasonalityConfig.seasons[activeSeasonTab].emojis.join(', '));
                 }
             }
         }
-    }, [seasonalityConfig]);
+    }, [seasonalityConfig]); // Rimosso seasonConfigForm dalle dipendenze per evitare loop
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
@@ -279,7 +278,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <button onClick={saveSettings} className="mt-4 w-full bg-slate-800 text-white font-bold py-2 rounded-lg">Salva Colori</button>
                         </div>
 
-                        {/* CONFIGURAZIONE STAGIONALITA' A SCHEDE */}
+                        {/* CONFIGURAZIONE STAGIONALITA' AVANZATA */}
                         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-xl border border-blue-100 shadow-sm">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-lg font-bold text-blue-800 flex items-center gap-2"><SparklesIcon className="h-5 w-5" /> Personalizzazione Stagionale</h2>
