@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { Order, Product, StaffMember, Shift } from '../types';
 import BarChart from './BarChart';
 import LineChart from './LineChart';
-import { LogoIcon } from './Icons';
+import { LogoIcon, DropletIcon, LayersIcon, ChartBarIcon } from './Icons';
 
 interface StatisticsViewProps {
     filteredOrders: Order[];
@@ -20,6 +20,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     const activeOrders = useMemo(() => filteredOrders.filter(o => !o.isDeleted), [filteredOrders]);
     const totalSales = useMemo(() => activeOrders.reduce((sum, order) => sum + order.total, 0), [activeOrders]);
 
+    // Vendite per Staff
     const salesByStaff = useMemo(() => {
         const staffSales: { [key: string]: number } = {};
         activeOrders.forEach(o => { staffSales[o.staffName || 'Sconosciuto'] = (staffSales[o.staffName || 'Sconosciuto'] || 0) + o.total; });
@@ -32,6 +33,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             .sort((a, b) => b.value - a.value);
     }, [activeOrders, allStaff]);
 
+    // Top Prodotti (Quantità)
     const salesByProduct = useMemo(() => {
         const prodSales: { [key: string]: { name: string, value: number, icon: string } } = {};
         activeOrders.forEach(o => o.items.forEach(i => {
@@ -44,22 +46,48 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         return Object.values(prodSales).sort((a, b) => b.value - a.value).slice(0, 10);
     }, [activeOrders, allProducts]);
 
-    const salesTrend = useMemo(() => {
-        const trend: { [key: string]: number } = {};
-        
-        // Ordina gli ordini per data per assicurare sequenzialità
-        const sortedOrders = [...activeOrders].sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    // Volumi Categorie (Quantità)
+    const categoryVolumes = useMemo(() => {
+        const catVols: { [key: string]: number } = {};
+        activeOrders.forEach(o => o.items.forEach(i => {
+            const cat = i.product.category || 'Altro';
+            catVols[cat] = (catVols[cat] || 0) + i.quantity;
+        }));
+        return Object.entries(catVols).map(([name, value]) => ({ name, value, icon: '' })).sort((a,b) => b.value - a.value);
+    }, [activeOrders]);
 
+    // === TRENDS ===
+    
+    // Helper per trend giornalieri
+    const getDailyTrend = (valueExtractor: (o: Order) => number, filter?: (o: Order) => boolean) => {
+        const trend: { [key: string]: number } = {};
+        const sortedOrders = [...activeOrders].sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        
         sortedOrders.forEach(o => {
+            if(filter && !filter(o)) return;
             const dateKey = new Date(o.timestamp).toISOString().split('T')[0];
-            trend[dateKey] = (trend[dateKey] || 0) + o.total;
+            trend[dateKey] = (trend[dateKey] || 0) + valueExtractor(o);
         });
         
         return Object.entries(trend).map(([date, value]) => ({ 
             label: new Date(date).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
             value 
         }));
-    }, [activeOrders]);
+    };
+
+    // 1. Trend Incassi (€)
+    const salesTrend = useMemo(() => getDailyTrend(o => o.total), [activeOrders]);
+
+    // 2. Trend Quantità Totali (Pezzi)
+    const quantityTrend = useMemo(() => getDailyTrend(o => o.items.reduce((acc, i) => acc + i.quantity, 0)), [activeOrders]);
+
+    // 3. Trend Consumo Acqua (Pezzi)
+    const waterTrend = useMemo(() => {
+        const waterIds = new Set(allProducts.filter(p => p.name.toLowerCase().includes('acqua')).map(p => p.id));
+        return getDailyTrend(
+            o => o.items.filter(i => waterIds.has(i.product.id)).reduce((acc, i) => acc + i.quantity, 0)
+        );
+    }, [activeOrders, allProducts]);
 
     const handlePrintPdf = () => window.print();
 
@@ -76,13 +104,13 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="max-w-7xl mx-auto space-y-8">
             <div className="hidden print:block mb-8 text-center border-b pb-4">
                 <div className="flex items-center justify-center gap-2 mb-2"><LogoIcon className="h-8 w-8 text-slate-800" /><h1 className="text-2xl font-bold">Report Gestionale Bar</h1></div>
                 <p className="text-slate-500 text-sm">Periodo: {startDate || 'Inizio'} - {endDate || 'Oggi'}</p>
             </div>
 
-            {/* FILTRI DI ANALISI */}
+            {/* FILTRI */}
             <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:hidden">
                 <div className="mb-4">
                      <h2 className="text-2xl font-bold text-slate-800">Filtri di Analisi</h2>
@@ -104,33 +132,74 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 </div>
             </div>
 
-            {/* TOTAL CARD - STILE SOBRIO (BIANCO/GRIGIO) */}
-            <div className="bg-white border border-slate-300 border-l-8 border-l-slate-700 p-6 rounded-xl shadow-sm text-slate-800 print:bg-white print:text-black print:border flex justify-between items-center">
-                 <div>
-                    <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Incasso Totale Periodo</h2>
-                    <h2 className="text-4xl font-black text-slate-800 tracking-tight">€{totalSales.toFixed(2)}</h2>
-                    <p className="text-xs text-slate-400 mt-2 font-medium bg-slate-100 inline-block px-2 py-1 rounded">{activeOrders.length} transazioni</p>
+            {/* KPI CARDS */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white border-l-4 border-orange-500 p-6 rounded-xl shadow-sm">
+                    <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Incasso Totale</h2>
+                    <h2 className="text-3xl font-black text-slate-800 tracking-tight">€{totalSales.toFixed(2)}</h2>
                 </div>
-                 <button onClick={handlePrintPdf} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 px-4 rounded text-sm print:hidden transition-colors border border-slate-200">Stampa PDF</button>
+                <div className="bg-white border-l-4 border-green-500 p-6 rounded-xl shadow-sm">
+                    <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Volumi Totali</h2>
+                    <h2 className="text-3xl font-black text-slate-800 tracking-tight">
+                        {quantityTrend.reduce((acc, d) => acc + d.value, 0)} <span className="text-sm text-slate-400 font-medium">pezzi</span>
+                    </h2>
+                </div>
+                <div className="bg-white border-l-4 border-blue-400 p-6 rounded-xl shadow-sm">
+                    <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Transazioni</h2>
+                    <h2 className="text-3xl font-black text-slate-800 tracking-tight">{activeOrders.length}</h2>
+                </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
-                 <h3 className="text-xl font-bold text-slate-800 mb-6">Trend Vendite & Previsioni</h3>
-                 {/* Grafico Lineare */}
-                 <div className="h-[350px] w-full"><LineChart data={salesTrend} height={350} /></div>
+            {/* GRAFICI TREND */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                 {/* 1. Incasso */}
+                 <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
+                     <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                        <ChartBarIcon className="h-5 w-5 text-orange-500"/> Andamento Incassi (€)
+                     </h3>
+                     <div className="h-[250px] w-full"><LineChart data={salesTrend} height={250} color="text-orange-500" /></div>
+                </div>
+
+                {/* 2. Quantità Totali */}
+                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
+                     <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                        <LayersIcon className="h-5 w-5 text-green-500"/> Andamento Quantità (Pezzi)
+                     </h3>
+                     <div className="h-[250px] w-full"><LineChart data={quantityTrend} height={250} color="text-green-500" /></div>
+                </div>
+
+                {/* 3. Consumo Acqua */}
+                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
+                     <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                        <DropletIcon className="h-5 w-5 text-blue-400"/> Consumo Acqua (Pezzi)
+                     </h3>
+                     <div className="h-[250px] w-full"><LineChart data={waterTrend} height={250} color="text-blue-400" /></div>
+                </div>
+
+                {/* 4. Distribuzione Categorie */}
+                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
+                    <h3 className="text-lg font-bold mb-4 text-slate-700 flex items-center gap-2">
+                        <LayersIcon className="h-5 w-5 text-purple-500"/> Volumi per Categoria
+                    </h3>
+                    <BarChart data={categoryVolumes.slice(0, 8)} format="integer" barColor="bg-purple-500" />
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
-                    <h3 className="text-xl font-bold mb-4 text-slate-700">Vendite per Utente</h3>
-                    {/* Grafico Barre Staff - Colore Blu */}
-                    <BarChart data={salesByStaff} format="currency" barColor="bg-blue-500" />
+                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
+                    <h3 className="text-lg font-bold mb-4 text-slate-700">Performance Staff (€)</h3>
+                    <BarChart data={salesByStaff} format="currency" barColor="bg-blue-600" />
                 </div>
-                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
-                    <h3 className="text-xl font-bold mb-4 text-slate-700">Prodotti Top</h3>
-                    {/* Grafico Barre Prodotti - Colore Primary (Arancione) */}
-                    <BarChart data={salesByProduct} format="integer" barColor="bg-primary" />
+                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
+                    <h3 className="text-lg font-bold mb-4 text-slate-700">Top 10 Prodotti (Quantità)</h3>
+                    <BarChart data={salesByProduct} format="integer" barColor="bg-orange-500" />
                 </div>
+            </div>
+
+             <div className="text-center py-4 print:hidden">
+                <button onClick={handlePrintPdf} className="bg-slate-800 text-white font-bold py-3 px-6 rounded-lg hover:bg-slate-700 transition-colors shadow-lg">
+                    Stampa Report Completo (PDF)
+                </button>
             </div>
         </div>
     );

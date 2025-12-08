@@ -198,6 +198,19 @@ export const UsersIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
+export const DropletIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S12 3 12 3s-4.5 5.1-4.5 9 2.015 9 4.5 9z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 3.75l-4.5 16.5m9-16.5l4.5 16.5m-13.5 0h13.5" opacity="0" /> 
+    </svg>
+);
+
+export const LayersIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75l8.25-4.5 8.25 4.5-8.25 4.5-8.25-4.5zM3.75 12l8.25 4.5 8.25-4.5M3.75 17.25l8.25 4.5 8.25-4.5" />
+    </svg>
+);
+
 // Weather Icons
 export const SunIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
