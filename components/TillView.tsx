@@ -29,12 +29,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     const [presentStaffIds, setPresentStaffIds] = useState<string[]>([]);
     const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
 
-    // ANALOTTO MODAL STATE
-    const [isAnalottoModalOpen, setIsAnalottoModalOpen] = useState(false);
-    const [analottoAmount, setAnalottoAmount] = useState(0);
-    const [analottoNumbers, setAnalottoNumbers] = useState<number[]>([]);
-    const [analottoWheels, setAnalottoWheels] = useState<AnalottoWheel[]>([]);
-
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
     const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift), [allStaff, till.shift]);
@@ -174,110 +168,33 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
 
-    // --- ANALOTTO LOGIC ---
-    const openAnalottoModal = (amount: number) => {
+    // --- ANALOTTO LOGIC (Direct Purchase - Pending) ---
+    const handleQuickAnalotto = async (amount: number) => {
         if (!selectedStaffId) {
             alert("Seleziona prima un utente per giocare.");
             return;
         }
-        setAnalottoAmount(amount);
-        setAnalottoNumbers([]);
-        setAnalottoWheels([]);
-        setIsAnalottoModalOpen(true);
-    };
-
-    const toggleAnalottoNumber = (n: number) => {
-        if (analottoNumbers.includes(n)) {
-            setAnalottoNumbers(analottoNumbers.filter(x => x !== n));
-        } else if (analottoNumbers.length < 10) {
-            setAnalottoNumbers([...analottoNumbers, n].sort((a,b)=>a-b));
-        }
-    };
-
-    const toggleAnalottoWheel = (w: AnalottoWheel) => {
-        if (analottoWheels.includes(w)) {
-            setAnalottoWheels(analottoWheels.filter(x => x !== w));
-        } else {
-            setAnalottoWheels([...analottoWheels, w]);
-        }
-    };
-
-    const confirmAnalottoBet = async () => {
         if (!onPlaceAnalottoBet) return;
-        if (analottoNumbers.length === 0) return alert("Scegli almeno un numero.");
-        if (analottoWheels.length === 0) return alert("Scegli almeno una ruota.");
-        
+
         try {
             await onPlaceAnalottoBet({
                 playerId: selectedStaffId,
                 playerName: selectedStaffMember?.name || 'Utente',
-                numbers: analottoNumbers,
-                wheels: analottoWheels,
-                amount: analottoAmount
+                amount: amount,
+                status: 'pending', // TICKET IN BIANCO DA COMPLETARE
+                numbers: [],
+                wheels: []
             });
-            setIsAnalottoModalOpen(false);
-            alert("Giocata Analotto Registrata!");
+            alert("Ticket Analotto acquistato! Completalo nella sezione Extra Hub.");
         } catch (error) {
             console.error(error);
-            alert("Errore durante la giocata.");
+            alert("Errore durante l'acquisto del ticket.");
         }
     };
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row relative">
             
-            {/* ANALOTTO MODAL */}
-            {isAnalottoModalOpen && (
-                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border-4 border-emerald-500 flex flex-col max-h-[90vh]">
-                        <div className="bg-emerald-600 p-4 text-white flex justify-between items-center">
-                            <h3 className="font-bold text-lg flex items-center gap-2">
-                                <CloverIcon className="h-6 w-6 text-yellow-300" /> Analotto {analottoAmount}€
-                            </h3>
-                            <button onClick={() => setIsAnalottoModalOpen(false)} className="text-2xl hover:text-emerald-200">&times;</button>
-                        </div>
-                        <div className="p-4 overflow-y-auto space-y-4 bg-emerald-50">
-                            {/* Numeri */}
-                            <div className="bg-white p-3 rounded-xl shadow-sm border border-emerald-200">
-                                <p className="text-xs font-bold text-emerald-800 uppercase mb-2">Scegli Numeri ({analottoNumbers.length}/10)</p>
-                                <div className="grid grid-cols-10 gap-1">
-                                    {Array.from({length: 90}, (_, i) => i + 1).map(n => (
-                                        <button 
-                                            key={n} 
-                                            onClick={() => toggleAnalottoNumber(n)}
-                                            className={`aspect-square rounded flex items-center justify-center text-xs font-bold ${analottoNumbers.includes(n) ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-emerald-100'}`}
-                                        >
-                                            {n}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            {/* Ruote */}
-                            <div className="bg-white p-3 rounded-xl shadow-sm border border-emerald-200">
-                                <p className="text-xs font-bold text-emerald-800 uppercase mb-2">Scegli Ruote</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {(['APS', 'Campagnola', 'Autoscala', 'Autobotte', 'Direttivo'] as AnalottoWheel[]).map(w => (
-                                        <button 
-                                            key={w}
-                                            onClick={() => toggleAnalottoWheel(w)}
-                                            className={`px-3 py-2 rounded-lg text-xs font-bold border flex justify-between items-center ${analottoWheels.includes(w) ? 'bg-emerald-100 border-emerald-500 text-emerald-800' : 'bg-white border-slate-200 text-slate-500'}`}
-                                        >
-                                            {w}
-                                            {analottoWheels.includes(w) && <CheckIcon className="h-3 w-3" />}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="p-4 bg-white border-t border-emerald-100">
-                            <button onClick={confirmAnalottoBet} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-md uppercase tracking-wider">
-                                Conferma Giocata
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* ATTENDANCE MODAL */}
             {isAttendanceModalOpen && (
                 <div className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
@@ -409,15 +326,15 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                                 return <ProductCard key={product.id} product={product} onAddToCart={addToOrder} inCart={inCart} />;
                                             })}
                                             
-                                            {/* ANALOTTO CARDS (Integrazione prodotti) */}
+                                            {/* ANALOTTO CARDS (Integrazione prodotti - ACQUISTO RAPIDO) */}
                                             {[1, 2, 5, 10].map(amt => (
                                                 <button 
                                                     key={`analotto-${amt}`}
-                                                    onClick={() => openAnalottoModal(amt)}
+                                                    onClick={() => handleQuickAnalotto(amt)}
                                                     className="bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col items-center justify-center p-2 shadow-sm hover:shadow-md hover:bg-emerald-100 transition-all h-36 relative group"
                                                 >
-                                                    <div className="absolute top-2 right-2 text-emerald-400"><CloverIcon className="h-4 w-4" /></div>
-                                                    <div className="text-4xl mb-2 filter drop-shadow-sm group-hover:scale-110 transition-transform">🍀</div>
+                                                    <div className="absolute top-2 right-2 text-emerald-400 opacity-50"><CloverIcon className="h-4 w-4" /></div>
+                                                    <div className="text-4xl mb-2 filter drop-shadow-sm group-hover:scale-110 transition-transform">🍑</div>
                                                     <h3 className="font-black text-emerald-800 text-xs uppercase mb-1">Analotto</h3>
                                                     <span className="bg-emerald-600 text-white px-3 py-1 rounded-full font-black text-sm">€{amt}</span>
                                                 </button>

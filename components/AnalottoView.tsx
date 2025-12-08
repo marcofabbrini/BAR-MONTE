@@ -14,9 +14,10 @@ interface AnalottoViewProps {
     isSuperAdmin: boolean;
     onTransferFunds: (amount: number, gameName: string) => Promise<void>;
     onUpdateConfig?: (cfg: Partial<AnalottoConfig>) => Promise<void>;
+    onConfirmTicket?: (ticketId: string, numbers: number[], wheels: AnalottoWheel[]) => Promise<void>;
 }
 
-const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, extractions, staff, onPlaceBet, onRunExtraction, isSuperAdmin, onTransferFunds, onUpdateConfig }) => {
+const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, extractions, staff, onPlaceBet, onRunExtraction, isSuperAdmin, onTransferFunds, onUpdateConfig, onConfirmTicket }) => {
     
     // UI State
     const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
@@ -25,6 +26,9 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
     const [selectedPlayerId, setSelectedPlayerId] = useState<string>('');
     const [viewMode, setViewMode] = useState<'play' | 'extractions'>('play');
     
+    // Ticket Completamento
+    const [ticketToCompleteId, setTicketToCompleteId] = useState<string | null>(null);
+
     // Info Modal State
     const [isInfoOpen, setIsInfoOpen] = useState(false);
     const [editRules, setEditRules] = useState('');
@@ -40,10 +44,15 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
 
     const availableWheels: AnalottoWheel[] = ['APS', 'Campagnola', 'Autoscala', 'Autobotte', 'Direttivo'];
 
+    // Calcola ticket pending
+    const pendingTickets = useMemo(() => {
+        return bets.filter(b => b.status === 'pending');
+    }, [bets]);
+
     // Calcola quali giocatori hanno scommesse attive (fatte dopo l'ultima estrazione)
     const activePlayerData = useMemo(() => {
         const lastExtractionTime = new Date(config?.lastExtraction || 0).getTime();
-        const activeBets = bets.filter(b => new Date(b.timestamp).getTime() > lastExtractionTime);
+        const activeBets = bets.filter(b => b.status === 'active' && new Date(b.timestamp).getTime() > lastExtractionTime);
         
         const playerStats: Record<string, number> = {};
         activeBets.forEach(b => {
@@ -71,24 +80,41 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
         }
     };
 
+    const handleSelectPendingTicket = (ticket: AnalottoBet) => {
+        setTicketToCompleteId(ticket.id);
+        setSelectedPlayerId(ticket.playerId);
+        setBetAmount(ticket.amount);
+        setSelectedNumbers([]);
+        setSelectedWheels([]);
+    };
+
     const handleConfirmBet = async () => {
         if (!selectedPlayerId) return alert("Seleziona chi sta giocando.");
         if (selectedNumbers.length === 0) return alert("Seleziona almeno un numero.");
         if (selectedWheels.length === 0) return alert("Seleziona almeno una ruota.");
-        if (betAmount <= 0) return alert("Importo non valido.");
-
-        const player = staff.find(s => s.id === selectedPlayerId);
-        if (!player) return;
-
+        
         try {
-            await onPlaceBet({
-                playerId: selectedPlayerId,
-                playerName: player.name,
-                numbers: selectedNumbers,
-                wheels: selectedWheels,
-                amount: betAmount
-            });
-            alert("Giocata registrata con successo!");
+            if (ticketToCompleteId && onConfirmTicket) {
+                // Completamento Ticket Esistente
+                await onConfirmTicket(ticketToCompleteId, selectedNumbers, selectedWheels);
+                alert("Ticket completato e attivato!");
+                setTicketToCompleteId(null);
+            } else {
+                // Nuova Giocata Completa
+                if (betAmount <= 0) return alert("Importo non valido.");
+                const player = staff.find(s => s.id === selectedPlayerId);
+                if (!player) return;
+
+                await onPlaceBet({
+                    playerId: selectedPlayerId,
+                    playerName: player.name,
+                    numbers: selectedNumbers,
+                    wheels: selectedWheels,
+                    amount: betAmount,
+                    status: 'active'
+                });
+                alert("Giocata registrata con successo!");
+            }
             setSelectedNumbers([]);
             setSelectedWheels([]);
             setBetAmount(1);
@@ -203,23 +229,29 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
 
                 {viewMode === 'play' && (
                     <>
-                        {/* LISTA RAPIDA PARTECIPANTI ATTIVI */}
-                        {Object.keys(activePlayerData).length > 0 && (
-                            <div className="bg-white p-3 rounded-xl border border-emerald-200 shadow-sm animate-fade-in">
-                                <p className="text-xs font-bold text-emerald-800 uppercase mb-2">Partecipanti per la prossima estrazione:</p>
-                                <div className="flex gap-2 overflow-x-auto pb-1">
-                                    {Object.keys(activePlayerData).map(pid => {
-                                        const s = staff.find(staff => staff.id === pid);
-                                        return (
-                                            <div key={pid} className="flex items-center gap-1 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100 flex-shrink-0">
-                                                <div className="text-sm">{s?.icon || '👤'}</div>
-                                                <span className="text-xs font-bold text-emerald-700">{s?.name.split(' ')[0]}</span>
-                                                <span className="bg-emerald-600 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center">
-                                                    {activePlayerData[pid]}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
+                        {/* PENDING TICKETS SECTION */}
+                        {pendingTickets.length > 0 && (
+                            <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4 shadow-md animate-pulse-slow">
+                                <h3 className="font-black text-orange-800 uppercase text-sm mb-3 flex items-center gap-2">
+                                    Ticket da Completare
+                                </h3>
+                                <div className="flex gap-3 overflow-x-auto pb-2">
+                                    {pendingTickets.map(ticket => (
+                                        <button 
+                                            key={ticket.id}
+                                            onClick={() => handleSelectPendingTicket(ticket)}
+                                            className={`
+                                                flex flex-col items-center p-3 rounded-lg bg-white border shadow-sm transition-all
+                                                ${ticketToCompleteId === ticket.id ? 'border-orange-500 ring-2 ring-orange-200' : 'border-orange-100 hover:border-orange-300'}
+                                            `}
+                                        >
+                                            <span className="text-2xl mb-1">🍑</span>
+                                            <span className="text-xs font-bold text-slate-700">{ticket.playerName}</span>
+                                            <span className="text-[10px] bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full font-black mt-1">
+                                                €{ticket.amount}
+                                            </span>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -227,7 +259,12 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             
                             {/* COLONNA SX: SCHEDINA */}
-                            <div className="lg:col-span-2 bg-white rounded-xl shadow-lg border border-emerald-200 overflow-hidden">
+                            <div className="lg:col-span-2 bg-white rounded-xl shadow-lg border border-emerald-200 overflow-hidden relative">
+                                {ticketToCompleteId && (
+                                    <div className="absolute top-0 right-0 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl z-10 animate-pulse">
+                                        COMPLETAMENTO TICKET
+                                    </div>
+                                )}
                                 <div className="bg-emerald-100 p-3 border-b border-emerald-200 flex justify-between items-center">
                                     <span className="font-bold text-emerald-900 uppercase">1. Scegli i Numeri</span>
                                     <span className="text-xs font-bold bg-white text-emerald-800 px-2 py-0.5 rounded-full">{selectedNumbers.length}/10</span>
@@ -273,42 +310,48 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
                                         <span className="font-bold text-emerald-900 uppercase">3. Conferma Giocata</span>
                                     </div>
                                     <div className="p-4 space-y-4">
-                                        <div>
-                                            <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Chi Gioca?</label>
-                                            <select 
-                                                value={selectedPlayerId} 
-                                                onChange={(e) => setSelectedPlayerId(e.target.value)} 
-                                                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-bold text-slate-700"
-                                            >
-                                                <option value="">Seleziona...</option>
-                                                {staff.map(s => (
-                                                    <option key={s.id} value={s.id}>
-                                                        {s.name} {activePlayerData[s.id] ? '✅' : ''}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            {/* VISUAL INDICATOR IF ACTIVE */}
-                                            {selectedPlayerId && activePlayerData[selectedPlayerId] && (
-                                                <div className="mt-2 bg-green-100 border border-green-200 text-green-800 px-3 py-2 rounded-lg text-xs flex items-center gap-2">
-                                                    <CheckIcon className="h-4 w-4" />
-                                                    <span>Questo utente ha già <strong>{activePlayerData[selectedPlayerId]}</strong> ticket attivi.</span>
+                                        {!ticketToCompleteId && (
+                                            <>
+                                                <div>
+                                                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Chi Gioca?</label>
+                                                    <select 
+                                                        value={selectedPlayerId} 
+                                                        onChange={(e) => setSelectedPlayerId(e.target.value)} 
+                                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-bold text-slate-700"
+                                                    >
+                                                        <option value="">Seleziona...</option>
+                                                        {staff.map(s => (
+                                                            <option key={s.id} value={s.id}>
+                                                                {s.name} {activePlayerData[s.id] ? '✅' : ''}
+                                                            </option>
+                                                        ))}
+                                                    </select>
                                                 </div>
-                                            )}
-                                        </div>
-                                        <div>
-                                            <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Importo (€)</label>
-                                            <div className="flex gap-2">
-                                                {[1, 2, 5, 10].map(amt => (
-                                                    <button key={amt} onClick={() => setBetAmount(amt)} className={`flex-1 py-2 rounded-lg font-bold text-sm border ${betAmount === amt ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-600 border-slate-200'}`}>€{amt}</button>
-                                                ))}
+                                                <div>
+                                                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Importo (€)</label>
+                                                    <div className="flex gap-2">
+                                                        {[1, 2, 5, 10].map(amt => (
+                                                            <button key={amt} onClick={() => setBetAmount(amt)} className={`flex-1 py-2 rounded-lg font-bold text-sm border ${betAmount === amt ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-white text-slate-600 border-slate-200'}`}>€{amt}</button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {ticketToCompleteId && (
+                                            <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                                                <p className="text-xs font-bold text-orange-800 uppercase">Stai completando il ticket di:</p>
+                                                <p className="text-lg font-black text-slate-800">{staff.find(s => s.id === selectedPlayerId)?.name}</p>
+                                                <p className="text-sm font-bold text-emerald-600 mt-1">Valore: €{betAmount}</p>
+                                                <button onClick={() => setTicketToCompleteId(null)} className="text-[10px] text-red-500 underline mt-2">Annulla completamento</button>
                                             </div>
-                                        </div>
+                                        )}
                                         
                                         <button 
                                             onClick={handleConfirmBet}
                                             className="w-full bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-black py-4 rounded-xl shadow-md uppercase tracking-wide text-lg transition-colors mt-2"
                                         >
-                                            Gioca €{betAmount}
+                                            {ticketToCompleteId ? 'Attiva Ticket' : `Gioca €${betAmount}`}
                                         </button>
                                     </div>
                                 </div>
@@ -370,7 +413,10 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
                                             <span className="font-bold text-slate-700">{bet.playerName}</span>
                                             <span className="text-slate-400 text-xs ml-2">{new Date(bet.timestamp).toLocaleDateString()}</span>
                                             <div className="text-xs text-emerald-600 mt-1 font-mono">
-                                                {bet.wheels.join(', ')}: [{bet.numbers.join('-')}]
+                                                {bet.status === 'active' 
+                                                    ? `${bet.wheels?.join(', ') || ''}: [${bet.numbers?.join('-') || ''}]`
+                                                    : <span className="text-orange-500 font-bold uppercase">Ticket da completare</span>
+                                                }
                                             </div>
                                         </div>
                                         <div className="font-bold text-slate-800">€{bet.amount}</div>

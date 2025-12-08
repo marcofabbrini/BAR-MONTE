@@ -374,13 +374,14 @@ const App: React.FC = () => {
     const handlePlaceAnalottoBet = async (betData: Omit<AnalottoBet, 'id' | 'timestamp'>) => {
         try {
             await runTransaction(db, async (t) => {
-                const betRef = doc(collection(db, 'analotto_bets'));
-                t.set(betRef, { ...betData, timestamp: new Date().toISOString() });
-
+                // IMPORTANT: Read operations must come first
                 const configRef = doc(db, 'analotto', 'config');
                 const configSnap = await t.get(configRef);
                 const currentJackpot = configSnap.exists() ? (configSnap.data().jackpot || 0) : 0;
-                
+
+                const betRef = doc(collection(db, 'analotto_bets'));
+                t.set(betRef, { ...betData, timestamp: new Date().toISOString() });
+
                 const jackpotPart = betData.amount * 0.8;
                 const barPart = betData.amount * 0.2;
 
@@ -394,6 +395,16 @@ const App: React.FC = () => {
                 t.set(barCashRef, { amount: barPart, reason: `Utile Analotto (20%)`, timestamp: new Date().toISOString(), type: 'deposit', category: 'bar' });
             });
         } catch (e) { console.error("Errore giocata analotto:", e); throw e; }
+    };
+
+    const handleConfirmAnalottoTicket = async (ticketId: string, numbers: number[], wheels: AnalottoWheel[]) => {
+        try {
+            await updateDoc(doc(db, 'analotto_bets', ticketId), {
+                numbers,
+                wheels,
+                status: 'active'
+            });
+        } catch (e) { console.error("Errore conferma ticket:", e); throw e; }
     };
 
     const handleAnalottoExtraction = async () => {
@@ -553,6 +564,7 @@ const App: React.FC = () => {
                     isSuperAdmin={isSuperAdmin}
                     onTransferFunds={handleTransferGameFunds}
                     onUpdateConfig={handleUpdateAnalottoConfig}
+                    onConfirmTicket={handleConfirmAnalottoTicket} // New Prop
                 />;
             case 'dice':
                 return <DiceGame onGoBack={handleGoBack} staff={staff} />;

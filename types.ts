@@ -111,10 +111,11 @@ export interface AnalottoBet {
     id: string;
     playerId: string;
     playerName: string;
-    numbers: number[]; // 1-10 numeri scelti
-    wheels: AnalottoWheel[]; // Ruote su cui si gioca
+    numbers?: number[]; // 1-10 numeri scelti (Opzionale se pending)
+    wheels?: AnalottoWheel[]; // Ruote su cui si gioca (Opzionale se pending)
     amount: number; // Importo giocato
     timestamp: string;
+    status: 'pending' | 'active' | 'completed';
 }
 
 export interface AnalottoExtraction {
