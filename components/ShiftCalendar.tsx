@@ -26,9 +26,6 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
         
         // OFFSET VVF: 1 Gennaio (diffDays=0) deve essere A (index 0)
         const BASE_OFFSET_DAY = 0;
-        // Se Giorno è A (0), la notte è tipicamente quella che segue?
-        // Assumiamo una rotazione standard dove se oggi giorno è A, notte è D (del giorno prima) o A?
-        // Manteniamo la logica precedente shiftata correttamente
         const BASE_OFFSET_NIGHT = 3; 
 
         let dayIndex = (BASE_OFFSET_DAY + diffDays) % 4;
@@ -71,6 +68,46 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
         return tillColors[tillId] || defaultColors[tillId] || '#94a3b8';
     };
 
+    // Helper per renderizzare la cella turno (Giorno o Notte) con layout responsive
+    const renderShiftRow = (shift: string, type: 'day' | 'night', isDimmed: boolean) => {
+        const color = getShiftColor(shift);
+        const icon = type === 'day' ? '☀️' : '🌙';
+        const bgColor = type === 'day' ? 'bg-orange-50/50 border-orange-100' : 'bg-slate-100/50 border-slate-100';
+
+        return (
+            <div 
+                className={`
+                    rounded px-1 md:px-2 py-1 shadow-sm border 
+                    flex items-center justify-center md:justify-between
+                    transition-all duration-300
+                    ${bgColor}
+                    ${isDimmed ? 'opacity-10 grayscale' : 'opacity-100'}
+                `}
+            >
+                {/* DESKTOP VIEW: Icona sinistra, Badge destra */}
+                <div className="hidden md:flex items-center w-full justify-between">
+                    <span className="text-lg leading-none">{icon}</span>
+                    <span 
+                        className="font-black text-xs px-2 rounded text-white shadow-sm"
+                        style={{ backgroundColor: color }}
+                    >
+                        {shift}
+                    </span>
+                </div>
+
+                {/* MOBILE VIEW: Lettera Grande Colorata, Icona Apice */}
+                <div className="md:hidden relative w-full h-7 flex items-center justify-center">
+                    <span className="font-black text-xl leading-none" style={{ color: color }}>
+                        {shift}
+                    </span>
+                    <span className="absolute -top-0.5 -right-0.5 text-[8px] opacity-60">
+                        {icon}
+                    </span>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
             <header className="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
@@ -92,20 +129,20 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                 </button>
             </header>
 
-            <main className="flex-grow p-4 md:p-8 max-w-5xl mx-auto w-full">
+            <main className="flex-grow p-2 md:p-8 max-w-5xl mx-auto w-full">
                 
                 {/* Controlli e Legenda */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-4">
                         <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-100 rounded-full">←</button>
-                        <h2 className="text-2xl font-black text-slate-800 uppercase w-48 text-center">
+                        <h2 className="text-xl md:text-2xl font-black text-slate-800 uppercase w-48 text-center">
                             {monthNames[currentDate.getMonth()]} <span className="text-slate-400 font-medium">{currentDate.getFullYear()}</span>
                         </h2>
                         <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-100 rounded-full">→</button>
                     </div>
 
                     <div className="flex gap-2 items-center">
-                        <span className="text-xs font-bold text-slate-400 uppercase mr-2">Evidenzia:</span>
+                        <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase mr-2">Filtra Turno:</span>
                         {['A', 'B', 'C', 'D'].map(shift => (
                             <button
                                 key={shift}
@@ -116,6 +153,9 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                                 {shift}
                             </button>
                         ))}
+                        {highlightShift && (
+                             <button onClick={() => setHighlightShift(null)} className="ml-2 text-[10px] text-red-400 underline">Reset</button>
+                        )}
                     </div>
                 </div>
 
@@ -124,7 +164,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                     {/* Intestazione Giorni */}
                     <div className="grid grid-cols-7 bg-slate-100 border-b border-slate-200">
                         {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((d, i) => (
-                            <div key={i} className={`py-3 text-center text-xs font-black uppercase ${i===6 ? 'text-red-500' : 'text-slate-500'}`}>
+                            <div key={i} className={`py-3 text-center text-[10px] md:text-xs font-black uppercase ${i===6 ? 'text-red-500' : 'text-slate-500'}`}>
                                 {d}
                             </div>
                         ))}
@@ -133,7 +173,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                     <div className="grid grid-cols-7 auto-rows-fr">
                         {/* Giorni vuoti inizio mese */}
                         {Array.from({ length: startingBlankDays }).map((_, i) => (
-                            <div key={`blank-${i}`} className="bg-slate-50/50 border-b border-r border-slate-100 min-h-[100px]"></div>
+                            <div key={`blank-${i}`} className="bg-slate-50/50 border-b border-r border-slate-100 min-h-[80px] md:min-h-[100px]"></div>
                         ))}
 
                         {/* Giorni del mese */}
@@ -144,53 +184,29 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                             const isToday = new Date().toDateString() === date.toDateString();
                             
                             // Highlight Logic
-                            const isDayHighlighted = highlightShift && shifts.day === highlightShift;
-                            const isNightHighlighted = highlightShift && shifts.night === highlightShift;
-                            const isDimmed = highlightShift && !isDayHighlighted && !isNightHighlighted;
+                            const isFilterActive = highlightShift !== null;
+                            const isDayDimmed = isFilterActive && shifts.day !== highlightShift;
+                            const isNightDimmed = isFilterActive && shifts.night !== highlightShift;
 
                             return (
                                 <div 
                                     key={dayNum} 
                                     className={`
-                                        relative border-b border-r border-slate-100 min-h-[100px] p-2 flex flex-col gap-1 transition-all duration-300
-                                        ${isToday ? 'bg-green-100 border-green-400 ring-2 ring-inset ring-green-500 shadow-md z-10' : 'bg-white hover:bg-slate-50'}
-                                        ${isDimmed ? 'opacity-40 grayscale-[50%]' : ''}
+                                        relative border-b border-r border-slate-100 min-h-[80px] md:min-h-[100px] p-1 md:p-2 flex flex-col gap-1 transition-all duration-300
+                                        ${isToday ? 'bg-green-50 border-green-400 ring-1 ring-inset ring-green-500 shadow-md z-10' : 'bg-white hover:bg-slate-50'}
                                     `}
                                 >
                                     <div className="flex justify-between items-start">
-                                        <span className={`text-sm font-bold mb-2 ${isToday ? 'text-green-800' : 'text-slate-700'}`}>{dayNum}</span>
-                                        {isToday && <span className="text-[9px] font-black text-green-700 uppercase bg-green-200 px-1 rounded">OGGI</span>}
+                                        <span className={`text-xs md:text-sm font-bold mb-1 md:mb-2 ${isToday ? 'text-green-800' : 'text-slate-700'}`}>{dayNum}</span>
+                                        {isToday && <span className="text-[8px] md:text-[9px] font-black text-green-700 uppercase bg-green-200 px-1 rounded hidden md:inline">OGGI</span>}
                                     </div>
                                     
                                     {/* Turno Giorno */}
-                                    <div className="flex items-center justify-between bg-slate-50 rounded px-2 py-1 mb-1 shadow-sm border border-slate-100">
-                                        <span className="text-lg leading-none">☀️</span>
-                                        <span 
-                                            className="font-black text-xs px-2 rounded text-white shadow-sm"
-                                            style={{ backgroundColor: getShiftColor(shifts.day) }}
-                                        >
-                                            {shifts.day}
-                                        </span>
-                                    </div>
+                                    {renderShiftRow(shifts.day, 'day', isDayDimmed)}
 
                                     {/* Turno Notte */}
-                                    <div className="flex items-center justify-between bg-slate-900/5 rounded px-2 py-1 shadow-sm border border-slate-200">
-                                        <span className="text-lg leading-none">🌙</span>
-                                        <span 
-                                            className="font-black text-xs px-2 rounded text-white shadow-sm"
-                                            style={{ backgroundColor: getShiftColor(shifts.night) }}
-                                        >
-                                            {shifts.night}
-                                        </span>
-                                    </div>
+                                    {renderShiftRow(shifts.night, 'night', isNightDimmed)}
                                     
-                                    {/* Indicatore "Riposo" per highlight */}
-                                    {highlightShift && !isDayHighlighted && !isNightHighlighted && (
-                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none bg-white/80">
-                                            <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded shadow transform -rotate-12 border border-green-200">RIPOSO</span>
-                                        </div>
-                                    )}
-
                                 </div>
                             );
                         })}
