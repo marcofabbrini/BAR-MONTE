@@ -19,25 +19,24 @@ const LineChart: React.FC<LineChartProps> = ({ data, height = 300 }) => {
                 chartData.push({ label: d.toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), value: 0 });
             }
         } 
-        // Se ci sono pochi dati (meno di 7), estendiamo l'asse X nel passato
+        // Se ci sono pochi dati (meno di 7), estendiamo l'asse X nel passato per non stirare il grafico
         else if (chartData.length < 7) {
-            const firstDateStr = chartData[0].label; // Assumiamo formato DD/MM
-            // Non possiamo parsare facilmente DD/MM senza anno, quindi usiamo un approccio fittizio per riempire
-            // Se i dati reali sono pochi, aggiungiamo placeholder all'inizio per non "stirare"
             const missing = 7 - chartData.length;
             const prefix = Array.from({length: missing}).map((_, i) => ({
-                label: '.', // Label vuota o placeholder
+                label: '', // Label vuota per placeholder
                 value: 0
             }));
+            // Uniamo i placeholder (solo per layout) ai dati reali
+            // Nota: Se volessimo date reali dovremmo parsare l'ultima data, ma per layout grafico basta questo
             chartData = [...prefix, ...chartData];
         }
 
-        // GENERAZIONE PREVISIONE (FORECAST)
-        // Semplice regressione lineare sugli ultimi punti per proiettare i prossimi 3 giorni
+        // GENERAZIONE PREVISIONE (FORECAST - Grigio Tratteggiato)
+        // Semplice regressione sugli ultimi punti
         if (data.length >= 2) {
             const lastValues = data.slice(-5).map(d => d.value); // Ultimi 5 valori reali
             const n = lastValues.length;
-            // Calcolo pendenza media (molto semplificato)
+            // Calcolo pendenza media
             let slope = 0;
             if (n > 1) {
                 slope = (lastValues[n-1] - lastValues[0]) / (n-1);
@@ -60,26 +59,29 @@ const LineChart: React.FC<LineChartProps> = ({ data, height = 300 }) => {
         return chartData;
     }, [data]);
 
-    const maxValue = Math.max(...processedData.map(d => d.value)) * 1.1 || 100; // Scala minima 100
-    const padding = 40;
+    const maxValue = Math.max(...processedData.map(d => d.value)) * 1.1 || 100; // Scala massima + 10%
+    const paddingLeft = 50; // Spazio per asse Y
+    const paddingBottom = 30; // Spazio per asse X
+    const paddingTop = 20;
+    const paddingRight = 20;
+    
     const width = 800; // viewBox width
-    const chartHeight = height - padding * 2;
-    const chartWidth = width - padding * 2;
+    const chartHeight = height - paddingTop - paddingBottom;
+    const chartWidth = width - paddingLeft - paddingRight;
 
-    // Helper to calculate coords
-    const getX = (index: number) => padding + (index / (processedData.length - 1)) * chartWidth;
-    const getY = (value: number) => height - padding - (value / maxValue) * chartHeight;
+    // Coordinate Helper
+    const getX = (index: number) => paddingLeft + (index / (processedData.length - 1)) * chartWidth;
+    const getY = (value: number) => height - paddingBottom - (value / maxValue) * chartHeight;
 
     // Generate Points
     const allPoints = processedData.map((d, i) => ({ x: getX(i), y: getY(d.value), isForecast: d.isForecast, val: d.value, label: d.label }));
     
     // Separiamo i punti reali da quelli forecast
-    // Troviamo l'indice dove inizia il forecast
     const firstForecastIndex = allPoints.findIndex(p => p.isForecast);
     const realPoints = firstForecastIndex === -1 ? allPoints : allPoints.slice(0, firstForecastIndex + 1); // +1 per collegare la linea
     const forecastPoints = firstForecastIndex === -1 ? [] : allPoints.slice(firstForecastIndex - 1); // -1 per collegare all'ultimo reale
 
-    // Funzioni per disegnare curve
+    // Funzioni per disegnare curve (Cubic Bezier)
     const lineCommand = (point: {x:number, y:number}, i: number, a: {x:number, y:number}[]) => {
         const cps = controlPoint(a[i - 1], a[i - 2], point);
         const cpe = controlPoint(point, a[i - 1], a[i + 1], true);
@@ -89,7 +91,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, height = 300 }) => {
     const controlPoint = (current: any, previous: any, next: any, reverse?: boolean) => {
         const p = previous || current;
         const n = next || current;
-        const smoothing = 0.2;
+        const smoothing = 0.2; // Grado di curvatura
         const o = line(p, n);
         const angle = o.angle + (reverse ? Math.PI : 0);
         const length = o.length * smoothing;
@@ -120,24 +122,33 @@ const LineChart: React.FC<LineChartProps> = ({ data, height = 300 }) => {
     
     // Area fill solo per dati reali
     const fillPath = realPoints.length > 0 
-        ? `${realPath} L ${realPoints[realPoints.length - 1].x},${height - padding} L ${realPoints[0].x},${height - padding} Z` 
+        ? `${realPath} L ${realPoints[realPoints.length - 1].x},${height - paddingBottom} L ${realPoints[0].x},${height - paddingBottom} Z` 
         : '';
 
     return (
         <div className="w-full relative overflow-hidden" style={{ height: `${height}px` }}>
             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full" preserveAspectRatio="none">
-                {/* Griglia Y */}
+                
+                {/* Griglia Y e Label */}
                 {[0, 0.25, 0.5, 0.75, 1].map((p, i) => {
                     const yVal = getY(maxValue * p);
                     return (
                         <g key={i}>
-                            <line x1={padding} y1={yVal} x2={width - padding} y2={yVal} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" />
-                            <text x={padding - 5} y={yVal + 4} textAnchor="end" className="text-[10px] fill-slate-400 font-sans">
+                            {/* Linea Orizzontale */}
+                            <line x1={paddingLeft} y1={yVal} x2={width - paddingRight} y2={yVal} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="4 4" />
+                            {/* Label Valore */}
+                            <text x={paddingLeft - 8} y={yVal + 3} textAnchor="end" className="text-[10px] fill-slate-400 font-sans font-medium">
                                 €{(maxValue * p).toFixed(0)}
                             </text>
                         </g>
                     )
                 })}
+
+                {/* Asse Y Linea Verticale */}
+                <line x1={paddingLeft} y1={paddingTop} x2={paddingLeft} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1" />
+                
+                {/* Asse X Linea Orizzontale */}
+                <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1" />
 
                 {/* Area Sfumata (Solo Real Data) */}
                 <defs>
@@ -148,21 +159,24 @@ const LineChart: React.FC<LineChartProps> = ({ data, height = 300 }) => {
                 </defs>
                 <path d={fillPath} fill="url(#chartGradient)" stroke="none" />
 
-                {/* Linea Reale */}
+                {/* Linea Reale (Arancione) */}
                 <path d={realPath} fill="none" stroke="#f97316" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 
                 {/* Linea Previsione (Grigio Tratteggiato) */}
-                <path d={forecastPath} fill="none" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6 4" />
+                <path d={forecastPath} fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="5 5" />
 
-                {/* Punti */}
+                {/* Punti e Label Asse X */}
                 {allPoints.map((p, i) => (
                     <g key={i}>
+                        {/* Punto */}
                         <circle cx={p.x} cy={p.y} r={p.isForecast ? "2" : "3"} fill={p.isForecast ? "#cbd5e1" : "#fff"} stroke={p.isForecast ? "none" : "#f97316"} strokeWidth="2" />
                         
-                        {/* Label Asse X */}
-                        <text x={p.x} y={height - 15} textAnchor="middle" className={`text-[9px] font-sans ${p.isForecast ? 'fill-slate-300 italic' : 'fill-slate-500'}`}>
-                            {p.label}
-                        </text>
+                        {/* Label Asse X (Data) - Mostra solo se non si sovrappone troppo */}
+                        {(i % Math.ceil(allPoints.length / 8) === 0 || i === allPoints.length -1) && (
+                            <text x={p.x} y={height - 10} textAnchor="middle" className={`text-[9px] font-sans ${p.isForecast ? 'fill-slate-300 italic' : 'fill-slate-500 font-bold'}`}>
+                                {p.label}
+                            </text>
+                        )}
                     </g>
                 ))}
             </svg>

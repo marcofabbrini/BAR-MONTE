@@ -10,7 +10,7 @@ interface ChartData {
 interface BarChartProps {
     data: ChartData[];
     format?: 'currency' | 'integer';
-    barColor?: string; // Classe CSS per il colore della barra
+    barColor?: string; // Classe CSS per il colore della barra (es. 'bg-blue-500')
 }
 
 const BarChart: React.FC<BarChartProps> = ({ data, format = 'integer', barColor = 'bg-primary' }) => {
@@ -36,9 +36,11 @@ const BarChart: React.FC<BarChartProps> = ({ data, format = 'integer', barColor 
                     <div className="flex-1 bg-slate-100 rounded-full h-8 overflow-hidden relative">
                         <div
                             className={`${barColor} h-full rounded-full flex items-center justify-between px-2 transition-all duration-700 ease-out`}
-                            style={{ width: `${Math.max((item.value / maxValue) * 100, 10)}%` }} // Min width 10% per mostrare l'icona
+                            style={{ 
+                                width: `${Math.max((item.value / maxValue) * 100, 15)}%` // Minimo 15% per far entrare l'icona
+                            }} 
                         >
-                            {/* Icona interna a sinistra */}
+                            {/* Icona interna a sinistra (dentro la barra) */}
                             <span className="text-base filter drop-shadow-sm select-none">
                                 {item.icon || '📦'}
                             </span>

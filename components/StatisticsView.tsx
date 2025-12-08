@@ -104,28 +104,31 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 </div>
             </div>
 
-            {/* TOTAL CARD - SOBRI COLORS */}
-            <div className="bg-white border-l-4 border-slate-800 p-6 rounded-xl shadow-lg text-slate-800 print:bg-white print:text-black print:border flex justify-between items-center">
+            {/* TOTAL CARD - STILE SOBRIO (BIANCO/GRIGIO) */}
+            <div className="bg-white border border-slate-300 border-l-8 border-l-slate-700 p-6 rounded-xl shadow-sm text-slate-800 print:bg-white print:text-black print:border flex justify-between items-center">
                  <div>
-                    <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Incasso Totale</h2>
-                    <h2 className="text-4xl font-black text-slate-800">€{totalSales.toFixed(2)}</h2>
-                    <p className="text-xs text-slate-400 mt-1">{activeOrders.length} transazioni registrate</p>
+                    <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Incasso Totale Periodo</h2>
+                    <h2 className="text-4xl font-black text-slate-800 tracking-tight">€{totalSales.toFixed(2)}</h2>
+                    <p className="text-xs text-slate-400 mt-2 font-medium bg-slate-100 inline-block px-2 py-1 rounded">{activeOrders.length} transazioni</p>
                 </div>
-                 <button onClick={handlePrintPdf} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 px-4 rounded text-sm print:hidden transition-colors">Stampa PDF</button>
+                 <button onClick={handlePrintPdf} className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 px-4 rounded text-sm print:hidden transition-colors border border-slate-200">Stampa PDF</button>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
                  <h3 className="text-xl font-bold text-slate-800 mb-6">Trend Vendite & Previsioni</h3>
-                 <div className="h-[300px] w-full"><LineChart data={salesTrend} height={300} /></div>
+                 {/* Grafico Lineare */}
+                 <div className="h-[350px] w-full"><LineChart data={salesTrend} height={350} /></div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
                     <h3 className="text-xl font-bold mb-4 text-slate-700">Vendite per Utente</h3>
+                    {/* Grafico Barre Staff - Colore Blu */}
                     <BarChart data={salesByStaff} format="currency" barColor="bg-blue-500" />
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:shadow-none print:border-none">
                     <h3 className="text-xl font-bold mb-4 text-slate-700">Prodotti Top</h3>
+                    {/* Grafico Barre Prodotti - Colore Primary (Arancione) */}
                     <BarChart data={salesByProduct} format="integer" barColor="bg-primary" />
                 </div>
             </div>
