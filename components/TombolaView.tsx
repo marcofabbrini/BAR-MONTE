@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TombolaConfig, TombolaTicket, TombolaWin, StaffMember } from '../types';
-import { BackArrowIcon, TrophyIcon, TicketIcon, GridIcon, CashIcon } from './Icons';
+import { BackArrowIcon, TrophyIcon, TicketIcon, GridIcon, CashIcon, TrashIcon, SettingsIcon, SaveIcon } from './Icons';
 
 interface TombolaViewProps {
     onGoBack: () => void;
@@ -8,22 +9,33 @@ interface TombolaViewProps {
     tickets: TombolaTicket[];
     wins: TombolaWin[];
     onBuyTicket: (staffId: string, quantity: number) => Promise<void>;
+    onRefundTicket: (ticketId: string) => Promise<void>;
     staff: StaffMember[];
     onStartGame: () => Promise<void>;
     isSuperAdmin: boolean | null;
     onTransferFunds: (amount: number, gameName: string) => Promise<void>;
+    onUpdateTombolaConfig: (cfg: Partial<TombolaConfig>) => Promise<void>;
 }
 
-const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wins, onBuyTicket, staff, onStartGame, isSuperAdmin, onTransferFunds }) => {
+const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wins, onBuyTicket, onRefundTicket, staff, onStartGame, isSuperAdmin, onTransferFunds, onUpdateTombolaConfig }) => {
     const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
     const [buyQuantity, setBuyQuantity] = useState(1);
     
-    // Fallback sicuri per i dati
-    const safeTickets = Array.isArray(tickets) ? tickets : [];
-    const safeWins = Array.isArray(wins) ? wins : [];
+    // Stati locali per la configurazione (visibile solo ai super admin)
+    const [editPriceSingle, setEditPriceSingle] = useState(config?.ticketPriceSingle || 1);
+    const [editPriceBundle, setEditPriceBundle] = useState(config?.ticketPriceBundle || 5);
+    const [isConfigOpen, setIsConfigOpen] = useState(false);
     
+    // Aggiorna gli stati locali se la config cambia esternamente
+    useEffect(() => {
+        if(config) {
+            setEditPriceSingle(config.ticketPriceSingle);
+            setEditPriceBundle(config.ticketPriceBundle);
+        }
+    }, [config]);
+
     // Calcolo statistiche con controlli di sicurezza
-    const totalTickets = safeTickets.length;
+    const totalTickets = tickets ? tickets.length : 0;
     const maxTickets = config?.maxTickets || 168; // fallback
     const progressPercent = maxTickets > 0 ? Math.min((totalTickets / maxTickets) * 100, 100) : 0;
     const minStart = config?.minTicketsToStart || 0;
@@ -59,30 +71,55 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
 
     const handleBuy = async () => {
         if (!selectedStaffId) return;
-        await onBuyTicket(selectedStaffId, buyQuantity);
-        alert(`Acquistate ${buyQuantity} cartelle!`);
+        try {
+            await onBuyTicket(selectedStaffId, buyQuantity);
+            alert(`Acquistate ${buyQuantity} cartelle!`);
+        } catch (e: any) {
+            alert(e.message || "Errore durante l'acquisto.");
+        }
+    };
+
+    const handleDelete = async (ticketId: string) => {
+        if (window.confirm("Sei sicuro di voler ANNULLARE questa cartella? L'importo verrà rimborsato.")) {
+            try {
+                await onRefundTicket(ticketId);
+            } catch (e: any) {
+                alert(e.message || "Errore durante l'annullamento.");
+            }
+        }
+    };
+
+    const handleSaveConfig = async () => {
+        try {
+            await onUpdateTombolaConfig({
+                ticketPriceSingle: Number(editPriceSingle),
+                ticketPriceBundle: Number(editPriceBundle)
+            });
+            alert("Configurazione prezzi aggiornata!");
+            setIsConfigOpen(false);
+        } catch (e) {
+            console.error(e);
+            alert("Errore nel salvataggio della configurazione.");
+        }
     };
 
     const myTickets = useMemo(() => {
-        return safeTickets.filter(t => t.playerId === selectedStaffId);
-    }, [safeTickets, selectedStaffId]);
+        if (!tickets) return [];
+        return tickets.filter(t => t.playerId === selectedStaffId);
+    }, [tickets, selectedStaffId]);
 
     const selectedStaffMember = staff.find(s => s.id === selectedStaffId);
 
     const formatTicketToGrid = (numbers: number[]) => {
-        // Safety check: se numbers è undefined, ritorna griglia vuota
         if (!numbers || !Array.isArray(numbers)) return Array(3).fill(Array(9).fill(null));
 
         const grid: (number | null)[][] = [[], [], []];
         const cols: number[][] = Array.from({length: 9}, () => []);
         numbers.forEach(n => {
-            if (typeof n !== 'number') return;
             const colIdx = n === 90 ? 8 : Math.floor(n / 10);
-            if (colIdx >= 0 && colIdx < 9) cols[colIdx].push(n);
+            cols[colIdx].push(n);
         });
-        
         for(let r=0; r<3; r++) grid[r] = Array(9).fill(null);
-
         cols.forEach((colNums, colIdx) => {
             colNums.forEach((n, i) => {
                 let placed = false;
@@ -104,16 +141,14 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         return grid;
     };
 
-    // CALCOLO GIOCATORI ATTIVI CON SICUREZZA
     const activePlayers = useMemo(() => {
+        if (!tickets) return [];
         const playersMap = new Map<string, { id:string, name: string, icon: string, ticketCount: number, spent: number, wins: number }>();
         
-        safeTickets.forEach(t => {
-            if (!t || !t.playerId) return; // Skip invalid tickets
-
+        tickets.forEach(t => {
             const current = playersMap.get(t.playerId) || { 
                 id: t.playerId, 
-                name: t.playerName || 'Sconosciuto', 
+                name: t.playerName, 
                 icon: staff.find(s=>s.id===t.playerId)?.icon || '👤', 
                 ticketCount: 0, 
                 spent: 0, 
@@ -121,39 +156,34 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
             };
             current.ticketCount++;
             
-            // FIX: Controllo esistenza array numbers
-            const numCount = Array.isArray(t.numbers) ? t.numbers.length : 0;
+            const numCount = t.numbers ? t.numbers.length : 0;
             const price = config?.ticketPriceSingle || 1;
             
-            // Stima spesa (solo se cartella valida)
             current.spent += (numCount === 15 ? price : 0);
             playersMap.set(t.playerId, current);
         });
 
-        safeWins.forEach(w => {
-            if (!w || !w.ticketId) return;
-            const ticket = safeTickets.find(t => t.id === w.ticketId);
-            if (ticket && ticket.playerId) {
-                const player = playersMap.get(ticket.playerId);
-                if (player) player.wins++;
-            }
-        });
+        if (wins) {
+            wins.forEach(w => {
+                const ticket = tickets.find(t => t.id === w.ticketId);
+                if (ticket) {
+                    const player = playersMap.get(ticket.playerId);
+                    if (player) player.wins++;
+                }
+            });
+        }
 
         return Array.from(playersMap.values());
-    }, [safeTickets, safeWins, staff, config]);
+    }, [tickets, wins, staff, config]);
 
     const handleTransfer = async () => {
-        const jackpot = config?.jackpot || 0;
-        if(jackpot <= 0) return;
-        if(window.confirm(`Versare €${jackpot.toFixed(2)} in Cassa Bar?`)) {
-            await onTransferFunds(jackpot, 'Tombola');
+        if((config?.jackpot || 0) <= 0) return;
+        if(window.confirm(`Versare €${config.jackpot.toFixed(2)} in Cassa Bar?`)) {
+            await onTransferFunds(config.jackpot, 'Tombola');
         }
     };
     
-    // Se config non è caricata (double check)
-    if (!config) return <div className="flex items-center justify-center min-h-screen text-slate-500">Caricamento Tombola...</div>;
-
-    const extractedNumbers = Array.isArray(config.extractedNumbers) ? config.extractedNumbers : [];
+    if (!config) return <div className="flex items-center justify-center min-h-screen">Caricamento Tombola...</div>;
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-100 relative font-sans">
@@ -202,7 +232,51 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                     )}
                 </div>
 
-                {/* Dashboard Giocatori Attivi */}
+                {/* SUPER ADMIN CONFIG PANEL */}
+                {isSuperAdmin && (
+                    <div className="bg-indigo-600 text-white rounded-xl shadow-lg border-2 border-indigo-400 overflow-hidden transition-all duration-300">
+                        <button 
+                            onClick={() => setIsConfigOpen(!isConfigOpen)}
+                            className="w-full flex justify-between items-center p-4 font-bold text-sm uppercase hover:bg-indigo-700 transition-colors"
+                        >
+                            <span className="flex items-center gap-2"><SettingsIcon className="h-4 w-4" /> Configurazione Rapida (Admin)</span>
+                            <span>{isConfigOpen ? '▲' : '▼'}</span>
+                        </button>
+                        
+                        {isConfigOpen && (
+                            <div className="p-4 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end animate-fade-in">
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase opacity-80 mb-1 block">Prezzo Singola (€)</label>
+                                    <input 
+                                        type="number" 
+                                        step="0.5" 
+                                        value={editPriceSingle} 
+                                        onChange={(e) => setEditPriceSingle(Number(e.target.value))} 
+                                        className="w-full bg-indigo-800 border border-indigo-500 text-white rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold uppercase opacity-80 mb-1 block">Prezzo Bundle 6x (€)</label>
+                                    <input 
+                                        type="number" 
+                                        step="0.5" 
+                                        value={editPriceBundle} 
+                                        onChange={(e) => setEditPriceBundle(Number(e.target.value))} 
+                                        className="w-full bg-indigo-800 border border-indigo-500 text-white rounded p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                                    />
+                                </div>
+                                <button 
+                                    onClick={handleSaveConfig}
+                                    className="bg-white text-indigo-700 font-bold py-2 rounded shadow hover:bg-indigo-50 flex items-center justify-center gap-2 transition-colors"
+                                >
+                                    <SaveIcon className="h-4 w-4" /> Aggiorna Prezzi
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Dashboard Giocatori */}
                 {activePlayers.length > 0 && (
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                         <h3 className="text-sm font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
@@ -228,7 +302,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* COLONNA SX: Tabellone & Vincitori */}
+                    {/* SX: Tabellone & Vincitori */}
                     <div className="space-y-6 lg:col-span-2">
                         <div className="bg-white rounded-2xl shadow-xl p-6 border-4 border-red-100 relative">
                             <div className="flex justify-between items-center mb-4">
@@ -238,7 +312,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                 {Array.from({ length: 90 }, (_, i) => i + 1).map(num => (
                                     <div 
                                         key={num} 
-                                        className={`aspect-square flex items-center justify-center font-bold rounded-full text-xs md:text-sm shadow-sm transition-all duration-500 ${extractedNumbers.includes(num) ? 'bg-red-500 text-white scale-110 shadow-md ring-2 ring-red-200' : 'bg-slate-50 text-slate-300'}`}
+                                        className={`aspect-square flex items-center justify-center font-bold rounded-full text-xs md:text-sm shadow-sm transition-all duration-500 ${config.extractedNumbers.includes(num) ? 'bg-red-500 text-white scale-110 shadow-md ring-2 ring-red-200' : 'bg-slate-50 text-slate-300'}`}
                                     >
                                         {num}
                                     </div>
@@ -251,11 +325,11 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                             <h3 className="font-bold text-slate-700 mb-3 text-sm uppercase flex items-center gap-2">
                                 <TrophyIcon className="h-4 w-4 text-orange-500" /> Albo D'Oro Vincite
                             </h3>
-                            {safeWins.length === 0 ? (
+                            {(!wins || wins.length === 0) ? (
                                 <p className="text-xs text-slate-400 italic text-center py-4">In attesa dei fortunati...</p>
                             ) : (
                                 <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                                    {safeWins.slice().reverse().map(win => (
+                                    {wins.slice().reverse().map(win => (
                                         <div key={win.id} className="bg-yellow-50 p-2 rounded border border-yellow-100 flex justify-between items-center animate-fade-in">
                                             <div>
                                                 <p className="font-bold text-xs text-slate-800">{win.playerName}</p>
@@ -318,15 +392,23 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                 <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
                                     {myTickets.map((ticket, idx) => (
                                         <div key={ticket.id} className="bg-white border border-slate-300 rounded shadow-sm overflow-hidden">
-                                            <div className="bg-slate-100 px-2 py-1 text-[9px] text-slate-500 font-bold border-b border-slate-200 flex justify-between">
+                                            <div className="bg-slate-100 px-2 py-1 text-[9px] text-slate-500 font-bold border-b border-slate-200 flex justify-between items-center">
                                                 <span>Cartella #{idx+1}</span>
-                                                <span>{new Date(ticket.purchaseTime).toLocaleTimeString()}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span>{new Date(ticket.purchaseTime).toLocaleTimeString()}</span>
+                                                    {config.status === 'pending' && (
+                                                        <button onClick={() => handleDelete(ticket.id)} className="w-5 h-5 flex items-center justify-center rounded-full bg-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-colors" title="Annulla Cartella">
+                                                            <TrashIcon className="h-3 w-3" />
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div className="p-1">
                                                 {formatTicketToGrid(ticket.numbers).map((row, rIdx) => (
                                                     <div key={rIdx} className="grid grid-cols-9 gap-0.5 mb-0.5 last:mb-0">
                                                         {row.map((num, cIdx) => (
-                                                            <div key={cIdx} className={`aspect-square flex items-center justify-center text-[9px] font-bold rounded-sm border ${num ? (extractedNumbers.includes(num) ? 'bg-red-500 text-white border-red-600' : 'bg-slate-50 text-slate-700 border-slate-200') : 'bg-transparent border-transparent'}`}>
+                                                            <div key={cIdx} className={`aspect-square flex items-center justify-center text-[9px] font-bold rounded-sm border ${num ? (config.extractedNumbers.includes(num) ? 'bg-red-500 text-white border-red-600' : 'bg-slate-50 text-slate-700 border-slate-200') : 'bg-transparent border-transparent'}`}
+                                                            >
                                                                 {num}
                                                             </div>
                                                         ))}
