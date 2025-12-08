@@ -9,12 +9,13 @@ import ReportsView from './components/ReportsView';
 import AdminView from './components/AdminView';
 import TombolaView from './components/TombolaView';
 import GamesHub from './components/GamesHub';
-import AnalottoView from './components/AnalottoView'; // Nuovo componente
+import AnalottoView from './components/AnalottoView';
+import DiceGame from './components/DiceGame'; // Nuovo componente
 import ShiftCalendar from './components/ShiftCalendar';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
 import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings, AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel } from './types';
 
-type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto';
+type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice';
 
 // Helper per mescolare un array
 const shuffleArray = (array: any[]) => {
@@ -131,8 +132,16 @@ const App: React.FC = () => {
 
         // ANALOTTO LISTENERS
         const unsubAnalottoConfig = onSnapshot(doc(db, 'analotto', 'config'), (d) => {
-            if (d.exists()) setAnalottoConfig(d.data() as AnalottoConfig);
-            else setDoc(doc(db, 'analotto', 'config'), { jackpot: 0, lastExtraction: '' });
+            if (d.exists()) {
+                setAnalottoConfig(d.data() as AnalottoConfig);
+            } else {
+                setDoc(doc(db, 'analotto', 'config'), { 
+                    jackpot: 0, 
+                    lastExtraction: '',
+                    rules: "Regolamento Analotto VVF:\n1. Si scelgono da 1 a 10 numeri.\n2. Si sceglie su quali ruote puntare.\n3. L'estrazione avviene settimanalmente.\n4. Il montepremi è costituito dall'80% delle giocate.",
+                    extractionSchedule: "Ogni Venerdì sera"
+                });
+            }
         });
         const unsubAnalottoBets = onSnapshot(query(collection(db, 'analotto_bets'), orderBy('timestamp', 'desc')), (s) => setAnalottoBets(s.docs.map(d => ({...d.data(), id: d.id} as AnalottoBet))));
         const unsubAnalottoExtractions = onSnapshot(query(collection(db, 'analotto_extractions'), orderBy('timestamp', 'desc')), (s) => setAnalottoExtractions(s.docs.map(d => ({...d.data(), id: d.id} as AnalottoExtraction))));
@@ -271,6 +280,7 @@ const App: React.FC = () => {
     const handleSelectGames = useCallback(() => setView('games'), []);
     const handleSelectTombola = useCallback(() => setView('tombola'), []);
     const handleSelectAnalotto = useCallback(() => setView('analotto'), []);
+    const handleSelectDice = useCallback(() => setView('dice'), []);
     const handleSelectCalendar = useCallback(() => setView('calendar'), []);
     const handleGoBack = useCallback(() => { setSelectedTillId(null); setView('selection'); }, []);
 
@@ -364,51 +374,25 @@ const App: React.FC = () => {
     const handlePlaceAnalottoBet = async (betData: Omit<AnalottoBet, 'id' | 'timestamp'>) => {
         try {
             await runTransaction(db, async (t) => {
-                // 1. Aggiungi Schedina
                 const betRef = doc(collection(db, 'analotto_bets'));
-                t.set(betRef, {
-                    ...betData,
-                    timestamp: new Date().toISOString()
-                });
+                t.set(betRef, { ...betData, timestamp: new Date().toISOString() });
 
-                // 2. Aggiorna Montepremi Analotto (separato)
                 const configRef = doc(db, 'analotto', 'config');
                 const configSnap = await t.get(configRef);
                 const currentJackpot = configSnap.exists() ? (configSnap.data().jackpot || 0) : 0;
                 
-                // Tutto l'incasso va nel montepremi? O tratteniamo una %? 
-                // Per ora assumiamo 100% nel montepremi come da richiesta "incasso nel fondo gioco"
-                // Se serve, possiamo dividere come nella tombola (80/20).
-                // Mettiamo 80/20 anche qui per coerenza con la Tombola.
                 const jackpotPart = betData.amount * 0.8;
                 const barPart = betData.amount * 0.2;
 
                 t.set(configRef, { jackpot: currentJackpot + jackpotPart }, { merge: true });
 
-                // 3. Registra Movimento Cassa
                 const cashRef = doc(collection(db, 'cash_movements'));
-                t.set(cashRef, {
-                    amount: betData.amount,
-                    reason: `Analotto: Giocata (${betData.playerName})`,
-                    timestamp: new Date().toISOString(),
-                    type: 'deposit',
-                    category: 'analotto'
-                });
+                t.set(cashRef, { amount: betData.amount, reason: `Analotto: Giocata (${betData.playerName})`, timestamp: new Date().toISOString(), type: 'deposit', category: 'analotto' });
                 
-                // Utile Bar
                 const barCashRef = doc(collection(db, 'cash_movements'));
-                t.set(barCashRef, { 
-                    amount: barPart, 
-                    reason: `Utile Analotto (20%)`, 
-                    timestamp: new Date().toISOString(), 
-                    type: 'deposit', 
-                    category: 'bar' 
-                });
+                t.set(barCashRef, { amount: barPart, reason: `Utile Analotto (20%)`, timestamp: new Date().toISOString(), type: 'deposit', category: 'bar' });
             });
-        } catch (e) {
-            console.error("Errore giocata analotto:", e);
-            throw e;
-        }
+        } catch (e) { console.error("Errore giocata analotto:", e); throw e; }
     };
 
     const handleAnalottoExtraction = async () => {
@@ -416,28 +400,18 @@ const App: React.FC = () => {
         try {
             const wheels: AnalottoWheel[] = ['APS', 'Campagnola', 'Autoscala', 'Autobotte', 'Direttivo'];
             const extractionData: Record<string, number[]> = {};
-
             wheels.forEach(wheel => {
                 const nums = new Set<number>();
-                while(nums.size < 5) {
-                    nums.add(Math.floor(Math.random() * 90) + 1);
-                }
+                while(nums.size < 5) nums.add(Math.floor(Math.random() * 90) + 1);
                 extractionData[wheel] = Array.from(nums);
             });
+            await addDoc(collection(db, 'analotto_extractions'), { timestamp: new Date().toISOString(), numbers: extractionData });
+            await updateDoc(doc(db, 'analotto', 'config'), { lastExtraction: new Date().toISOString() });
+        } catch (e) { console.error(e); throw e; }
+    };
 
-            await addDoc(collection(db, 'analotto_extractions'), {
-                timestamp: new Date().toISOString(),
-                numbers: extractionData
-            });
-
-            await updateDoc(doc(db, 'analotto', 'config'), {
-                lastExtraction: new Date().toISOString()
-            });
-
-        } catch (e) {
-            console.error(e);
-            throw e;
-        }
+    const handleUpdateAnalottoConfig = async (newConfig: Partial<AnalottoConfig>) => {
+        await setDoc(doc(db, 'analotto', 'config'), newConfig, { merge: true });
     };
     // ======================
 
@@ -458,40 +432,20 @@ const App: React.FC = () => {
                 if (!ticketSnap.exists()) throw new Error("Cartella non trovata");
 
                 const ticketData = ticketSnap.data() as TombolaTicket;
-                
-                // Rimborso sicuro basato sul prezzo pagato
                 const refundAmount = ticketData.pricePaid !== undefined ? ticketData.pricePaid : currentConfig.ticketPriceSingle;
                 const jackpotDeduction = refundAmount * 0.80;
                 const revenueDeduction = refundAmount * 0.20;
 
                 t.delete(ticketRef);
-                
-                t.update(configRef, { 
-                    jackpot: Math.max(0, (currentConfig.jackpot || 0) - jackpotDeduction) 
-                });
+                t.update(configRef, { jackpot: Math.max(0, (currentConfig.jackpot || 0) - jackpotDeduction) });
 
                 const cashRef = doc(collection(db, 'cash_movements'));
-                t.set(cashRef, { 
-                    amount: refundAmount, 
-                    reason: "Rimborso Cartella (Annullamento)", 
-                    timestamp: new Date().toISOString(), 
-                    type: 'withdrawal', 
-                    category: 'tombola' 
-                });
+                t.set(cashRef, { amount: refundAmount, reason: "Rimborso Cartella (Annullamento)", timestamp: new Date().toISOString(), type: 'withdrawal', category: 'tombola' });
 
                 const barCashRef = doc(collection(db, 'cash_movements'));
-                t.set(barCashRef, { 
-                    amount: revenueDeduction, 
-                    reason: "Storno Utile Tombola (Rimborso)", 
-                    timestamp: new Date().toISOString(), 
-                    type: 'withdrawal', 
-                    category: 'bar' 
-                });
+                t.set(barCashRef, { amount: revenueDeduction, reason: "Storno Utile Tombola (Rimborso)", timestamp: new Date().toISOString(), type: 'withdrawal', category: 'bar' });
             });
-        } catch (e) {
-            console.error(e);
-            throw e;
-        }
+        } catch (e) { console.error(e); throw e; }
     };
 
     const generateSingleTicket = () => {
@@ -531,14 +485,7 @@ const App: React.FC = () => {
                     t.update(doc(db, 'analotto', 'config'), { jackpot: 0 });
                 }
                 const cashRef = doc(collection(db, 'cash_movements'));
-                t.set(cashRef, {
-                    amount: amount,
-                    reason: `Versamento utile ${gameName}`,
-                    timestamp: new Date().toISOString(),
-                    type: 'deposit',
-                    category: 'bar',
-                    isDeleted: false
-                });
+                t.set(cashRef, { amount: amount, reason: `Versamento utile ${gameName}`, timestamp: new Date().toISOString(), type: 'deposit', category: 'bar', isDeleted: false });
             });
         } catch (error) { console.error("Error transferring funds:", error); }
     };
@@ -594,9 +541,12 @@ const App: React.FC = () => {
                     onRunExtraction={handleAnalottoExtraction}
                     isSuperAdmin={isSuperAdmin}
                     onTransferFunds={handleTransferGameFunds}
+                    onUpdateConfig={handleUpdateAnalottoConfig}
                 />;
+            case 'dice':
+                return <DiceGame onGoBack={handleGoBack} staff={staff} />;
             case 'games':
-                return <GamesHub onGoBack={handleGoBack} onPlayTombola={handleSelectTombola} onPlayAnalotto={handleSelectAnalotto} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} />;
+                return <GamesHub onGoBack={handleGoBack} onPlayTombola={handleSelectTombola} onPlayAnalotto={handleSelectAnalotto} onPlayDice={handleSelectDice} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} />;
             case 'calendar':
                 return <ShiftCalendar onGoBack={handleGoBack} tillColors={tillColors} shiftSettings={shiftSettings} />;
             case 'admin': return <AdminView 

@@ -1,17 +1,18 @@
 
 import React from 'react';
 import { TombolaConfig, AnalottoConfig } from '../types';
-import { TicketIcon, BackArrowIcon, GamepadIcon, CloverIcon } from './Icons';
+import { TicketIcon, BackArrowIcon, GamepadIcon, CloverIcon, DiceIcon } from './Icons';
 
 interface GamesHubProps {
     onGoBack?: () => void;
     onPlayTombola: () => void;
     onPlayAnalotto?: () => void;
+    onPlayDice?: () => void;
     tombolaConfig?: TombolaConfig;
     analottoConfig?: AnalottoConfig;
 }
 
-const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, onPlayAnalotto, tombolaConfig, analottoConfig }) => {
+const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, onPlayAnalotto, onPlayDice, tombolaConfig, analottoConfig }) => {
     return (
         <div className="flex flex-col min-h-screen bg-slate-50">
             {onGoBack && (
@@ -37,51 +38,47 @@ const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, onPlayAnal
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     
                     {/* CARD TOMBOLA */}
-                    <div onClick={onPlayTombola} className="bg-gradient-to-br from-red-600 to-red-800 rounded-2xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-4 border-yellow-400">
-                        <div className="p-6 relative">
-                            <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
-                                <TicketIcon className="h-24 w-24 text-white" />
-                            </div>
-                            <h3 className="text-2xl font-black text-white uppercase tracking-wider mb-2 drop-shadow-md">Tombola 2025</h3>
-                            <p className="text-red-100 text-sm font-medium mb-4">Il classico gioco natalizio.</p>
-                            
-                            <div className="bg-black/20 rounded-lg p-3 backdrop-blur-sm">
-                                <div className="flex justify-between items-end">
-                                    <span className="text-xs text-yellow-200 font-bold uppercase">Montepremi</span>
-                                    <span className="text-xl font-black text-yellow-400">€{tombolaConfig?.jackpot.toFixed(2) || '0.00'}</span>
-                                </div>
-                            </div>
+                    <div onClick={onPlayTombola} className="relative bg-white rounded-3xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-2 border-red-100 h-64 flex flex-col items-center justify-center">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-red-500"></div>
+                        <div className="text-[100px] leading-none mb-2 filter drop-shadow-lg group-hover:rotate-12 transition-transform">
+                            🎟️
                         </div>
-                        <div className="bg-white/10 p-3 text-center text-xs font-bold text-white uppercase tracking-widest group-hover:bg-white/20 transition-colors">
-                            Gioca Ora →
+                        <h3 className="text-2xl font-black text-slate-800 uppercase tracking-wider mb-1">Tombola</h3>
+                        <p className="text-slate-400 text-xs font-bold mb-4 uppercase tracking-widest">Classico Natalizio</p>
+                        
+                        <div className="bg-red-50 px-4 py-2 rounded-full border border-red-100">
+                            <span className="text-xs text-red-400 font-bold uppercase mr-2">Jackpot</span>
+                            <span className="text-lg font-black text-red-600">€{tombolaConfig?.jackpot.toFixed(2) || '0.00'}</span>
                         </div>
                     </div>
 
                     {/* CARD ANALOTTO VVF */}
-                    <div onClick={onPlayAnalotto} className="bg-gradient-to-br from-green-600 to-green-800 rounded-2xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-4 border-yellow-400">
-                        <div className="p-6 relative">
-                            <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
-                                <CloverIcon className="h-24 w-24 text-white" />
-                            </div>
-                            <h3 className="text-2xl font-black text-white uppercase tracking-wider mb-2 drop-shadow-md">Analotto VVF</h3>
-                            <p className="text-green-100 text-sm font-medium mb-4">Indovina i numeri sulle ruote dei Vigili!</p>
-                            
-                            <div className="bg-black/20 rounded-lg p-3 backdrop-blur-sm">
-                                <div className="flex justify-between items-end">
-                                    <span className="text-xs text-yellow-200 font-bold uppercase">Jackpot</span>
-                                    <span className="text-xl font-black text-yellow-400">€{analottoConfig?.jackpot.toFixed(2) || '0.00'}</span>
-                                </div>
-                            </div>
+                    <div onClick={onPlayAnalotto} className="relative bg-white rounded-3xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-2 border-emerald-100 h-64 flex flex-col items-center justify-center">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500"></div>
+                        <div className="text-[100px] leading-none mb-2 filter drop-shadow-lg group-hover:-rotate-12 transition-transform">
+                            🎱
                         </div>
-                        <div className="bg-white/10 p-3 text-center text-xs font-bold text-white uppercase tracking-widest group-hover:bg-white/20 transition-colors">
-                            Tenta la Fortuna →
+                        <h3 className="text-2xl font-black text-slate-800 uppercase tracking-wider mb-1">Analotto</h3>
+                        <p className="text-slate-400 text-xs font-bold mb-4 uppercase tracking-widest">Lotto VVF</p>
+                        
+                        <div className="bg-emerald-50 px-4 py-2 rounded-full border border-emerald-100">
+                            <span className="text-xs text-emerald-400 font-bold uppercase mr-2">Jackpot</span>
+                            <span className="text-lg font-black text-emerald-600">€{analottoConfig?.jackpot.toFixed(2) || '0.00'}</span>
                         </div>
                     </div>
 
-                    {/* CARD PROSSIMAMENTE */}
-                    <div className="bg-slate-100 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center p-8 opacity-60">
-                        <span className="text-4xl mb-2">🎲</span>
-                        <p className="font-bold text-slate-400">Nuovi giochi in arrivo...</p>
+                    {/* CARD DADI (CHI PAGA) */}
+                    <div onClick={onPlayDice} className="relative bg-white rounded-3xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-2 border-blue-100 h-64 flex flex-col items-center justify-center">
+                        <div className="absolute top-0 left-0 w-full h-2 bg-blue-500"></div>
+                        <div className="text-[100px] leading-none mb-2 filter drop-shadow-lg group-hover:scale-110 transition-transform">
+                            🎲
+                        </div>
+                        <h3 className="text-2xl font-black text-slate-800 uppercase tracking-wider mb-1">Chi Paga?</h3>
+                        <p className="text-slate-400 text-xs font-bold mb-4 uppercase tracking-widest">Sfida ai Dadi</p>
+                        
+                        <div className="bg-blue-50 px-4 py-2 rounded-full border border-blue-100 text-blue-500 font-bold text-xs uppercase">
+                            Gioca Ora
+                        </div>
                     </div>
 
                 </div>

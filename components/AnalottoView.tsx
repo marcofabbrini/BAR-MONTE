@@ -1,7 +1,7 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel, StaffMember } from '../types';
-import { BackArrowIcon, CloverIcon, CheckIcon, TrashIcon, BanknoteIcon } from './Icons';
+import { BackArrowIcon, CloverIcon, CheckIcon, TrashIcon, BanknoteIcon, InfoIcon, SaveIcon, EditIcon } from './Icons';
 
 interface AnalottoViewProps {
     onGoBack: () => void;
@@ -13,9 +13,10 @@ interface AnalottoViewProps {
     onRunExtraction: () => Promise<void>;
     isSuperAdmin: boolean;
     onTransferFunds: (amount: number, gameName: string) => Promise<void>;
+    onUpdateConfig?: (cfg: Partial<AnalottoConfig>) => Promise<void>;
 }
 
-const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, extractions, staff, onPlaceBet, onRunExtraction, isSuperAdmin, onTransferFunds }) => {
+const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, extractions, staff, onPlaceBet, onRunExtraction, isSuperAdmin, onTransferFunds, onUpdateConfig }) => {
     
     // UI State
     const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
@@ -23,6 +24,19 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
     const [betAmount, setBetAmount] = useState(1);
     const [selectedPlayerId, setSelectedPlayerId] = useState<string>('');
     const [viewMode, setViewMode] = useState<'play' | 'extractions'>('play');
+    
+    // Info Modal State
+    const [isInfoOpen, setIsInfoOpen] = useState(false);
+    const [editRules, setEditRules] = useState('');
+    const [editSchedule, setEditSchedule] = useState('');
+    const [isEditingInfo, setIsEditingInfo] = useState(false);
+
+    useEffect(() => {
+        if (config) {
+            setEditRules(config.rules || '');
+            setEditSchedule(config.extractionSchedule || '');
+        }
+    }, [config]);
 
     const availableWheels: AnalottoWheel[] = ['APS', 'Campagnola', 'Autoscala', 'Autobotte', 'Direttivo'];
 
@@ -62,12 +76,25 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
                 amount: betAmount
             });
             alert("Giocata registrata con successo!");
-            // Reset form
             setSelectedNumbers([]);
             setSelectedWheels([]);
             setBetAmount(1);
         } catch (e: any) {
             alert("Errore: " + e.message);
+        }
+    };
+
+    const handleSaveInfo = async () => {
+        if (!onUpdateConfig) return;
+        try {
+            await onUpdateConfig({
+                rules: editRules,
+                extractionSchedule: editSchedule
+            });
+            setIsEditingInfo(false);
+        } catch (e) {
+            console.error(e);
+            alert("Errore salvataggio info.");
         }
     };
 
@@ -87,7 +114,51 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-emerald-50 font-sans">
+        <div className="flex flex-col min-h-screen bg-emerald-50 font-sans relative">
+            
+            {/* INFO MODAL */}
+            {isInfoOpen && (
+                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-emerald-500 flex flex-col max-h-[80vh]">
+                        <div className="bg-emerald-600 p-4 flex justify-between items-center text-white">
+                            <h2 className="text-xl font-bold flex items-center gap-2"><InfoIcon className="h-6 w-6"/> Regolamento & Orari</h2>
+                            <button onClick={() => setIsInfoOpen(false)} className="text-2xl leading-none hover:text-emerald-200">&times;</button>
+                        </div>
+                        <div className="p-6 overflow-y-auto">
+                            {isSuperAdmin && !isEditingInfo && (
+                                <button onClick={() => setIsEditingInfo(true)} className="mb-4 text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-bold flex items-center gap-1 hover:bg-slate-200">
+                                    <EditIcon className="h-3 w-3" /> Modifica Testi
+                                </button>
+                            )}
+
+                            <div className="mb-6">
+                                <h3 className="text-emerald-800 font-bold uppercase text-sm mb-2 border-b border-emerald-100 pb-1">Orari Estrazione</h3>
+                                {isEditingInfo ? (
+                                    <input value={editSchedule} onChange={e => setEditSchedule(e.target.value)} className="w-full border p-2 rounded" />
+                                ) : (
+                                    <p className="text-slate-700 font-medium whitespace-pre-wrap">{config?.extractionSchedule || "Non definito"}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <h3 className="text-emerald-800 font-bold uppercase text-sm mb-2 border-b border-emerald-100 pb-1">Regolamento</h3>
+                                {isEditingInfo ? (
+                                    <textarea value={editRules} onChange={e => setEditRules(e.target.value)} className="w-full border p-2 rounded h-32" />
+                                ) : (
+                                    <p className="text-slate-600 text-sm whitespace-pre-wrap">{config?.rules || "Nessun regolamento."}</p>
+                                )}
+                            </div>
+                        </div>
+                        {isEditingInfo && (
+                            <div className="p-4 bg-slate-50 border-t flex justify-end gap-2">
+                                <button onClick={() => setIsEditingInfo(false)} className="px-4 py-2 text-slate-500 font-bold">Annulla</button>
+                                <button onClick={handleSaveInfo} className="px-4 py-2 bg-emerald-600 text-white rounded font-bold">Salva</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             <header className="bg-emerald-800 text-emerald-100 p-4 shadow-xl sticky top-0 z-50 border-b-4 border-yellow-500">
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <button onClick={onGoBack} className="flex items-center gap-1 font-bold hover:text-white transition-colors">
@@ -96,9 +167,14 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
                     <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest flex items-center gap-2 drop-shadow-md">
                         <CloverIcon className="h-6 w-6 text-yellow-400" /> Analotto VVF
                     </h1>
-                    <div className="text-right bg-black/20 px-3 py-1 rounded-lg">
-                        <p className="text-[9px] uppercase opacity-80 font-bold text-yellow-200">Jackpot</p>
-                        <p className="text-xl font-black text-yellow-400">€{(config?.jackpot || 0).toFixed(2)}</p>
+                    <div className="flex items-center gap-3">
+                        <button onClick={() => setIsInfoOpen(true)} className="p-2 bg-emerald-700/50 hover:bg-emerald-700 rounded-full text-emerald-200 hover:text-white transition-colors">
+                            <InfoIcon className="h-6 w-6" />
+                        </button>
+                        <div className="text-right bg-black/20 px-3 py-1 rounded-lg">
+                            <p className="text-[9px] uppercase opacity-80 font-bold text-yellow-200">Jackpot</p>
+                            <p className="text-xl font-black text-yellow-400">€{(config?.jackpot || 0).toFixed(2)}</p>
+                        </div>
                     </div>
                 </div>
             </header>

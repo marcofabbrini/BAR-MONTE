@@ -101,6 +101,8 @@ export interface TombolaWin {
 export interface AnalottoConfig {
     jackpot: number;
     lastExtraction: string;
+    rules?: string; // HTML/Text del regolamento
+    extractionSchedule?: string; // Es: "Ogni Venerdì alle 20:00"
 }
 
 export type AnalottoWheel = 'APS' | 'Campagnola' | 'Autoscala' | 'Autobotte' | 'Direttivo';
