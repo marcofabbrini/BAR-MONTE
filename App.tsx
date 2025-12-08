@@ -206,7 +206,42 @@ const App: React.FC = () => {
         seedDatabase();
     }, []);
 
-    // Tombola Extraction Logic (kept same)
+    const handleManualTombolaExtraction = async () => {
+        if (!tombolaConfig || !tombolaConfig.extractedNumbers || tombolaConfig.extractedNumbers.length >= 90) return;
+        if (tombolaConfig.status !== 'active') return;
+
+        try {
+            await runTransaction(db, async (t) => {
+                const configRef = doc(db, 'tombola', 'config');
+                const configSnap = await t.get(configRef);
+                const currentConfig = configSnap.data() as TombolaConfig;
+                if (!currentConfig.extractedNumbers) currentConfig.extractedNumbers = [];
+
+                if (currentConfig.extractedNumbers.length >= 90) return;
+
+                let nextNum;
+                do { nextNum = Math.floor(Math.random() * 90) + 1; } while (currentConfig.extractedNumbers.includes(nextNum));
+                const newExtracted = [...currentConfig.extractedNumbers, nextNum];
+                
+                const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
+                ticketsSnap.forEach(ticketDoc => {
+                    const ticket = ticketDoc.data() as TombolaTicket;
+                    if (!ticket.numbers) return;
+                    const matches = ticket.numbers.filter(n => newExtracted.includes(n));
+                    const count = matches.length;
+                    if ([2,3,4,5,15].includes(count)) {
+                        const type = count === 2 ? 'Ambo' : count === 3 ? 'Terno' : count === 4 ? 'Quaterna' : count === 5 ? 'Cinquina' : 'Tombola';
+                        const winRef = doc(collection(db, 'tombola_wins'));
+                        // Nota: qui potremmo aggiungere un controllo per non duplicare le vincite se la logica lo richiede
+                        t.set(winRef, { ticketId: ticketDoc.id, playerName: ticket.playerName, type, numbers: matches, timestamp: new Date().toISOString() });
+                    }
+                });
+                t.update(configRef, { lastExtraction: new Date().toISOString(), extractedNumbers: newExtracted });
+            });
+        } catch (e) { console.error(e); }
+    };
+
+    // Tombola Extraction Logic (Automatic)
     useEffect(() => {
         const runTombolaExtraction = async () => {
             if (!tombolaConfig || !tombolaConfig.extractedNumbers || tombolaConfig.extractedNumbers.length >= 90) return;
@@ -216,33 +251,9 @@ const App: React.FC = () => {
             const last = new Date(tombolaConfig.lastExtraction).getTime();
             const diffHours = (now - last) / (1000 * 60 * 60);
             
+            // Automaticamente ogni 2 ore se non estratto manualmente
             if (diffHours >= 2) {
-                try {
-                    await runTransaction(db, async (t) => {
-                        const configRef = doc(db, 'tombola', 'config');
-                        const configSnap = await t.get(configRef);
-                        const currentConfig = configSnap.data() as TombolaConfig;
-                        if (!currentConfig.extractedNumbers) currentConfig.extractedNumbers = [];
-
-                        let nextNum;
-                        do { nextNum = Math.floor(Math.random() * 90) + 1; } while (currentConfig.extractedNumbers.includes(nextNum));
-                        const newExtracted = [...currentConfig.extractedNumbers, nextNum];
-                        
-                        const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
-                        ticketsSnap.forEach(ticketDoc => {
-                            const ticket = ticketDoc.data() as TombolaTicket;
-                            if (!ticket.numbers) return;
-                            const matches = ticket.numbers.filter(n => newExtracted.includes(n));
-                            const count = matches.length;
-                            if ([2,3,4,5,15].includes(count)) {
-                                const type = count === 2 ? 'Ambo' : count === 3 ? 'Terno' : count === 4 ? 'Quaterna' : count === 5 ? 'Cinquina' : 'Tombola';
-                                const winRef = doc(collection(db, 'tombola_wins'));
-                                t.set(winRef, { ticketId: ticketDoc.id, playerName: ticket.playerName, type, numbers: matches, timestamp: new Date().toISOString() });
-                            }
-                        });
-                        t.update(configRef, { lastExtraction: new Date().toISOString(), extractedNumbers: newExtracted });
-                    });
-                } catch (e) { console.error(e); }
+                await handleManualTombolaExtraction();
             }
         };
         const interval = setInterval(runTombolaExtraction, 60000);
@@ -585,6 +596,8 @@ const App: React.FC = () => {
                 isSuperAdmin={isSuperAdmin} 
                 onTransferFunds={handleTransferGameFunds}
                 onUpdateTombolaConfig={handleUpdateTombolaConfig}
+                tillColors={tillColors}
+                onManualExtraction={handleManualTombolaExtraction}
             />;
             case 'analotto':
                 return <AnalottoView 
@@ -646,7 +659,7 @@ const App: React.FC = () => {
                 shiftSettings={shiftSettings}
                 onUpdateShiftSettings={handleUpdateShiftSettings}
             />;
-            default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectGames={handleSelectGames} onSelectCalendar={handleSelectCalendar} tillColors={tillColors} seasonalityConfig={seasonalityConfig} shiftSettings={shiftSettings} />;
+            default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectGames={handleSelectGames} onSelectCalendar={handleSelectCalendar} tillColors={tillColors} seasonalityConfig={seasonalityConfig} shiftSettings={shiftSettings} tombolaConfig={tombolaConfig} />;
         }
     };
 

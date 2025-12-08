@@ -1,6 +1,6 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
-import { Till, TillColors, SeasonalityConfig, ShiftSettings } from '../types';
+import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig } from '../types';
 import { ChartBarIcon, LockIcon, CalendarIcon, GamepadIcon, SunIcon, CloudSunIcon, RainIcon, SnowIcon, BoltIcon } from './Icons';
 
 interface TillSelectionProps {
@@ -13,6 +13,7 @@ interface TillSelectionProps {
     tillColors: TillColors;
     seasonalityConfig?: SeasonalityConfig;
     shiftSettings?: ShiftSettings;
+    tombolaConfig?: TombolaConfig;
 }
 
 interface WeatherData {
@@ -20,7 +21,7 @@ interface WeatherData {
     weathercode: number;
 }
 
-const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, tillColors, seasonalityConfig, shiftSettings }) => {
+const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, tillColors, seasonalityConfig, shiftSettings, tombolaConfig }) => {
     
     // WEATHER & DATE STATE
     const [currentDate, setCurrentDate] = useState<string>('');
@@ -134,6 +135,9 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
     // Colore sfondo dinamico
     const backgroundColor = seasonalityConfig?.backgroundColor || '#f8fafc';
+
+    // Tombola Notification
+    const tombolaNumberCount = tombolaConfig?.status === 'active' ? (tombolaConfig.extractedNumbers?.length || 0) : 0;
 
     return (
         <div className="flex flex-col min-h-screen relative overflow-hidden font-sans transition-colors duration-500" style={{ backgroundColor }}>
@@ -270,7 +274,12 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 {/* EXTRA (SECONDA RIGA) - EXTRA HUB & TURNARIO */}
                 <div className="grid grid-cols-2 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
                     {/* Pulsante 1: Extra Hub */}
-                    <button onClick={onSelectGames} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
+                    <button onClick={onSelectGames} className="relative bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
+                        {tombolaNumberCount > 0 && (
+                            <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full shadow-md animate-bounce z-20 border-2 border-white">
+                                {tombolaNumberCount}
+                            </div>
+                        )}
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center group-hover:bg-amber-100 group-hover:scale-110 transition-all shrink-0">
                             <GamepadIcon className="h-5 w-5 md:h-6 md:w-6" />
                         </div>
@@ -294,7 +303,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.5 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.6 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );

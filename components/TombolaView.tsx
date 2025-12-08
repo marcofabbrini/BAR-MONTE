@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { TombolaConfig, TombolaTicket, TombolaWin, StaffMember } from '../types';
-import { BackArrowIcon, TrophyIcon, TrashIcon } from './Icons';
+import { TombolaConfig, TombolaTicket, TombolaWin, StaffMember, TillColors } from '../types';
+import { BackArrowIcon, TrophyIcon, TrashIcon, BoxIcon } from './Icons';
 
 interface TombolaViewProps {
     onGoBack: () => void;
@@ -15,13 +15,15 @@ interface TombolaViewProps {
     isSuperAdmin: boolean | null;
     onTransferFunds: (amount: number, gameName: string) => Promise<void>;
     onUpdateTombolaConfig: (cfg: Partial<TombolaConfig>) => Promise<void>;
+    tillColors?: TillColors;
+    onManualExtraction?: () => Promise<void>;
 }
 
-const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wins, onBuyTicket, onRefundTicket, staff, onStartGame, isSuperAdmin, onTransferFunds, onUpdateTombolaConfig }) => {
+const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wins, onBuyTicket, onRefundTicket, staff, onStartGame, isSuperAdmin, onTransferFunds, onUpdateTombolaConfig, tillColors, onManualExtraction }) => {
     const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
     const [buyQuantity, setBuyQuantity] = useState(1);
     
-    // Stati locali per edit prezzi (se servisse riattivare il modale, qui manteniamo lo stato)
+    // Stati locali per edit prezzi
     const [editPriceSingle, setEditPriceSingle] = useState(config?.ticketPriceSingle || 1);
     const [editPriceBundle, setEditPriceBundle] = useState(config?.ticketPriceBundle || 5);
     
@@ -148,22 +150,30 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         }
     };
 
-    // Helper per i temi delle cartelle
-    const getTicketTheme = (idx: number) => {
-        const themes = [
-            { name: 'Red', bg: 'bg-red-600', border: 'border-red-800', innerBg: 'bg-red-50' },
-            { name: 'Blue', bg: 'bg-blue-600', border: 'border-blue-800', innerBg: 'bg-blue-50' },
-            { name: 'Green', bg: 'bg-green-600', border: 'border-green-800', innerBg: 'bg-green-50' },
-            { name: 'Purple', bg: 'bg-purple-600', border: 'border-purple-800', innerBg: 'bg-purple-50' },
-            { name: 'Orange', bg: 'bg-orange-600', border: 'border-orange-800', innerBg: 'bg-orange-50' },
-        ];
-        return themes[idx % themes.length];
+    const handleManualExtract = async () => {
+        if (config.status !== 'active') return alert("Il gioco non è attivo!");
+        if (onManualExtraction) await onManualExtraction();
+    };
+
+    // Helper per i temi delle cartelle basati sul turno
+    const getTicketStyle = (playerId: string) => {
+        const member = staff.find(s => s.id === playerId);
+        const shift = member?.shift || 'a';
+        const tillId = `T${shift.toUpperCase()}`;
+        const baseColor = tillColors ? (tillColors[tillId] || '#94a3b8') : '#94a3b8';
+        
+        // Convert hex to rgb for opacity handling (simple approx)
+        return {
+            borderColor: baseColor,
+            backgroundColor: `${baseColor}26`, // ~15% opacity hex
+            headerBg: baseColor
+        };
     };
     
     if (!config) return <div className="flex items-center justify-center min-h-screen">Caricamento Tombola...</div>;
 
     return (
-        <div className="flex flex-col min-h-screen bg-stone-200 relative font-serif">
+        <div className="flex flex-col min-h-screen bg-stone-200 relative font-sans">
             <header className="bg-red-900 text-yellow-100 p-3 shadow-2xl sticky top-0 z-50 border-b-4 border-yellow-600">
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <button onClick={onGoBack} className="flex items-center gap-1 font-bold hover:text-white transition-colors">
@@ -172,9 +182,16 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                     <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest flex items-center gap-2 drop-shadow-md text-yellow-400" style={{ textShadow: '2px 2px 0px #7f1d1d' }}>
                         <TrophyIcon className="h-6 w-6" /> Tombola VVF
                     </h1>
-                    <div className="text-right bg-black/30 px-4 py-1 rounded-lg border border-yellow-600/30">
-                        <p className="text-[9px] uppercase opacity-80 font-bold text-yellow-200">Montepremi</p>
-                        <p className="text-xl font-black text-yellow-400 tracking-wider">€{(config.jackpot || 0).toFixed(2)}</p>
+                    <div className="flex items-center gap-3">
+                        {isSuperAdmin && config.status === 'active' && (
+                            <button onClick={handleManualExtract} className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full shadow-lg border-2 border-green-400 animate-pulse" title="Estrai Numero">
+                                <BoxIcon className="h-5 w-5" />
+                            </button>
+                        )}
+                        <div className="text-right bg-black/30 px-4 py-1 rounded-lg border border-yellow-600/30">
+                            <p className="text-[9px] uppercase opacity-80 font-bold text-yellow-200">Montepremi</p>
+                            <p className="text-xl font-black text-yellow-400 tracking-wider">€{(config.jackpot || 0).toFixed(2)}</p>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -222,7 +239,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                     <div 
                                         key={num} 
                                         className={`
-                                            aspect-square flex items-center justify-center font-black rounded-full text-sm shadow-md transition-all duration-300
+                                            aspect-square flex items-center justify-center font-black rounded-full text-sm shadow-md transition-all duration-300 font-sans
                                             ${extractedNumbersSafe.includes(num) 
                                                 ? 'bg-gradient-to-br from-yellow-100 to-yellow-300 text-red-900 border-b-4 border-yellow-600 transform -translate-y-0.5 scale-110 z-10' 
                                                 : 'bg-[#5c3a21] text-[#7a5230] shadow-[inset_0_1px_3px_rgba(0,0,0,0.6)]'}
@@ -315,23 +332,27 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                 {/* LISTA CARTELLE REALISTICHE */}
                                 <div className="w-full max-w-md space-y-6">
                                     {myTickets.map((ticket, idx) => {
-                                        const theme = getTicketTheme(idx);
+                                        const style = getTicketStyle(ticket.playerId);
                                         return (
                                             <div 
                                                 key={ticket.id} 
-                                                className={`
-                                                    relative p-3 rounded-lg shadow-xl transform transition-transform hover:scale-[1.02]
-                                                    ${theme.bg} border-b-4 ${theme.border}
-                                                `}
+                                                className="relative p-3 rounded-lg shadow-xl transform transition-transform hover:scale-[1.02] border-b-4"
+                                                style={{ 
+                                                    backgroundColor: style.backgroundColor, 
+                                                    borderColor: style.borderColor 
+                                                }}
                                             >
                                                 {/* Header Cartella */}
-                                                <div className="flex justify-between items-center mb-2 text-white/90 px-1">
+                                                <div 
+                                                    className="flex justify-between items-center mb-2 px-2 py-1 rounded text-white shadow-sm"
+                                                    style={{ backgroundColor: style.headerBg }}
+                                                >
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-lg filter drop-shadow-sm">{selectedStaffMember?.icon}</span>
                                                         <span className="font-bold text-xs uppercase tracking-widest text-white">{selectedStaffMember?.name}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-mono opacity-70">#{ticket.id.slice(-4)}</span>
+                                                        <span className="text-[10px] font-mono opacity-90">#{ticket.id.slice(-4)}</span>
                                                         {isSuperAdmin && config.status === 'pending' && (
                                                             <button onClick={() => handleSingleRefund(ticket.id)} className="bg-black/20 hover:bg-black/40 text-white p-1 rounded transition-colors">
                                                                 <TrashIcon className="h-3 w-3" />
@@ -341,7 +362,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                                 </div>
                                                 
                                                 {/* Corpo Cartella (Sfondo chiaro) */}
-                                                <div className={`${theme.innerBg} rounded shadow-inner p-1`}>
+                                                <div className="bg-white rounded shadow-inner p-1">
                                                     {/* Griglia Numeri */}
                                                     <div className="border border-stone-300">
                                                         {formatTicketToGrid(ticket.numbers).map((row, rIdx) => (
@@ -350,7 +371,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                                                     <div key={cIdx} className="aspect-[4/3] bg-white relative flex items-center justify-center">
                                                                         {num !== null ? (
                                                                             <>
-                                                                                <span className="text-sm md:text-base font-serif font-bold text-stone-800 z-0">{num}</span>
+                                                                                <span className="text-sm md:text-base font-bold text-stone-800 z-0 font-sans">{num}</span>
                                                                                 {/* Segnalino numero estratto (Plastica rossa trasparente) */}
                                                                                 {extractedNumbersSafe.includes(num) && (
                                                                                     <div className="absolute inset-0.5 bg-red-500/60 rounded-full shadow-sm z-10 backdrop-blur-[1px] border border-red-600/50"></div>
