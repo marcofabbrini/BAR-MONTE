@@ -154,16 +154,16 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                                 <div 
                                     key={dayNum} 
                                     className={`
-                                        relative border-b border-r border-slate-100 min-h-[100px] p-2 flex flex-col gap-1 transition-colors
-                                        ${isToday ? 'bg-orange-50' : 'bg-white hover:bg-slate-50'}
+                                        relative border-b border-r border-slate-100 min-h-[100px] p-2 flex flex-col gap-1 transition-all duration-300
+                                        ${isToday ? 'bg-green-50 border-green-300 ring-2 ring-inset ring-green-300 shadow-inner z-10' : 'bg-white hover:bg-slate-50'}
                                         ${isDimmed ? 'opacity-40 grayscale-[50%]' : ''}
                                     `}
                                 >
-                                    <span className={`text-sm font-bold mb-2 ${isToday ? 'text-primary' : 'text-slate-700'}`}>{dayNum}</span>
+                                    <span className={`text-sm font-bold mb-2 ${isToday ? 'text-green-700' : 'text-slate-700'}`}>{dayNum}</span>
                                     
                                     {/* Turno Giorno */}
-                                    <div className="flex items-center justify-between bg-slate-100 rounded px-2 py-1 mb-1 shadow-sm border border-slate-200">
-                                        <span className="text-[9px] text-slate-500 font-bold uppercase">Giorno</span>
+                                    <div className="flex items-center justify-between bg-slate-50 rounded px-2 py-1 mb-1 shadow-sm border border-slate-100">
+                                        <span className="text-lg leading-none">☀️</span>
                                         <span 
                                             className="font-black text-xs px-2 rounded text-white shadow-sm"
                                             style={{ backgroundColor: getShiftColor(shifts.day) }}
@@ -173,8 +173,8 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors }) =
                                     </div>
 
                                     {/* Turno Notte */}
-                                    <div className="flex items-center justify-between bg-slate-800 rounded px-2 py-1 shadow-sm border border-slate-700">
-                                        <span className="text-[9px] text-slate-400 font-bold uppercase">Notte</span>
+                                    <div className="flex items-center justify-between bg-slate-900/5 rounded px-2 py-1 shadow-sm border border-slate-200">
+                                        <span className="text-lg leading-none">🌙</span>
                                         <span 
                                             className="font-black text-xs px-2 rounded text-white shadow-sm"
                                             style={{ backgroundColor: getShiftColor(shifts.night) }}

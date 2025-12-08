@@ -44,6 +44,45 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         });
     }, [seasonalityConfig]);
 
+    // Algoritmo per calcolare il turno attivo ADESSO
+    const activeShift = useMemo(() => {
+        const now = new Date();
+        const hour = now.getHours();
+        
+        // Se è tra mezzanotte e le 8:00, stiamo ancora "vivendo" il turno di notte iniziato ieri sera
+        // Quindi per il calcolo VVF usiamo la data di ieri
+        const calculationDate = new Date(now);
+        if (hour < 8) {
+            calculationDate.setDate(calculationDate.getDate() - 1);
+        }
+
+        const anchorDate = new Date('2024-01-01T00:00:00');
+        const diffTime = calculationDate.getTime() - anchorDate.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        
+        const shifts = ['a', 'b', 'c', 'd'];
+        
+        // 08:00 - 20:00 = Giorno (Formula: (1 + diffDays) % 4)
+        // 20:00 - 08:00 = Notte (Formula: (0 + diffDays) % 4)
+        
+        let shiftIndex;
+        if (hour >= 8 && hour < 20) {
+            shiftIndex = (1 + diffDays) % 4;
+        } else {
+            shiftIndex = (0 + diffDays) % 4;
+        }
+        
+        if (shiftIndex < 0) shiftIndex += 4;
+        return shifts[shiftIndex];
+    }, []);
+
+    // Ordina le casse: prima quella attiva, poi le altre
+    const sortedTills = useMemo(() => {
+        const active = tills.find(t => t.shift === activeShift);
+        const others = tills.filter(t => t.shift !== activeShift);
+        return active ? [active, ...others] : tills;
+    }, [tills, activeShift]);
+
     // Colore sfondo dinamico
     const backgroundColor = seasonalityConfig?.backgroundColor || '#f8fafc';
 
@@ -80,7 +119,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     <img src="/logo.png" alt="Logo" className="h-20 w-auto md:h-32 object-contain drop-shadow-lg hover:scale-105" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 </div>
 
-                <div className="text-center mb-8 md:mb-12">
+                <div className="text-center mb-8 md:mb-10">
                     <h1 className="flex flex-col items-center leading-none">
                         <span className="text-3xl md:text-5xl lg:text-6xl font-black text-slate-800 tracking-tighter mb-2 drop-shadow-sm transition-all">BAR VVF</span>
                         <span className="text-xl md:text-3xl lg:text-4xl font-extrabold text-primary tracking-tight drop-shadow-sm transition-all">Montepulciano</span>
@@ -90,16 +129,48 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     </p>
                 </div>
 
-                {/* GRIGLIA CASSE */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full md:w-3/4 lg:w-2/3 mb-4 px-4 transition-all">
-                    {tills.map((till) => {
+                {/* GRIGLIA CASSE DINAMICA */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-3/4 lg:w-2/3 mb-4 px-4 transition-all">
+                    {sortedTills.map((till, index) => {
                         const bgColor = tillColors[till.id] || '#f97316';
+                        const isActiveShift = till.shift === activeShift;
+
+                        // Se è il turno attivo: full width e più alto
+                        const gridClass = isActiveShift 
+                            ? "col-span-2 md:col-span-3 h-40 md:h-64 shadow-xl border-primary/20 scale-[1.02] z-10" 
+                            : "col-span-1 h-32 md:h-48 opacity-90 hover:opacity-100 hover:scale-[1.02]";
+
                         return (
-                            <button key={till.id} onClick={() => onSelectTill(till.id)} className="group relative bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-2 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 ease-out flex flex-col items-center justify-center w-full h-32 md:h-48 lg:h-56 border border-slate-100">
-                                <div className="w-14 h-14 md:w-24 md:h-24 rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110" style={{ backgroundColor: bgColor }}>
-                                    <span className="text-2xl md:text-4xl lg:text-5xl font-black text-white select-none">{till.shift.toUpperCase()}</span>
+                            <button 
+                                key={till.id} 
+                                onClick={() => onSelectTill(till.id)} 
+                                className={`
+                                    group relative bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-2 
+                                    border border-slate-100 flex flex-col items-center justify-center w-full 
+                                    transition-all duration-500 ease-out hover:shadow-2xl
+                                    ${gridClass}
+                                `}
+                            >
+                                {isActiveShift && (
+                                    <span className="absolute top-4 right-4 bg-green-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full animate-pulse shadow-sm">
+                                        IN SERVIZIO
+                                    </span>
+                                )}
+                                
+                                <div 
+                                    className={`
+                                        rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110
+                                        ${isActiveShift ? 'w-20 h-20 md:w-32 md:h-32' : 'w-14 h-14 md:w-20 md:h-20'}
+                                    `} 
+                                    style={{ backgroundColor: bgColor }}
+                                >
+                                    <span className={`font-black text-white select-none ${isActiveShift ? 'text-4xl md:text-6xl' : 'text-2xl md:text-4xl'}`}>
+                                        {till.shift.toUpperCase()}
+                                    </span>
                                 </div>
-                                <span className="text-xs md:text-lg font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg">{till.name}</span>
+                                <span className={`font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg ${isActiveShift ? 'text-xl md:text-2xl' : 'text-xs md:text-lg'}`}>
+                                    {till.name}
+                                </span>
                             </button>
                         );
                     })}
