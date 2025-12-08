@@ -21,14 +21,14 @@ const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, tombolaCon
                         <BackArrowIcon className="h-5 w-5" />
                         <span className="font-bold text-sm">Indietro</span>
                     </button>
-                    <h1 className="text-xl font-bold text-slate-800">Sala Giochi</h1>
+                    <h1 className="text-xl font-bold text-slate-800">Extra Hub</h1>
                 </header>
             )}
 
             <div className="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full animate-fade-in">
                 {!onGoBack && (
                     <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                        <TrophyIcon className="h-8 w-8 text-yellow-500" /> Hub Giochi & Extra
+                        <TrophyIcon className="h-8 w-8 text-yellow-500" /> Extra Hub
                     </h2>
                 )}
                 

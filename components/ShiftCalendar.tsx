@@ -35,11 +35,18 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         // Trova l'indice del turno di ancoraggio
         const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
 
+        // Calcolo Turno Giorno
         let dayIndex = (anchorIndex + diffDays) % 4;
         if (dayIndex < 0) dayIndex += 4;
         
-        // VVF Standard: Notte uguale al Giorno
-        let nightIndex = dayIndex;
+        // VVF Standard:
+        // Se la squadra X fa il giorno (8-20), la notte (20-8) è coperta dalla squadra 
+        // che ha fatto il giorno IERI.
+        // Esempio: 
+        // Lunedì Giorno: A. Notte: D.
+        // Martedì Giorno: B. Notte: A.
+        let nightIndex = dayIndex - 1;
+        if (nightIndex < 0) nightIndex += 4;
 
         return {
             day: shifts[dayIndex],

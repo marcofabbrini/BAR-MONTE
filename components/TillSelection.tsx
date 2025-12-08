@@ -180,13 +180,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
                 {/* GESTIONE & EXTRA - GRIGLIA UNIFICATA E COERENTE */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
-                    {/* Pulsante 1: Games Hub */}
+                    {/* Pulsante 1: Extra Hub */}
                     <button onClick={onSelectGames} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
                         <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center group-hover:bg-amber-100 group-hover:scale-110 transition-all shrink-0">
                             <TrophyIcon className="h-5 w-5 md:h-6 md:w-6" />
                         </div>
                         <div className="flex flex-col items-center md:items-start min-w-0">
-                            <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-amber-600 transition-colors">Games Hub</span>
+                            <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-amber-600 transition-colors">Extra Hub</span>
                             <span className="hidden md:block text-[10px] text-slate-400 font-medium truncate w-full">Svago & Extra</span>
                         </div>
                     </button>
