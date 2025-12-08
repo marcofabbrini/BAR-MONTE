@@ -275,6 +275,20 @@ const App: React.FC = () => {
         } catch (error) { console.error(error); throw error; }
     }, []);
     
+    // Funzione per salvare le presenze per statistiche future
+    const handleSaveAttendance = useCallback(async (tillId: string, presentStaffIds: string[]) => {
+        try {
+            await addDoc(collection(db, 'shift_attendance'), {
+                tillId,
+                date: new Date().toISOString().split('T')[0],
+                timestamp: new Date().toISOString(),
+                presentStaffIds
+            });
+        } catch (error) {
+            console.error("Errore salvataggio presenze:", error);
+        }
+    }, []);
+    
     const handleBuyTombolaTicket = async (staffId: string, quantity: number) => {
         const staffMember = staff.find(s => s.id === staffId);
         if (!staffMember) return;
@@ -459,7 +473,7 @@ const App: React.FC = () => {
     const renderContent = () => {
         if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
         switch (view) {
-            case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} />;
+            case 'till': return <TillView till={TILLS.find(t=>t.id===selectedTillId)!} onGoBack={handleGoBack} products={products} allStaff={staff} allOrders={orders} onCompleteOrder={handleCompleteOrder} tillColors={tillColors} onSaveAttendance={handleSaveAttendance} />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
             case 'tombola': 
                 if (!tombolaConfig) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;

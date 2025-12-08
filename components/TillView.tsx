@@ -1,10 +1,10 @@
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Order, OrderItem, Till, Product, StaffMember, TillColors } from '../types';
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
-import { BackArrowIcon } from './Icons';
+import { BackArrowIcon, UsersIcon, CheckIcon } from './Icons';
 
 interface TillViewProps {
     till: Till;
@@ -14,21 +14,26 @@ interface TillViewProps {
     allOrders: Order[];
     onCompleteOrder: (newOrder: Omit<Order, 'id'>) => Promise<void>;
     tillColors?: TillColors;
+    onSaveAttendance?: (tillId: string, presentStaffIds: string[]) => Promise<void>;
 }
 
-const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors }) => {
+const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance }) => {
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isAnimatingSelection, setIsAnimatingSelection] = useState(false);
 
+    // PRESENZE STATE
+    const [presentStaffIds, setPresentStaffIds] = useState<string[]>([]);
+    const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
     const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift), [allStaff, till.shift]);
     const selectedStaffMember = useMemo(() => allStaff.find(s => s.id === selectedStaffId), [allStaff, selectedStaffId]);
     
-    // Filtro storico: Se ho selezionato un utente, vedo solo i suoi ordini. Altrimenti tutti quelli della cassa.
+    // Filtro storico
     const ordersForHistory = useMemo(() => {
         const tillOrders = allOrders.filter(o => o.tillId === till.id);
         if (selectedStaffId) {
@@ -37,7 +42,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         return tillOrders;
     }, [allOrders, till.id, selectedStaffId]);
 
-    // ALGORITMO POPOLARITÀ PRODOTTI
+    // POPOLARITÀ PRODOTTI
     const productPopularity = useMemo(() => {
         const counts: Record<string, number> = {};
         allOrders.forEach(order => {
@@ -54,7 +59,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         return [...list].sort((a, b) => {
             const countA = productPopularity[a.id] || 0;
             const countB = productPopularity[b.id] || 0;
-            // Prima per vendite (Decrescente), poi per nome (Alfabetico) per stabilità
             if (countB !== countA) return countB - countA;
             return a.name.localeCompare(b.name);
         });
@@ -65,6 +69,40 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
     const cartTotal = useMemo(() => currentOrder.reduce((sum, item) => sum + item.product.price * item.quantity, 0), [currentOrder]);
     const cartItemCount = useMemo(() => currentOrder.reduce((sum, item) => sum + item.quantity, 0), [currentOrder]);
+
+    // ATTENDANCE LOGIC
+    useEffect(() => {
+        const today = new Date().toISOString().split('T')[0];
+        const storageKey = `attendance_v1_${till.id}_${today}`;
+        const saved = localStorage.getItem(storageKey);
+
+        if (saved) {
+            setPresentStaffIds(JSON.parse(saved));
+        } else {
+            // First time entry for today: Select ALL by default and open modal
+            setPresentStaffIds(staffForShift.map(s => s.id));
+            setIsAttendanceModalOpen(true);
+        }
+    }, [till.id, staffForShift]);
+
+    const handleToggleAttendance = (id: string) => {
+        setPresentStaffIds(prev => 
+            prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
+        );
+    };
+
+    const confirmAttendance = () => {
+        const today = new Date().toISOString().split('T')[0];
+        const storageKey = `attendance_v1_${till.id}_${today}`;
+        localStorage.setItem(storageKey, JSON.stringify(presentStaffIds));
+        
+        // Save to DB for statistics
+        if (onSaveAttendance) {
+            onSaveAttendance(till.id, presentStaffIds);
+        }
+
+        setIsAttendanceModalOpen(false);
+    };
 
     const addToOrder = useCallback((product: Product) => {
         if (product.stock <= 0) return;
@@ -111,6 +149,9 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     }, [currentOrder, cartTotal, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder, clearOrder]);
 
     const handleStaffSelection = (id: string) => {
+        // Prevent selection of absent staff
+        if (!presentStaffIds.includes(id)) return;
+
         setIsAnimatingSelection(true);
         setTimeout(() => {
             setSelectedStaffId(id);
@@ -128,6 +169,55 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row relative">
+            {/* ATTENDANCE MODAL */}
+            {isAttendanceModalOpen && (
+                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up">
+                        <div className="bg-slate-800 p-6 text-white text-center relative">
+                            <h2 className="text-2xl font-black uppercase tracking-wide">Foglio Presenze</h2>
+                            <p className="text-sm opacity-80 mt-1">Seleziona il personale in servizio per il Turno {till.shift.toUpperCase()}</p>
+                            <div className="absolute top-4 right-4 text-4xl opacity-10">📋</div>
+                        </div>
+                        <div className="p-6">
+                            <div className="grid grid-cols-1 gap-3 max-h-[50vh] overflow-y-auto mb-6">
+                                {staffForShift.map(member => {
+                                    const isSelected = presentStaffIds.includes(member.id);
+                                    return (
+                                        <button 
+                                            key={member.id} 
+                                            onClick={() => handleToggleAttendance(member.id)}
+                                            className={`
+                                                flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-200
+                                                ${isSelected 
+                                                    ? 'border-green-500 bg-green-50 shadow-md transform scale-[1.02]' 
+                                                    : 'border-slate-200 bg-slate-50 text-slate-400 grayscale hover:grayscale-0 hover:bg-white'}
+                                            `}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="text-2xl">{member.icon || '👤'}</div>
+                                                <div className="text-left">
+                                                    <p className={`font-bold ${isSelected ? 'text-slate-800' : 'text-slate-500'}`}>{member.name}</p>
+                                                    <p className="text-[10px] uppercase font-bold text-slate-400">Turno {member.shift.toUpperCase()}</p>
+                                                </div>
+                                            </div>
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${isSelected ? 'bg-green-500 border-green-500 text-white' : 'border-slate-300'}`}>
+                                                {isSelected && <CheckIcon className="h-5 w-5" />}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <button 
+                                onClick={confirmAttendance}
+                                className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl text-lg shadow-lg uppercase tracking-wider transition-colors"
+                            >
+                                Conferma Presenze
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 fixed">
                 <span className="text-[300px] md:text-[500px] font-black text-slate-200/50 select-none">
                     {till.shift.toUpperCase()}
@@ -157,8 +247,15 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                 <span className="font-bold text-xs">{selectedStaffMember.name}</span>
                             </button>
                         )}
-                        <div className="flex items-center gap-2 px-2 py-0.5 bg-white/20 rounded-full">
-                            <span className="text-[10px] font-bold uppercase tracking-wide">Turno {till.shift}</span>
+                        <div className="flex items-center gap-1 bg-white/20 rounded-full pl-3 pr-1 py-0.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wide mr-1">Turno {till.shift}</span>
+                            <button 
+                                onClick={() => setIsAttendanceModalOpen(true)}
+                                className="w-6 h-6 rounded-full bg-white/20 hover:bg-white/40 flex items-center justify-center transition-colors text-white"
+                                title="Modifica Presenze"
+                            >
+                                <UsersIcon className="h-3 w-3" />
+                            </button>
                         </div>
                     </div>
                 </header>
@@ -179,20 +276,24 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                 {!selectedStaffId && (
                                     <div className={`mb-4 transition-all duration-300 ${isAnimatingSelection ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                                         <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Chi sei?</h3>
-                                        {/* GRIGLIA UTENTI CON ANIMAZIONE ALONE ROSSO */}
+                                        {/* GRIGLIA UTENTI CON FILTRO PRESENZE */}
                                         <div className={`grid grid-cols-4 sm:grid-cols-6 gap-3 p-4 rounded-xl ${!selectedStaffId ? 'animate-red-pulse' : ''}`}>
-                                            {staffForShift.map(staff => (
-                                                <button 
-                                                    key={staff.id} 
-                                                    onClick={() => handleStaffSelection(staff.id)}
-                                                    className="group flex flex-col items-center gap-1"
-                                                >
-                                                    <div className="w-14 h-14 rounded-full bg-white shadow-md border-2 border-slate-100 flex items-center justify-center text-2xl group-hover:scale-110 group-hover:border-primary transition-all">
-                                                        {staff.icon || <span className="text-lg font-bold text-slate-600">{getInitials(staff.name)}</span>}
-                                                    </div>
-                                                    <span className="text-[10px] font-bold text-slate-600 group-hover:text-primary">{staff.name.split(' ')[0]}</span>
-                                                </button>
-                                            ))}
+                                            {staffForShift.map(staff => {
+                                                const isPresent = presentStaffIds.includes(staff.id);
+                                                return (
+                                                    <button 
+                                                        key={staff.id} 
+                                                        onClick={() => handleStaffSelection(staff.id)}
+                                                        disabled={!isPresent}
+                                                        className={`group flex flex-col items-center gap-1 transition-all ${!isPresent ? 'opacity-30 grayscale cursor-not-allowed' : 'hover:scale-110 cursor-pointer'}`}
+                                                    >
+                                                        <div className={`w-14 h-14 rounded-full shadow-md border-2 flex items-center justify-center text-2xl transition-all ${!isPresent ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-100 group-hover:border-primary'}`}>
+                                                            {staff.icon || <span className="text-lg font-bold text-slate-600">{getInitials(staff.name)}</span>}
+                                                        </div>
+                                                        <span className="text-[10px] font-bold text-slate-600 group-hover:text-primary">{staff.name.split(' ')[0]}</span>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
