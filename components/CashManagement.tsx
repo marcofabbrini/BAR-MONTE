@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Order, CashMovement } from '../types';
-import { User } from 'firebase/auth';
+import { type User } from 'firebase/auth';
 import { TrashIcon } from './Icons';
 
 interface CashManagementProps {

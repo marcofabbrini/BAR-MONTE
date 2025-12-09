@@ -149,11 +149,13 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
             tillId: till.id,
         };
         try {
+            setIsCartOpen(false); // Close UI immediately for better UX
             await onCompleteOrder(newOrder);
             clearOrder();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error completing order: ", error);
-            alert("Errore nel completamento dell'ordine. Riprova.");
+            alert(`Errore nel completamento dell'ordine: ${error.message || 'Errore sconosciuto'}. Riprova.`);
+            setIsCartOpen(true); // Reopen if failed
         }
     }, [currentOrder, cartTotal, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder, clearOrder]);
 

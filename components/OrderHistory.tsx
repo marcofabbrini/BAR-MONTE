@@ -9,42 +9,57 @@ interface OrderHistoryProps {
 }
 
 const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
-    // Stati per i filtri
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]); 
-    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);     
+    
+    // Helper per ottenere data locale YYYY-MM-DD
+    const getLocalDateString = () => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const [startDate, setStartDate] = useState(getLocalDateString()); 
+    const [endDate, setEndDate] = useState(getLocalDateString());     
     const [filterStaffId, setFilterStaffId] = useState('all');
 
     const setDateRange = (range: 'today' | 'week' | 'month' | 'all') => {
         const today = new Date();
-        const end = today.toISOString().split('T')[0];
-        let start = '';
+        const endStr = getLocalDateString();
+        
+        let startStr = '';
 
         if (range === 'today') {
-            start = end;
+            startStr = endStr;
         } else if (range === 'week') {
             const day = today.getDay() || 7; 
-            if (day !== 1) today.setHours(-24 * (day - 1));
-            start = today.toISOString().split('T')[0];
+            const diff = today.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+            const monday = new Date(today.setDate(diff));
+            startStr = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
         } else if (range === 'month') {
-            start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+            startStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
         } else {
-            start = '';
+            startStr = '';
             setEndDate('');
+            setStartDate('');
+            return;
         }
-        setStartDate(start);
-        if (range !== 'all') setEndDate(end);
+        setStartDate(startStr);
+        setEndDate(endStr);
     };
 
     // Filtra gli ordini
     const filteredOrders = useMemo(() => {
-        const start = startDate ? new Date(startDate).setHours(0, 0, 0, 0) : 0;
-        const end = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : Date.now() + 86400000;
-
         return orders.filter(order => {
             if (order.isDeleted) return false;
-            const orderTimestamp = new Date(order.timestamp).getTime();
-            const dateMatch = orderTimestamp >= start && orderTimestamp <= end;
+            
+            // Converti timestamp dell'ordine in data locale YYYY-MM-DD per confronto stringa
+            const d = new Date(order.timestamp);
+            const orderDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            
+            const dateMatch = (!startDate || orderDateStr >= startDate) && (!endDate || orderDateStr <= endDate);
             const staffMatch = filterStaffId === 'all' || order.staffId === filterStaffId;
+            
             return dateMatch && staffMatch;
         });
     }, [orders, startDate, endDate, filterStaffId]);
@@ -125,7 +140,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
                         <div key={order.id} className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
                             <div className="flex justify-between items-start border-b border-slate-100 pb-2 mb-2">
                                 <div>
-                                    <p className="text-xs text-slate-500">{new Date(order.timestamp).toLocaleString()}</p>
+                                    <p className="text-xs text-slate-500">{new Date(order.timestamp).toLocaleString('it-IT')}</p>
                                     <p className="text-sm font-bold text-slate-700">{order.staffName}</p>
                                 </div>
                                 <p className="text-lg font-bold text-primary">€{order.total.toFixed(2)}</p>
@@ -176,8 +191,8 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
                                     {data.orders.map(order => (
                                         <tr key={order.id} className="border-b border-gray-100">
                                             <td className="py-1 align-top text-gray-500">
-                                                {new Date(order.timestamp).toLocaleDateString()} <br/>
-                                                {new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                {new Date(order.timestamp).toLocaleDateString('it-IT')} <br/>
+                                                {new Date(order.timestamp).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}
                                             </td>
                                             <td className="py-1 align-top">
                                                 {order.items.map(i => (
@@ -199,7 +214,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
 
                 <div className="mt-8 border-t-4 border-black pt-4 flex justify-between items-center break-inside-avoid">
                     <div className="text-xs text-gray-400">
-                        Generato il {new Date().toLocaleString()} <br/>
+                        Generato il {new Date().toLocaleString('it-IT')} <br/>
                         Gestione Bar VVF
                     </div>
                     <div className="text-right">

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
 import { collection, onSnapshot, doc, getDocs, writeBatch, runTransaction, addDoc, updateDoc, deleteDoc, setDoc, orderBy, query, getDoc, where } from 'firebase/firestore';
-import { signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { signInWithPopup, signOut, onAuthStateChanged, type User } from 'firebase/auth';
 import TillSelection from './components/TillSelection';
 import TillView from './components/TillView';
 import ReportsView from './components/ReportsView';
@@ -303,13 +303,30 @@ const App: React.FC = () => {
     const handleCompleteOrder = useCallback(async (newOrderData: Omit<Order, 'id'>) => {
         try {
             await runTransaction(db, async (t) => {
-                const productDocs = await Promise.all(newOrderData.items.map(i => t.get(doc(db, 'products', i.product.id))));
-                productDocs.forEach((d, i) => { if (!d.exists()) throw new Error(`Prod "${newOrderData.items[i].product.name}" mancante.`); });
+                // 1. Get all product references first
+                const productRefs = newOrderData.items.map(item => doc(db, 'products', item.product.id));
+                const productDocs = await Promise.all(productRefs.map(ref => t.get(ref)));
+
+                // 2. Validate and prepare updates
+                productDocs.forEach((docSnap, index) => {
+                    if (!docSnap.exists()) {
+                        throw new Error(`Prodotto "${newOrderData.items[index].product.name}" non trovato nel database.`);
+                    }
+                    const data = docSnap.data();
+                    const currentStock = typeof data.stock === 'number' ? data.stock : Number(data.stock) || 0; // Ensure number
+                    const quantityToSubtract = newOrderData.items[index].quantity;
+                    
+                    t.update(productRefs[index], { stock: currentStock - quantityToSubtract });
+                });
+
+                // 3. Create Order
                 const orderRef = doc(collection(db, 'orders'));
                 t.set(orderRef, { ...newOrderData, id: orderRef.id });
-                productDocs.forEach((d, i) => t.update(d.ref, { stock: d.data().stock - newOrderData.items[i].quantity }));
             });
-        } catch (error) { console.error(error); throw error; }
+        } catch (error) {
+            console.error("Transazione Ordine Fallita:", error);
+            throw error;
+        }
     }, []);
     
     const handleSaveAttendance = useCallback(async (tillId: string, presentStaffIds: string[]) => {
@@ -403,16 +420,16 @@ const App: React.FC = () => {
         try {
             await runTransaction(db, async (t) => {
                 const configRef = doc(db, 'analotto', 'config');
-                const configSnap = await t.get(configRef);
+                const configSnap = await t.get(configRef); // Read First
                 const currentJackpot = configSnap.exists() ? (configSnap.data().jackpot || 0) : 0;
 
                 const betRef = doc(collection(db, 'analotto_bets'));
-                t.set(betRef, { ...betData, timestamp: new Date().toISOString() });
+                t.set(betRef, { ...betData, timestamp: new Date().toISOString() }); // Write
 
                 const jackpotPart = betData.amount * 0.8;
                 const barPart = betData.amount * 0.2;
 
-                t.set(configRef, { jackpot: currentJackpot + jackpotPart }, { merge: true });
+                t.set(configRef, { jackpot: currentJackpot + jackpotPart }, { merge: true }); // Write
 
                 const cashRef = doc(collection(db, 'cash_movements'));
                 t.set(cashRef, { amount: betData.amount, reason: `Analotto: Giocata (${betData.playerName})`, timestamp: new Date().toISOString(), type: 'deposit', category: 'analotto' });
@@ -680,7 +697,9 @@ const App: React.FC = () => {
         }
     };
 
-    return <div className="min-h-screen bg-slate-100 text-slate-800 font-sans">{renderContent()}</div>;
+    return (
+        <div className="min-h-screen bg-slate-100 text-slate-800 font-sans">{renderContent()}</div>
+    );
 };
 
 export default App;

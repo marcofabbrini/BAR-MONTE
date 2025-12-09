@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord } from '../types';
-import { User } from 'firebase/auth';
+import { type User } from 'firebase/auth';
 import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
