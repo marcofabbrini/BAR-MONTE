@@ -38,13 +38,20 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         // Lat: 43.1017, Lon: 11.7868
         const fetchWeather = async () => {
             try {
+                // Controllo preventivo connessione
+                if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+
                 const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=43.1017&longitude=11.7868&current_weather=true');
+                
+                if (!response.ok) return; // Silent fail su errore server
+
                 const data = await response.json();
                 if (data.current_weather) {
                     setWeather(data.current_weather);
                 }
             } catch (error) {
-                console.error("Failed to fetch weather", error);
+                // Silenziamo l'errore in console per evitare "Failed to fetch" visibili all'utente
+                // console.warn("Meteo non disponibile:", error); 
             }
         };
 
@@ -121,9 +128,19 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
+        // Calcolo turno di GIORNO per la data effettiva
         let shiftIndex = (anchorIndex + diffDays) % 4;
         if (shiftIndex < 0) shiftIndex += 4;
         
+        // CORREZIONE NOTTURNA (20:00 - 08:00)
+        // Se siamo tra le 20:00 e le 08:00, non è più in servizio il turno di giorno, ma quello di notte.
+        // Nel ciclo A->B->C->D, il turno di notte è fatto dalla squadra precedente.
+        // Es: Giorno C -> Notte B. Giorno A -> Notte D.
+        if (hour >= 20 || hour < 8) {
+            shiftIndex = (shiftIndex - 1);
+            if (shiftIndex < 0) shiftIndex += 4;
+        }
+
         return shifts[shiftIndex];
     }, [shiftSettings]);
 
