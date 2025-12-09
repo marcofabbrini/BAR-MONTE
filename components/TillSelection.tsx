@@ -1,4 +1,3 @@
-
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig } from '../types';
 import { ChartBarIcon, LockIcon, CalendarIcon, GamepadIcon, SunIcon, CloudSunIcon, RainIcon, SnowIcon, BoltIcon } from './Icons';
@@ -98,7 +97,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const now = new Date();
         const hour = now.getHours();
         
-        // Se è tra mezzanotte e le 8:00, stiamo ancora "vivendo" il turno di notte iniziato ieri sera
+        // Se è tra mezzanotte e le 8:00, stiamo ancora "vivendo" il turno di notte iniziato ieri sera (o meglio, iniziato il giorno lavorativo precedente)
         const calculationDate = new Date(now);
         if (hour < 8) {
             calculationDate.setDate(calculationDate.getDate() - 1);
@@ -121,11 +120,21 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
+        // Calcolo turno di GIORNO per la data effettiva
         let shiftIndex = (anchorIndex + diffDays) % 4;
         if (shiftIndex < 0) shiftIndex += 4;
         
+        // CORREZIONE NOTTURNA (20:00 - 08:00)
+        // Se siamo tra le 20:00 e le 08:00, non è più in servizio il turno di giorno, ma quello di notte.
+        // Nel ciclo A->B->C->D, il turno di notte è fatto dalla squadra precedente.
+        // Es: Giorno C -> Notte B. Giorno A -> Notte D.
+        if (hour >= 20 || hour < 8) {
+            shiftIndex = (shiftIndex - 1);
+            if (shiftIndex < 0) shiftIndex += 4;
+        }
+
         return shifts[shiftIndex];
-    }, [shiftSettings]);
+    }, [shiftSettings]); // Ricalcola ogni minuto ideale, ma qui si basa su react render. 
 
     // LOGICA VISIBILITÀ CASSE
     const visibleTills = useMemo(() => {
