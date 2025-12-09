@@ -35,6 +35,18 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
     const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift), [allStaff, till.shift]);
+    
+    // Ordinamento Staff: "Cassa" per primo, poi alfabetico
+    const sortedStaffForShift = useMemo(() => {
+        return [...staffForShift].sort((a, b) => {
+            const aIsCassa = a.name.toLowerCase().includes('cassa');
+            const bIsCassa = b.name.toLowerCase().includes('cassa');
+            if (aIsCassa && !bIsCassa) return -1;
+            if (!aIsCassa && bIsCassa) return 1;
+            return a.name.localeCompare(b.name);
+        });
+    }, [staffForShift]);
+
     const selectedStaffMember = useMemo(() => allStaff.find(s => s.id === selectedStaffId), [allStaff, selectedStaffId]);
     
     const ordersForHistory = useMemo(() => {
@@ -79,16 +91,32 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         const storageKey = `attendance_v1_${till.id}_${today}`;
         const saved = localStorage.getItem(storageKey);
 
+        // Trova l'utente "Cassa" per assicurarsi che sia sempre presente
+        const cassaUser = staffForShift.find(s => s.name.toLowerCase().includes('cassa'));
+        
+        let initialIds: string[] = [];
+
         if (saved) {
-            setPresentStaffIds(JSON.parse(saved));
+            initialIds = JSON.parse(saved);
         } else {
             // First time entry for today: Select ALL by default and open modal
-            setPresentStaffIds(staffForShift.map(s => s.id));
+            initialIds = staffForShift.map(s => s.id);
             setIsAttendanceModalOpen(true);
         }
+
+        // Assicura che la cassa sia presente
+        if (cassaUser && !initialIds.includes(cassaUser.id)) {
+            initialIds.push(cassaUser.id);
+        }
+
+        setPresentStaffIds(initialIds);
     }, [till.id, staffForShift]);
 
     const handleToggleAttendance = (id: string) => {
+        // Impedisci di deselezionare la cassa
+        const member = allStaff.find(s => s.id === id);
+        if (member && member.name.toLowerCase().includes('cassa')) return;
+
         setPresentStaffIds(prev => 
             prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
         );
@@ -237,22 +265,28 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         
                         <div className="p-6">
                             <div className="grid grid-cols-2 gap-3 mb-6 max-h-[50vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-                                {staffForShift.map(member => {
+                                {sortedStaffForShift.map(member => {
                                     const isSelected = presentStaffIds.includes(member.id);
+                                    const isCassa = member.name.toLowerCase().includes('cassa');
                                     return (
                                         <button 
                                             key={member.id} 
                                             onClick={() => handleToggleAttendance(member.id)}
+                                            disabled={isCassa}
                                             className={`
                                                 flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200
-                                                ${isSelected 
-                                                    ? 'border-green-500 bg-green-50 shadow-sm' 
-                                                    : 'border-slate-100 bg-slate-50 text-slate-300'}
+                                                ${isCassa ? 'opacity-80 bg-slate-100 border-slate-200 cursor-not-allowed' : ''}
+                                                ${isSelected && !isCassa ? 'border-green-500 bg-green-50 shadow-sm' : ''}
+                                                ${!isSelected && !isCassa ? 'border-slate-100 bg-slate-50 text-slate-300' : ''}
                                             `}
                                         >
                                             <div className="text-3xl mb-1 filter drop-shadow-sm">{member.icon || '👤'}</div>
                                             <p className={`font-bold text-sm leading-tight ${isSelected ? 'text-slate-800' : 'text-slate-400'}`}>{member.name}</p>
-                                            {isSelected && <div className="mt-1 text-green-500"><CheckIcon className="h-4 w-4" /></div>}
+                                            {isCassa ? (
+                                                <div className="mt-1 text-slate-400 flex items-center gap-1 text-[10px] uppercase font-bold"><LockIcon className="h-3 w-3" /> Obbligatorio</div>
+                                            ) : (
+                                                isSelected && <div className="mt-1 text-green-500"><CheckIcon className="h-4 w-4" /></div>
+                                            )}
                                         </button>
                                     );
                                 })}
@@ -338,8 +372,10 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                     <div className={`mb-4 transition-all duration-300 ${isAnimatingSelection ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                                         <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Chi sei?</h3>
                                         <div className={`grid grid-cols-4 sm:grid-cols-6 gap-3 p-4 rounded-xl ${!selectedStaffId ? 'animate-red-pulse' : ''}`}>
-                                            {staffForShift.map(staff => {
+                                            {sortedStaffForShift.map(staff => {
                                                 const isPresent = presentStaffIds.includes(staff.id);
+                                                const isCassa = staff.name.toLowerCase().includes('cassa');
+                                                
                                                 return (
                                                     <button 
                                                         key={staff.id} 
@@ -347,8 +383,14 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                                         disabled={!isPresent}
                                                         className={`group flex flex-col items-center gap-1 transition-all ${!isPresent ? 'opacity-30 grayscale cursor-not-allowed hidden' : 'hover:scale-110 cursor-pointer'}`}
                                                     >
-                                                        <div className={`w-14 h-14 rounded-full shadow-md border-2 flex items-center justify-center text-2xl transition-all ${!isPresent ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-100 group-hover:border-primary'}`}>
-                                                            {staff.icon || <span className="text-lg font-bold text-slate-600">{getInitials(staff.name)}</span>}
+                                                        <div 
+                                                            className={`
+                                                                w-14 h-14 rounded-full shadow-md border-2 flex items-center justify-center text-2xl transition-all 
+                                                                ${!isPresent ? 'bg-slate-100 border-slate-200' : 'border-slate-100 group-hover:border-primary'}
+                                                            `}
+                                                            style={isCassa && isPresent ? { backgroundColor: themeColor, color: 'white', borderColor: themeColor } : { backgroundColor: 'white' }}
+                                                        >
+                                                            {staff.icon || <span className={`text-lg font-bold ${isCassa ? 'text-white' : 'text-slate-600'}`}>{getInitials(staff.name)}</span>}
                                                         </div>
                                                         <span className="text-[10px] font-bold text-slate-600 group-hover:text-primary">{staff.name.split(' ')[0]}</span>
                                                     </button>

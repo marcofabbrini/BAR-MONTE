@@ -37,6 +37,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         return tillColors[tillId] || defaultColors[tillId] || '#94a3b8';
     };
 
+    // Helper per escludere l'utente "Cassa"
+    const isRealPerson = (name: string) => !name.toLowerCase().includes('cassa');
+
     const attendanceStats = useMemo(() => {
         const stats: Record<string, { name: string, count: number, shift: string, icon: string }> = {};
         
@@ -45,7 +48,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             if (recDate.getMonth() === currentDate.getMonth() && recDate.getFullYear() === currentDate.getFullYear()) {
                 record.presentStaffIds.forEach(staffId => {
                     const member = staff.find(s => s.id === staffId);
-                    if (member) {
+                    if (member && isRealPerson(member.name)) {
                         if (!stats[staffId]) {
                             stats[staffId] = { 
                                 name: member.name, 
@@ -126,19 +129,26 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                             if (!record || record.presentStaffIds.length === 0) return null;
 
                                             const color = getShiftColor(tillId);
-                                            const presentNames = record.presentStaffIds
-                                                .map(id => staff.find(s => s.id === id)?.name.split(' ')[0]) 
-                                                .filter(Boolean)
-                                                .join(', ');
+                                            // Filtra le persone reali (escludendo "cassa")
+                                            const realPeopleCount = record.presentStaffIds
+                                                .filter(id => {
+                                                    const member = staff.find(s => s.id === id);
+                                                    return member && isRealPerson(member.name);
+                                                }).length;
+
+                                            if (realPeopleCount === 0) return null;
 
                                             return (
-                                                <div key={tillId} className="group relative text-[10px] bg-slate-50 border rounded p-1 pr-5 transition-all hover:bg-white hover:shadow-sm" style={{ borderLeftColor: color, borderLeftWidth: '3px' }}>
-                                                    <span className="font-bold" style={{ color: color }}>Turno {tillId.replace('T', '')}:</span>
-                                                    <span className="text-slate-600 ml-1">{presentNames}</span>
+                                                <div key={tillId} className="group relative flex items-center justify-between bg-slate-50 border rounded p-1.5 transition-all hover:bg-white hover:shadow-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: color }}></div>
+                                                        <span className="text-xs font-bold text-slate-700">{realPeopleCount}</span>
+                                                    </div>
+                                                    
                                                     {onDeleteRecord && (
                                                         <button 
                                                             onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }}
-                                                            className="absolute top-0.5 right-0.5 text-slate-300 hover:text-red-500 p-0.5 rounded hover:bg-red-50 transition-colors hidden group-hover:block"
+                                                            className="text-slate-300 hover:text-red-500 p-0.5 rounded hover:bg-red-50 transition-colors hidden group-hover:block"
                                                             title="Resetta Presenze Turno"
                                                         >
                                                             <TrashIcon className="h-3 w-3" />
@@ -158,7 +168,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                     <div className="max-w-4xl mx-auto">
                         <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-6 text-center">
                             <h3 className="text-indigo-900 font-bold text-lg">Presenze Totali - {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
-                            <p className="text-indigo-600 text-xs mt-1">Conteggio basato sui registri di fine turno</p>
+                            <p className="text-indigo-600 text-xs mt-1">Conteggio basato sui registri di fine turno (escluso utente Cassa)</p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
