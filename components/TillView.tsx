@@ -355,20 +355,20 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
             <div className="flex-grow flex flex-col w-full md:w-auto min-h-screen z-10">
                 <header className="sticky top-0 px-4 py-2 flex justify-between items-center shadow-sm z-30 border-b border-white/20 text-white transition-colors duration-300 backdrop-blur-md bg-opacity-90" style={{ backgroundColor: themeColor + 'E6' }}>
-                     <div className="flex items-center gap-2">
+                     <div className="flex items-center gap-3">
                          <button onClick={onGoBack} className="group flex items-center gap-1 transition-colors">
-                            <div className="w-8 h-8 rounded-full bg-white/40 hover:bg-white/60 flex items-center justify-center transition-colors">
+                            <div className="w-8 h-8 rounded-full bg-white/40 hover:bg-white/60 flex items-center justify-center transition-colors shadow-sm">
                                 <BackArrowIcon className="h-5 w-5 text-black" />
                             </div>
                         </button>
-                        <h1 className="text-sm font-bold tracking-tight">{till.name}</h1>
+                        <h1 className="text-lg font-black tracking-tighter uppercase text-slate-900 drop-shadow-sm">{till.name}</h1>
                     </div>
                     
                     <div className="flex items-center gap-2 h-8">
                         {selectedStaffId && selectedStaffMember && (
                             <button 
                                 onClick={handleStaffDeselection}
-                                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-full pr-3 pl-1 py-1 transition-all animate-fade-in h-full"
+                                className="hidden md:flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-full pr-3 pl-1 py-1 transition-all animate-fade-in h-full mr-2"
                             >
                                 <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs shadow-sm text-slate-800">
                                     {selectedStaffMember.icon || getInitials(selectedStaffMember.name)}
@@ -376,16 +376,22 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                 <span className="font-bold text-xs">{selectedStaffMember.name}</span>
                             </button>
                         )}
-                        <div className="flex items-center bg-white/20 rounded-full pl-3 pr-1 py-0 h-full">
-                            <span className="text-[10px] font-bold uppercase tracking-wide mr-2 flex items-center h-full">Turno {till.shift}</span>
-                            <button 
-                                onClick={() => setIsAttendanceModalOpen(true)}
-                                className="w-6 h-6 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow-sm"
-                                title="Modifica Presenze"
-                            >
-                                <UsersIcon className="h-3 w-3 text-black" />
-                            </button>
+                        
+                        <div className="flex items-center gap-2 bg-white/90 rounded-lg px-3 py-1 shadow-sm h-full border border-white/50">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                            <span className="text-[10px] font-black uppercase tracking-wide text-slate-800 flex items-center h-full">
+                                Turno {till.shift}
+                            </span>
                         </div>
+
+                        <button 
+                            onClick={() => setIsAttendanceModalOpen(true)}
+                            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg px-3 py-1 transition-all shadow-md h-full active:scale-95 border border-slate-600"
+                            title="Modifica Presenze"
+                        >
+                            <UsersIcon className="h-3 w-3" />
+                            <span className="text-[10px] font-bold uppercase tracking-wide">Presenze</span>
+                        </button>
                     </div>
                 </header>
                 
