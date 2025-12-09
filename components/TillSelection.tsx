@@ -14,6 +14,7 @@ interface TillSelectionProps {
     seasonalityConfig?: SeasonalityConfig;
     shiftSettings?: ShiftSettings;
     tombolaConfig?: TombolaConfig;
+    isSuperAdmin?: boolean | null;
 }
 
 interface WeatherData {
@@ -21,7 +22,7 @@ interface WeatherData {
     weathercode: number;
 }
 
-const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, tillColors, seasonalityConfig, shiftSettings, tombolaConfig }) => {
+const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin }) => {
     
     // WEATHER & DATE STATE
     const [currentDate, setCurrentDate] = useState<string>('');
@@ -126,12 +127,19 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return shifts[shiftIndex];
     }, [shiftSettings]);
 
-    // Ordina le casse: prima quella attiva, poi le altre
-    const sortedTills = useMemo(() => {
+    // LOGICA VISIBILITÀ CASSE
+    const visibleTills = useMemo(() => {
         const active = tills.find(t => t.shift === activeShift);
-        const others = tills.filter(t => t.shift !== activeShift);
-        return active ? [active, ...others] : tills;
-    }, [tills, activeShift]);
+        
+        // Se è Super Admin, mostra tutto (ordinato: attivo prima, poi gli altri)
+        if (isSuperAdmin) {
+            const others = tills.filter(t => t.shift !== activeShift);
+            return active ? [active, ...others] : tills;
+        }
+
+        // Se utente normale, mostra SOLO quello attivo
+        return active ? [active] : []; 
+    }, [tills, activeShift, isSuperAdmin]);
 
     // Colore sfondo dinamico
     const backgroundColor = seasonalityConfig?.backgroundColor || '#f8fafc';
@@ -197,11 +205,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
                 {/* GRIGLIA CASSE DINAMICA */}
                 <div className="grid grid-cols-3 md:grid-cols-3 gap-4 w-full md:w-3/4 lg:w-2/3 mb-6 px-4 transition-all">
-                    {sortedTills.map((till) => {
+                    {visibleTills.map((till) => {
                         const bgColor = tillColors[till.id] || '#f97316';
                         const isActiveShift = till.shift === activeShift;
 
-                        const gridClass = isActiveShift 
+                        // Se c'è un solo elemento (utente normale), deve occupare tutto lo spazio ed essere grande
+                        const isOnlyOne = visibleTills.length === 1;
+
+                        const gridClass = (isActiveShift || isOnlyOne) 
                             ? "col-span-3 h-40 md:h-64 shadow-xl border-primary/20 scale-[1.02] z-10 order-first" 
                             : "col-span-1 h-32 md:h-48 opacity-90 hover:opacity-100 hover:scale-[1.02]";
 
@@ -216,7 +227,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                     ${gridClass}
                                 `}
                             >
-                                {isActiveShift && (
+                                {(isActiveShift) && (
                                     <span className="absolute top-4 right-4 bg-green-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full animate-pulse shadow-sm">
                                         IN SERVIZIO
                                     </span>
@@ -225,15 +236,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                 <div 
                                     className={`
                                         rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110
-                                        ${isActiveShift ? 'w-20 h-20 md:w-32 md:h-32' : 'w-10 h-10 md:w-20 md:h-20'}
+                                        ${(isActiveShift || isOnlyOne) ? 'w-20 h-20 md:w-32 md:h-32' : 'w-10 h-10 md:w-20 md:h-20'}
                                     `} 
                                     style={{ backgroundColor: bgColor }}
                                 >
-                                    <span className={`font-black text-white select-none ${isActiveShift ? 'text-4xl md:text-6xl' : 'text-xl md:text-4xl'}`}>
+                                    <span className={`font-black text-white select-none ${(isActiveShift || isOnlyOne) ? 'text-4xl md:text-6xl' : 'text-xl md:text-4xl'}`}>
                                         {till.shift.toUpperCase()}
                                     </span>
                                 </div>
-                                <span className={`font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg ${isActiveShift ? 'text-xl md:text-2xl' : 'hidden md:block text-xs md:text-lg'}`}>
+                                <span className={`font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg ${(isActiveShift || isOnlyOne) ? 'text-xl md:text-2xl' : 'hidden md:block text-xs md:text-lg'}`}>
                                     {till.name}
                                 </span>
                             </button>

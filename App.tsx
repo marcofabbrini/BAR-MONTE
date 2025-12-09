@@ -693,7 +693,19 @@ const App: React.FC = () => {
                 attendanceRecords={attendanceRecords}
                 onDeleteAttendance={handleDeleteAttendance}
             />;
-            default: return <TillSelection tills={TILLS} onSelectTill={handleSelectTill} onSelectReports={handleSelectReports} onSelectAdmin={handleSelectAdmin} onSelectGames={handleSelectGames} onSelectCalendar={handleSelectCalendar} tillColors={tillColors} seasonalityConfig={seasonalityConfig} shiftSettings={shiftSettings} tombolaConfig={tombolaConfig} />;
+            default: return <TillSelection 
+                tills={TILLS} 
+                onSelectTill={handleSelectTill} 
+                onSelectReports={handleSelectReports} 
+                onSelectAdmin={handleSelectAdmin} 
+                onSelectGames={handleSelectGames} 
+                onSelectCalendar={handleSelectCalendar} 
+                tillColors={tillColors} 
+                seasonalityConfig={seasonalityConfig} 
+                shiftSettings={shiftSettings} 
+                tombolaConfig={tombolaConfig}
+                isSuperAdmin={isSuperAdmin}
+            />;
         }
     };
 
