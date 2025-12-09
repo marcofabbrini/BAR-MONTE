@@ -145,6 +145,10 @@ export interface ShiftSettings {
     rcAnchorSubGroup?: number;
 }
 
+export interface GeneralSettings {
+    waterQuotaPrice: number;
+}
+
 export interface AttendanceRecord {
     id: string;
     tillId: string;

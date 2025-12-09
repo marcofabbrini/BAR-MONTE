@@ -13,7 +13,7 @@ import AnalottoView from './components/AnalottoView';
 import DiceGame from './components/DiceGame';
 import ShiftCalendar from './components/ShiftCalendar';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
-import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings, AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel, AttendanceRecord } from './types';
+import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings, AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel, AttendanceRecord, GeneralSettings } from './types';
 
 type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice';
 
@@ -55,8 +55,9 @@ const App: React.FC = () => {
     const [analottoBets, setAnalottoBets] = useState<AnalottoBet[]>([]);
     const [analottoExtractions, setAnalottoExtractions] = useState<AnalottoExtraction[]>([]);
 
-    // Seasonality State
+    // Settings State
     const [seasonalityConfig, setSeasonalityConfig] = useState<SeasonalityConfig | undefined>(undefined);
+    const [generalSettings, setGeneralSettings] = useState<GeneralSettings>({ waterQuotaPrice: 0 });
 
     // Shift Settings (Calibration)
     const [shiftSettings, setShiftSettings] = useState<ShiftSettings>({
@@ -182,12 +183,20 @@ const App: React.FC = () => {
                 });
             }
         });
+
+        const unsubGeneralSettings = onSnapshot(doc(db, 'settings', 'general'), (d) => {
+            if (d.exists()) {
+                setGeneralSettings(d.data() as GeneralSettings);
+            } else {
+                setDoc(doc(db, 'settings', 'general'), { waterQuotaPrice: 0 });
+            }
+        });
         
         return () => { 
             unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); unsubAttendance();
             unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); 
             unsubAnalottoConfig(); unsubAnalottoBets(); unsubAnalottoExtractions();
-            unsubSeasonality(); unsubShiftSettings(); 
+            unsubSeasonality(); unsubShiftSettings(); unsubGeneralSettings();
         };
     }, []);
 
@@ -596,6 +605,7 @@ const App: React.FC = () => {
     const handleMassDelete = async (date: string, type: 'orders'|'movements') => { const q = query(collection(db, type === 'orders' ? 'orders' : 'cash_movements'), where('timestamp', '<=', new Date(date).toISOString())); const s = await getDocs(q); const batch = writeBatch(db); s.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); };
     const handleUpdateSeasonality = async (cfg: SeasonalityConfig) => { await setDoc(doc(db, 'settings', 'seasonality'), cfg); };
     const handleUpdateShiftSettings = async (cfg: ShiftSettings) => { await setDoc(doc(db, 'settings', 'shift'), cfg); };
+    const handleUpdateGeneralSettings = async (cfg: GeneralSettings) => { await setDoc(doc(db, 'settings', 'general'), cfg, { merge: true }); };
 
     const renderContent = () => {
         if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
@@ -654,67 +664,38 @@ const App: React.FC = () => {
             case 'calendar':
                 return <ShiftCalendar onGoBack={handleGoBack} tillColors={tillColors} shiftSettings={shiftSettings} />;
             case 'admin': return <AdminView 
-                onGoBack={handleGoBack} 
-                orders={orders} 
-                tills={TILLS} 
-                tillColors={tillColors} 
-                products={products} 
-                staff={staff} 
-                cashMovements={cashMovements} 
-                onUpdateTillColors={updateTillColors} 
-                onDeleteOrders={deleteOrders} 
-                onPermanentDeleteOrder={permanentDeleteOrder} 
-                onUpdateOrder={updateOrder} 
-                onAddProduct={addProduct} 
-                onUpdateProduct={updateProduct} 
-                onDeleteProduct={deleteProduct} 
-                onAddStaff={addStaff} 
-                onUpdateStaff={updateStaff} 
-                onDeleteStaff={deleteStaff} 
-                onAddCashMovement={addCashMovement} 
-                onUpdateMovement={updateCashMovement} 
-                onDeleteMovement={deleteCashMovement} 
-                onPermanentDeleteMovement={permanentDeleteMovement}
-                onStockPurchase={handleStockPurchase} 
-                onStockCorrection={handleStockCorrection} 
-                onResetCash={handleResetCash} 
-                onMassDelete={handleMassDelete} 
-                isAuthenticated={isAdmin} 
-                currentUser={currentUser} 
-                onLogin={handleGoogleLogin} 
-                onLogout={handleLogout} 
-                adminList={adminList} 
-                onAddAdmin={handleAddAdmin} 
-                onRemoveAdmin={handleRemoveAdmin} 
-                tombolaConfig={tombolaConfig} 
-                onNavigateToTombola={handleSelectTombola}
-                seasonalityConfig={seasonalityConfig}
-                onUpdateSeasonality={handleUpdateSeasonality}
-                shiftSettings={shiftSettings}
-                onUpdateShiftSettings={handleUpdateShiftSettings}
-                attendanceRecords={attendanceRecords}
-                onDeleteAttendance={handleDeleteAttendance}
-                onSaveAttendance={handleSaveAttendance}
+                onGoBack={handleGoBack} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements}
+                onUpdateTillColors={updateTillColors} onDeleteOrders={deleteOrders} onPermanentDeleteOrder={permanentDeleteOrder} onUpdateOrder={updateOrder}
+                onAddProduct={addProduct} onUpdateProduct={updateProduct} onDeleteProduct={deleteProduct}
+                onAddStaff={addStaff} onUpdateStaff={updateStaff} onDeleteStaff={deleteStaff}
+                onAddCashMovement={addCashMovement} onUpdateMovement={updateCashMovement} onDeleteMovement={deleteCashMovement} onPermanentDeleteMovement={permanentDeleteMovement}
+                onStockPurchase={handleStockPurchase} onStockCorrection={handleStockCorrection} onResetCash={handleResetCash} onMassDelete={handleMassDelete}
+                isAuthenticated={isAdmin} currentUser={currentUser} onLogin={handleGoogleLogin} onLogout={handleLogout}
+                adminList={adminList} onAddAdmin={handleAddAdmin} onRemoveAdmin={handleRemoveAdmin}
+                tombolaConfig={tombolaConfig} onNavigateToTombola={handleSelectTombola}
+                seasonalityConfig={seasonalityConfig} onUpdateSeasonality={handleUpdateSeasonality}
+                shiftSettings={shiftSettings} onUpdateShiftSettings={handleUpdateShiftSettings}
+                attendanceRecords={attendanceRecords} onDeleteAttendance={handleDeleteAttendance} onSaveAttendance={handleSaveAttendance}
+                generalSettings={generalSettings} onUpdateGeneralSettings={handleUpdateGeneralSettings}
             />;
+            case 'selection':
             default: return <TillSelection 
                 tills={TILLS} 
                 onSelectTill={handleSelectTill} 
                 onSelectReports={handleSelectReports} 
                 onSelectAdmin={handleSelectAdmin} 
-                onSelectGames={handleSelectGames} 
-                onSelectCalendar={handleSelectCalendar} 
-                tillColors={tillColors} 
-                seasonalityConfig={seasonalityConfig} 
-                shiftSettings={shiftSettings} 
+                onSelectGames={handleSelectGames}
+                onSelectCalendar={handleSelectCalendar}
+                tillColors={tillColors}
+                seasonalityConfig={seasonalityConfig}
+                shiftSettings={shiftSettings}
                 tombolaConfig={tombolaConfig}
                 isSuperAdmin={isSuperAdmin}
             />;
         }
     };
 
-    return (
-        <div className="min-h-screen bg-slate-100 text-slate-800 font-sans">{renderContent()}</div>
-    );
+    return <div className="min-h-screen bg-slate-100 text-slate-800">{renderContent()}</div>;
 };
 
 export default App;

@@ -172,11 +172,16 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                             </div>
                             <p className="text-lg font-bold text-primary">€{data.total.toFixed(2)}</p>
                         </div>
-                        <ul className="space-y-1 mb-2">
+                        <ul className="space-y-2 mb-2">
                             {data.orders.map(order => (
-                                <li key={order.id} className="flex justify-between text-xs text-slate-600">
-                                    <span>{new Date(order.timestamp).toLocaleDateString()} - {order.items.length} art.</span>
-                                    <span>€{order.total.toFixed(2)}</span>
+                                <li key={order.id} className="flex flex-col text-xs text-slate-600 border-b border-slate-50 pb-1 last:border-0 last:pb-0">
+                                    <div className="flex justify-between w-full font-bold">
+                                        <span>{new Date(order.timestamp).toLocaleDateString()}</span>
+                                        <span>€{order.total.toFixed(2)}</span>
+                                    </div>
+                                    <div className="text-slate-400 italic">
+                                        - {order.items.map(i => `${i.quantity} ${i.product.name}`).join(', ')}
+                                    </div>
                                 </li>
                             ))}
                         </ul>
