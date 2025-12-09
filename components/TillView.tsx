@@ -134,6 +134,17 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         const storageKey = `attendance_v1_${till.id}_${today}`;
         localStorage.setItem(storageKey, JSON.stringify(presentStaffIds));
         
+        // Verifica numero presenze (esclusa cassa)
+        const realPeopleCount = presentStaffIds.filter(id => {
+            const member = allStaff.find(s => s.id === id);
+            return member && !member.name.toLowerCase().includes('cassa');
+        }).length;
+
+        if (realPeopleCount !== 5) {
+            const confirm = window.confirm(`Attenzione: Risultano ${realPeopleCount} operatori presenti (standard 5). Confermi la chiusura?`);
+            if (!confirm) return;
+        }
+
         if (onSaveAttendance) {
             onSaveAttendance(till.id, presentStaffIds);
         }

@@ -1,18 +1,26 @@
 
 import React, { useState, useMemo } from 'react';
-import { AttendanceRecord, StaffMember, TillColors } from '../types';
-import { ClipboardIcon, CalendarIcon, TrashIcon } from './Icons';
+import { AttendanceRecord, StaffMember, TillColors, Shift } from '../types';
+import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon } from './Icons';
 
 interface AttendanceCalendarProps {
     attendanceRecords: AttendanceRecord[];
     staff: StaffMember[];
     tillColors: TillColors;
     onDeleteRecord?: (id: string) => Promise<void>;
+    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string) => Promise<void>;
+    isSuperAdmin?: boolean;
 }
 
-const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord }) => {
+const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord, onSaveAttendance, isSuperAdmin }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'calendar' | 'report'>('calendar');
+    
+    // EDITING STATE
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingDate, setEditingDate] = useState<string>('');
+    const [editingTillId, setEditingTillId] = useState<string>('');
+    const [editingPresentIds, setEditingPresentIds] = useState<string[]>([]);
 
     const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
     const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
@@ -40,30 +48,33 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     // Helper per escludere l'utente "Cassa"
     const isRealPerson = (name: string) => !name.toLowerCase().includes('cassa');
 
-    const attendanceStats = useMemo(() => {
-        const stats: Record<string, { name: string, count: number, shift: string, icon: string }> = {};
-        
-        attendanceRecords.forEach(record => {
-            const recDate = new Date(record.date);
-            if (recDate.getMonth() === currentDate.getMonth() && recDate.getFullYear() === currentDate.getFullYear()) {
-                record.presentStaffIds.forEach(staffId => {
-                    const member = staff.find(s => s.id === staffId);
-                    if (member && isRealPerson(member.name)) {
-                        if (!stats[staffId]) {
-                            stats[staffId] = { 
-                                name: member.name, 
-                                count: 0, 
-                                shift: member.shift,
-                                icon: member.icon || '👤' 
-                            };
-                        }
-                        stats[staffId].count++;
-                    }
-                });
-            }
+    // Report Tabellare
+    const reportData = useMemo(() => {
+        const statsByShift: Record<string, { name: string, count: number }[]> = {
+            'a': [], 'b': [], 'c': [], 'd': []
+        };
+
+        const staffByShift = {
+            'a': staff.filter(s => s.shift === 'a' && isRealPerson(s.name)),
+            'b': staff.filter(s => s.shift === 'b' && isRealPerson(s.name)),
+            'c': staff.filter(s => s.shift === 'c' && isRealPerson(s.name)),
+            'd': staff.filter(s => s.shift === 'd' && isRealPerson(s.name)),
+        };
+
+        const recordsInMonth = attendanceRecords.filter(r => {
+            const d = new Date(r.date);
+            return d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear();
         });
 
-        return Object.values(stats).sort((a,b) => b.count - a.count);
+        // Calcola conteggi
+        Object.entries(staffByShift).forEach(([shift, members]) => {
+            statsByShift[shift] = members.map(m => {
+                const count = recordsInMonth.filter(r => r.presentStaffIds.includes(m.id)).length;
+                return { name: m.name, count };
+            }).sort((a,b) => b.count - a.count);
+        });
+
+        return statsByShift;
     }, [attendanceRecords, staff, currentDate]);
 
     const handleDelete = async (id: string) => {
@@ -73,8 +84,97 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         }
     };
 
+    const handleOpenEdit = (date: string, tillId: string, currentRecord?: AttendanceRecord) => {
+        // Logica Permessi: SuperAdmin può editare tutto. Admin può editare solo se coincide turno (semplificazione: qui lasciamo aperto e ci fidiamo dell'auth)
+        setEditingDate(date);
+        setEditingTillId(tillId);
+        
+        let initialIds: string[] = [];
+        if (currentRecord) {
+            initialIds = [...currentRecord.presentStaffIds];
+        } else {
+            // Se non c'è record, pre-selezioniamo la cassa se esiste
+            const shift = tillId.replace('T', '').toLowerCase();
+            const cassaUser = staff.find(s => s.shift === shift && s.name.toLowerCase().includes('cassa'));
+            if(cassaUser) initialIds.push(cassaUser.id);
+        }
+        
+        setEditingPresentIds(initialIds);
+        setIsEditModalOpen(true);
+    };
+
+    const toggleEditingPresence = (id: string) => {
+        const member = staff.find(s => s.id === id);
+        if (member && member.name.toLowerCase().includes('cassa')) return; // Cassa bloccata
+
+        setEditingPresentIds(prev => 
+            prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
+        );
+    };
+
+    const saveEditing = async () => {
+        if (!onSaveAttendance) return;
+        await onSaveAttendance(editingTillId, editingPresentIds, editingDate);
+        setIsEditModalOpen(false);
+    };
+
+    // Staff per il modale di editing
+    const editingStaffList = useMemo(() => {
+        if (!editingTillId) return [];
+        const shift = editingTillId.replace('T', '').toLowerCase();
+        return staff.filter(s => s.shift === shift).sort((a,b) => {
+             const aIsCassa = a.name.toLowerCase().includes('cassa');
+             const bIsCassa = b.name.toLowerCase().includes('cassa');
+             if (aIsCassa && !bIsCassa) return -1;
+             if (!aIsCassa && bIsCassa) return 1;
+             return a.name.localeCompare(b.name);
+        });
+    }, [staff, editingTillId]);
+
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col relative">
+            
+            {/* EDIT MODAL */}
+            {isEditModalOpen && (
+                <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="p-4 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
+                            <h3 className="font-bold text-slate-800">Modifica Presenze - {new Date(editingDate).toLocaleDateString()}</h3>
+                            <button onClick={() => setIsEditModalOpen(false)} className="text-2xl leading-none">&times;</button>
+                        </div>
+                        <div className="p-4 max-h-[60vh] overflow-y-auto">
+                            <div className="grid grid-cols-2 gap-2">
+                                {editingStaffList.map(member => {
+                                    const isSelected = editingPresentIds.includes(member.id);
+                                    const isCassa = member.name.toLowerCase().includes('cassa');
+                                    return (
+                                        <button 
+                                            key={member.id} 
+                                            onClick={() => toggleEditingPresence(member.id)}
+                                            disabled={isCassa}
+                                            className={`
+                                                flex flex-col items-center justify-center p-2 rounded-lg border transition-all
+                                                ${isCassa ? 'opacity-70 bg-slate-100 cursor-not-allowed' : ''}
+                                                ${isSelected && !isCassa ? 'border-green-500 bg-green-50' : 'border-slate-200'}
+                                            `}
+                                        >
+                                            <span className="text-xl">{member.icon || '👤'}</span>
+                                            <span className="text-xs font-bold">{member.name}</span>
+                                            {isCassa ? <LockIcon className="h-3 w-3 mt-1 text-slate-400"/> : isSelected && <CheckIcon className="h-4 w-4 mt-1 text-green-600"/>}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-slate-200 flex justify-end">
+                            <button onClick={saveEditing} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2">
+                                <SaveIcon className="h-4 w-4" /> Salva Modifiche
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center bg-slate-50 gap-4">
                 <div className="flex gap-2">
                     <button 
@@ -87,7 +187,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                         onClick={() => setViewMode('report')}
                         className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 ${viewMode === 'report' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200'}`}
                     >
-                        <ClipboardIcon className="h-4 w-4" /> Report Mensile
+                        <ClipboardIcon className="h-4 w-4" /> Report Tabellare
                     </button>
                 </div>
 
@@ -126,26 +226,37 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                     <div className="flex flex-col gap-1 overflow-y-auto max-h-[100px] scrollbar-thin">
                                         {['TA', 'TB', 'TC', 'TD'].map(tillId => {
                                             const record = dayRecords.find(r => r.tillId === tillId);
-                                            if (!record || record.presentStaffIds.length === 0) return null;
-
+                                            // Mostra lo slot anche se vuoto per permettere l'inserimento (click to edit)
+                                            
                                             const color = getShiftColor(tillId);
-                                            // Filtra le persone reali (escludendo "cassa")
-                                            const realPeopleCount = record.presentStaffIds
-                                                .filter(id => {
-                                                    const member = staff.find(s => s.id === id);
-                                                    return member && isRealPerson(member.name);
-                                                }).length;
+                                            
+                                            let realPeopleCount = 0;
+                                            if (record) {
+                                                realPeopleCount = record.presentStaffIds
+                                                    .filter(id => {
+                                                        const member = staff.find(s => s.id === id);
+                                                        return member && isRealPerson(member.name);
+                                                    }).length;
+                                            }
 
-                                            if (realPeopleCount === 0) return null;
+                                            // Non mostrare slot vuoti se non c'è record e non è super admin (opzionale, qui mostriamo sempre se c'è record o se vogliamo permettere edit)
+                                            if (!record && !isSuperAdmin) return null;
 
                                             return (
-                                                <div key={tillId} className="group relative flex items-center justify-between bg-slate-50 border rounded p-1.5 transition-all hover:bg-white hover:shadow-sm">
+                                                <div 
+                                                    key={tillId} 
+                                                    onClick={() => handleOpenEdit(dateStr, tillId, record)}
+                                                    className={`
+                                                        group relative flex items-center justify-between border rounded p-1.5 transition-all cursor-pointer
+                                                        ${record ? 'bg-slate-50 hover:bg-white hover:shadow-md' : 'bg-transparent border-dashed border-slate-200 opacity-50 hover:opacity-100'}
+                                                    `}
+                                                >
                                                     <div className="flex items-center gap-2">
                                                         <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: color }}></div>
-                                                        <span className="text-xs font-bold text-slate-700">{realPeopleCount}</span>
+                                                        <span className="text-xs font-bold text-slate-700">{record ? realPeopleCount : '+'}</span>
                                                     </div>
                                                     
-                                                    {onDeleteRecord && (
+                                                    {onDeleteRecord && record && (
                                                         <button 
                                                             onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }}
                                                             className="text-slate-300 hover:text-red-500 p-0.5 rounded hover:bg-red-50 transition-colors hidden group-hover:block"
@@ -165,30 +276,41 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 )}
 
                 {viewMode === 'report' && (
-                    <div className="max-w-4xl mx-auto">
+                    <div className="max-w-6xl mx-auto p-4">
                         <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-6 text-center">
-                            <h3 className="text-indigo-900 font-bold text-lg">Presenze Totali - {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
-                            <p className="text-indigo-600 text-xs mt-1">Conteggio basato sui registri di fine turno (escluso utente Cassa)</p>
+                            <h3 className="text-indigo-900 font-bold text-lg">Riepilogo Presenze - {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {attendanceStats.map((stat, idx) => (
-                                <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="text-2xl">{stat.icon}</div>
-                                        <div>
-                                            <p className="font-bold text-slate-800">{stat.name}</p>
-                                            <p className="text-xs text-slate-400 font-bold uppercase">Turno {stat.shift.toUpperCase()}</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {(['a', 'b', 'c', 'd'] as string[]).map(shiftKey => {
+                                const shiftData = reportData[shiftKey];
+                                const tillId = `T${shiftKey.toUpperCase()}`;
+                                const color = getShiftColor(tillId);
+
+                                return (
+                                    <div key={shiftKey} className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden flex flex-col">
+                                        <div className="p-3 text-white font-bold uppercase text-center tracking-wider" style={{ backgroundColor: color }}>
+                                            Turno {shiftKey.toUpperCase()}
+                                        </div>
+                                        <div className="p-0 flex-grow">
+                                            {shiftData.length === 0 ? (
+                                                <p className="text-center text-slate-400 py-4 text-xs italic">Nessun dato</p>
+                                            ) : (
+                                                <table className="w-full text-sm">
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {shiftData.map((person, idx) => (
+                                                            <tr key={idx} className="hover:bg-slate-50">
+                                                                <td className="p-3 text-slate-700 font-medium">{person.name}</td>
+                                                                <td className="p-3 text-right font-bold text-slate-900">{person.count}</td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="bg-indigo-100 text-indigo-700 font-black text-xl w-10 h-10 flex items-center justify-center rounded-full">
-                                        {stat.count}
-                                    </div>
-                                </div>
-                            ))}
-                            {attendanceStats.length === 0 && (
-                                <div className="col-span-full text-center py-10 text-slate-400">Nessuna presenza registrata per questo mese.</div>
-                            )}
+                                );
+                            })}
                         </div>
                     </div>
                 )}

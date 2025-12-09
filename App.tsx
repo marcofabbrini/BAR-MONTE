@@ -329,14 +329,15 @@ const App: React.FC = () => {
         }
     }, []);
     
-    const handleSaveAttendance = useCallback(async (tillId: string, presentStaffIds: string[]) => {
+    // Modificata per accettare una data opzionale (per modifiche admin)
+    const handleSaveAttendance = useCallback(async (tillId: string, presentStaffIds: string[], dateOverride?: string) => {
         try {
-            const today = new Date().toISOString().split('T')[0];
-            const docId = `${today}_${tillId}`; 
+            const dateToUse = dateOverride || new Date().toISOString().split('T')[0];
+            const docId = `${dateToUse}_${tillId}`; 
             
             await setDoc(doc(db, 'shift_attendance', docId), {
                 tillId,
-                date: today,
+                date: dateToUse,
                 timestamp: new Date().toISOString(),
                 presentStaffIds
             });
@@ -692,6 +693,7 @@ const App: React.FC = () => {
                 onUpdateShiftSettings={handleUpdateShiftSettings}
                 attendanceRecords={attendanceRecords}
                 onDeleteAttendance={handleDeleteAttendance}
+                onSaveAttendance={handleSaveAttendance}
             />;
             default: return <TillSelection 
                 tills={TILLS} 

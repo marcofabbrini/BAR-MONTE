@@ -56,6 +56,7 @@ interface AdminViewProps {
     
     attendanceRecords: AttendanceRecord[];
     onDeleteAttendance: (id: string) => Promise<void>;
+    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string) => Promise<void>;
 }
 
 type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'attendance';
@@ -71,7 +72,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     tombolaConfig, onNavigateToTombola,
     seasonalityConfig, onUpdateSeasonality,
     shiftSettings, onUpdateShiftSettings,
-    attendanceRecords, onDeleteAttendance
+    attendanceRecords, onDeleteAttendance, onSaveAttendance
 }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -336,7 +337,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
-                {activeTab === 'attendance' && <AttendanceCalendar attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} onDeleteRecord={onDeleteAttendance} />}
+                {activeTab === 'attendance' && <AttendanceCalendar attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} onDeleteRecord={onDeleteAttendance} onSaveAttendance={onSaveAttendance} isSuperAdmin={isSuperAdmin} />}
                 
                 {activeTab === 'settings' && (
                     <div className="space-y-6">
