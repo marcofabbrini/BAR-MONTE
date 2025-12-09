@@ -613,6 +613,7 @@ const App: React.FC = () => {
                 tombolaConfig={tombolaConfig} 
                 tombolaTickets={tombolaTickets} 
                 onBuyTombolaTicket={handleBuyTombolaTicket} 
+                attendanceRecords={attendanceRecords}
             />;
             case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
             case 'tombola': 

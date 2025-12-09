@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel, TombolaConfig, TombolaTicket } from '../types';
+import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel, TombolaConfig, TombolaTicket, AttendanceRecord } from '../types';
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
@@ -19,9 +19,10 @@ interface TillViewProps {
     tombolaConfig?: TombolaConfig;
     tombolaTickets?: TombolaTicket[];
     onBuyTombolaTicket?: (staffId: string, quantity: number) => Promise<void>;
+    attendanceRecords?: AttendanceRecord[];
 }
 
-const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet, tombolaConfig, tombolaTickets, onBuyTombolaTicket }) => {
+const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet, tombolaConfig, tombolaTickets, onBuyTombolaTicket, attendanceRecords }) => {
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
@@ -84,6 +85,28 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
     const cartTotal = useMemo(() => currentOrder.reduce((sum, item) => sum + item.product.price * item.quantity, 0), [currentOrder]);
     const cartItemCount = useMemo(() => currentOrder.reduce((sum, item) => sum + item.quantity, 0), [currentOrder]);
+
+    // Calcolo Quote Acqua (Mese Corrente) per la visualizzazione nella tabellina
+    const waterQuotas = useMemo(() => {
+        if (!attendanceRecords) return [];
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        const quotas = staffForShift
+            .filter(s => !s.name.toLowerCase().includes('cassa'))
+            .map(member => {
+                const count = attendanceRecords.filter(r => {
+                    const d = new Date(r.date);
+                    return d.getMonth() === currentMonth && 
+                           d.getFullYear() === currentYear && 
+                           r.presentStaffIds.includes(member.id);
+                }).length;
+                return { name: member.name, count, id: member.id };
+            })
+            .sort((a,b) => b.count - a.count);
+        return quotas;
+    }, [attendanceRecords, staffForShift]);
 
     // ATTENDANCE LOGIC
     useEffect(() => {
@@ -482,10 +505,36 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         )}
                         {activeTab === 'history' && (
                             <div className="max-w-3xl mx-auto bg-white/90 backdrop-blur rounded-2xl p-4 shadow-sm border border-slate-100">
+                                
+                                {/* Water Quotas Table - Current Month Snapshot */}
+                                {!selectedStaffId && waterQuotas.length > 0 && (
+                                    <div className="mb-6 bg-blue-50/50 rounded-xl border border-blue-100 p-4">
+                                        <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <span className="text-lg">💧</span> Quote Acqua (Mese Corrente)
+                                        </h4>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                            {waterQuotas.map(user => (
+                                                <div key={user.id} className="bg-white p-2 rounded-lg border border-blue-100 flex items-center justify-between shadow-sm">
+                                                    <span className="text-xs font-bold text-slate-700">{user.name}</span>
+                                                    <div className="flex items-center gap-1 bg-blue-100 px-2 py-0.5 rounded-full">
+                                                        <span className="text-sm">🥛</span>
+                                                        <span className="text-xs font-black text-blue-700">{user.count}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="mb-4 text-xs font-bold text-slate-400 uppercase text-center">
                                     {selectedStaffId ? `Storico di ${selectedStaffMember?.name}` : 'Storico Completo Cassa'}
                                 </div>
-                                <OrderHistory orders={ordersForHistory} staff={staffForShift} />
+                                <OrderHistory 
+                                    orders={ordersForHistory} 
+                                    staff={staffForShift} 
+                                    attendanceRecords={attendanceRecords} 
+                                    tillId={till.id}
+                                />
                             </div>
                         )}
                     </div>

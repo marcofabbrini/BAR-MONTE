@@ -1,14 +1,16 @@
 
 import React, { useState, useMemo } from 'react';
-import { Order, StaffMember } from '../types';
+import { Order, StaffMember, AttendanceRecord } from '../types';
 import { PrinterIcon } from './Icons';
 
 interface OrderHistoryProps {
     orders: Order[];
     staff: StaffMember[];
+    attendanceRecords?: AttendanceRecord[];
+    tillId?: string;
 }
 
-const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
+const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRecords, tillId }) => {
     
     // Helper per ottenere data locale YYYY-MM-DD
     const getLocalDateString = () => {
@@ -70,19 +72,45 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
 
     // Raggruppamento per dettaglio stampa
     const groupedOrders = useMemo(() => {
-        const groups: Record<string, { orders: Order[], total: number }> = {};
+        const groups: Record<string, { orders: Order[], total: number, waterQuotas: number }> = {};
         
         filteredOrders.forEach(order => {
             const name = order.staffName || 'Sconosciuto';
             if (!groups[name]) {
-                groups[name] = { orders: [], total: 0 };
+                groups[name] = { orders: [], total: 0, waterQuotas: 0 };
             }
             groups[name].orders.push(order);
             groups[name].total += order.total;
         });
 
+        // Add Water Quotas if applicable
+        if (attendanceRecords && tillId && startDate) {
+            staff.forEach(member => {
+                if (filterStaffId !== 'all' && member.id !== filterStaffId) return;
+                if (member.name.toLowerCase().includes('cassa')) return;
+
+                // Calcola presenze nel range selezionato
+                const count = attendanceRecords.filter(r => {
+                    const rDate = r.date;
+                    // Filtra per till se necessario (o globale se si vuole storico generale)
+                    if (r.tillId !== tillId) return false;
+                    
+                    const inRange = (!startDate || rDate >= startDate) && (!endDate || rDate <= endDate);
+                    return inRange && r.presentStaffIds.includes(member.id);
+                }).length;
+
+                if (count > 0) {
+                    const name = member.name;
+                    if (!groups[name]) {
+                        groups[name] = { orders: [], total: 0, waterQuotas: 0 };
+                    }
+                    groups[name].waterQuotas = count;
+                }
+            });
+        }
+
         return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
-    }, [filteredOrders]);
+    }, [filteredOrders, attendanceRecords, startDate, endDate, tillId, staff, filterStaffId]);
 
     const handlePrint = () => {
         window.print();
@@ -132,31 +160,35 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
             </div>
 
             {/* Lista Ordini (Vista a Schermo) */}
-            {filteredOrders.length === 0 ? (
-                <div className="text-center text-slate-400 mt-10"><p>Nessun ordine trovato.</p></div>
-            ) : (
-                <div className="space-y-4 max-h-[500px] overflow-y-auto">
-                    {filteredOrders.map(order => (
-                        <div key={order.id} className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
-                            <div className="flex justify-between items-start border-b border-slate-100 pb-2 mb-2">
-                                <div>
-                                    <p className="text-xs text-slate-500">{new Date(order.timestamp).toLocaleString('it-IT')}</p>
-                                    <p className="text-sm font-bold text-slate-700">{order.staffName}</p>
-                                </div>
-                                <p className="text-lg font-bold text-primary">€{order.total.toFixed(2)}</p>
+            <div className="space-y-4 max-h-[500px] overflow-y-auto">
+                {groupedOrders.length === 0 && <div className="text-center text-slate-400 mt-10"><p>Nessun ordine trovato.</p></div>}
+                
+                {groupedOrders.map(([name, data]) => (
+                    <div key={name} className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
+                        <div className="flex justify-between items-start border-b border-slate-100 pb-2 mb-2">
+                            <div>
+                                <p className="text-sm font-bold text-slate-700">{name}</p>
+                                <p className="text-xs text-slate-500">{data.orders.length} ordini</p>
                             </div>
-                            <ul className="space-y-1">
-                                {order.items.map(item => (
-                                    <li key={item.product.id} className="flex justify-between text-xs text-slate-600">
-                                        <span>{item.quantity} x {item.product.name}</span>
-                                        <span>€{(item.product.price * item.quantity).toFixed(2)}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                            <p className="text-lg font-bold text-primary">€{data.total.toFixed(2)}</p>
                         </div>
-                    ))}
-                </div>
-            )}
+                        <ul className="space-y-1 mb-2">
+                            {data.orders.map(order => (
+                                <li key={order.id} className="flex justify-between text-xs text-slate-600">
+                                    <span>{new Date(order.timestamp).toLocaleDateString()} - {order.items.length} art.</span>
+                                    <span>€{order.total.toFixed(2)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                        {data.waterQuotas > 0 && (
+                            <div className="mt-2 pt-2 border-t border-blue-100 flex justify-between items-center bg-blue-50 px-2 py-1 rounded">
+                                <span className="text-xs font-bold text-blue-700 flex items-center gap-1">🥛 Quote Acqua</span>
+                                <span className="text-xs font-black text-blue-800">{data.waterQuotas}</span>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
 
             {/* VISTA DI STAMPA DETTAGLIATA (Print Only) */}
             <div className="hidden print:block print:absolute print:top-0 print:left-0 print:w-full print:h-auto print:min-h-screen print:z-[9999] print:bg-white print:overflow-visible font-sans text-black">
@@ -207,6 +239,18 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
                                                 </td>
                                             </tr>
                                         ))}
+                                        {/* Water Quota Row in Print */}
+                                        {data.waterQuotas > 0 && (
+                                            <tr className="border-b border-blue-200 bg-blue-50/30">
+                                                <td className="py-2 align-top text-blue-500 font-bold">RIEPILOGO</td>
+                                                <td className="py-2 align-top font-bold text-slate-700 flex items-center gap-2">
+                                                    <span>🥛 Quote Acqua (Presenze nel periodo)</span>
+                                                </td>
+                                                <td className="py-2 align-top text-right font-black text-blue-700">
+                                                    {data.waterQuotas}
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

@@ -85,7 +85,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     };
 
     const handleOpenEdit = (date: string, tillId: string, currentRecord?: AttendanceRecord) => {
-        // Logica Permessi: SuperAdmin può editare tutto. Admin può editare solo se coincide turno (semplificazione: qui lasciamo aperto e ci fidiamo dell'auth)
         setEditingDate(date);
         setEditingTillId(tillId);
         
@@ -93,7 +92,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         if (currentRecord) {
             initialIds = [...currentRecord.presentStaffIds];
         } else {
-            // Se non c'è record, pre-selezioniamo la cassa se esiste
             const shift = tillId.replace('T', '').toLowerCase();
             const cassaUser = staff.find(s => s.shift === shift && s.name.toLowerCase().includes('cassa'));
             if(cassaUser) initialIds.push(cassaUser.id);
@@ -118,7 +116,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         setIsEditModalOpen(false);
     };
 
-    // Staff per il modale di editing
     const editingStaffList = useMemo(() => {
         if (!editingTillId) return [];
         const shift = editingTillId.replace('T', '').toLowerCase();
@@ -208,7 +205,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                         ))}
 
                         {Array.from({ length: startingBlankDays }).map((_, i) => (
-                            <div key={`blank-${i}`} className="min-h-[120px] bg-slate-50/30 border-r border-b border-slate-200"></div>
+                            <div key={`blank-${i}`} className="min-h-[160px] bg-slate-50/30 border-r border-b border-slate-200"></div>
                         ))}
 
                         {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -218,16 +215,15 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
                             return (
-                                <div key={dayNum} className={`min-h-[120px] p-2 border-r border-b border-slate-200 flex flex-col gap-1 ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
+                                <div key={dayNum} className={`min-h-[160px] p-2 border-r border-b border-slate-200 flex flex-col gap-1 ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
                                     <div className="flex justify-between items-start mb-1">
                                         <span className={`text-sm font-bold ${isToday ? 'text-indigo-600 bg-indigo-100 px-1.5 rounded' : 'text-slate-700'}`}>{dayNum}</span>
                                     </div>
                                     
-                                    <div className="flex flex-col gap-1 overflow-y-auto max-h-[100px] scrollbar-thin">
+                                    <div className="flex flex-col gap-1">
                                         {['TA', 'TB', 'TC', 'TD'].map(tillId => {
                                             const record = dayRecords.find(r => r.tillId === tillId);
-                                            // Mostra lo slot anche se vuoto per permettere l'inserimento (click to edit)
-                                            
+                                            const shiftLetter = tillId.replace('T', '');
                                             const color = getShiftColor(tillId);
                                             
                                             let realPeopleCount = 0;
@@ -239,7 +235,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     }).length;
                                             }
 
-                                            // Non mostrare slot vuoti se non c'è record e non è super admin (opzionale, qui mostriamo sempre se c'è record o se vogliamo permettere edit)
                                             if (!record && !isSuperAdmin) return null;
 
                                             return (
@@ -247,12 +242,18 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     key={tillId} 
                                                     onClick={() => handleOpenEdit(dateStr, tillId, record)}
                                                     className={`
-                                                        group relative flex items-center justify-between border rounded p-1.5 transition-all cursor-pointer
+                                                        group relative flex items-center justify-between border rounded p-1.5 transition-all cursor-pointer h-8
                                                         ${record ? 'bg-slate-50 hover:bg-white hover:shadow-md' : 'bg-transparent border-dashed border-slate-200 opacity-50 hover:opacity-100'}
                                                     `}
                                                 >
                                                     <div className="flex items-center gap-2">
-                                                        <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: color }}></div>
+                                                        {/* Dot con lettera Turno */}
+                                                        <div 
+                                                            className="w-5 h-5 rounded-full shadow-sm flex items-center justify-center text-[10px] text-white font-normal" 
+                                                            style={{ backgroundColor: color }}
+                                                        >
+                                                            {shiftLetter}
+                                                        </div>
                                                         <span className="text-xs font-bold text-slate-700">{record ? realPeopleCount : '+'}</span>
                                                     </div>
                                                     
