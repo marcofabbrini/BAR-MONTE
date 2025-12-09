@@ -159,67 +159,69 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff }) => {
             )}
 
             {/* VISTA DI STAMPA DETTAGLIATA (Print Only) */}
-            <div className="hidden print:block fixed inset-0 bg-white z-[9999] p-8 font-sans overflow-auto text-black">
-                <div className="flex justify-between items-end border-b-2 border-black pb-4 mb-6">
-                    <div>
-                        <h1 className="text-3xl font-black uppercase tracking-widest text-black">Resoconto</h1>
-                        <p className="text-sm font-bold text-gray-600 mt-1">Dettaglio Movimenti & Versamenti</p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-xs text-gray-500">Periodo</p>
-                        <p className="font-mono font-bold text-sm">{startDate || 'Inizio'} / {endDate || 'Oggi'}</p>
-                    </div>
-                </div>
-
-                <div className="space-y-8">
-                    {groupedOrders.map(([name, data]) => (
-                        <div key={name} className="break-inside-avoid">
-                            <div className="flex justify-between items-center bg-gray-100 border-t border-b border-gray-300 py-2 px-2 mb-2">
-                                <h3 className="font-black text-lg uppercase">{name}</h3>
-                                <span className="font-mono font-bold text-lg">€{data.total.toFixed(2)}</span>
-                            </div>
-                            
-                            <table className="w-full text-xs text-left mb-4">
-                                <thead>
-                                    <tr className="border-b border-gray-200">
-                                        <th className="py-1 w-24">Data/Ora</th>
-                                        <th className="py-1">Dettaglio Articoli</th>
-                                        <th className="py-1 text-right w-16">Totale</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {data.orders.map(order => (
-                                        <tr key={order.id} className="border-b border-gray-100">
-                                            <td className="py-1 align-top text-gray-500">
-                                                {new Date(order.timestamp).toLocaleDateString('it-IT')} <br/>
-                                                {new Date(order.timestamp).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}
-                                            </td>
-                                            <td className="py-1 align-top">
-                                                {order.items.map(i => (
-                                                    <span key={i.product.id} className="mr-3 inline-block">
-                                                        <b>{i.quantity}</b> {i.product.name}
-                                                    </span>
-                                                ))}
-                                            </td>
-                                            <td className="py-1 align-top text-right font-mono font-medium">
-                                                €{order.total.toFixed(2)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+            <div className="hidden print:block print:absolute print:top-0 print:left-0 print:w-full print:h-auto print:min-h-screen print:z-[9999] print:bg-white print:overflow-visible font-sans text-black">
+                <div className="max-w-[210mm] mx-auto p-8">
+                    <div className="flex justify-between items-end border-b-2 border-black pb-4 mb-6">
+                        <div>
+                            <h1 className="text-3xl font-black uppercase tracking-widest text-black">Resoconto</h1>
+                            <p className="text-sm font-bold text-gray-600 mt-1">Dettaglio Movimenti & Versamenti</p>
                         </div>
-                    ))}
-                </div>
-
-                <div className="mt-8 border-t-4 border-black pt-4 flex justify-between items-center break-inside-avoid">
-                    <div className="text-xs text-gray-400">
-                        Generato il {new Date().toLocaleString('it-IT')} <br/>
-                        Gestione Bar VVF
+                        <div className="text-right">
+                            <p className="text-xs text-gray-500">Periodo</p>
+                            <p className="font-mono font-bold text-sm">{startDate || 'Inizio'} / {endDate || 'Oggi'}</p>
+                        </div>
                     </div>
-                    <div className="text-right">
-                        <p className="text-sm font-bold uppercase text-gray-600">Totale Complessivo</p>
-                        <p className="text-4xl font-black tracking-tight">€{filteredTotal.toFixed(2)}</p>
+
+                    <div className="space-y-8">
+                        {groupedOrders.map(([name, data]) => (
+                            <div key={name} className="break-inside-avoid">
+                                <div className="flex justify-between items-center bg-gray-100 border-t border-b border-gray-300 py-2 px-2 mb-2">
+                                    <h3 className="font-black text-lg uppercase">{name}</h3>
+                                    <span className="font-mono font-bold text-lg">€{data.total.toFixed(2)}</span>
+                                </div>
+                                
+                                <table className="w-full text-xs text-left mb-4">
+                                    <thead>
+                                        <tr className="border-b border-gray-200">
+                                            <th className="py-1 w-24">Data/Ora</th>
+                                            <th className="py-1">Dettaglio Articoli</th>
+                                            <th className="py-1 text-right w-16">Totale</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {data.orders.map(order => (
+                                            <tr key={order.id} className="border-b border-gray-100">
+                                                <td className="py-1 align-top text-gray-500">
+                                                    {new Date(order.timestamp).toLocaleDateString('it-IT')} <br/>
+                                                    {new Date(order.timestamp).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}
+                                                </td>
+                                                <td className="py-1 align-top">
+                                                    {order.items.map(i => (
+                                                        <span key={i.product.id} className="mr-3 inline-block">
+                                                            <b>{i.quantity}</b> {i.product.name}
+                                                        </span>
+                                                    ))}
+                                                </td>
+                                                <td className="py-1 align-top text-right font-mono font-medium">
+                                                    €{order.total.toFixed(2)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="mt-8 border-t-4 border-black pt-4 flex justify-between items-center break-inside-avoid">
+                        <div className="text-xs text-gray-400">
+                            Generato il {new Date().toLocaleString('it-IT')} <br/>
+                            Gestione Bar VVF
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm font-bold uppercase text-gray-600">Totale Complessivo</p>
+                            <p className="text-4xl font-black tracking-tight">€{filteredTotal.toFixed(2)}</p>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -71,9 +72,15 @@ body {
 
 /* Stili specifici per la stampa */
 @media print {
-  @page { margin: 1cm; size: A4; }
+  @page { margin: 0.5cm; size: A4; }
   body { background: white; }
   header, nav, button, input, select, .no-print { display: none !important; }
+  /* Override per permettere al contenuto di espandersi in altezza */
+  html, body, #root { 
+    height: auto !important; 
+    min-height: auto !important;
+    overflow: visible !important; 
+  }
   .max-w-7xl { max-width: none !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
   .shadow-lg, .shadow-sm { box-shadow: none !important; }
   .border { border-color: #000 !important; border-width: 1px !important; }
