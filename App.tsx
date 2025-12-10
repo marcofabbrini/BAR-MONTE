@@ -13,8 +13,9 @@ import AnalottoView from './components/AnalottoView';
 import DiceGame from './components/DiceGame';
 import ShiftCalendar from './components/ShiftCalendar';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
-import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings, AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel, AttendanceRecord, GeneralSettings, AppNotification } from './types';
+import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AppNotification } from './types';
 import { BellIcon } from './components/Icons';
+import { AnalottoProvider, useAnalotto } from './contexts/AnalottoContext'; // Import Context
 
 type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice';
 
@@ -27,7 +28,8 @@ const shuffleArray = (array: any[]) => {
     return array;
 };
 
-const App: React.FC = () => {
+// Componente Wrapper interno per usare gli hooks del contesto
+const AppContent: React.FC = () => {
     const [view, setView] = useState<View>('selection');
     const [selectedTillId, setSelectedTillId] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -46,15 +48,22 @@ const App: React.FC = () => {
     // Attendance State
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
 
-    // Tombola State
+    // Tombola State (Da migrare prossimamente)
     const [tombolaConfig, setTombolaConfig] = useState<TombolaConfig | undefined>(undefined);
     const [tombolaTickets, setTombolaTickets] = useState<TombolaTicket[]>([]);
     const [tombolaWins, setTombolaWins] = useState<TombolaWin[]>([]);
 
-    // Analotto State
-    const [analottoConfig, setAnalottoConfig] = useState<AnalottoConfig | undefined>(undefined);
-    const [analottoBets, setAnalottoBets] = useState<AnalottoBet[]>([]);
-    const [analottoExtractions, setAnalottoExtractions] = useState<AnalottoExtraction[]>([]);
+    // ANALOTTO CONTEXT
+    const { 
+        config: analottoConfig, 
+        bets: analottoBets, 
+        extractions: analottoExtractions, 
+        placeBet: handlePlaceAnalottoBet,
+        confirmTicket: handleConfirmAnalottoTicket,
+        runExtraction: handleAnalottoExtraction,
+        updateConfig: handleUpdateAnalottoConfig,
+        transferFunds: handleTransferAnalottoFunds
+    } = useAnalotto();
 
     // Settings State
     const [seasonalityConfig, setSeasonalityConfig] = useState<SeasonalityConfig | undefined>(undefined);
@@ -109,39 +118,27 @@ const App: React.FC = () => {
 
     // NOTIFICATION LISTENER
     useEffect(() => {
-        // Ascolta solo notifiche create DOPO il caricamento della pagina per evitare spam all'apertura
         const sessionStart = new Date().toISOString();
-        
         const q = query(collection(db, 'notifications'), where('timestamp', '>', sessionStart), orderBy('timestamp', 'desc'));
         
         const unsubNotifications = onSnapshot(q, (snapshot) => {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
                     const notif = change.doc.data() as AppNotification;
-                    // Mostra Toast
                     setActiveToast(notif);
-                    
-                    // Suono Notifica (Ding)
                     try {
                         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                         audio.volume = 0.5;
                         audio.play().catch(e => console.log("Audio play blocked", e));
                     } catch(e) {}
 
-                    // Notifica Browser (Se autorizzata e app in background)
                     if (Notification.permission === 'granted' && document.visibilityState === 'hidden') {
-                        new Notification(notif.title, { 
-                            body: notif.body,
-                            icon: '/logo.png' 
-                        });
+                        new Notification(notif.title, { body: notif.body, icon: '/logo.png' });
                     }
-                    
-                    // Nascondi toast dopo 5 sec
                     setTimeout(() => setActiveToast(null), 5000);
                 }
             });
         });
-
         return () => unsubNotifications();
     }, []);
 
@@ -179,7 +176,6 @@ const App: React.FC = () => {
 
         const unsubSettings = onSnapshot(doc(db, 'settings', 'tillColors'), (d) => { if(d.exists()) setTillColors(d.data() as TillColors); });
         
-        // ATTENDANCE
         const unsubAttendance = onSnapshot(collection(db, 'shift_attendance'), (s) => setAttendanceRecords(s.docs.map(d => ({ ...d.data(), id: d.id } as AttendanceRecord))));
 
         // TOMBOLA
@@ -199,34 +195,14 @@ const App: React.FC = () => {
         const unsubTombolaTickets = onSnapshot(collection(db, 'tombola_tickets'), (s) => setTombolaTickets(s.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket))));
         const unsubTombolaWins = onSnapshot(collection(db, 'tombola_wins'), (s) => setTombolaWins(s.docs.map(d => ({...d.data(), id: d.id} as TombolaWin))));
 
-        // ANALOTTO LISTENERS
-        const unsubAnalottoConfig = onSnapshot(doc(db, 'analotto', 'config'), (d) => {
-            if (d.exists()) {
-                setAnalottoConfig(d.data() as AnalottoConfig);
-            } else {
-                setDoc(doc(db, 'analotto', 'config'), { 
-                    jackpot: 0, 
-                    lastExtraction: '',
-                    rules: "Regolamento Analotto VVF:\n1. Si scelgono da 1 a 10 numeri.\n2. Si sceglie su quali ruote puntare.\n3. L'estrazione avviene settimanalmente.\n4. Il montepremi è costituito dall'80% delle giocate.",
-                    extractionSchedule: "Ogni Venerdì sera"
-                });
-            }
-        });
-        const unsubAnalottoBets = onSnapshot(query(collection(db, 'analotto_bets'), orderBy('timestamp', 'desc')), (s) => setAnalottoBets(s.docs.map(d => ({...d.data(), id: d.id} as AnalottoBet))));
-        const unsubAnalottoExtractions = onSnapshot(query(collection(db, 'analotto_extractions'), orderBy('timestamp', 'desc')), (s) => setAnalottoExtractions(s.docs.map(d => ({...d.data(), id: d.id} as AnalottoExtraction))));
-        
+        // ANALOTTO REMOVED - Managed by Context
+
         const unsubSeasonality = onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { 
             if(d.exists()) {
                 setSeasonalityConfig(d.data() as SeasonalityConfig); 
             } else { 
                 setDoc(doc(db, 'settings', 'seasonality'), { 
-                    startDate: '', 
-                    endDate: '', 
-                    preset: 'custom',
-                    animationType: 'none',
-                    emojis: [],
-                    opacity: 0.5,
-                    backgroundColor: '#f8fafc' 
+                    startDate: '', endDate: '', preset: 'custom', animationType: 'none', emojis: [], opacity: 0.5, backgroundColor: '#f8fafc' 
                 }); 
             }
         });
@@ -237,11 +213,7 @@ const App: React.FC = () => {
             } else {
                 const today = new Date().toISOString().split('T')[0];
                 setDoc(doc(db, 'settings', 'shift'), {
-                    anchorDate: today,
-                    anchorShift: 'b',
-                    rcAnchorDate: '',
-                    rcAnchorShift: 'a',
-                    rcAnchorSubGroup: 1
+                    anchorDate: today, anchorShift: 'b', rcAnchorDate: '', rcAnchorShift: 'a', rcAnchorSubGroup: 1
                 });
             }
         });
@@ -257,7 +229,6 @@ const App: React.FC = () => {
         return () => { 
             unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); unsubAttendance();
             unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); 
-            unsubAnalottoConfig(); unsubAnalottoBets(); unsubAnalottoExtractions();
             unsubSeasonality(); unsubShiftSettings(); unsubGeneralSettings();
         };
     }, []);
@@ -327,7 +298,6 @@ const App: React.FC = () => {
             const last = new Date(tombolaConfig.lastExtraction).getTime();
             const diffHours = (now - last) / (1000 * 60 * 60);
             
-            // Automaticamente ogni 2 ore se non estratto manualmente
             if (diffHours >= 2) {
                 await handleManualTombolaExtraction();
             }
@@ -374,23 +344,20 @@ const App: React.FC = () => {
     const handleCompleteOrder = useCallback(async (newOrderData: Omit<Order, 'id'>) => {
         try {
             await runTransaction(db, async (t) => {
-                // 1. Get all product references first
                 const productRefs = newOrderData.items.map(item => doc(db, 'products', item.product.id));
                 const productDocs = await Promise.all(productRefs.map(ref => t.get(ref)));
 
-                // 2. Validate and prepare updates
                 productDocs.forEach((docSnap, index) => {
                     if (!docSnap.exists()) {
                         throw new Error(`Prodotto "${newOrderData.items[index].product.name}" non trovato nel database.`);
                     }
                     const data = docSnap.data();
-                    const currentStock = typeof data.stock === 'number' ? data.stock : Number(data.stock) || 0; // Ensure number
+                    const currentStock = typeof data.stock === 'number' ? data.stock : Number(data.stock) || 0;
                     const quantityToSubtract = newOrderData.items[index].quantity;
                     
                     t.update(productRefs[index], { stock: currentStock - quantityToSubtract });
                 });
 
-                // 3. Create Order
                 const orderRef = doc(collection(db, 'orders'));
                 t.set(orderRef, { ...newOrderData, id: orderRef.id });
             });
@@ -486,58 +453,7 @@ const App: React.FC = () => {
         } catch (e) { console.error(e); throw e; }
     };
     
-    const handlePlaceAnalottoBet = async (betData: Omit<AnalottoBet, 'id' | 'timestamp'>) => {
-        try {
-            await runTransaction(db, async (t) => {
-                const configRef = doc(db, 'analotto', 'config');
-                const configSnap = await t.get(configRef); // Read First
-                const currentJackpot = configSnap.exists() ? (configSnap.data().jackpot || 0) : 0;
-
-                const betRef = doc(collection(db, 'analotto_bets'));
-                t.set(betRef, { ...betData, timestamp: new Date().toISOString() }); // Write
-
-                const jackpotPart = betData.amount * 0.8;
-                const barPart = betData.amount * 0.2;
-
-                t.set(configRef, { jackpot: currentJackpot + jackpotPart }, { merge: true }); // Write
-
-                const cashRef = doc(collection(db, 'cash_movements'));
-                t.set(cashRef, { amount: betData.amount, reason: `Analotto: Giocata (${betData.playerName})`, timestamp: new Date().toISOString(), type: 'deposit', category: 'analotto' });
-                
-                const barCashRef = doc(collection(db, 'cash_movements'));
-                t.set(barCashRef, { amount: barPart, reason: `Utile Analotto (20%)`, timestamp: new Date().toISOString(), type: 'deposit', category: 'bar' });
-            });
-        } catch (e) { console.error("Errore giocata analotto:", e); throw e; }
-    };
-
-    const handleConfirmAnalottoTicket = async (ticketId: string, numbers: number[], wheels: AnalottoWheel[]) => {
-        try {
-            await updateDoc(doc(db, 'analotto_bets', ticketId), {
-                numbers,
-                wheels,
-                status: 'active'
-            });
-        } catch (e) { console.error("Errore conferma ticket:", e); throw e; }
-    };
-
-    const handleAnalottoExtraction = async () => {
-        if (!isSuperAdmin) return;
-        try {
-            const wheels: AnalottoWheel[] = ['APS', 'Campagnola', 'Autoscala', 'Autobotte', 'Direttivo'];
-            const extractionData: Record<string, number[]> = {};
-            wheels.forEach(wheel => {
-                const nums = new Set<number>();
-                while(nums.size < 5) nums.add(Math.floor(Math.random() * 90) + 1);
-                extractionData[wheel] = Array.from(nums);
-            });
-            await addDoc(collection(db, 'analotto_extractions'), { timestamp: new Date().toISOString(), numbers: extractionData });
-            await updateDoc(doc(db, 'analotto', 'config'), { lastExtraction: new Date().toISOString() });
-        } catch (e) { console.error(e); throw e; }
-    };
-
-    const handleUpdateAnalottoConfig = async (newConfig: Partial<AnalottoConfig>) => {
-        await setDoc(doc(db, 'analotto', 'config'), newConfig, { merge: true });
-    };
+    // ANALOTTO FUNCTIONS REMOVED (Replaced by Context)
 
     const handleRefundTombolaTicket = async (ticketId: string) => {
         try {
@@ -599,23 +515,23 @@ const App: React.FC = () => {
     const handleUpdateTombolaConfig = async (cfg: Partial<TombolaConfig>) => { await setDoc(doc(db, 'tombola', 'config'), cfg, { merge: true }); };
     const handleTombolaStart = async () => { 
         await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() });
-        // Invia Notifica a tutti
         await handleSendNotification("TOMBOLA INIZIATA! 🎟️", "L'estrazione è partita. Corri a controllare la tua cartella!", "all");
     };
 
     const handleTransferGameFunds = async (amount: number, gameName: string) => {
-        if (amount <= 0) return;
-        try {
-            await runTransaction(db, async (t) => {
-                if (gameName.toLowerCase().includes('tombola')) {
+        if (gameName.toLowerCase().includes('analotto')) {
+            await handleTransferAnalottoFunds(amount);
+        } else {
+            // Logica legacy per Tombola (da migrare poi)
+            if (amount <= 0) return;
+            try {
+                await runTransaction(db, async (t) => {
                     t.update(doc(db, 'tombola', 'config'), { jackpot: 0 });
-                } else if (gameName.toLowerCase().includes('analotto')) {
-                    t.update(doc(db, 'analotto', 'config'), { jackpot: 0 });
-                }
-                const cashRef = doc(collection(db, 'cash_movements'));
-                t.set(cashRef, { amount: amount, reason: `Versamento utile ${gameName}`, timestamp: new Date().toISOString(), type: 'deposit', category: 'bar', isDeleted: false });
-            });
-        } catch (error) { console.error("Error transferring funds:", error); }
+                    const cashRef = doc(collection(db, 'cash_movements'));
+                    t.set(cashRef, { amount: amount, reason: `Versamento utile ${gameName}`, timestamp: new Date().toISOString(), type: 'deposit', category: 'bar', isDeleted: false });
+                });
+            } catch (error) { console.error("Error transferring funds:", error); }
+        }
     };
 
     const addProduct = async (d: any) => { await addDoc(collection(db, 'products'), { ...d, createdAt: new Date().toISOString(), createdBy: currentUser?.email || 'admin' }); };
@@ -626,13 +542,8 @@ const App: React.FC = () => {
     const deleteStaff = async (id: string) => { await deleteDoc(doc(db, 'staff', id)); };
     const addCashMovement = async (d: any) => { await addDoc(collection(db, 'cash_movements'), d); };
     const updateCashMovement = async (m: CashMovement) => { const { id, ...d } = m; await updateDoc(doc(db, 'cash_movements', id), d); };
-    
-    // SOFT DELETE
     const deleteCashMovement = async (id: string, email: string) => { await updateDoc(doc(db, 'cash_movements', id), { isDeleted: true, deletedBy: email, deletedAt: new Date().toISOString() }); };
-    
-    // HARD DELETE (PERMANENT)
     const permanentDeleteMovement = async (id: string) => { await deleteDoc(doc(db, 'cash_movements', id)); };
-
     const updateTillColors = async (c: TillColors) => { await setDoc(doc(db, 'settings', 'tillColors'), c, { merge: true }); };
     const deleteOrders = async (ids: string[], email: string) => { const batch = writeBatch(db); ids.forEach(id => batch.update(doc(db, 'orders', id), { isDeleted: true, deletedBy: email, deletedAt: new Date().toISOString() })); await batch.commit(); };
     const permanentDeleteOrder = async (id: string) => { await deleteDoc(doc(db, 'orders', id)); };
@@ -640,7 +551,6 @@ const App: React.FC = () => {
     const handleStockPurchase = async (pid: string, qty: number, cost: number) => { const pRef = doc(db, 'products', pid); const pSnap = await getDoc(pRef); if(pSnap.exists()) { await updateDoc(pRef, { stock: pSnap.data().stock + qty, costPrice: cost }); await addDoc(collection(db, 'cash_movements'), { amount: qty*cost, reason: `Acquisto Stock: ${pSnap.data().name}`, timestamp: new Date().toISOString(), type: 'withdrawal', category: 'bar' }); } };
     const handleStockCorrection = async (pid: string, stock: number) => { await updateDoc(doc(db, 'products', pid), { stock }); };
     
-    // RESET CASH (Differenziato per Bar e Giochi)
     const handleResetCash = async (type: 'bar' | 'games') => { 
         try {
             const batch = writeBatch(db);
@@ -649,20 +559,13 @@ const App: React.FC = () => {
                 if (type === 'games') return (m.category === 'tombola' || m.category === 'analotto');
                 return false;
             });
-
             movementsToReset.forEach(m => batch.update(doc(db, 'cash_movements', m.id), { amount: 0, reason: m.reason + ' (RESET)' }));
-            
-            // Se resettiamo i giochi, dobbiamo azzerare anche i Jackpot nel DB
             if (type === 'games') {
                 batch.update(doc(db, 'tombola', 'config'), { jackpot: 0 });
                 batch.update(doc(db, 'analotto', 'config'), { jackpot: 0 });
             }
-
             await batch.commit();
-        } catch (e) {
-            console.error("Errore reset cassa:", e);
-            throw e;
-        }
+        } catch (e) { console.error("Errore reset cassa:", e); throw e; }
     };
 
     const handleMassDelete = async (date: string, type: 'orders'|'movements') => { const q = query(collection(db, type === 'orders' ? 'orders' : 'cash_movements'), where('timestamp', '<=', new Date(date).toISOString())); const s = await getDocs(q); const batch = writeBatch(db); s.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); };
@@ -682,6 +585,7 @@ const App: React.FC = () => {
                 onCompleteOrder={handleCompleteOrder} 
                 tillColors={tillColors} 
                 onSaveAttendance={handleSaveAttendance} 
+                // Passa le funzioni del contesto
                 onPlaceAnalottoBet={handlePlaceAnalottoBet} 
                 tombolaConfig={tombolaConfig} 
                 tombolaTickets={tombolaTickets} 
@@ -780,6 +684,15 @@ const App: React.FC = () => {
             )}
             {renderContent()}
         </div>
+    );
+};
+
+// Main App Component with Context Providers
+const App: React.FC = () => {
+    return (
+        <AnalottoProvider>
+            <AppContent />
+        </AnalottoProvider>
     );
 };
 
