@@ -12,13 +12,14 @@ import GamesHub from './components/GamesHub';
 import AnalottoView from './components/AnalottoView';
 import DiceGame from './components/DiceGame';
 import ShiftCalendar from './components/ShiftCalendar';
+import AttendanceCalendar from './components/AttendanceCalendar';
 import { TILLS } from './constants';
 import { BellIcon } from './components/Icons';
 import { AnalottoProvider, useAnalotto } from './contexts/AnalottoContext';
 import { TombolaProvider, useTombola } from './contexts/TombolaContext';
 import { BarProvider, useBar } from './contexts/BarContext';
 
-type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice';
+type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice' | 'attendance_view';
 
 const AppContent: React.FC = () => {
     const [view, setView] = useState<View>('selection');
@@ -128,6 +129,7 @@ const AppContent: React.FC = () => {
             case 'dice': return <DiceGame onGoBack={() => setView('selection')} staff={staff} />;
             case 'games': return <GamesHub onGoBack={() => setView('selection')} onPlayTombola={() => setView('tombola')} onPlayAnalotto={() => setView('analotto')} onPlayDice={() => setView('dice')} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} />;
             case 'calendar': return <ShiftCalendar onGoBack={() => setView('selection')} tillColors={tillColors} shiftSettings={shiftSettings} />;
+            case 'attendance_view': return <AttendanceCalendar onGoBack={() => setView('selection')} attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} isSuperAdmin={false} shiftSettings={shiftSettings} readOnly={true} />;
             case 'admin': return <AdminView 
                 onGoBack={() => setView('selection')} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements}
                 onUpdateTillColors={updateTillColors} onDeleteOrders={(ids, em) => deleteOrders(ids, em)} onPermanentDeleteOrder={permanentDeleteOrder} onUpdateOrder={updateOrder}
@@ -144,7 +146,7 @@ const AppContent: React.FC = () => {
                 generalSettings={generalSettings} onUpdateGeneralSettings={updateGeneralSettings}
                 onSendNotification={(t,b,tg) => sendNotification(t, b, currentUser?.email || 'Sistema')}
             />;
-            case 'selection': default: return <TillSelection tills={TILLS} onSelectTill={(id) => { setSelectedTillId(id); setView('till'); }} onSelectReports={() => setView('reports')} onSelectAdmin={() => setView('admin')} onSelectGames={() => setView('games')} onSelectCalendar={() => setView('calendar')} tillColors={tillColors} seasonalityConfig={seasonalityConfig} shiftSettings={shiftSettings} tombolaConfig={tombolaConfig} isSuperAdmin={isSuperAdmin} notificationPermission={notificationPermission} onRequestNotification={requestNotificationPermission} />;
+            case 'selection': default: return <TillSelection tills={TILLS} onSelectTill={(id) => { setSelectedTillId(id); setView('till'); }} onSelectReports={() => setView('reports')} onSelectAdmin={() => setView('admin')} onSelectGames={() => setView('games')} onSelectCalendar={() => setView('calendar')} onSelectAttendance={() => setView('attendance_view')} tillColors={tillColors} seasonalityConfig={seasonalityConfig} shiftSettings={shiftSettings} tombolaConfig={tombolaConfig} isSuperAdmin={isSuperAdmin} notificationPermission={notificationPermission} onRequestNotification={requestNotificationPermission} />;
         }
     };
 

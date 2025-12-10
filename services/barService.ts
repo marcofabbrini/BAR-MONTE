@@ -72,8 +72,8 @@ export const BarService = {
         return onSnapshot(doc(db, 'settings', 'shift'), (d) => {
             if(d.exists()) onUpdate(d.data() as ShiftSettings);
             else {
-                const today = new Date().toISOString().split('T')[0];
-                setDoc(doc(db, 'settings', 'shift'), { anchorDate: today, anchorShift: 'b', rcAnchorDate: '', rcAnchorShift: 'a', rcAnchorSubGroup: 1 });
+                // Default: 10 Dicembre 2025 era Turno D (Giorno)
+                setDoc(doc(db, 'settings', 'shift'), { anchorDate: '2025-12-10', anchorShift: 'd', rcAnchorDate: '', rcAnchorShift: 'a', rcAnchorSubGroup: 1 });
             }
         });
     },

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings } from '../types';
-import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon } from './Icons';
+import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon } from './Icons';
 
 interface AttendanceCalendarProps {
     attendanceRecords: AttendanceRecord[];
@@ -11,9 +11,11 @@ interface AttendanceCalendarProps {
     onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string) => Promise<void>;
     isSuperAdmin?: boolean;
     shiftSettings?: ShiftSettings;
+    readOnly?: boolean;
+    onGoBack?: () => void;
 }
 
-const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord, onSaveAttendance, isSuperAdmin, shiftSettings }) => {
+const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord, onSaveAttendance, isSuperAdmin, shiftSettings, readOnly, onGoBack }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'calendar' | 'report'>('calendar');
     
@@ -46,31 +48,27 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         return tillColors[tillId] || defaultColors[tillId] || '#94a3b8';
     };
 
-    // Helper per escludere l'utente "Cassa"
     const isRealPerson = (name: string) => !name.toLowerCase().includes('cassa');
 
-    // LOGICA CALCOLO TURNI (Copiata da ShiftCalendar per coerenza)
     const getShiftsForDate = (date: Date) => {
         const anchorDateStr = shiftSettings?.anchorDate || new Date().toISOString().split('T')[0];
         const anchorShift = shiftSettings?.anchorShift || 'b';
 
         const anchorDate = new Date(anchorDateStr);
-        anchorDate.setHours(12, 0, 0, 0); // Fix DST
+        anchorDate.setHours(12, 0, 0, 0); 
         
         const targetDate = new Date(date);
-        targetDate.setHours(12, 0, 0, 0); // Fix DST
+        targetDate.setHours(12, 0, 0, 0); 
         
         const diffTime = targetDate.getTime() - anchorDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); // Usa round
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
         
         const shifts = ['A', 'B', 'C', 'D'];
         const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
 
-        // Calcolo Turno Giorno
         let dayIndex = (anchorIndex + diffDays) % 4;
         if (dayIndex < 0) dayIndex += 4;
         
-        // VVF Standard: 12-24 12-48. Notte è quello precedente nella sequenza logica del giorno.
         let nightIndex = dayIndex - 1;
         if (nightIndex < 0) nightIndex += 4;
 
@@ -80,7 +78,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         };
     };
 
-    // Report Tabellare
     const reportData = useMemo(() => {
         const statsByShift: Record<string, { name: string, count: number }[]> = {
             'a': [], 'b': [], 'c': [], 'd': []
@@ -98,7 +95,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             return d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear();
         });
 
-        // Calcola conteggi
         Object.entries(staffByShift).forEach(([shift, members]) => {
             statsByShift[shift] = members.map(m => {
                 const count = recordsInMonth.filter(r => r.presentStaffIds.includes(m.id)).length;
@@ -110,13 +106,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     }, [attendanceRecords, staff, currentDate]);
 
     const handleDelete = async (id: string) => {
-        if (!onDeleteRecord) return;
+        if (!onDeleteRecord || readOnly) return;
         if (window.confirm("Vuoi resettare le presenze per questo turno specifico?")) {
             await onDeleteRecord(id);
         }
     };
 
     const handleOpenEdit = (date: string, tillId: string, currentRecord?: AttendanceRecord) => {
+        if (readOnly) return;
         setEditingDate(date);
         setEditingTillId(tillId);
         
@@ -135,7 +132,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const toggleEditingPresence = (id: string) => {
         const member = staff.find(s => s.id === id);
-        if (member && member.name.toLowerCase().includes('cassa')) return; // Cassa bloccata
+        if (member && member.name.toLowerCase().includes('cassa')) return;
 
         setEditingPresentIds(prev => 
             prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
@@ -160,7 +157,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         });
     }, [staff, editingTillId]);
 
-    // Helper per le label (Desktop vs Mobile)
     const getSlotLabel = (type: 'smontante' | 'giorno' | 'notte') => {
         switch(type) {
             case 'smontante': return { full: 'Smontante', short: 'S' };
@@ -172,7 +168,15 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col relative">
             
-            {/* EDIT MODAL */}
+            {onGoBack && (
+                <div className="p-4 border-b border-slate-200 bg-white sticky top-0 z-20 flex items-center gap-2">
+                    <button onClick={onGoBack} className="flex items-center gap-1 font-bold text-slate-500 hover:text-slate-800">
+                        <BackArrowIcon className="h-5 w-5" /> Indietro
+                    </button>
+                    <h1 className="text-xl font-bold text-slate-800 ml-4">Calendario Presenze</h1>
+                </div>
+            )}
+
             {isEditModalOpen && (
                 <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
@@ -253,38 +257,18 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             const dayNum = i + 1;
                             const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
                             const dateStr = dateObj.toISOString().split('T')[0];
-                            
                             const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
-                            // Calcolo turno Giorno/Notte corrente (es. B Day, B Night)
                             const shifts = getShiftsForDate(dateObj);
-                            
-                            // Calcolo turno Notte precedente (quello che smonta alle 8:00)
                             const prevDate = new Date(dateObj);
                             prevDate.setDate(prevDate.getDate() - 1);
                             const prevDateStr = prevDate.toISOString().split('T')[0];
                             const prevShifts = getShiftsForDate(prevDate);
                             
-                            // Definiamo i 3 slot cronologici
                             const timeSlots = [
-                                {
-                                    id: 'slot1',
-                                    shift: prevShifts.night,
-                                    label: getSlotLabel('smontante'),
-                                    dateRef: prevDateStr // Record di Ieri
-                                },
-                                {
-                                    id: 'slot2',
-                                    shift: shifts.day,
-                                    label: getSlotLabel('giorno'),
-                                    dateRef: dateStr // Record di Oggi
-                                },
-                                {
-                                    id: 'slot3',
-                                    shift: shifts.night,
-                                    label: getSlotLabel('notte'),
-                                    dateRef: dateStr // Record di Oggi (o Domani a seconda della convenzione)
-                                }
+                                { id: 'slot1', shift: prevShifts.night, label: getSlotLabel('smontante'), dateRef: prevDateStr },
+                                { id: 'slot2', shift: shifts.day, label: getSlotLabel('giorno'), dateRef: dateStr },
+                                { id: 'slot3', shift: shifts.night, label: getSlotLabel('notte'), dateRef: dateStr }
                             ];
 
                             return (
@@ -299,8 +283,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                         {timeSlots.map((slot, idx) => {
                                             const tillId = `T${slot.shift}`;
                                             const color = getShiftColor(tillId);
-                                            
-                                            // Cerca il record specifico per la data corretta
                                             const record = attendanceRecords.find(r => r.date === slot.dateRef && r.tillId === tillId);
                                             
                                             let realPeopleCount = 0;
@@ -312,26 +294,24 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     }).length;
                                             }
 
-                                            // Mostra se c'è un record o se sei admin
-                                            if (!record && !isSuperAdmin) return null;
+                                            if (!record && !isSuperAdmin && readOnly) return null; // Show even empty slots to admins, but hide for users if empty
 
                                             return (
                                                 <div 
                                                     key={`${dayNum}-${idx}`} 
                                                     onClick={() => handleOpenEdit(slot.dateRef, tillId, record)}
                                                     className={`
-                                                        group relative flex items-center justify-between border rounded p-1 transition-all cursor-pointer h-8
+                                                        group relative flex items-center justify-between border rounded p-1 transition-all h-8
                                                         ${record ? 'bg-slate-50 hover:bg-white hover:shadow-md' : 'bg-transparent border-dashed border-slate-200 opacity-40 hover:opacity-100'}
+                                                        ${readOnly ? 'cursor-default pointer-events-none' : 'cursor-pointer'}
                                                     `}
                                                 >
                                                     <div className="flex items-center gap-2 w-full">
-                                                        {/* Label (Smontante/Giorno/Notte su PC, S/G/N su Mobile) */}
                                                         <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase w-6 md:w-auto md:min-w-[60px]">
                                                             <span className="md:hidden">{slot.label.short}</span>
                                                             <span className="hidden md:inline">{slot.label.full}</span>
                                                         </span>
                                                         
-                                                        {/* Dot con lettera Turno - Allineamento Ottico Fix */}
                                                         <div 
                                                             className="w-5 h-5 rounded-full shadow-sm flex items-center justify-center text-[10px] text-white font-normal shrink-0 leading-none pt-[1px]" 
                                                             style={{ backgroundColor: color }}
@@ -339,11 +319,11 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                             {slot.shift}
                                                         </div>
                                                         <span className="text-xs font-bold text-slate-700 flex-grow text-right pr-1 leading-none">
-                                                            {record ? realPeopleCount : '+'}
+                                                            {record ? realPeopleCount : (readOnly ? '-' : '+')}
                                                         </span>
                                                     </div>
                                                     
-                                                    {onDeleteRecord && record && (
+                                                    {!readOnly && onDeleteRecord && record && (
                                                         <button 
                                                             onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }}
                                                             className="absolute -right-1 -top-1 text-slate-300 hover:text-red-500 bg-white shadow-sm border border-slate-100 p-0.5 rounded-full transition-colors hidden group-hover:block"
