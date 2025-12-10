@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { TillColors, ShiftSettings } from '../types';
 import { BackArrowIcon, CalendarIcon } from './Icons';
@@ -55,36 +54,28 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         // Data EFFICACE per il calcolo del ciclo.
         // Se è turno di GIORNO, la data è quella corrente.
         // Se è turno di NOTTE, la data efficace è quella del GIORNO PRECEDENTE (inizio del blocco lavorativo 12-24).
-        // Esempio: A lavora Giorno 11 (8-20) e Notte 12 (20-8). Il "Salto" è associato al blocco iniziato l'11.
         const effectiveDate = new Date(date);
         effectiveDate.setHours(12, 0, 0, 0);
         if (type === 'night') {
             effectiveDate.setDate(effectiveDate.getDate() - 1);
         }
 
-        // Calcolo Base Date: quando questo specifico turno 'shift' sarebbe stato Giorno rispetto all'ancora.
+        // Calcolo Base Date
         const shifts = ['A', 'B', 'C', 'D'];
         const shiftIndex = shifts.indexOf(shift.toUpperCase());
         const anchorShiftIndex = shifts.indexOf((shiftSettings.rcAnchorShift || 'A').toUpperCase());
         
-        // Offset in giorni all'interno del ciclo di 4 giorni
         const shiftOffset = shiftIndex - anchorShiftIndex;
         
-        // Proiettiamo la data di ancoraggio per allinearla allo shift corrente
         const baseDateForShift = new Date(anchorDate);
         baseDateForShift.setDate(baseDateForShift.getDate() + shiftOffset);
         
-        // Calcoliamo la differenza giorni tra la data efficace e la data base proiettata
         const diffTime = effectiveDate.getTime() - baseDateForShift.getTime();
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         
-        // Ogni 4 giorni scatta una nuova rotazione (A, B, C, D sono un blocco, poi si ricomincia con indice +1)
         const cycles = Math.floor(diffDays / 4);
-        
-        // Calcolo Gruppo (1-8)
         const anchorSubGroup = shiftSettings.rcAnchorSubGroup || 1;
         
-        // Modulo 8 gestendo numeri negativi
         let currentSubGroup = (anchorSubGroup + cycles) % 8;
         if (currentSubGroup <= 0) currentSubGroup += 8;
         
@@ -121,16 +112,12 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
     const renderShiftRow = (shift: string, type: 'day' | 'night', isDimmed: boolean, date: Date) => {
         
         const restingGroup = getRestingSubGroup(shift, date, type);
-        
-        // Determina se questo specifico utente è a riposo
         const isMyRest = userSubGroup !== 'none' && restingGroup === userSubGroup;
         const showAsRest = isMyRest;
 
         const color = getShiftColor(shift);
         const icon = showAsRest ? '💤' : (type === 'day' ? '☀️' : '🌙');
         const labelText = showAsRest ? 'SALTO' : (type === 'day' ? 'Giorno' : 'Notte');
-        
-        // Visualizzazione combinata (es. A1, B5)
         const displayShift = restingGroup ? `${shift}${restingGroup}` : shift;
 
         // Colore Sfondo
@@ -145,15 +132,15 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         return (
             <div 
                 className={`
-                    rounded px-1 md:px-2 py-1 shadow-sm border 
+                    rounded shadow-sm border overflow-hidden
                     flex items-center justify-center md:justify-between
-                    transition-all duration-300
+                    transition-all duration-300 w-full
                     ${bgColor}
                     ${isDimmed ? 'opacity-10 grayscale' : 'opacity-100'}
                 `}
             >
                 {/* DESKTOP VIEW */}
-                <div className="hidden md:flex items-center w-full justify-between">
+                <div className="hidden md:flex items-center w-full justify-between px-2 py-1">
                     <span className="text-xs font-bold text-slate-600 flex items-center gap-1">
                         <span className="text-lg leading-none">{icon}</span> 
                         {labelText}
@@ -166,13 +153,13 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                     </span>
                 </div>
 
-                {/* MOBILE VIEW */}
-                <div className="md:hidden relative w-full h-7 flex items-center justify-center">
-                    <span className="font-black text-lg leading-none tracking-tighter" style={textStyle}>
-                        {showAsRest ? 'S' : displayShift}
+                {/* MOBILE VIEW FIX - Flex Column per centrare tutto */}
+                <div className="md:hidden flex flex-col items-center justify-center w-full py-1">
+                    <span className="text-[10px] opacity-60 leading-none mb-0.5">
+                        {icon}
                     </span>
-                    <span className="absolute -top-0.5 -right-0.5 text-[8px] opacity-60 flex flex-col items-end leading-tight">
-                        <span>{icon}</span>
+                    <span className="font-black text-sm leading-none tracking-tighter" style={textStyle}>
+                        {showAsRest ? 'S' : displayShift}
                     </span>
                 </div>
             </div>
@@ -253,7 +240,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
 
                     <div className="grid grid-cols-7 auto-rows-fr">
                         {Array.from({ length: startingBlankDays }).map((_, i) => (
-                            <div key={`blank-${i}`} className="bg-slate-50/50 border-b border-r border-slate-100 min-h-[80px] md:min-h-[100px]"></div>
+                            <div key={`blank-${i}`} className="bg-slate-50/50 border-b border-r border-slate-100 min-h-[100px] md:min-h-[120px]"></div>
                         ))}
 
                         {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -270,17 +257,19 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                                 <div 
                                     key={dayNum} 
                                     className={`
-                                        relative border-b border-r border-slate-100 min-h-[80px] md:min-h-[100px] p-1 md:p-2 flex flex-col gap-1 transition-all duration-300
+                                        relative border-b border-r border-slate-100 min-h-[100px] md:min-h-[120px] p-1 md:p-2 flex flex-col gap-1 transition-all duration-300
                                         ${isToday ? 'bg-green-50 border-green-400 ring-1 ring-inset ring-green-500 shadow-md z-10' : 'bg-white hover:bg-slate-50'}
                                     `}
                                 >
-                                    <div className="flex justify-between items-start">
-                                        <span className={`text-xs md:text-sm font-bold mb-1 md:mb-2 ${isToday ? 'text-green-800' : 'text-slate-700'}`}>{dayNum}</span>
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className={`text-xs md:text-sm font-bold ${isToday ? 'text-green-800' : 'text-slate-700'}`}>{dayNum}</span>
                                         {isToday && <span className="text-[8px] md:text-[9px] font-black text-green-700 uppercase bg-green-200 px-1 rounded hidden md:inline">OGGI</span>}
                                     </div>
                                     
-                                    {renderShiftRow(shifts.day, 'day', isDayDimmed, date)}
-                                    {renderShiftRow(shifts.night, 'night', isNightDimmed, date)}
+                                    <div className="flex flex-col gap-1 flex-grow justify-center">
+                                        {renderShiftRow(shifts.day, 'day', isDayDimmed, date)}
+                                        {renderShiftRow(shifts.night, 'night', isNightDimmed, date)}
+                                    </div>
                                     
                                 </div>
                             );

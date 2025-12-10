@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel, TombolaConfig, TombolaTicket } from '../types';
+import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel, TombolaConfig, TombolaTicket, AttendanceRecord } from '../types';
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
@@ -19,9 +19,10 @@ interface TillViewProps {
     tombolaConfig?: TombolaConfig;
     tombolaTickets?: TombolaTicket[];
     onBuyTombolaTicket?: (staffId: string, quantity: number) => Promise<void>;
+    attendanceRecords?: AttendanceRecord[];
 }
 
-const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet, tombolaConfig, tombolaTickets, onBuyTombolaTicket }) => {
+const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet, tombolaConfig, tombolaTickets, onBuyTombolaTicket, attendanceRecords }) => {
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
@@ -35,6 +36,18 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
     const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift), [allStaff, till.shift]);
+    
+    // Ordinamento Staff: "Cassa" per primo, poi alfabetico
+    const sortedStaffForShift = useMemo(() => {
+        return [...staffForShift].sort((a, b) => {
+            const aIsCassa = a.name.toLowerCase().includes('cassa');
+            const bIsCassa = b.name.toLowerCase().includes('cassa');
+            if (aIsCassa && !bIsCassa) return -1;
+            if (!aIsCassa && bIsCassa) return 1;
+            return a.name.localeCompare(b.name);
+        });
+    }, [staffForShift]);
+
     const selectedStaffMember = useMemo(() => allStaff.find(s => s.id === selectedStaffId), [allStaff, selectedStaffId]);
     
     const ordersForHistory = useMemo(() => {
@@ -73,22 +86,60 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     const cartTotal = useMemo(() => currentOrder.reduce((sum, item) => sum + item.product.price * item.quantity, 0), [currentOrder]);
     const cartItemCount = useMemo(() => currentOrder.reduce((sum, item) => sum + item.quantity, 0), [currentOrder]);
 
+    // Calcolo Quote Acqua (Mese Corrente) per la visualizzazione nella tabellina
+    const waterQuotas = useMemo(() => {
+        if (!attendanceRecords) return [];
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        const quotas = staffForShift
+            .filter(s => !s.name.toLowerCase().includes('cassa'))
+            .map(member => {
+                const count = attendanceRecords.filter(r => {
+                    const d = new Date(r.date);
+                    return d.getMonth() === currentMonth && 
+                           d.getFullYear() === currentYear && 
+                           r.presentStaffIds.includes(member.id);
+                }).length;
+                return { name: member.name, count, id: member.id };
+            })
+            .sort((a,b) => b.count - a.count);
+        return quotas;
+    }, [attendanceRecords, staffForShift]);
+
     // ATTENDANCE LOGIC
     useEffect(() => {
         const today = new Date().toISOString().split('T')[0];
         const storageKey = `attendance_v1_${till.id}_${today}`;
         const saved = localStorage.getItem(storageKey);
 
+        // Trova l'utente "Cassa" per assicurarsi che sia sempre presente
+        const cassaUser = staffForShift.find(s => s.name.toLowerCase().includes('cassa'));
+        
+        let initialIds: string[] = [];
+
         if (saved) {
-            setPresentStaffIds(JSON.parse(saved));
+            initialIds = JSON.parse(saved);
         } else {
             // First time entry for today: Select ALL by default and open modal
-            setPresentStaffIds(staffForShift.map(s => s.id));
+            initialIds = staffForShift.map(s => s.id);
             setIsAttendanceModalOpen(true);
         }
+
+        // Assicura che la cassa sia presente
+        if (cassaUser && !initialIds.includes(cassaUser.id)) {
+            initialIds.push(cassaUser.id);
+        }
+
+        setPresentStaffIds(initialIds);
     }, [till.id, staffForShift]);
 
     const handleToggleAttendance = (id: string) => {
+        // Impedisci di deselezionare la cassa
+        const member = allStaff.find(s => s.id === id);
+        if (member && member.name.toLowerCase().includes('cassa')) return;
+
         setPresentStaffIds(prev => 
             prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
         );
@@ -106,6 +157,17 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         const storageKey = `attendance_v1_${till.id}_${today}`;
         localStorage.setItem(storageKey, JSON.stringify(presentStaffIds));
         
+        // Verifica numero presenze (esclusa cassa)
+        const realPeopleCount = presentStaffIds.filter(id => {
+            const member = allStaff.find(s => s.id === id);
+            return member && !member.name.toLowerCase().includes('cassa');
+        }).length;
+
+        if (realPeopleCount !== 5) {
+            const confirm = window.confirm(`Attenzione: Risultano ${realPeopleCount} operatori presenti (standard 5). Confermi la chiusura?`);
+            if (!confirm) return;
+        }
+
         if (onSaveAttendance) {
             onSaveAttendance(till.id, presentStaffIds);
         }
@@ -149,11 +211,13 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
             tillId: till.id,
         };
         try {
+            setIsCartOpen(false); // Close UI immediately for better UX
             await onCompleteOrder(newOrder);
             clearOrder();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error completing order: ", error);
-            alert("Errore nel completamento dell'ordine. Riprova.");
+            alert(`Errore nel completamento dell'ordine: ${error.message || 'Errore sconosciuto'}. Riprova.`);
+            setIsCartOpen(true); // Reopen if failed
         }
     }, [currentOrder, cartTotal, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder, clearOrder]);
 
@@ -235,22 +299,28 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         
                         <div className="p-6">
                             <div className="grid grid-cols-2 gap-3 mb-6 max-h-[50vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-                                {staffForShift.map(member => {
+                                {sortedStaffForShift.map(member => {
                                     const isSelected = presentStaffIds.includes(member.id);
+                                    const isCassa = member.name.toLowerCase().includes('cassa');
                                     return (
                                         <button 
                                             key={member.id} 
                                             onClick={() => handleToggleAttendance(member.id)}
+                                            disabled={isCassa}
                                             className={`
                                                 flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200
-                                                ${isSelected 
-                                                    ? 'border-green-500 bg-green-50 shadow-sm' 
-                                                    : 'border-slate-100 bg-slate-50 text-slate-300'}
+                                                ${isCassa ? 'opacity-80 bg-slate-100 border-slate-200 cursor-not-allowed' : ''}
+                                                ${isSelected && !isCassa ? 'border-green-500 bg-green-50 shadow-sm' : ''}
+                                                ${!isSelected && !isCassa ? 'border-slate-100 bg-slate-50 text-slate-300' : ''}
                                             `}
                                         >
                                             <div className="text-3xl mb-1 filter drop-shadow-sm">{member.icon || '👤'}</div>
                                             <p className={`font-bold text-sm leading-tight ${isSelected ? 'text-slate-800' : 'text-slate-400'}`}>{member.name}</p>
-                                            {isSelected && <div className="mt-1 text-green-500"><CheckIcon className="h-4 w-4" /></div>}
+                                            {isCassa ? (
+                                                <div className="mt-1 text-slate-400 flex items-center gap-1 text-[10px] uppercase font-bold"><LockIcon className="h-3 w-3" /> Obbligatorio</div>
+                                            ) : (
+                                                isSelected && <div className="mt-1 text-green-500"><CheckIcon className="h-4 w-4" /></div>
+                                            )}
                                         </button>
                                     );
                                 })}
@@ -285,20 +355,20 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
             <div className="flex-grow flex flex-col w-full md:w-auto min-h-screen z-10">
                 <header className="sticky top-0 px-4 py-2 flex justify-between items-center shadow-sm z-30 border-b border-white/20 text-white transition-colors duration-300 backdrop-blur-md bg-opacity-90" style={{ backgroundColor: themeColor + 'E6' }}>
-                     <div className="flex items-center gap-2">
+                     <div className="flex items-center gap-3">
                          <button onClick={onGoBack} className="group flex items-center gap-1 transition-colors">
-                            <div className="w-8 h-8 rounded-full bg-white/40 hover:bg-white/60 flex items-center justify-center transition-colors">
+                            <div className="w-8 h-8 rounded-full bg-white/40 hover:bg-white/60 flex items-center justify-center transition-colors shadow-sm">
                                 <BackArrowIcon className="h-5 w-5 text-black" />
                             </div>
                         </button>
-                        <h1 className="text-sm font-bold tracking-tight">{till.name}</h1>
+                        <h1 className="text-lg font-black tracking-tighter uppercase text-slate-900 drop-shadow-sm">{till.name}</h1>
                     </div>
                     
                     <div className="flex items-center gap-2 h-8">
                         {selectedStaffId && selectedStaffMember && (
                             <button 
                                 onClick={handleStaffDeselection}
-                                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-full pr-3 pl-1 py-1 transition-all animate-fade-in h-full"
+                                className="hidden md:flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-full pr-3 pl-1 py-1 transition-all animate-fade-in h-full mr-2"
                             >
                                 <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs shadow-sm text-slate-800">
                                     {selectedStaffMember.icon || getInitials(selectedStaffMember.name)}
@@ -306,16 +376,22 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                 <span className="font-bold text-xs">{selectedStaffMember.name}</span>
                             </button>
                         )}
-                        <div className="flex items-center bg-white/20 rounded-full pl-3 pr-1 py-0 h-full">
-                            <span className="text-[10px] font-bold uppercase tracking-wide mr-2 flex items-center h-full">Turno {till.shift}</span>
-                            <button 
-                                onClick={() => setIsAttendanceModalOpen(true)}
-                                className="w-6 h-6 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-colors shadow-sm"
-                                title="Modifica Presenze"
-                            >
-                                <UsersIcon className="h-3 w-3 text-black" />
-                            </button>
+                        
+                        <div className="flex items-center gap-2 bg-white/90 rounded-lg px-3 py-1 shadow-sm h-full border border-white/50">
+                            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                            <span className="text-[10px] font-black uppercase tracking-wide text-slate-800 flex items-center h-full">
+                                Turno {till.shift}
+                            </span>
                         </div>
+
+                        <button 
+                            onClick={() => setIsAttendanceModalOpen(true)}
+                            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg px-3 py-1 transition-all shadow-md h-full active:scale-95 border border-slate-600"
+                            title="Modifica Presenze"
+                        >
+                            <UsersIcon className="h-3 w-3" />
+                            <span className="text-[10px] font-bold uppercase tracking-wide">Presenze</span>
+                        </button>
                     </div>
                 </header>
                 
@@ -336,8 +412,10 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                     <div className={`mb-4 transition-all duration-300 ${isAnimatingSelection ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                                         <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Chi sei?</h3>
                                         <div className={`grid grid-cols-4 sm:grid-cols-6 gap-3 p-4 rounded-xl ${!selectedStaffId ? 'animate-red-pulse' : ''}`}>
-                                            {staffForShift.map(staff => {
+                                            {sortedStaffForShift.map(staff => {
                                                 const isPresent = presentStaffIds.includes(staff.id);
+                                                const isCassa = staff.name.toLowerCase().includes('cassa');
+                                                
                                                 return (
                                                     <button 
                                                         key={staff.id} 
@@ -345,8 +423,14 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                                         disabled={!isPresent}
                                                         className={`group flex flex-col items-center gap-1 transition-all ${!isPresent ? 'opacity-30 grayscale cursor-not-allowed hidden' : 'hover:scale-110 cursor-pointer'}`}
                                                     >
-                                                        <div className={`w-14 h-14 rounded-full shadow-md border-2 flex items-center justify-center text-2xl transition-all ${!isPresent ? 'bg-slate-100 border-slate-200' : 'bg-white border-slate-100 group-hover:border-primary'}`}>
-                                                            {staff.icon || <span className="text-lg font-bold text-slate-600">{getInitials(staff.name)}</span>}
+                                                        <div 
+                                                            className={`
+                                                                w-14 h-14 rounded-full shadow-md border-2 flex items-center justify-center text-2xl transition-all 
+                                                                ${!isPresent ? 'bg-slate-100 border-slate-200' : 'border-slate-100 group-hover:border-primary'}
+                                                            `}
+                                                            style={isCassa && isPresent ? { backgroundColor: themeColor, color: 'white', borderColor: themeColor } : { backgroundColor: 'white' }}
+                                                        >
+                                                            {staff.icon || <span className={`text-lg font-bold ${isCassa ? 'text-white' : 'text-slate-600'}`}>{getInitials(staff.name)}</span>}
                                                         </div>
                                                         <span className="text-[10px] font-bold text-slate-600 group-hover:text-primary">{staff.name.split(' ')[0]}</span>
                                                     </button>
@@ -427,10 +511,36 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         )}
                         {activeTab === 'history' && (
                             <div className="max-w-3xl mx-auto bg-white/90 backdrop-blur rounded-2xl p-4 shadow-sm border border-slate-100">
-                                <div className="mb-4 text-xs font-bold text-slate-400 uppercase text-center">
+                                
+                                {/* Water Quotas Table - Current Month Snapshot */}
+                                {!selectedStaffId && waterQuotas.length > 0 && (
+                                    <div className="mb-6 bg-blue-50/50 rounded-xl border border-blue-100 p-4">
+                                        <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                            <span className="text-lg">💧</span> Quote Acqua (Mese Corrente)
+                                        </h4>
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                            {waterQuotas.map(user => (
+                                                <div key={user.id} className="bg-white p-2 rounded-lg border border-blue-100 flex items-center justify-between shadow-sm">
+                                                    <span className="text-xs font-bold text-slate-700">{user.name}</span>
+                                                    <div className="flex items-center gap-1 bg-blue-100 px-2 py-0.5 rounded-full">
+                                                        <span className="text-sm">🥛</span>
+                                                        <span className="text-xs font-black text-blue-700">{user.count}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="mb-4 text-sm md:text-base font-black text-slate-500 uppercase text-center tracking-wider">
                                     {selectedStaffId ? `Storico di ${selectedStaffMember?.name}` : 'Storico Completo Cassa'}
                                 </div>
-                                <OrderHistory orders={ordersForHistory} staff={staffForShift} />
+                                <OrderHistory 
+                                    orders={ordersForHistory} 
+                                    staff={staffForShift} 
+                                    attendanceRecords={attendanceRecords} 
+                                    tillId={till.id}
+                                />
                             </div>
                         )}
                     </div>

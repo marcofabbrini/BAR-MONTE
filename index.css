@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -62,50 +63,62 @@ body {
 /* Effetto Volo (Movimento casuale fluttuante) */
 @keyframes float {
   0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
-  10% { opacity: var(--target-opacity, 0.8); }
-  25% { transform: translate(10vw, 10vh) rotate(90deg); }
-  50% { transform: translate(-5vw, 20vh) rotate(180deg); }
-  75% { transform: translate(5vw, 10vh) rotate(270deg); }
-  100% { transform: translate(0, 40vh) rotate(360deg); opacity: 0; }
+  10% { opacity: var(--target-opacity, 0.5); }
+  25% { transform: translate(10px, 15px) rotate(5deg); }
+  50% { transform: translate(-5px, -10px) rotate(-5deg); }
+  75% { transform: translate(-15px, 5px) rotate(2deg); }
+  100% { transform: translate(10px, -5px) rotate(-2deg); opacity: 0; }
 }
 
-/* Stili specifici per la stampa */
-@media print {
-  @page { margin: 1cm; size: A4; }
-  body { background: white; }
-  header, nav, button, input, select, .no-print { display: none !important; }
-  .max-w-7xl { max-width: none !important; width: 100% !important; padding: 0 !important; margin: 0 !important; }
-  .shadow-lg, .shadow-sm { box-shadow: none !important; }
-  .border { border-color: #000 !important; border-width: 1px !important; }
-  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+/* 3D DICE STYLES */
+.scene {
+  perspective: 600px;
 }
 
-/* Tombola Styles */
-.tombola-grid {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: 0.25rem;
+.cube {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 1s ease-out;
 }
 
-.tombola-cell {
-  aspect-ratio: 1;
+.cube.rolling {
+  animation: roll 0.5s linear infinite;
+}
+
+.cube-face {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
-  border-radius: 9999px;
-  font-size: 0.8rem;
-  transition: all 0.3s ease;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+  backface-visibility: hidden; 
 }
 
-.tombola-cell.extracted {
-  background-color: #ef4444;
-  color: white;
-  animation: pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+.cube-face-front  { transform: rotateY(  0deg) translateZ(24px); } /* Base 48px / 2 */
+.cube-face-right  { transform: rotateY( 90deg) translateZ(24px); }
+.cube-face-back   { transform: rotateY(180deg) translateZ(24px); }
+.cube-face-left   { transform: rotateY(-90deg) translateZ(24px); }
+.cube-face-top    { transform: rotateX( 90deg) translateZ(24px); }
+.cube-face-bottom { transform: rotateX(-90deg) translateZ(24px); }
+
+/* Per mobile più piccolo (40px) */
+@media (max-width: 768px) {
+  .cube-face-front  { transform: rotateY(  0deg) translateZ(20px); }
+  .cube-face-right  { transform: rotateY( 90deg) translateZ(20px); }
+  .cube-face-back   { transform: rotateY(180deg) translateZ(20px); }
+  .cube-face-left   { transform: rotateY(-90deg) translateZ(20px); }
+  .cube-face-top    { transform: rotateX( 90deg) translateZ(20px); }
+  .cube-face-bottom { transform: rotateX(-90deg) translateZ(20px); }
 }
 
-@keyframes pop {
-  0% { transform: scale(0.5); opacity: 0; }
-  50% { transform: scale(1.2); }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes roll {
+  0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+  100% { transform: rotateX(720deg) rotateY(360deg) rotateZ(360deg); }
 }

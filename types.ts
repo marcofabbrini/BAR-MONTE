@@ -145,10 +145,23 @@ export interface ShiftSettings {
     rcAnchorSubGroup?: number;
 }
 
+export interface GeneralSettings {
+    waterQuotaPrice: number;
+}
+
 export interface AttendanceRecord {
     id: string;
     tillId: string;
     date: string;
     timestamp: string;
     presentStaffIds: string[];
+}
+
+export interface AppNotification {
+    id: string;
+    title: string;
+    body: string;
+    timestamp: string;
+    target?: 'all' | string;
+    sender?: string;
 }
