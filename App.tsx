@@ -13,22 +13,14 @@ import AnalottoView from './components/AnalottoView';
 import DiceGame from './components/DiceGame';
 import ShiftCalendar from './components/ShiftCalendar';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
-import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AppNotification } from './types';
+import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AppNotification } from './types';
 import { BellIcon } from './components/Icons';
-import { AnalottoProvider, useAnalotto } from './contexts/AnalottoContext'; // Import Context
+import { AnalottoProvider, useAnalotto } from './contexts/AnalottoContext';
+import { TombolaProvider, useTombola } from './contexts/TombolaContext'; // Import Tombola Context
 
 type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice';
 
-// Helper per mescolare un array
-const shuffleArray = (array: any[]) => {
-    for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-};
-
-// Componente Wrapper interno per usare gli hooks del contesto
+// Componente Wrapper interno per usare gli hooks dei contesti
 const AppContent: React.FC = () => {
     const [view, setView] = useState<View>('selection');
     const [selectedTillId, setSelectedTillId] = useState<string | null>(null);
@@ -48,12 +40,7 @@ const AppContent: React.FC = () => {
     // Attendance State
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
 
-    // Tombola State (Da migrare prossimamente)
-    const [tombolaConfig, setTombolaConfig] = useState<TombolaConfig | undefined>(undefined);
-    const [tombolaTickets, setTombolaTickets] = useState<TombolaTicket[]>([]);
-    const [tombolaWins, setTombolaWins] = useState<TombolaWin[]>([]);
-
-    // ANALOTTO CONTEXT
+    // --- CONTEXT HOOKS ---
     const { 
         config: analottoConfig, 
         bets: analottoBets, 
@@ -64,6 +51,18 @@ const AppContent: React.FC = () => {
         updateConfig: handleUpdateAnalottoConfig,
         transferFunds: handleTransferAnalottoFunds
     } = useAnalotto();
+
+    const {
+        config: tombolaConfig,
+        tickets: tombolaTickets,
+        wins: tombolaWins,
+        buyTicket: handleBuyTombolaTicketInternal,
+        refundTicket: handleRefundTombolaTicket,
+        startGame: handleTombolaStartInternal,
+        manualExtraction: handleManualTombolaExtraction,
+        updateConfig: handleUpdateTombolaConfig,
+        transferFunds: handleTransferTombolaFunds
+    } = useTombola();
 
     // Settings State
     const [seasonalityConfig, setSeasonalityConfig] = useState<SeasonalityConfig | undefined>(undefined);
@@ -85,7 +84,7 @@ const AppContent: React.FC = () => {
     // Calcolo Super Admin
     const isSuperAdmin = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
 
-    // Auth Listener Robusto
+    // Auth Listener
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
@@ -93,16 +92,11 @@ const AppContent: React.FC = () => {
                 try {
                     const adminsRef = collection(db, 'admins');
                     const q = query(adminsRef, where("email", "==", user.email));
-                    
                     try {
                         const querySnapshot = await getDocs(q);
-                        if (!querySnapshot.empty) {
-                            setIsAdmin(true);
-                        } else {
-                            setIsAdmin(false);
-                        }
+                        setIsAdmin(!querySnapshot.empty);
                     } catch (readError) {
-                        console.log("Verifica admin: Permesso negato o errore lettura (utente normale).");
+                        console.log("Verifica admin: Permesso negato (utente normale).");
                         setIsAdmin(false);
                     }
                 } catch (error) {
@@ -116,7 +110,7 @@ const AppContent: React.FC = () => {
         return () => unsubscribe();
     }, []);
 
-    // NOTIFICATION LISTENER
+    // Notification Listener
     useEffect(() => {
         const sessionStart = new Date().toISOString();
         const q = query(collection(db, 'notifications'), where('timestamp', '>', sessionStart), orderBy('timestamp', 'desc'));
@@ -129,7 +123,7 @@ const AppContent: React.FC = () => {
                     try {
                         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                         audio.volume = 0.5;
-                        audio.play().catch(e => console.log("Audio play blocked", e));
+                        audio.play().catch(e => console.log("Audio blocked"));
                     } catch(e) {}
 
                     if (Notification.permission === 'granted' && document.visibilityState === 'hidden') {
@@ -153,387 +147,90 @@ const AppContent: React.FC = () => {
 
     const handleSendNotification = async (title: string, body: string, target = 'all') => {
         await addDoc(collection(db, 'notifications'), {
-            title,
-            body,
-            target,
-            timestamp: new Date().toISOString(),
-            sender: currentUser?.email || 'Sistema'
+            title, body, target, timestamp: new Date().toISOString(), sender: currentUser?.email || 'Sistema'
         });
     };
 
-    // Data Listeners
+    // Main Data Listeners
     useEffect(() => {
         setIsLoading(true);
         const unsubProducts = onSnapshot(collection(db, 'products'), (s) => setProducts(s.docs.map(d => ({ ...d.data(), id: d.id } as Product))));
         const unsubStaff = onSnapshot(collection(db, 'staff'), (s) => setStaff(s.docs.map(d => ({ ...d.data(), id: d.id } as StaffMember))));
         const unsubOrders = onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc')), (s) => { setOrders(s.docs.map(d => ({ ...d.data(), id: d.id } as Order))); setIsLoading(false); });
         const unsubCash = onSnapshot(query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc')), (s) => setCashMovements(s.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement))));
-        
-        const unsubAdmins = onSnapshot(collection(db, 'admins'), 
-            (s) => setAdminList(s.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser))),
-            (error) => console.log("Admin list sync paused (permission denied)")
-        );
-
+        const unsubAdmins = onSnapshot(collection(db, 'admins'), (s) => setAdminList(s.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser))));
         const unsubSettings = onSnapshot(doc(db, 'settings', 'tillColors'), (d) => { if(d.exists()) setTillColors(d.data() as TillColors); });
-        
         const unsubAttendance = onSnapshot(collection(db, 'shift_attendance'), (s) => setAttendanceRecords(s.docs.map(d => ({ ...d.data(), id: d.id } as AttendanceRecord))));
 
-        // TOMBOLA
-        const unsubTombolaConfig = onSnapshot(doc(db, 'tombola', 'config'), (d) => { 
-            if (d.exists()) setTombolaConfig(d.data() as TombolaConfig); 
-            else setDoc(doc(db, 'tombola', 'config'), { 
-                status: 'pending',
-                maxTickets: 168,
-                minTicketsToStart: 84,
-                ticketPriceSingle: 2,
-                ticketPriceBundle: 5,
-                jackpot: 0, 
-                lastExtraction: new Date().toISOString(), 
-                extractedNumbers: [] 
-            }); 
-        });
-        const unsubTombolaTickets = onSnapshot(collection(db, 'tombola_tickets'), (s) => setTombolaTickets(s.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket))));
-        const unsubTombolaWins = onSnapshot(collection(db, 'tombola_wins'), (s) => setTombolaWins(s.docs.map(d => ({...d.data(), id: d.id} as TombolaWin))));
-
-        // ANALOTTO REMOVED - Managed by Context
-
         const unsubSeasonality = onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { 
-            if(d.exists()) {
-                setSeasonalityConfig(d.data() as SeasonalityConfig); 
-            } else { 
-                setDoc(doc(db, 'settings', 'seasonality'), { 
-                    startDate: '', endDate: '', preset: 'custom', animationType: 'none', emojis: [], opacity: 0.5, backgroundColor: '#f8fafc' 
-                }); 
-            }
+            if(d.exists()) setSeasonalityConfig(d.data() as SeasonalityConfig); 
+            else setDoc(doc(db, 'settings', 'seasonality'), { startDate: '', endDate: '', preset: 'custom', animationType: 'none', emojis: [], opacity: 0.5, backgroundColor: '#f8fafc' }); 
         });
 
         const unsubShiftSettings = onSnapshot(doc(db, 'settings', 'shift'), (d) => {
-            if(d.exists()) {
-                setShiftSettings(d.data() as ShiftSettings);
-            } else {
+            if(d.exists()) setShiftSettings(d.data() as ShiftSettings);
+            else {
                 const today = new Date().toISOString().split('T')[0];
-                setDoc(doc(db, 'settings', 'shift'), {
-                    anchorDate: today, anchorShift: 'b', rcAnchorDate: '', rcAnchorShift: 'a', rcAnchorSubGroup: 1
-                });
+                setDoc(doc(db, 'settings', 'shift'), { anchorDate: today, anchorShift: 'b', rcAnchorDate: '', rcAnchorShift: 'a', rcAnchorSubGroup: 1 });
             }
         });
 
         const unsubGeneralSettings = onSnapshot(doc(db, 'settings', 'general'), (d) => {
-            if (d.exists()) {
-                setGeneralSettings(d.data() as GeneralSettings);
-            } else {
-                setDoc(doc(db, 'settings', 'general'), { waterQuotaPrice: 0 });
-            }
+            if (d.exists()) setGeneralSettings(d.data() as GeneralSettings);
+            else setDoc(doc(db, 'settings', 'general'), { waterQuotaPrice: 0 });
         });
         
         return () => { 
             unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins(); unsubSettings(); unsubAttendance();
-            unsubTombolaConfig(); unsubTombolaTickets(); unsubTombolaWins(); 
             unsubSeasonality(); unsubShiftSettings(); unsubGeneralSettings();
         };
     }, []);
 
-    // Seeding
-    useEffect(() => {
-        const seedDatabase = async () => {
-            try {
-                const productsSnap = await getDocs(collection(db, 'products'));
-                if (productsSnap.empty) {
-                    const batch = writeBatch(db);
-                    INITIAL_MENU_ITEMS.forEach(item => batch.set(doc(db, 'products', item.id), item));
-                    await batch.commit();
-                }
-                const staffSnap = await getDocs(collection(db, 'staff'));
-                if (staffSnap.empty) {
-                    const batch = writeBatch(db);
-                    INITIAL_STAFF_MEMBERS.forEach(member => batch.set(doc(db, 'staff', member.id), member));
-                    await batch.commit();
-                }
-            } catch (error) { console.error("Error seeding database:", error); }
-        };
-        seedDatabase();
-    }, []);
-
-    const handleManualTombolaExtraction = async () => {
-        if (!tombolaConfig || !tombolaConfig.extractedNumbers || tombolaConfig.extractedNumbers.length >= 90) return;
-        if (tombolaConfig.status !== 'active') return;
-
-        try {
-            await runTransaction(db, async (t) => {
-                const configRef = doc(db, 'tombola', 'config');
-                const configSnap = await t.get(configRef);
-                const currentConfig = configSnap.data() as TombolaConfig;
-                if (!currentConfig.extractedNumbers) currentConfig.extractedNumbers = [];
-
-                if (currentConfig.extractedNumbers.length >= 90) return;
-
-                let nextNum;
-                do { nextNum = Math.floor(Math.random() * 90) + 1; } while (currentConfig.extractedNumbers.includes(nextNum));
-                const newExtracted = [...currentConfig.extractedNumbers, nextNum];
-                
-                const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
-                ticketsSnap.forEach(ticketDoc => {
-                    const ticket = ticketDoc.data() as TombolaTicket;
-                    if (!ticket.numbers) return;
-                    const matches = ticket.numbers.filter(n => newExtracted.includes(n));
-                    const count = matches.length;
-                    if ([2,3,4,5,15].includes(count)) {
-                        const type = count === 2 ? 'Ambo' : count === 3 ? 'Terno' : count === 4 ? 'Quaterna' : count === 5 ? 'Cinquina' : 'Tombola';
-                        const winRef = doc(collection(db, 'tombola_wins'));
-                        t.set(winRef, { ticketId: ticketDoc.id, playerName: ticket.playerName, type, numbers: matches, timestamp: new Date().toISOString() });
-                    }
-                });
-                t.update(configRef, { lastExtraction: new Date().toISOString(), extractedNumbers: newExtracted });
-            });
-        } catch (e) { console.error(e); }
+    // Wrapper for buying tombola ticket to include staff name lookup
+    const handleBuyTombolaTicket = async (staffId: string, quantity: number) => {
+        const member = staff.find(s => s.id === staffId);
+        if (!member) return;
+        await handleBuyTombolaTicketInternal(staffId, member.name, quantity);
     };
 
-    // Tombola Extraction Logic (Automatic)
-    useEffect(() => {
-        const runTombolaExtraction = async () => {
-            if (!tombolaConfig || !tombolaConfig.extractedNumbers || tombolaConfig.extractedNumbers.length >= 90) return;
-            if (tombolaConfig.status !== 'active') return;
-            
-            const now = new Date().getTime();
-            const last = new Date(tombolaConfig.lastExtraction).getTime();
-            const diffHours = (now - last) / (1000 * 60 * 60);
-            
-            if (diffHours >= 2) {
-                await handleManualTombolaExtraction();
-            }
-        };
-        const interval = setInterval(runTombolaExtraction, 60000);
-        return () => clearInterval(interval);
-    }, [tombolaConfig]);
-
-    const handleGoogleLogin = async () => { 
-        try { 
-            await signInWithPopup(auth, googleProvider); 
-        } catch (error: any) { 
-            console.error("Login Error:", error);
-            let msg = "Errore sconosciuto.";
-            if (error.code === 'auth/popup-closed-by-user') msg = "Popup chiuso prima del completamento.";
-            else if (error.code === 'auth/popup-blocked') msg = "Popup bloccato dal browser. Abilita i popup.";
-            else if (error.message) msg = error.message;
-            alert(`Login fallito: ${msg}`); 
-        } 
+    const handleTombolaStart = async () => {
+        await handleTombolaStartInternal();
+        await handleSendNotification("TOMBOLA INIZIATA! 🎟️", "L'estrazione è partita. Corri a controllare la tua cartella!", "all");
     };
 
-    const handleLogout = async () => { 
-        try {
-            await signOut(auth); 
-            setView('selection'); 
-        } catch (error) {
-            console.error("Logout Error:", error);
-        }
-    };
+    const handleGoogleLogin = async () => { try { await signInWithPopup(auth, googleProvider); } catch (e: any) { alert("Login fallito: " + e.message); } };
+    const handleLogout = async () => { try { await signOut(auth); setView('selection'); } catch (e) { console.error(e); } };
 
     const handleAddAdmin = async (email: string) => { if (isAdmin) await addDoc(collection(db, 'admins'), { email, addedBy: currentUser?.email, timestamp: new Date().toISOString() }); };
     const handleRemoveAdmin = async (id: string) => { if (isAdmin) await deleteDoc(doc(db, 'admins', id)); };
-
-    const handleSelectTill = useCallback((tillId: string) => { setSelectedTillId(tillId); setView('till'); }, []);
-    const handleSelectReports = useCallback(() => setView('reports'), []);
-    const handleSelectAdmin = useCallback(() => setView('admin'), []);
-    const handleSelectGames = useCallback(() => setView('games'), []);
-    const handleSelectTombola = useCallback(() => setView('tombola'), []);
-    const handleSelectAnalotto = useCallback(() => setView('analotto'), []);
-    const handleSelectDice = useCallback(() => setView('dice'), []);
-    const handleSelectCalendar = useCallback(() => setView('calendar'), []);
-    const handleGoBack = useCallback(() => { setSelectedTillId(null); setView('selection'); }, []);
 
     const handleCompleteOrder = useCallback(async (newOrderData: Omit<Order, 'id'>) => {
         try {
             await runTransaction(db, async (t) => {
                 const productRefs = newOrderData.items.map(item => doc(db, 'products', item.product.id));
                 const productDocs = await Promise.all(productRefs.map(ref => t.get(ref)));
-
                 productDocs.forEach((docSnap, index) => {
-                    if (!docSnap.exists()) {
-                        throw new Error(`Prodotto "${newOrderData.items[index].product.name}" non trovato nel database.`);
-                    }
-                    const data = docSnap.data();
-                    const currentStock = typeof data.stock === 'number' ? data.stock : Number(data.stock) || 0;
-                    const quantityToSubtract = newOrderData.items[index].quantity;
-                    
-                    t.update(productRefs[index], { stock: currentStock - quantityToSubtract });
+                    if (!docSnap.exists()) throw new Error(`Prodotto non trovato.`);
+                    const currentStock = Number(docSnap.data().stock) || 0;
+                    t.update(productRefs[index], { stock: currentStock - newOrderData.items[index].quantity });
                 });
-
                 const orderRef = doc(collection(db, 'orders'));
                 t.set(orderRef, { ...newOrderData, id: orderRef.id });
             });
-        } catch (error) {
-            console.error("Transazione Ordine Fallita:", error);
-            throw error;
-        }
+        } catch (error) { console.error("Transazione Ordine Fallita:", error); throw error; }
     }, []);
     
     const handleSaveAttendance = useCallback(async (tillId: string, presentStaffIds: string[], dateOverride?: string) => {
         try {
             const dateToUse = dateOverride || new Date().toISOString().split('T')[0];
             const docId = `${dateToUse}_${tillId}`; 
-            
-            await setDoc(doc(db, 'shift_attendance', docId), {
-                tillId,
-                date: dateToUse,
-                timestamp: new Date().toISOString(),
-                presentStaffIds
-            });
-        } catch (error) {
-            console.error("Errore salvataggio presenze:", error);
-        }
+            await setDoc(doc(db, 'shift_attendance', docId), { tillId, date: dateToUse, timestamp: new Date().toISOString(), presentStaffIds });
+        } catch (error) { console.error(error); }
     }, []);
 
-    const handleDeleteAttendance = useCallback(async (id: string) => {
-        try {
-            await deleteDoc(doc(db, 'shift_attendance', id));
-        } catch (error) {
-            console.error("Errore cancellazione presenza:", error);
-            alert("Errore durante la cancellazione della presenza.");
-        }
-    }, []);
-    
-    const handleBuyTombolaTicket = async (staffId: string, quantity: number) => {
-        const staffMember = staff.find(s => s.id === staffId);
-        if (!staffMember) return;
+    const handleDeleteAttendance = useCallback(async (id: string) => { try { await deleteDoc(doc(db, 'shift_attendance', id)); } catch (e) { console.error(e); } }, []);
 
-        try {
-            await runTransaction(db, async (t) => {
-                const configRef = doc(db, 'tombola', 'config');
-                const configSnap = await t.get(configRef);
-                if (!configSnap.exists()) throw new Error("Configurazione Tombola mancante");
-                const currentConfig = configSnap.data() as TombolaConfig;
-
-                let totalCost = 0;
-                let pricePerTicket = 0;
-
-                if (quantity === 6) {
-                    totalCost = currentConfig.ticketPriceBundle;
-                    pricePerTicket = totalCost / 6;
-                } else {
-                    totalCost = quantity * currentConfig.ticketPriceSingle;
-                    pricePerTicket = currentConfig.ticketPriceSingle;
-                }
-
-                const revenue = totalCost * 0.20;
-                const jackpotAdd = totalCost * 0.80;
-
-                if (quantity === 6) {
-                    const allNumbers = shuffleArray(Array.from({ length: 90 }, (_, i) => i + 1));
-                    for (let i = 0; i < 6; i++) {
-                        const ticketNumbers = allNumbers.slice(i * 15, (i + 1) * 15).sort((a: number, b: number) => a - b);
-                        const ticketRef = doc(collection(db, 'tombola_tickets'));
-                        t.set(ticketRef, { 
-                            playerId: staffId, 
-                            playerName: staffMember.name, 
-                            numbers: ticketNumbers, 
-                            purchaseTime: new Date().toISOString(), 
-                            pricePaid: pricePerTicket 
-                        });
-                    }
-                } else {
-                    for (let i = 0; i < quantity; i++) {
-                        const ticketNumbers = generateSingleTicket();
-                        const ticketRef = doc(collection(db, 'tombola_tickets'));
-                        t.set(ticketRef, { 
-                            playerId: staffId, 
-                            playerName: staffMember.name, 
-                            numbers: ticketNumbers, 
-                            purchaseTime: new Date().toISOString(),
-                            pricePaid: pricePerTicket
-                        });
-                    }
-                }
-                
-                t.update(configRef, { jackpot: (currentConfig.jackpot || 0) + jackpotAdd });
-                const cashRef = doc(collection(db, 'cash_movements'));
-                t.set(cashRef, { amount: totalCost, reason: `Tombola: ${quantity} cartelle (${staffMember.name})`, timestamp: new Date().toISOString(), type: 'deposit', category: 'tombola' });
-                const barCashRef = doc(collection(db, 'cash_movements'));
-                t.set(barCashRef, { amount: revenue, reason: `Utile Tombola (20%)`, timestamp: new Date().toISOString(), type: 'deposit', category: 'bar' });
-            });
-        } catch (e) { console.error(e); throw e; }
-    };
-    
-    // ANALOTTO FUNCTIONS REMOVED (Replaced by Context)
-
-    const handleRefundTombolaTicket = async (ticketId: string) => {
-        try {
-            await runTransaction(db, async (t) => {
-                const configRef = doc(db, 'tombola', 'config');
-                const configSnap = await t.get(configRef);
-                if (!configSnap.exists()) throw new Error("Configurazione Tombola mancante");
-                const currentConfig = configSnap.data() as TombolaConfig;
-
-                if (currentConfig.status === 'active' || currentConfig.status === 'completed') {
-                    throw new Error("Impossibile annullare cartelle a gioco iniziato.");
-                }
-
-                const ticketRef = doc(db, 'tombola_tickets', ticketId);
-                const ticketSnap = await t.get(ticketRef);
-                if (!ticketSnap.exists()) throw new Error("Cartella non trovata");
-
-                const ticketData = ticketSnap.data() as TombolaTicket;
-                const refundAmount = ticketData.pricePaid !== undefined ? ticketData.pricePaid : currentConfig.ticketPriceSingle;
-                const jackpotDeduction = refundAmount * 0.80;
-                const revenueDeduction = refundAmount * 0.20;
-
-                t.delete(ticketRef);
-                t.update(configRef, { jackpot: Math.max(0, (currentConfig.jackpot || 0) - jackpotDeduction) });
-
-                const cashRef = doc(collection(db, 'cash_movements'));
-                t.set(cashRef, { amount: refundAmount, reason: "Rimborso Cartella (Annullamento)", timestamp: new Date().toISOString(), type: 'withdrawal', category: 'tombola' });
-
-                const barCashRef = doc(collection(db, 'cash_movements'));
-                t.set(barCashRef, { amount: revenueDeduction, reason: "Storno Utile Tombola (Rimborso)", timestamp: new Date().toISOString(), type: 'withdrawal', category: 'bar' });
-            });
-        } catch (e) { console.error(e); throw e; }
-    };
-
-    const generateSingleTicket = () => {
-        const ticket: number[] = [];
-        const cols: number[][] = Array.from({ length: 9 }, () => []);
-        for (let i = 0; i < 9; i++) {
-            const start = i * 10 + 1;
-            const end = i === 8 ? 90 : (i + 1) * 10;
-            for(let n=start; n <= end; n++) if(i===0 && n>9) continue; else cols[i].push(n);
-        }
-        let numbersCount = 0;
-        while(numbersCount < 15) {
-            const colIdx = Math.floor(Math.random() * 9);
-            if(cols[colIdx].length > 0) {
-                const numIdx = Math.floor(Math.random() * cols[colIdx].length);
-                const num = cols[colIdx][numIdx];
-                if(!ticket.includes(num)) {
-                    ticket.push(num);
-                    cols[colIdx].splice(numIdx, 1);
-                    numbersCount++;
-                }
-            }
-        }
-        return ticket.sort((a,b) => a-b);
-    };
-
-    const handleUpdateTombolaConfig = async (cfg: Partial<TombolaConfig>) => { await setDoc(doc(db, 'tombola', 'config'), cfg, { merge: true }); };
-    const handleTombolaStart = async () => { 
-        await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() });
-        await handleSendNotification("TOMBOLA INIZIATA! 🎟️", "L'estrazione è partita. Corri a controllare la tua cartella!", "all");
-    };
-
-    const handleTransferGameFunds = async (amount: number, gameName: string) => {
-        if (gameName.toLowerCase().includes('analotto')) {
-            await handleTransferAnalottoFunds(amount);
-        } else {
-            // Logica legacy per Tombola (da migrare poi)
-            if (amount <= 0) return;
-            try {
-                await runTransaction(db, async (t) => {
-                    t.update(doc(db, 'tombola', 'config'), { jackpot: 0 });
-                    const cashRef = doc(collection(db, 'cash_movements'));
-                    t.set(cashRef, { amount: amount, reason: `Versamento utile ${gameName}`, timestamp: new Date().toISOString(), type: 'deposit', category: 'bar', isDeleted: false });
-                });
-            } catch (error) { console.error("Error transferring funds:", error); }
-        }
-    };
-
+    // Actions
     const addProduct = async (d: any) => { await addDoc(collection(db, 'products'), { ...d, createdAt: new Date().toISOString(), createdBy: currentUser?.email || 'admin' }); };
     const updateProduct = async (p: any) => { const { id, ...d } = p; await updateDoc(doc(db, 'products', id), d); };
     const deleteProduct = async (id: string) => { await deleteDoc(doc(db, 'products', id)); };
@@ -578,25 +275,24 @@ const AppContent: React.FC = () => {
         switch (view) {
             case 'till': return <TillView 
                 till={TILLS.find(t=>t.id===selectedTillId)!} 
-                onGoBack={handleGoBack} 
+                onGoBack={() => { setSelectedTillId(null); setView('selection'); }} 
                 products={products} 
                 allStaff={staff} 
                 allOrders={orders} 
                 onCompleteOrder={handleCompleteOrder} 
                 tillColors={tillColors} 
                 onSaveAttendance={handleSaveAttendance} 
-                // Passa le funzioni del contesto
                 onPlaceAnalottoBet={handlePlaceAnalottoBet} 
                 tombolaConfig={tombolaConfig} 
                 tombolaTickets={tombolaTickets} 
                 onBuyTombolaTicket={handleBuyTombolaTicket} 
                 attendanceRecords={attendanceRecords}
             />;
-            case 'reports': return <ReportsView onGoBack={handleGoBack} products={products} staff={staff} orders={orders} />;
+            case 'reports': return <ReportsView onGoBack={() => setView('selection')} products={products} staff={staff} orders={orders} />;
             case 'tombola': 
                 if (!tombolaConfig) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
                 return <TombolaView 
-                onGoBack={handleGoBack} 
+                onGoBack={() => setView('selection')} 
                 config={tombolaConfig} 
                 tickets={tombolaTickets} 
                 wins={tombolaWins} 
@@ -605,33 +301,17 @@ const AppContent: React.FC = () => {
                 staff={staff} 
                 onStartGame={handleTombolaStart} 
                 isSuperAdmin={isSuperAdmin} 
-                onTransferFunds={handleTransferGameFunds}
+                onTransferFunds={(amount) => handleTransferTombolaFunds(amount)}
                 onUpdateTombolaConfig={handleUpdateTombolaConfig}
                 tillColors={tillColors}
                 onManualExtraction={handleManualTombolaExtraction}
             />;
-            case 'analotto':
-                return <AnalottoView 
-                    onGoBack={handleGoBack}
-                    config={analottoConfig}
-                    bets={analottoBets}
-                    extractions={analottoExtractions}
-                    staff={staff}
-                    onPlaceBet={handlePlaceAnalottoBet}
-                    onRunExtraction={handleAnalottoExtraction}
-                    isSuperAdmin={isSuperAdmin}
-                    onTransferFunds={handleTransferGameFunds}
-                    onUpdateConfig={handleUpdateAnalottoConfig}
-                    onConfirmTicket={handleConfirmAnalottoTicket}
-                />;
-            case 'dice':
-                return <DiceGame onGoBack={handleGoBack} staff={staff} />;
-            case 'games':
-                return <GamesHub onGoBack={handleGoBack} onPlayTombola={handleSelectTombola} onPlayAnalotto={handleSelectAnalotto} onPlayDice={handleSelectDice} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} />;
-            case 'calendar':
-                return <ShiftCalendar onGoBack={handleGoBack} tillColors={tillColors} shiftSettings={shiftSettings} />;
+            case 'analotto': return <AnalottoView onGoBack={() => setView('selection')} config={analottoConfig} bets={analottoBets} extractions={analottoExtractions} staff={staff} onPlaceBet={handlePlaceAnalottoBet} onRunExtraction={handleAnalottoExtraction} isSuperAdmin={isSuperAdmin} onTransferFunds={(amount) => handleTransferAnalottoFunds(amount)} onUpdateConfig={handleUpdateAnalottoConfig} onConfirmTicket={handleConfirmAnalottoTicket} />;
+            case 'dice': return <DiceGame onGoBack={() => setView('selection')} staff={staff} />;
+            case 'games': return <GamesHub onGoBack={() => setView('selection')} onPlayTombola={() => setView('tombola')} onPlayAnalotto={() => setView('analotto')} onPlayDice={() => setView('dice')} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} />;
+            case 'calendar': return <ShiftCalendar onGoBack={() => setView('selection')} tillColors={tillColors} shiftSettings={shiftSettings} />;
             case 'admin': return <AdminView 
-                onGoBack={handleGoBack} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements}
+                onGoBack={() => setView('selection')} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements}
                 onUpdateTillColors={updateTillColors} onDeleteOrders={deleteOrders} onPermanentDeleteOrder={permanentDeleteOrder} onUpdateOrder={updateOrder}
                 onAddProduct={addProduct} onUpdateProduct={updateProduct} onDeleteProduct={deleteProduct}
                 onAddStaff={addStaff} onUpdateStaff={updateStaff} onDeleteStaff={deleteStaff}
@@ -639,29 +319,14 @@ const AppContent: React.FC = () => {
                 onStockPurchase={handleStockPurchase} onStockCorrection={handleStockCorrection} onResetCash={handleResetCash} onMassDelete={handleMassDelete}
                 isAuthenticated={isAdmin} currentUser={currentUser} onLogin={handleGoogleLogin} onLogout={handleLogout}
                 adminList={adminList} onAddAdmin={handleAddAdmin} onRemoveAdmin={handleRemoveAdmin}
-                tombolaConfig={tombolaConfig} onNavigateToTombola={handleSelectTombola}
+                tombolaConfig={tombolaConfig} onNavigateToTombola={() => setView('tombola')}
                 seasonalityConfig={seasonalityConfig} onUpdateSeasonality={handleUpdateSeasonality}
                 shiftSettings={shiftSettings} onUpdateShiftSettings={handleUpdateShiftSettings}
                 attendanceRecords={attendanceRecords} onDeleteAttendance={handleDeleteAttendance} onSaveAttendance={handleSaveAttendance}
                 generalSettings={generalSettings} onUpdateGeneralSettings={handleUpdateGeneralSettings}
                 onSendNotification={handleSendNotification}
             />;
-            case 'selection':
-            default: return <TillSelection 
-                tills={TILLS} 
-                onSelectTill={handleSelectTill} 
-                onSelectReports={handleSelectReports} 
-                onSelectAdmin={handleSelectAdmin} 
-                onSelectGames={handleSelectGames}
-                onSelectCalendar={handleSelectCalendar}
-                tillColors={tillColors}
-                seasonalityConfig={seasonalityConfig}
-                shiftSettings={shiftSettings}
-                tombolaConfig={tombolaConfig}
-                isSuperAdmin={isSuperAdmin}
-                notificationPermission={notificationPermission}
-                onRequestNotification={requestNotificationPermission}
-            />;
+            case 'selection': default: return <TillSelection tills={TILLS} onSelectTill={(id) => { setSelectedTillId(id); setView('till'); }} onSelectReports={() => setView('reports')} onSelectAdmin={() => setView('admin')} onSelectGames={() => setView('games')} onSelectCalendar={() => setView('calendar')} tillColors={tillColors} seasonalityConfig={seasonalityConfig} shiftSettings={shiftSettings} tombolaConfig={tombolaConfig} isSuperAdmin={isSuperAdmin} notificationPermission={notificationPermission} onRequestNotification={requestNotificationPermission} />;
         }
     };
 
@@ -670,9 +335,7 @@ const AppContent: React.FC = () => {
             {activeToast && (
                 <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-[90%] max-w-md animate-slide-up">
                     <div className="bg-white rounded-xl shadow-2xl border-l-8 border-yellow-400 p-4 flex items-start gap-4">
-                        <div className="bg-yellow-100 p-2 rounded-full flex-shrink-0">
-                            <BellIcon className="h-6 w-6 text-yellow-600" />
-                        </div>
+                        <div className="bg-yellow-100 p-2 rounded-full flex-shrink-0"><BellIcon className="h-6 w-6 text-yellow-600" /></div>
                         <div className="flex-grow">
                             <h4 className="font-black text-slate-800 uppercase text-sm mb-1">{activeToast.title}</h4>
                             <p className="text-slate-600 text-sm leading-snug">{activeToast.body}</p>
@@ -687,11 +350,12 @@ const AppContent: React.FC = () => {
     );
 };
 
-// Main App Component with Context Providers
 const App: React.FC = () => {
     return (
         <AnalottoProvider>
-            <AppContent />
+            <TombolaProvider>
+                <AppContent />
+            </TombolaProvider>
         </AnalottoProvider>
     );
 };
