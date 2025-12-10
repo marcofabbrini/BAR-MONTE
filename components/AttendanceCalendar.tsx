@@ -244,25 +244,38 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             const dayNum = i + 1;
                             const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
                             const dateStr = dateObj.toISOString().split('T')[0];
-                            const dayRecords = attendanceRecords.filter(r => r.date === dateStr);
+                            
                             const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
-                            // Calcolo turno Giorno/Notte corrente
+                            // Calcolo turno Giorno/Notte corrente (es. B Day, B Night)
                             const shifts = getShiftsForDate(dateObj);
                             
                             // Calcolo turno Notte precedente (quello che smonta alle 8:00)
                             const prevDate = new Date(dateObj);
                             prevDate.setDate(prevDate.getDate() - 1);
+                            const prevDateStr = prevDate.toISOString().split('T')[0];
                             const prevShifts = getShiftsForDate(prevDate);
                             
-                            // I turni "attivi" nelle 24h sono:
-                            // 1. Quello che ha fatto la notte ieri (finisce alle 8:00) -> prevShifts.night
-                            // 2. Quello di Giorno oggi -> shifts.day
-                            // 3. Quello di Notte oggi -> shifts.night
-                            const activeShiftLetters = [
-                                prevShifts.night,
-                                shifts.day,
-                                shifts.night
+                            // Definiamo i 3 slot cronologici
+                            const timeSlots = [
+                                {
+                                    id: 'slot1',
+                                    shift: prevShifts.night,
+                                    label: '00-08',
+                                    dateRef: prevDateStr // Record di Ieri
+                                },
+                                {
+                                    id: 'slot2',
+                                    shift: shifts.day,
+                                    label: '08-20',
+                                    dateRef: dateStr // Record di Oggi
+                                },
+                                {
+                                    id: 'slot3',
+                                    shift: shifts.night,
+                                    label: '20-24',
+                                    dateRef: dateStr // Record di Oggi (o Domani a seconda della convenzione, ma per presenze usiamo data start)
+                                }
                             ];
 
                             return (
@@ -273,15 +286,13 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                         </span>
                                     </div>
                                     
-                                    <div className="flex flex-col gap-1">
-                                        {['TA', 'TB', 'TC', 'TD'].map(tillId => {
-                                            const shiftLetter = tillId.replace('T', '');
-                                            
-                                            // Filtra: mostra solo se il turno è uno dei 3 attivi nelle 24h
-                                            if (!activeShiftLetters.includes(shiftLetter)) return null;
-
-                                            const record = dayRecords.find(r => r.tillId === tillId);
+                                    <div className="flex flex-col gap-1.5">
+                                        {timeSlots.map((slot, idx) => {
+                                            const tillId = `T${slot.shift}`;
                                             const color = getShiftColor(tillId);
+                                            
+                                            // Cerca il record specifico per la data corretta
+                                            const record = attendanceRecords.find(r => r.date === slot.dateRef && r.tillId === tillId);
                                             
                                             let realPeopleCount = 0;
                                             if (record) {
@@ -292,36 +303,40 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     }).length;
                                             }
 
-                                            // Mostra se c'è un record o se sei admin (per permettere l'inserimento)
+                                            // Mostra se c'è un record o se sei admin
                                             if (!record && !isSuperAdmin) return null;
 
                                             return (
                                                 <div 
-                                                    key={tillId} 
-                                                    onClick={() => handleOpenEdit(dateStr, tillId, record)}
+                                                    key={`${dayNum}-${idx}`} 
+                                                    onClick={() => handleOpenEdit(slot.dateRef, tillId, record)}
                                                     className={`
-                                                        group relative flex items-center justify-between border rounded p-1.5 transition-all cursor-pointer h-8
-                                                        ${record ? 'bg-slate-50 hover:bg-white hover:shadow-md' : 'bg-transparent border-dashed border-slate-200 opacity-50 hover:opacity-100'}
+                                                        group relative flex items-center justify-between border rounded p-1 transition-all cursor-pointer h-7
+                                                        ${record ? 'bg-slate-50 hover:bg-white hover:shadow-md' : 'bg-transparent border-dashed border-slate-200 opacity-40 hover:opacity-100'}
                                                     `}
                                                 >
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-2 w-full">
+                                                        <span className="text-[9px] font-mono text-slate-400 w-8">{slot.label}</span>
+                                                        
                                                         {/* Dot con lettera Turno */}
                                                         <div 
-                                                            className="w-5 h-5 rounded-full shadow-sm flex items-center justify-center text-[10px] text-white font-normal" 
+                                                            className="w-4 h-4 rounded-full shadow-sm flex items-center justify-center text-[9px] text-white font-normal shrink-0" 
                                                             style={{ backgroundColor: color }}
                                                         >
-                                                            {shiftLetter}
+                                                            {slot.shift}
                                                         </div>
-                                                        <span className="text-xs font-bold text-slate-700">{record ? realPeopleCount : '+'}</span>
+                                                        <span className="text-xs font-bold text-slate-700 flex-grow text-right pr-1">
+                                                            {record ? realPeopleCount : '+'}
+                                                        </span>
                                                     </div>
                                                     
                                                     {onDeleteRecord && record && (
                                                         <button 
                                                             onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }}
-                                                            className="text-slate-300 hover:text-red-500 p-0.5 rounded hover:bg-red-50 transition-colors hidden group-hover:block"
-                                                            title="Resetta Presenze Turno"
+                                                            className="absolute -right-1 -top-1 text-slate-300 hover:text-red-500 bg-white shadow-sm border border-slate-100 p-0.5 rounded-full transition-colors hidden group-hover:block"
+                                                            title="Resetta"
                                                         >
-                                                            <TrashIcon className="h-3 w-3" />
+                                                            <TrashIcon className="h-2 w-2" />
                                                         </button>
                                                     )}
                                                 </div>
