@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { AttendanceRecord, StaffMember, TillColors, Shift } from '../types';
+import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings } from '../types';
 import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon } from './Icons';
 
 interface AttendanceCalendarProps {
@@ -10,9 +10,10 @@ interface AttendanceCalendarProps {
     onDeleteRecord?: (id: string) => Promise<void>;
     onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string) => Promise<void>;
     isSuperAdmin?: boolean;
+    shiftSettings?: ShiftSettings;
 }
 
-const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord, onSaveAttendance, isSuperAdmin }) => {
+const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord, onSaveAttendance, isSuperAdmin, shiftSettings }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'calendar' | 'report'>('calendar');
     
@@ -47,6 +48,37 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     // Helper per escludere l'utente "Cassa"
     const isRealPerson = (name: string) => !name.toLowerCase().includes('cassa');
+
+    // LOGICA CALCOLO TURNI (Copiata da ShiftCalendar per coerenza)
+    const getShiftsForDate = (date: Date) => {
+        const anchorDateStr = shiftSettings?.anchorDate || new Date().toISOString().split('T')[0];
+        const anchorShift = shiftSettings?.anchorShift || 'b';
+
+        const anchorDate = new Date(anchorDateStr);
+        anchorDate.setHours(12, 0, 0, 0); // Fix DST
+        
+        const targetDate = new Date(date);
+        targetDate.setHours(12, 0, 0, 0); // Fix DST
+        
+        const diffTime = targetDate.getTime() - anchorDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); // Usa round
+        
+        const shifts = ['A', 'B', 'C', 'D'];
+        const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
+
+        // Calcolo Turno Giorno
+        let dayIndex = (anchorIndex + diffDays) % 4;
+        if (dayIndex < 0) dayIndex += 4;
+        
+        // VVF Standard: 12-24 12-48. Notte è quello precedente nella sequenza logica del giorno.
+        let nightIndex = dayIndex - 1;
+        if (nightIndex < 0) nightIndex += 4;
+
+        return {
+            day: shifts[dayIndex],
+            night: shifts[nightIndex]
+        };
+    };
 
     // Report Tabellare
     const reportData = useMemo(() => {
@@ -210,20 +242,45 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
                         {Array.from({ length: daysInMonth }).map((_, i) => {
                             const dayNum = i + 1;
-                            const dateStr = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum).toISOString().split('T')[0];
+                            const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
+                            const dateStr = dateObj.toISOString().split('T')[0];
                             const dayRecords = attendanceRecords.filter(r => r.date === dateStr);
                             const isToday = new Date().toISOString().split('T')[0] === dateStr;
+
+                            // Calcolo turno Giorno/Notte corrente
+                            const shifts = getShiftsForDate(dateObj);
+                            
+                            // Calcolo turno Notte precedente (quello che smonta alle 8:00)
+                            const prevDate = new Date(dateObj);
+                            prevDate.setDate(prevDate.getDate() - 1);
+                            const prevShifts = getShiftsForDate(prevDate);
+                            
+                            // I turni "attivi" nelle 24h sono:
+                            // 1. Quello che ha fatto la notte ieri (finisce alle 8:00) -> prevShifts.night
+                            // 2. Quello di Giorno oggi -> shifts.day
+                            // 3. Quello di Notte oggi -> shifts.night
+                            const activeShiftLetters = [
+                                prevShifts.night,
+                                shifts.day,
+                                shifts.night
+                            ];
 
                             return (
                                 <div key={dayNum} className={`min-h-[160px] p-2 border-r border-b border-slate-200 flex flex-col gap-1 ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
                                     <div className="flex justify-between items-start mb-1">
-                                        <span className={`text-sm font-bold ${isToday ? 'text-indigo-600 bg-indigo-100 px-1.5 rounded' : 'text-slate-700'}`}>{dayNum}</span>
+                                        <span className={`text-sm font-bold ${isToday ? 'text-indigo-600 bg-indigo-100 px-1.5 rounded' : 'text-slate-700'}`}>
+                                            {dayNum} <span className="text-[10px] text-slate-400 font-normal ml-1">({shifts.day}/{shifts.night})</span>
+                                        </span>
                                     </div>
                                     
                                     <div className="flex flex-col gap-1">
                                         {['TA', 'TB', 'TC', 'TD'].map(tillId => {
-                                            const record = dayRecords.find(r => r.tillId === tillId);
                                             const shiftLetter = tillId.replace('T', '');
+                                            
+                                            // Filtra: mostra solo se il turno è uno dei 3 attivi nelle 24h
+                                            if (!activeShiftLetters.includes(shiftLetter)) return null;
+
+                                            const record = dayRecords.find(r => r.tillId === tillId);
                                             const color = getShiftColor(tillId);
                                             
                                             let realPeopleCount = 0;
@@ -235,6 +292,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     }).length;
                                             }
 
+                                            // Mostra se c'è un record o se sei admin (per permettere l'inserimento)
                                             if (!record && !isSuperAdmin) return null;
 
                                             return (
