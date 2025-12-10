@@ -160,6 +160,15 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         });
     }, [staff, editingTillId]);
 
+    // Helper per le label (Desktop vs Mobile)
+    const getSlotLabel = (type: 'smontante' | 'giorno' | 'notte') => {
+        switch(type) {
+            case 'smontante': return { full: 'Smontante', short: 'S' };
+            case 'giorno': return { full: 'Giorno', short: 'G' };
+            case 'notte': return { full: 'Notte', short: 'N' };
+        }
+    };
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-full flex flex-col relative">
             
@@ -261,20 +270,20 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                 {
                                     id: 'slot1',
                                     shift: prevShifts.night,
-                                    label: '00-08',
+                                    label: getSlotLabel('smontante'),
                                     dateRef: prevDateStr // Record di Ieri
                                 },
                                 {
                                     id: 'slot2',
                                     shift: shifts.day,
-                                    label: '08-20',
+                                    label: getSlotLabel('giorno'),
                                     dateRef: dateStr // Record di Oggi
                                 },
                                 {
                                     id: 'slot3',
                                     shift: shifts.night,
-                                    label: '20-24',
-                                    dateRef: dateStr // Record di Oggi (o Domani a seconda della convenzione, ma per presenze usiamo data start)
+                                    label: getSlotLabel('notte'),
+                                    dateRef: dateStr // Record di Oggi (o Domani a seconda della convenzione)
                                 }
                             ];
 
@@ -311,21 +320,25 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     key={`${dayNum}-${idx}`} 
                                                     onClick={() => handleOpenEdit(slot.dateRef, tillId, record)}
                                                     className={`
-                                                        group relative flex items-center justify-between border rounded p-1 transition-all cursor-pointer h-7
+                                                        group relative flex items-center justify-between border rounded p-1 transition-all cursor-pointer h-8
                                                         ${record ? 'bg-slate-50 hover:bg-white hover:shadow-md' : 'bg-transparent border-dashed border-slate-200 opacity-40 hover:opacity-100'}
                                                     `}
                                                 >
                                                     <div className="flex items-center gap-2 w-full">
-                                                        <span className="text-[9px] font-mono text-slate-400 w-8">{slot.label}</span>
+                                                        {/* Label (Smontante/Giorno/Notte su PC, S/G/N su Mobile) */}
+                                                        <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase w-6 md:w-auto md:min-w-[60px]">
+                                                            <span className="md:hidden">{slot.label.short}</span>
+                                                            <span className="hidden md:inline">{slot.label.full}</span>
+                                                        </span>
                                                         
-                                                        {/* Dot con lettera Turno */}
+                                                        {/* Dot con lettera Turno - Allineamento Ottico Fix */}
                                                         <div 
-                                                            className="w-4 h-4 rounded-full shadow-sm flex items-center justify-center text-[9px] text-white font-normal shrink-0" 
+                                                            className="w-5 h-5 rounded-full shadow-sm flex items-center justify-center text-[10px] text-white font-normal shrink-0 leading-none pt-[1px]" 
                                                             style={{ backgroundColor: color }}
                                                         >
                                                             {slot.shift}
                                                         </div>
-                                                        <span className="text-xs font-bold text-slate-700 flex-grow text-right pr-1">
+                                                        <span className="text-xs font-bold text-slate-700 flex-grow text-right pr-1 leading-none">
                                                             {record ? realPeopleCount : '+'}
                                                         </span>
                                                     </div>
