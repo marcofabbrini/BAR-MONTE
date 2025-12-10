@@ -13,7 +13,8 @@ import AnalottoView from './components/AnalottoView';
 import DiceGame from './components/DiceGame';
 import ShiftCalendar from './components/ShiftCalendar';
 import { TILLS, INITIAL_MENU_ITEMS, INITIAL_STAFF_MEMBERS } from './constants';
-import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings, AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel, AttendanceRecord, GeneralSettings } from './types';
+import { Till, Product, StaffMember, Order, TillColors, CashMovement, AdminUser, TombolaConfig, TombolaTicket, TombolaWin, SeasonalityConfig, ShiftSettings, AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel, AttendanceRecord, GeneralSettings, AppNotification } from './types';
+import { BellIcon } from './components/Icons';
 
 type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice';
 
@@ -68,6 +69,10 @@ const App: React.FC = () => {
         rcAnchorSubGroup: 1
     });
 
+    // Notification State
+    const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
+    const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
+
     // Calcolo Super Admin
     const isSuperAdmin = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
 
@@ -101,6 +106,63 @@ const App: React.FC = () => {
         });
         return () => unsubscribe();
     }, []);
+
+    // NOTIFICATION LISTENER
+    useEffect(() => {
+        // Ascolta solo notifiche create DOPO il caricamento della pagina per evitare spam all'apertura
+        const sessionStart = new Date().toISOString();
+        
+        const q = query(collection(db, 'notifications'), where('timestamp', '>', sessionStart), orderBy('timestamp', 'desc'));
+        
+        const unsubNotifications = onSnapshot(q, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === 'added') {
+                    const notif = change.doc.data() as AppNotification;
+                    // Mostra Toast
+                    setActiveToast(notif);
+                    
+                    // Suono Notifica (Ding)
+                    try {
+                        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+                        audio.volume = 0.5;
+                        audio.play().catch(e => console.log("Audio play blocked", e));
+                    } catch(e) {}
+
+                    // Notifica Browser (Se autorizzata e app in background)
+                    if (Notification.permission === 'granted' && document.visibilityState === 'hidden') {
+                        new Notification(notif.title, { 
+                            body: notif.body,
+                            icon: '/logo.png' 
+                        });
+                    }
+                    
+                    // Nascondi toast dopo 5 sec
+                    setTimeout(() => setActiveToast(null), 5000);
+                }
+            });
+        });
+
+        return () => unsubNotifications();
+    }, []);
+
+    const requestNotificationPermission = async () => {
+        if (!('Notification' in window)) return;
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+        if (permission === 'granted') {
+            new Notification("Notifiche Attivate!", { body: "Riceverai avvisi dal Bar VVF." });
+        }
+    };
+
+    const handleSendNotification = async (title: string, body: string, target = 'all') => {
+        await addDoc(collection(db, 'notifications'), {
+            title,
+            body,
+            target,
+            timestamp: new Date().toISOString(),
+            sender: currentUser?.email || 'Sistema'
+        });
+    };
 
     // Data Listeners
     useEffect(() => {
@@ -338,7 +400,6 @@ const App: React.FC = () => {
         }
     }, []);
     
-    // Modificata per accettare una data opzionale (per modifiche admin)
     const handleSaveAttendance = useCallback(async (tillId: string, presentStaffIds: string[], dateOverride?: string) => {
         try {
             const dateToUse = dateOverride || new Date().toISOString().split('T')[0];
@@ -425,7 +486,6 @@ const App: React.FC = () => {
         } catch (e) { console.error(e); throw e; }
     };
     
-    // === ANALOTTO LOGIC ===
     const handlePlaceAnalottoBet = async (betData: Omit<AnalottoBet, 'id' | 'timestamp'>) => {
         try {
             await runTransaction(db, async (t) => {
@@ -478,7 +538,6 @@ const App: React.FC = () => {
     const handleUpdateAnalottoConfig = async (newConfig: Partial<AnalottoConfig>) => {
         await setDoc(doc(db, 'analotto', 'config'), newConfig, { merge: true });
     };
-    // ======================
 
     const handleRefundTombolaTicket = async (ticketId: string) => {
         try {
@@ -538,7 +597,11 @@ const App: React.FC = () => {
     };
 
     const handleUpdateTombolaConfig = async (cfg: Partial<TombolaConfig>) => { await setDoc(doc(db, 'tombola', 'config'), cfg, { merge: true }); };
-    const handleTombolaStart = async () => { await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() }); };
+    const handleTombolaStart = async () => { 
+        await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() });
+        // Invia Notifica a tutti
+        await handleSendNotification("TOMBOLA INIZIATA! 🎟️", "L'estrazione è partita. Corri a controllare la tua cartella!", "all");
+    };
 
     const handleTransferGameFunds = async (amount: number, gameName: string) => {
         if (amount <= 0) return;
@@ -677,6 +740,7 @@ const App: React.FC = () => {
                 shiftSettings={shiftSettings} onUpdateShiftSettings={handleUpdateShiftSettings}
                 attendanceRecords={attendanceRecords} onDeleteAttendance={handleDeleteAttendance} onSaveAttendance={handleSaveAttendance}
                 generalSettings={generalSettings} onUpdateGeneralSettings={handleUpdateGeneralSettings}
+                onSendNotification={handleSendNotification}
             />;
             case 'selection':
             default: return <TillSelection 
@@ -691,11 +755,32 @@ const App: React.FC = () => {
                 shiftSettings={shiftSettings}
                 tombolaConfig={tombolaConfig}
                 isSuperAdmin={isSuperAdmin}
+                notificationPermission={notificationPermission}
+                onRequestNotification={requestNotificationPermission}
             />;
         }
     };
 
-    return <div className="min-h-screen bg-slate-100 text-slate-800">{renderContent()}</div>;
+    return (
+        <div className="min-h-screen bg-slate-100 text-slate-800 relative">
+            {activeToast && (
+                <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-[90%] max-w-md animate-slide-up">
+                    <div className="bg-white rounded-xl shadow-2xl border-l-8 border-yellow-400 p-4 flex items-start gap-4">
+                        <div className="bg-yellow-100 p-2 rounded-full flex-shrink-0">
+                            <BellIcon className="h-6 w-6 text-yellow-600" />
+                        </div>
+                        <div className="flex-grow">
+                            <h4 className="font-black text-slate-800 uppercase text-sm mb-1">{activeToast.title}</h4>
+                            <p className="text-slate-600 text-sm leading-snug">{activeToast.body}</p>
+                            <span className="text-[10px] text-slate-400 mt-2 block">{new Date(activeToast.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                        <button onClick={() => setActiveToast(null)} className="text-slate-400 hover:text-slate-600">&times;</button>
+                    </div>
+                </div>
+            )}
+            {renderContent()}
+        </div>
+    );
 };
 
 export default App;

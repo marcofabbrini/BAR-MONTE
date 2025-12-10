@@ -1,7 +1,7 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig } from '../types';
-import { ChartBarIcon, LockIcon, CalendarIcon, GamepadIcon, SunIcon, CloudSunIcon, RainIcon, SnowIcon, BoltIcon } from './Icons';
+import { ChartBarIcon, LockIcon, CalendarIcon, GamepadIcon, SunIcon, CloudSunIcon, RainIcon, SnowIcon, BoltIcon, BellIcon } from './Icons';
 
 interface TillSelectionProps {
     tills: Till[];
@@ -15,6 +15,8 @@ interface TillSelectionProps {
     shiftSettings?: ShiftSettings;
     tombolaConfig?: TombolaConfig;
     isSuperAdmin?: boolean | null;
+    notificationPermission?: NotificationPermission;
+    onRequestNotification?: () => void;
 }
 
 interface WeatherData {
@@ -22,7 +24,7 @@ interface WeatherData {
     weathercode: number;
 }
 
-const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin }) => {
+const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification }) => {
     
     // WEATHER & DATE STATE
     const [currentDate, setCurrentDate] = useState<string>('');
@@ -188,6 +190,17 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </span>
                     ))}
                 </div>
+            )}
+
+            {/* NOTIFICATION PERMISSION REQUEST */}
+            {notificationPermission === 'default' && onRequestNotification && (
+                <button 
+                    onClick={onRequestNotification}
+                    className="absolute top-4 left-4 bg-white p-2 rounded-full shadow-md text-yellow-500 animate-bounce z-50 hover:bg-yellow-50 transition-colors"
+                    title="Attiva Notifiche"
+                >
+                    <BellIcon className="h-6 w-6" />
+                </button>
             )}
 
             <div className="flex-grow flex flex-col items-center justify-center p-4 z-10 w-full max-w-7xl mx-auto pb-16">

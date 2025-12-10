@@ -156,3 +156,12 @@ export interface AttendanceRecord {
     timestamp: string;
     presentStaffIds: string[];
 }
+
+export interface AppNotification {
+    id: string;
+    title: string;
+    body: string;
+    timestamp: string;
+    target?: 'all' | string;
+    sender?: string;
+}

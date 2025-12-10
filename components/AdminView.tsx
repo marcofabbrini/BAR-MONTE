@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings } from '../types';
 import { type User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -60,6 +60,8 @@ interface AdminViewProps {
 
     generalSettings?: GeneralSettings;
     onUpdateGeneralSettings?: (cfg: GeneralSettings) => Promise<void>;
+
+    onSendNotification?: (title: string, body: string, target?: string) => Promise<void>;
 }
 
 type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'attendance';
@@ -76,7 +78,8 @@ const AdminView: React.FC<AdminViewProps> = ({
     seasonalityConfig, onUpdateSeasonality,
     shiftSettings, onUpdateShiftSettings,
     attendanceRecords, onDeleteAttendance, onSaveAttendance,
-    generalSettings, onUpdateGeneralSettings
+    generalSettings, onUpdateGeneralSettings,
+    onSendNotification
 }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -111,6 +114,10 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     // General Settings State
     const [waterPrice, setWaterPrice] = useState(generalSettings?.waterQuotaPrice || 0);
+
+    // Notification Form
+    const [notifTitle, setNotifTitle] = useState('');
+    const [notifBody, setNotifBody] = useState('');
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
@@ -249,6 +256,14 @@ const AdminView: React.FC<AdminViewProps> = ({
             waterQuotaPrice: waterPrice
         });
         alert("Configurazione generale salvata!");
+    };
+
+    const handleSendNotif = async () => {
+        if(!onSendNotification || !notifTitle.trim() || !notifBody.trim()) return;
+        await onSendNotification(notifTitle, notifBody);
+        alert("Notifica Inviata a tutti i dispositivi attivi!");
+        setNotifTitle('');
+        setNotifBody('');
     };
 
     const toggleSection = (section: string) => {
@@ -393,6 +408,37 @@ const AdminView: React.FC<AdminViewProps> = ({
                                     <button onClick={handleSaveGeneral} className="bg-slate-700 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 mt-4 shadow-sm text-sm">
                                         Salva Generale
                                     </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* NOTIFICATIONS */}
+                        <div className="bg-yellow-50 rounded-xl border border-yellow-200 overflow-hidden">
+                            <button onClick={() => toggleSection('notifications')} className="w-full p-4 flex justify-between items-center text-left bg-yellow-100 hover:bg-yellow-200 transition-colors">
+                                <h2 className="text-sm font-bold text-yellow-800 uppercase tracking-wide flex items-center gap-2">
+                                    <MegaphoneIcon className="h-5 w-5" /> Invia Notifica Push
+                                </h2>
+                                <span>{expandedSection === 'notifications' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'notifications' && (
+                                <div className="p-6 bg-yellow-50 animate-fade-in">
+                                    <div className="space-y-3">
+                                        <input 
+                                            placeholder="Titolo (es. Avviso Importante)" 
+                                            className="w-full border p-2 rounded"
+                                            value={notifTitle}
+                                            onChange={e => setNotifTitle(e.target.value)}
+                                        />
+                                        <textarea 
+                                            placeholder="Messaggio per tutti gli utenti connessi..." 
+                                            className="w-full border p-2 rounded h-20"
+                                            value={notifBody}
+                                            onChange={e => setNotifBody(e.target.value)}
+                                        />
+                                        <button onClick={handleSendNotif} className="bg-yellow-600 text-white px-6 py-2 rounded-lg font-bold w-full hover:bg-yellow-700 shadow-sm flex justify-center items-center gap-2">
+                                            <MegaphoneIcon className="h-4 w-4" /> Invia a Tutti
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
