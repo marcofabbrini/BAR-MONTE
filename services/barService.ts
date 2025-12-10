@@ -73,6 +73,10 @@ export const BarService = {
             if(d.exists()) onUpdate(d.data() as ShiftSettings);
             else {
                 // Default: 10 Dicembre 2025 era Turno D (Giorno)
+                // Questo garantisce che:
+                // 10 Dic Mattina (00-08): Smontante B
+                // 10 Dic Giorno (08-20): D
+                // 10 Dic Sera (20-24): Notte C
                 setDoc(doc(db, 'settings', 'shift'), { anchorDate: '2025-12-10', anchorShift: 'd', rcAnchorDate: '', rcAnchorShift: 'a', rcAnchorSubGroup: 1 });
             }
         });

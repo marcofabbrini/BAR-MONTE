@@ -51,8 +51,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     const isRealPerson = (name: string) => !name.toLowerCase().includes('cassa');
 
     const getShiftsForDate = (date: Date) => {
-        const anchorDateStr = shiftSettings?.anchorDate || new Date().toISOString().split('T')[0];
-        const anchorShift = shiftSettings?.anchorShift || 'b';
+        const anchorDateStr = shiftSettings?.anchorDate || '2025-12-10';
+        const anchorShift = shiftSettings?.anchorShift || 'd';
 
         const anchorDate = new Date(anchorDateStr);
         anchorDate.setHours(12, 0, 0, 0); 
@@ -265,6 +265,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             const prevDateStr = prevDate.toISOString().split('T')[0];
                             const prevShifts = getShiftsForDate(prevDate);
                             
+                            // 3 SLOT CRONOLOGICI
                             const timeSlots = [
                                 { id: 'slot1', shift: prevShifts.night, label: getSlotLabel('smontante'), dateRef: prevDateStr },
                                 { id: 'slot2', shift: shifts.day, label: getSlotLabel('giorno'), dateRef: dateStr },
@@ -294,7 +295,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     }).length;
                                             }
 
-                                            if (!record && !isSuperAdmin && readOnly) return null; // Show even empty slots to admins, but hide for users if empty
+                                            if (!record && !isSuperAdmin && readOnly) return null;
 
                                             return (
                                                 <div 
@@ -312,12 +313,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                             <span className="hidden md:inline">{slot.label.full}</span>
                                                         </span>
                                                         
+                                                        {/* PALLINO ALLINEATO PERFETTAMENTE */}
                                                         <div 
                                                             className="w-5 h-5 rounded-full shadow-sm flex items-center justify-center text-[10px] text-white font-normal shrink-0 leading-none pt-[1px]" 
                                                             style={{ backgroundColor: color }}
                                                         >
                                                             {slot.shift}
                                                         </div>
+                                                        
                                                         <span className="text-xs font-bold text-slate-700 flex-grow text-right pr-1 leading-none">
                                                             {record ? realPeopleCount : (readOnly ? '-' : '+')}
                                                         </span>
