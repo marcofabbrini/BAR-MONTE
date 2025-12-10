@@ -1,5 +1,21 @@
 
 import { db } from '../firebaseConfig';
+<<<<<<< HEAD
+=======
+import { 
+    doc, 
+    collection, 
+    onSnapshot, 
+    setDoc, 
+    runTransaction, 
+    updateDoc, 
+    deleteDoc,
+    query, 
+    orderBy,
+    DocumentSnapshot,
+    QuerySnapshot
+} from 'firebase/firestore';
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
 import { TombolaConfig, TombolaTicket, TombolaWin } from '../types';
 
 // Helper per mescolare un array (necessario per generare le cartelle)
@@ -40,8 +56,13 @@ export const TombolaService = {
     // --- LISTENERS ---
 
     subscribeToConfig: (onUpdate: (config: TombolaConfig) => void) => {
+<<<<<<< HEAD
         return db.collection('tombola').doc('config').onSnapshot((snapshot) => {
             if (snapshot.exists) {
+=======
+        return onSnapshot(doc(db, 'tombola', 'config'), (snapshot: DocumentSnapshot) => {
+            if (snapshot.exists()) {
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                 onUpdate(snapshot.data() as TombolaConfig);
             } else {
                 const initialConfig: TombolaConfig = { 
@@ -54,20 +75,32 @@ export const TombolaService = {
                     lastExtraction: new Date().toISOString(), 
                     extractedNumbers: [] 
                 };
+<<<<<<< HEAD
                 db.collection('tombola').doc('config').set(initialConfig);
+=======
+                setDoc(doc(db, 'tombola', 'config'), initialConfig);
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
             }
         });
     },
 
     subscribeToTickets: (onUpdate: (tickets: TombolaTicket[]) => void) => {
+<<<<<<< HEAD
         return db.collection('tombola_tickets').onSnapshot((snapshot) => {
+=======
+        return onSnapshot(collection(db, 'tombola_tickets'), (snapshot: QuerySnapshot) => {
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
             const tickets = snapshot.docs.map(d => ({...d.data(), id: d.id} as TombolaTicket));
             onUpdate(tickets);
         });
     },
 
     subscribeToWins: (onUpdate: (wins: TombolaWin[]) => void) => {
+<<<<<<< HEAD
         return db.collection('tombola_wins').onSnapshot((snapshot) => {
+=======
+        return onSnapshot(collection(db, 'tombola_wins'), (snapshot: QuerySnapshot) => {
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
             const wins = snapshot.docs.map(d => ({...d.data(), id: d.id} as TombolaWin));
             onUpdate(wins);
         });
@@ -77,10 +110,17 @@ export const TombolaService = {
 
     buyTicket: async (playerId: string, playerName: string, quantity: number) => {
         try {
+<<<<<<< HEAD
             await db.runTransaction(async (t) => {
                 const configRef = db.collection('tombola').doc('config');
                 const configSnap = await t.get(configRef);
                 if (!configSnap.exists) throw new Error("Configurazione Tombola mancante");
+=======
+            await runTransaction(db, async (t) => {
+                const configRef = doc(db, 'tombola', 'config');
+                const configSnap = await t.get(configRef);
+                if (!configSnap.exists()) throw new Error("Configurazione Tombola mancante");
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                 const currentConfig = configSnap.data() as TombolaConfig;
 
                 let totalCost = 0;
@@ -99,10 +139,18 @@ export const TombolaService = {
 
                 // Generazione Cartelle
                 if (quantity === 6) {
+<<<<<<< HEAD
                     const allNumbers = shuffleArray(Array.from({ length: 90 }, (_, i) => i + 1));
                     for (let i = 0; i < 6; i++) {
                         const ticketNumbers = allNumbers.slice(i * 15, (i + 1) * 15).sort((a: number, b: number) => a - b);
                         const ticketRef = db.collection('tombola_tickets').doc();
+=======
+                    // Bundle: usa tutti i 90 numeri distribuiti su 6 cartelle
+                    const allNumbers = shuffleArray(Array.from({ length: 90 }, (_, i) => i + 1));
+                    for (let i = 0; i < 6; i++) {
+                        const ticketNumbers = allNumbers.slice(i * 15, (i + 1) * 15).sort((a: number, b: number) => a - b);
+                        const ticketRef = doc(collection(db, 'tombola_tickets'));
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                         t.set(ticketRef, { 
                             playerId, 
                             playerName, 
@@ -112,9 +160,16 @@ export const TombolaService = {
                         });
                     }
                 } else {
+<<<<<<< HEAD
                     for (let i = 0; i < quantity; i++) {
                         const ticketNumbers = generateSingleTicket();
                         const ticketRef = db.collection('tombola_tickets').doc();
+=======
+                    // Singole: genera random
+                    for (let i = 0; i < quantity; i++) {
+                        const ticketNumbers = generateSingleTicket();
+                        const ticketRef = doc(collection(db, 'tombola_tickets'));
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                         t.set(ticketRef, { 
                             playerId, 
                             playerName, 
@@ -125,9 +180,17 @@ export const TombolaService = {
                     }
                 }
                 
+<<<<<<< HEAD
                 t.update(configRef, { jackpot: (currentConfig.jackpot || 0) + jackpotAdd });
                 
                 const cashRef = db.collection('cash_movements').doc();
+=======
+                // Aggiorna Montepremi
+                t.update(configRef, { jackpot: (currentConfig.jackpot || 0) + jackpotAdd });
+                
+                // Movimento Cassa (Tombola)
+                const cashRef = doc(collection(db, 'cash_movements'));
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                 t.set(cashRef, { 
                     amount: totalCost, 
                     reason: `Tombola: ${quantity} cartelle (${playerName})`, 
@@ -136,7 +199,12 @@ export const TombolaService = {
                     category: 'tombola' 
                 });
                 
+<<<<<<< HEAD
                 const barCashRef = db.collection('cash_movements').doc();
+=======
+                // Utile Bar
+                const barCashRef = doc(collection(db, 'cash_movements'));
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                 t.set(barCashRef, { 
                     amount: revenue, 
                     reason: `Utile Tombola (20%)`, 
@@ -153,19 +221,32 @@ export const TombolaService = {
 
     refundTicket: async (ticketId: string) => {
         try {
+<<<<<<< HEAD
             await db.runTransaction(async (t) => {
                 const configRef = db.collection('tombola').doc('config');
                 const configSnap = await t.get(configRef);
                 if (!configSnap.exists) throw new Error("Configurazione Tombola mancante");
+=======
+            await runTransaction(db, async (t) => {
+                const configRef = doc(db, 'tombola', 'config');
+                const configSnap = await t.get(configRef);
+                if (!configSnap.exists()) throw new Error("Configurazione Tombola mancante");
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                 const currentConfig = configSnap.data() as TombolaConfig;
 
                 if (currentConfig.status === 'active' || currentConfig.status === 'completed') {
                     throw new Error("Impossibile annullare cartelle a gioco iniziato.");
                 }
 
+<<<<<<< HEAD
                 const ticketRef = db.collection('tombola_tickets').doc(ticketId);
                 const ticketSnap = await t.get(ticketRef);
                 if (!ticketSnap.exists) throw new Error("Cartella non trovata");
+=======
+                const ticketRef = doc(db, 'tombola_tickets', ticketId);
+                const ticketSnap = await t.get(ticketRef);
+                if (!ticketSnap.exists()) throw new Error("Cartella non trovata");
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
 
                 const ticketData = ticketSnap.data() as TombolaTicket;
                 const refundAmount = ticketData.pricePaid !== undefined ? ticketData.pricePaid : currentConfig.ticketPriceSingle;
@@ -175,10 +256,17 @@ export const TombolaService = {
                 t.delete(ticketRef);
                 t.update(configRef, { jackpot: Math.max(0, (currentConfig.jackpot || 0) - jackpotDeduction) });
 
+<<<<<<< HEAD
                 const cashRef = db.collection('cash_movements').doc();
                 t.set(cashRef, { amount: refundAmount, reason: "Rimborso Cartella (Annullamento)", timestamp: new Date().toISOString(), type: 'withdrawal', category: 'tombola' });
 
                 const barCashRef = db.collection('cash_movements').doc();
+=======
+                const cashRef = doc(collection(db, 'cash_movements'));
+                t.set(cashRef, { amount: refundAmount, reason: "Rimborso Cartella (Annullamento)", timestamp: new Date().toISOString(), type: 'withdrawal', category: 'tombola' });
+
+                const barCashRef = doc(collection(db, 'cash_movements'));
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                 t.set(barCashRef, { amount: revenueDeduction, reason: "Storno Utile Tombola (Rimborso)", timestamp: new Date().toISOString(), type: 'withdrawal', category: 'bar' });
             });
         } catch (e) {
@@ -189,8 +277,13 @@ export const TombolaService = {
 
     manualExtraction: async () => {
         try {
+<<<<<<< HEAD
             await db.runTransaction(async (t) => {
                 const configRef = db.collection('tombola').doc('config');
+=======
+            await runTransaction(db, async (t) => {
+                const configRef = doc(db, 'tombola', 'config');
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                 const configSnap = await t.get(configRef);
                 const currentConfig = configSnap.data() as TombolaConfig;
                 
@@ -198,17 +291,26 @@ export const TombolaService = {
                 if (!currentConfig.extractedNumbers) currentConfig.extractedNumbers = [];
                 if (currentConfig.extractedNumbers.length >= 90) return;
 
+<<<<<<< HEAD
+=======
+                // Trova un numero non estratto
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                 let nextNum;
                 do { nextNum = Math.floor(Math.random() * 90) + 1; } while (currentConfig.extractedNumbers.includes(nextNum));
                 
                 const newExtracted = [...currentConfig.extractedNumbers, nextNum];
                 
+<<<<<<< HEAD
                 // Fetch tickets outside of transaction or assume small dataset? 
                 // Firestore transaction requires reads before writes. 
                 // Reading ALL tickets might be too much. 
                 // But for VVF Tombola (max 168 tickets), it's fine.
                 const ticketsSnap = await t.get(db.collection('tombola_tickets'));
                 
+=======
+                // Controlla Vincite
+                const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                 ticketsSnap.forEach(ticketDoc => {
                     const ticket = ticketDoc.data() as TombolaTicket;
                     if (!ticket.numbers) return;
@@ -219,8 +321,20 @@ export const TombolaService = {
                     if ([2,3,4,5,15].includes(count)) {
                         const type = count === 2 ? 'Ambo' : count === 3 ? 'Terno' : count === 4 ? 'Quaterna' : count === 5 ? 'Cinquina' : 'Tombola';
                         
+<<<<<<< HEAD
                         // Note: ideally check if already won this type
                         const winRef = db.collection('tombola_wins').doc();
+=======
+                        // Per semplicità qui non controlliamo se ha GIÀ vinto quell'ambo specifico, 
+                        // ma in un sistema reale dovremmo controllare i record precedenti in tombola_wins per questo ticketId e type.
+                        // Firebase Rules o logica aggiuntiva qui per evitare duplicati.
+                        // Per ora assumiamo che l'interfaccia filtri o che le vincite multiple siano ok (es. secondo ambo).
+                        
+                        // Ma per evitare spam di "Ambo" ad ogni numero successivo, bisognerebbe salvare lo stato "wins" nel ticket stesso.
+                        // Dato che è una migrazione 1:1 della logica precedente, manteniamo così per ora.
+                        
+                        const winRef = doc(collection(db, 'tombola_wins'));
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                         t.set(winRef, { 
                             ticketId: ticketDoc.id, 
                             playerName: ticket.playerName, 
@@ -239,22 +353,36 @@ export const TombolaService = {
     },
 
     startGame: async () => {
+<<<<<<< HEAD
         await db.collection('tombola').doc('config').update({ 
+=======
+        await updateDoc(doc(db, 'tombola', 'config'), { 
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
             status: 'active', 
             lastExtraction: new Date().toISOString() 
         });
     },
 
     updateConfig: async (cfg: Partial<TombolaConfig>) => {
+<<<<<<< HEAD
         await db.collection('tombola').doc('config').set(cfg, { merge: true });
+=======
+        await setDoc(doc(db, 'tombola', 'config'), cfg, { merge: true });
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
     },
 
     transferFunds: async (amount: number) => {
         if (amount <= 0) return;
         try {
+<<<<<<< HEAD
             await db.runTransaction(async (t) => {
                 t.update(db.collection('tombola').doc('config'), { jackpot: 0 });
                 const cashRef = db.collection('cash_movements').doc();
+=======
+            await runTransaction(db, async (t) => {
+                t.update(doc(db, 'tombola', 'config'), { jackpot: 0 });
+                const cashRef = doc(collection(db, 'cash_movements'));
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                 t.set(cashRef, { 
                     amount: amount, 
                     reason: `Versamento utile Tombola`, 
@@ -270,3 +398,9 @@ export const TombolaService = {
         }
     }
 };
+<<<<<<< HEAD
+=======
+
+// Need to import getDocs inside the service too for extraction logic
+import { getDocs } from 'firebase/firestore';
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894

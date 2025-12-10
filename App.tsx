@@ -1,7 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
+<<<<<<< HEAD
 import firebase from 'firebase/compat/app';
+=======
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { signInWithPopup, signOut, onAuthStateChanged, type User } from 'firebase/auth';
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
 import TillSelection from './components/TillSelection';
 import TillView from './components/TillView';
 import ReportsView from './components/ReportsView';
@@ -25,7 +30,11 @@ const AppContent: React.FC = () => {
     const [selectedTillId, setSelectedTillId] = useState<string | null>(null);
     
     // Auth State (Minimal Local State)
+<<<<<<< HEAD
     const [currentUser, setCurrentUser] = useState<firebase.User | null>(null);
+=======
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
     const [isAdmin, setIsAdmin] = useState(false);
 
     // --- CONTEXT HOOKS ---
@@ -61,8 +70,14 @@ const AppContent: React.FC = () => {
             setCurrentUser(user);
             if (user && user.email) {
                 try {
+<<<<<<< HEAD
                     const adminsRef = db.collection('admins');
                     const querySnapshot = await adminsRef.where("email", "==", user.email).get();
+=======
+                    const adminsRef = collection(db, 'admins');
+                    const q = query(adminsRef, where("email", "==", user.email));
+                    const querySnapshot = await getDocs(q);
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
                     setIsAdmin(!querySnapshot.empty);
                 } catch (error) {
                     console.error("Auth error:", error);
@@ -91,8 +106,13 @@ const AppContent: React.FC = () => {
         await sendNotification("TOMBOLA INIZIATA! 🎟️", "L'estrazione è partita. Corri a controllare la tua cartella!", "Sistema");
     };
 
+<<<<<<< HEAD
     const handleGoogleLogin = async () => { try { await auth.signInWithPopup(googleProvider); } catch (e: any) { alert("Login fallito: " + e.message); } };
     const handleLogout = async () => { try { await auth.signOut(); setView('selection'); } catch (e) { console.error(e); } };
+=======
+    const handleGoogleLogin = async () => { try { await signInWithPopup(auth, googleProvider); } catch (e: any) { alert("Login fallito: " + e.message); } };
+    const handleLogout = async () => { try { await signOut(auth); setView('selection'); } catch (e) { console.error(e); } };
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
 
     const renderContent = () => {
         if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;

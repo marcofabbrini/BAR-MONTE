@@ -1,7 +1,11 @@
 
 import React, { useState, useMemo } from 'react';
 import { Order, CashMovement } from '../types';
+<<<<<<< HEAD
 import firebase from 'firebase/compat/app';
+=======
+import { type User } from 'firebase/auth';
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
 import { TrashIcon } from './Icons';
 
 interface CashManagementProps {
