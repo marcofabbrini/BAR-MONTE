@@ -126,7 +126,7 @@ const AppContent: React.FC = () => {
                 onUpdateTombolaConfig={handleUpdateTombolaConfig} tillColors={tillColors} onManualExtraction={handleManualTombolaExtraction}
             />;
             case 'analotto': return <AnalottoView onGoBack={() => setView('selection')} config={analottoConfig} bets={analottoBets} extractions={analottoExtractions} staff={staff} onPlaceBet={handlePlaceAnalottoBet} onRunExtraction={handleAnalottoExtraction} isSuperAdmin={isSuperAdmin} onTransferFunds={(amount) => handleTransferAnalottoFunds(amount)} onUpdateConfig={handleUpdateAnalottoConfig} onConfirmTicket={handleConfirmAnalottoTicket} />;
-            case 'dice': return <DiceGame onGoBack={() => setView('selection')} staff={staff} />;
+            case 'dice': return <DiceGame onGoBack={() => setView('selection')} staff={staff} shiftSettings={shiftSettings} />;
             case 'games': return <GamesHub onGoBack={() => setView('selection')} onPlayTombola={() => setView('tombola')} onPlayAnalotto={() => setView('analotto')} onPlayDice={() => setView('dice')} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} />;
             case 'calendar': return <ShiftCalendar onGoBack={() => setView('selection')} tillColors={tillColors} shiftSettings={shiftSettings} />;
             case 'attendance_view': return <AttendanceCalendar onGoBack={() => setView('selection')} attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} isSuperAdmin={false} shiftSettings={shiftSettings} readOnly={true} />;
