@@ -144,16 +144,17 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                     </div>
                 </div>
                 
-                <div className="mt-4 pt-3 border-t border-slate-200 flex justify-between items-center">
+                <div className="mt-4 pt-3 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
                     <span className="text-sm font-medium text-slate-500">{filteredOrders.length} movimenti</span>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
                         <span className="text-lg font-bold text-slate-800">Totale: <span className="text-primary">€{filteredTotal.toFixed(2)}</span></span>
                         <button 
                             onClick={handlePrint} 
-                            className="bg-slate-800 hover:bg-slate-700 text-white p-2 rounded-full shadow-sm transition-colors"
+                            className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"
                             title="Stampa Resoconto Versamenti"
                         >
                             <PrinterIcon className="h-5 w-5" />
+                            <span className="text-xs font-bold uppercase">Stampa riepilogo</span>
                         </button>
                     </div>
                 </div>
@@ -165,9 +166,9 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                 
                 {groupedOrders.map(([name, data]) => (
                     <div key={name} className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
-                        <div className="flex justify-between items-start border-b border-slate-100 pb-2 mb-2">
+                        <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-2">
                             <div>
-                                <p className="text-sm font-bold text-slate-700">{name}</p>
+                                <p className="text-lg font-black text-slate-800">{name}</p>
                                 <p className="text-xs text-slate-500">{data.orders.length} ordini</p>
                             </div>
                             <p className="text-lg font-bold text-primary">€{data.total.toFixed(2)}</p>
@@ -180,7 +181,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                                         <span>€{order.total.toFixed(2)}</span>
                                     </div>
                                     <div className="text-slate-400 italic">
-                                        - {order.items.map(i => `${i.quantity} ${i.product.name}`).join(', ')}
+                                        {order.items.map(i => `${i.quantity} ${i.product.name}`).join(', ')}
                                     </div>
                                 </li>
                             ))}
@@ -212,7 +213,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                     <div className="space-y-8">
                         {groupedOrders.map(([name, data]) => (
                             <div key={name} className="break-inside-avoid">
-                                <div className="flex justify-between items-center bg-gray-100 border-t border-b border-gray-300 py-2 px-2 mb-2">
+                                <div className="flex justify-between items-center bg-gray-100 border-b border-gray-300 py-2 px-2 mb-2">
                                     <h3 className="font-black text-lg uppercase">{name}</h3>
                                     <span className="font-mono font-bold text-lg">€{data.total.toFixed(2)}</span>
                                 </div>
@@ -262,7 +263,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                         ))}
                     </div>
 
-                    <div className="mt-8 border-t-4 border-black pt-4 flex justify-between items-center break-inside-avoid">
+                    <div className="mt-8 pt-4 flex justify-between items-center break-inside-avoid border-t border-gray-300">
                         <div className="text-xs text-gray-400">
                             Generato il {new Date().toLocaleString('it-IT')} <br/>
                             Gestione Bar VVF

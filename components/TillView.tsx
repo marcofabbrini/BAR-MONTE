@@ -532,7 +532,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                     </div>
                                 )}
 
-                                <div className="mb-4 text-xs font-bold text-slate-400 uppercase text-center">
+                                <div className="mb-4 text-sm md:text-base font-black text-slate-500 uppercase text-center tracking-wider">
                                     {selectedStaffId ? `Storico di ${selectedStaffMember?.name}` : 'Storico Completo Cassa'}
                                 </div>
                                 <OrderHistory 
