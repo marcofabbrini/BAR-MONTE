@@ -45,26 +45,32 @@ export const TombolaProvider: React.FC<{ children: ReactNode }> = ({ children })
         const checkAutoExtraction = async () => {
             if (!config || config.status !== 'active') return;
             
+            // Se esiste una data target e una data di inizio gioco
             if (config.targetDate && config.gameStartTime) {
                 const startTime = new Date(config.gameStartTime).getTime();
                 const targetTime = new Date(config.targetDate).getTime();
                 const now = Date.now();
                 const totalDuration = targetTime - startTime;
                 
+                // Se la durata è valida (positiva) e mancano numeri
                 if (totalDuration > 0 && config.extractedNumbers.length < 90) {
                     const totalNumbers = 90;
                     const msPerNumber = totalDuration / totalNumbers;
+                    
                     const elapsedTime = now - startTime;
+                    // Calcola quanti numeri dovrebbero essere usciti teoricamente
                     const expectedCount = Math.min(90, Math.floor(elapsedTime / msPerNumber));
                     
+                    // Se siamo indietro rispetto alla tabella di marcia, estrai
                     if (config.extractedNumbers.length < expectedCount) {
-                        console.log("Auto Extraction Triggered");
+                        console.log("Auto Extraction Triggered. Expected:", expectedCount, "Current:", config.extractedNumbers.length);
                         await TombolaService.manualExtraction();
                     }
                 }
             }
         };
 
+        // Controlla ogni 10 secondi
         const interval = setInterval(checkAutoExtraction, 10000); 
         return () => clearInterval(interval);
     }, [config]);

@@ -76,8 +76,8 @@ export interface TombolaConfig {
     jackpot: number;
     lastExtraction: string;
     extractedNumbers: number[];
-    gameStartTime?: string; // Data inizio gioco per calcolo intervalli
-    targetDate?: string;    // Data fine prevista (es. 25 Dicembre 20:00)
+    gameStartTime?: string; // Data inizio gioco
+    targetDate?: string;    // Data fine prevista per automazione
 }
 
 export interface TombolaTicket {
