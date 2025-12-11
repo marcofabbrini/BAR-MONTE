@@ -1,6 +1,5 @@
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel, TombolaConfig, TombolaTicket, AttendanceRecord } from '../types';
+import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel, TombolaConfig, TombolaTicket, AttendanceRecord, GeneralSettings } from '../types';
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
@@ -20,9 +19,10 @@ interface TillViewProps {
     tombolaTickets?: TombolaTicket[];
     onBuyTombolaTicket?: (staffId: string, quantity: number) => Promise<void>;
     attendanceRecords?: AttendanceRecord[];
+    generalSettings?: GeneralSettings;
 }
 
-const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet, tombolaConfig, tombolaTickets, onBuyTombolaTicket, attendanceRecords }) => {
+const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet, tombolaConfig, tombolaTickets, onBuyTombolaTicket, attendanceRecords, generalSettings }) => {
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
@@ -515,19 +515,36 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                 {/* Water Quotas Table - Current Month Snapshot */}
                                 {!selectedStaffId && waterQuotas.length > 0 && (
                                     <div className="mb-6 bg-blue-50/50 rounded-xl border border-blue-100 p-4">
-                                        <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                            <span className="text-lg">💧</span> Quote Acqua (Mese Corrente)
-                                        </h4>
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider flex items-center gap-2">
+                                                <span className="text-lg">💧</span> Quote Acqua (Mese Corrente)
+                                            </h4>
+                                            {generalSettings?.waterQuotaPrice ? (
+                                                <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-bold">
+                                                    Prezzo: €{generalSettings.waterQuotaPrice.toFixed(2)}/quota
+                                                </span>
+                                            ) : null}
+                                        </div>
                                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                            {waterQuotas.map(user => (
-                                                <div key={user.id} className="bg-white p-2 rounded-lg border border-blue-100 flex items-center justify-between shadow-sm">
-                                                    <span className="text-xs font-bold text-slate-700">{user.name}</span>
-                                                    <div className="flex items-center gap-1 bg-blue-100 px-2 py-0.5 rounded-full">
-                                                        <span className="text-sm">🥛</span>
-                                                        <span className="text-xs font-black text-blue-700">{user.count}</span>
+                                            {waterQuotas.map(user => {
+                                                const cost = user.count * (generalSettings?.waterQuotaPrice || 0);
+                                                return (
+                                                    <div key={user.id} className="bg-white p-2 rounded-lg border border-blue-100 flex flex-col shadow-sm">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="text-xs font-bold text-slate-700">{user.name}</span>
+                                                            <div className="flex items-center gap-1 bg-blue-100 px-2 py-0.5 rounded-full">
+                                                                <span className="text-xs font-black text-blue-700">{user.count}</span>
+                                                            </div>
+                                                        </div>
+                                                        {cost > 0 && (
+                                                            <div className="text-right border-t border-slate-100 pt-1">
+                                                                <span className="text-[10px] font-bold text-slate-400">Tot: </span>
+                                                                <span className="text-xs font-black text-blue-600">€{cost.toFixed(2)}</span>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -540,6 +557,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                     staff={staffForShift} 
                                     attendanceRecords={attendanceRecords} 
                                     tillId={till.id}
+                                    generalSettings={generalSettings}
                                 />
                             </div>
                         )}

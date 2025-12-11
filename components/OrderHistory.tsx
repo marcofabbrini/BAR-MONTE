@@ -1,6 +1,5 @@
-
 import React, { useState, useMemo } from 'react';
-import { Order, StaffMember, AttendanceRecord } from '../types';
+import { Order, StaffMember, AttendanceRecord, GeneralSettings } from '../types';
 import { PrinterIcon } from './Icons';
 
 interface OrderHistoryProps {
@@ -8,9 +7,10 @@ interface OrderHistoryProps {
     staff: StaffMember[];
     attendanceRecords?: AttendanceRecord[];
     tillId?: string;
+    generalSettings?: GeneralSettings;
 }
 
-const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRecords, tillId }) => {
+const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRecords, tillId, generalSettings }) => {
     
     // Helper per ottenere data locale YYYY-MM-DD
     const getLocalDateString = () => {
@@ -72,12 +72,12 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
 
     // Raggruppamento per dettaglio stampa
     const groupedOrders = useMemo(() => {
-        const groups: Record<string, { orders: Order[], total: number, waterQuotas: number }> = {};
+        const groups: Record<string, { orders: Order[], total: number, waterQuotas: number, waterCost: number }> = {};
         
         filteredOrders.forEach(order => {
             const name = order.staffName || 'Sconosciuto';
             if (!groups[name]) {
-                groups[name] = { orders: [], total: 0, waterQuotas: 0 };
+                groups[name] = { orders: [], total: 0, waterQuotas: 0, waterCost: 0 };
             }
             groups[name].orders.push(order);
             groups[name].total += order.total;
@@ -102,15 +102,16 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                 if (count > 0) {
                     const name = member.name;
                     if (!groups[name]) {
-                        groups[name] = { orders: [], total: 0, waterQuotas: 0 };
+                        groups[name] = { orders: [], total: 0, waterQuotas: 0, waterCost: 0 };
                     }
                     groups[name].waterQuotas = count;
+                    groups[name].waterCost = count * (generalSettings?.waterQuotaPrice || 0);
                 }
             });
         }
 
         return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
-    }, [filteredOrders, attendanceRecords, startDate, endDate, tillId, staff, filterStaffId]);
+    }, [filteredOrders, attendanceRecords, startDate, endDate, tillId, staff, filterStaffId, generalSettings]);
 
     const handlePrint = () => {
         window.print();
@@ -188,8 +189,10 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                         </ul>
                         {data.waterQuotas > 0 && (
                             <div className="mt-2 pt-2 border-t border-blue-100 flex justify-between items-center bg-blue-50 px-2 py-1 rounded">
-                                <span className="text-xs font-bold text-blue-700 flex items-center gap-1">🥛 Quote Acqua</span>
-                                <span className="text-xs font-black text-blue-800">{data.waterQuotas}</span>
+                                <span className="text-xs font-bold text-blue-700 flex items-center gap-1">🥛 Quote Acqua ({data.waterQuotas})</span>
+                                <span className="text-xs font-black text-blue-800">
+                                    {data.waterCost > 0 ? `€${data.waterCost.toFixed(2)}` : '€0.00'}
+                                </span>
                             </div>
                         )}
                     </div>
@@ -211,56 +214,62 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                     </div>
 
                     <div className="space-y-8">
-                        {groupedOrders.map(([name, data]) => (
-                            <div key={name} className="break-inside-avoid">
-                                <div className="flex justify-between items-center bg-gray-100 border-b border-gray-300 py-2 px-2 mb-2">
-                                    <h3 className="font-black text-lg uppercase">{name}</h3>
-                                    <span className="font-mono font-bold text-lg">€{data.total.toFixed(2)}</span>
+                        {groupedOrders.map(([name, data]) => {
+                            const totalWithWater = data.total + data.waterCost;
+                            return (
+                                <div key={name} className="break-inside-avoid">
+                                    <div className="flex justify-between items-center bg-gray-100 border-b border-gray-300 py-2 px-2 mb-2">
+                                        <h3 className="font-black text-lg uppercase">{name}</h3>
+                                        <div className="flex gap-4">
+                                            {data.waterCost > 0 && <span className="text-sm text-blue-600 font-bold">Acqua: €{data.waterCost.toFixed(2)}</span>}
+                                            <span className="font-mono font-bold text-lg">Totale: €{totalWithWater.toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <table className="w-full text-xs text-left mb-4">
+                                        <thead>
+                                            <tr className="border-b border-gray-200">
+                                                <th className="py-1 w-24">Data/Ora</th>
+                                                <th className="py-1">Dettaglio Articoli</th>
+                                                <th className="py-1 text-right w-16">Importo</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {data.orders.map(order => (
+                                                <tr key={order.id} className="border-b border-gray-100">
+                                                    <td className="py-1 align-top text-gray-500">
+                                                        {new Date(order.timestamp).toLocaleDateString('it-IT')} <br/>
+                                                        {new Date(order.timestamp).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}
+                                                    </td>
+                                                    <td className="py-1 align-top">
+                                                        {order.items.map(i => (
+                                                            <span key={i.product.id} className="mr-3 inline-block">
+                                                                <b>{i.quantity}</b> {i.product.name}
+                                                            </span>
+                                                        ))}
+                                                    </td>
+                                                    <td className="py-1 align-top text-right font-mono font-medium">
+                                                        €{order.total.toFixed(2)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {/* Water Quota Row in Print */}
+                                            {data.waterQuotas > 0 && (
+                                                <tr className="border-b border-blue-200 bg-blue-50/30">
+                                                    <td className="py-2 align-top text-blue-500 font-bold">RIEPILOGO</td>
+                                                    <td className="py-2 align-top font-bold text-slate-700 flex items-center gap-2">
+                                                        <span>🥛 Quote Acqua ({data.waterQuotas} presenze)</span>
+                                                    </td>
+                                                    <td className="py-2 align-top text-right font-black text-blue-700">
+                                                        €{data.waterCost.toFixed(2)}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
-                                
-                                <table className="w-full text-xs text-left mb-4">
-                                    <thead>
-                                        <tr className="border-b border-gray-200">
-                                            <th className="py-1 w-24">Data/Ora</th>
-                                            <th className="py-1">Dettaglio Articoli</th>
-                                            <th className="py-1 text-right w-16">Totale</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {data.orders.map(order => (
-                                            <tr key={order.id} className="border-b border-gray-100">
-                                                <td className="py-1 align-top text-gray-500">
-                                                    {new Date(order.timestamp).toLocaleDateString('it-IT')} <br/>
-                                                    {new Date(order.timestamp).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}
-                                                </td>
-                                                <td className="py-1 align-top">
-                                                    {order.items.map(i => (
-                                                        <span key={i.product.id} className="mr-3 inline-block">
-                                                            <b>{i.quantity}</b> {i.product.name}
-                                                        </span>
-                                                    ))}
-                                                </td>
-                                                <td className="py-1 align-top text-right font-mono font-medium">
-                                                    €{order.total.toFixed(2)}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {/* Water Quota Row in Print */}
-                                        {data.waterQuotas > 0 && (
-                                            <tr className="border-b border-blue-200 bg-blue-50/30">
-                                                <td className="py-2 align-top text-blue-500 font-bold">RIEPILOGO</td>
-                                                <td className="py-2 align-top font-bold text-slate-700 flex items-center gap-2">
-                                                    <span>🥛 Quote Acqua (Presenze nel periodo)</span>
-                                                </td>
-                                                <td className="py-2 align-top text-right font-black text-blue-700">
-                                                    {data.waterQuotas}
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     <div className="mt-8 pt-4 flex justify-between items-center break-inside-avoid border-t border-gray-300">
@@ -269,8 +278,10 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                             Gestione Bar VVF
                         </div>
                         <div className="text-right">
-                            <p className="text-sm font-bold uppercase text-gray-600">Totale Complessivo</p>
-                            <p className="text-4xl font-black tracking-tight">€{filteredTotal.toFixed(2)}</p>
+                            <p className="text-sm font-bold uppercase text-gray-600">Totale Complessivo (con Acqua)</p>
+                            <p className="text-4xl font-black tracking-tight">
+                                €{groupedOrders.reduce((acc, [, data]) => acc + data.total + data.waterCost, 0).toFixed(2)}
+                            </p>
                         </div>
                     </div>
                 </div>

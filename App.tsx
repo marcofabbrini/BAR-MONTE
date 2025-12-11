@@ -111,6 +111,7 @@ const AppContent: React.FC = () => {
                 tombolaTickets={tombolaTickets} 
                 onBuyTombolaTicket={handleBuyTombolaTicket} 
                 attendanceRecords={attendanceRecords}
+                generalSettings={generalSettings}
             />;
             case 'reports': return <ReportsView onGoBack={() => setView('selection')} products={products} staff={staff} orders={orders} />;
             case 'tombola': 

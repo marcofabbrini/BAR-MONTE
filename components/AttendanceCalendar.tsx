@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings } from '../types';
 import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon } from './Icons';
@@ -246,15 +247,15 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 </div>
             </div>
 
-            <div className="flex-grow overflow-auto p-4">
+            <div className="flex-grow overflow-auto p-2 md:p-4">
                 {viewMode === 'calendar' && (
-                    <div className="grid grid-cols-7 border-l border-t border-slate-200 min-w-[600px] md:min-w-0">
+                    <div className="grid grid-cols-7 border-l border-t border-slate-200">
                         {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => (
                             <div key={d} className="p-2 text-center text-xs font-bold bg-slate-100 border-r border-b border-slate-200 text-slate-500 uppercase">{d}</div>
                         ))}
 
                         {Array.from({ length: startingBlankDays }).map((_, i) => (
-                            <div key={`blank-${i}`} className="min-h-[160px] bg-slate-50/30 border-r border-b border-slate-200"></div>
+                            <div key={`blank-${i}`} className="min-h-[80px] bg-slate-50/30 border-r border-b border-slate-200"></div>
                         ))}
 
                         {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -276,14 +277,43 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             ];
 
                             return (
-                                <div key={dayNum} className={`min-h-[160px] p-2 border-r border-b border-slate-200 flex flex-col gap-1 ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
+                                <div key={dayNum} className={`min-h-[100px] md:min-h-[160px] p-1 md:p-2 border-r border-b border-slate-200 flex flex-col gap-1 ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
                                     <div className="flex justify-between items-start mb-1">
-                                        <span className={`text-sm font-bold ${isToday ? 'text-indigo-600 bg-indigo-100 px-1.5 rounded' : 'text-slate-700'}`}>
-                                            {dayNum} <span className="text-[10px] text-slate-400 font-normal ml-1">({shifts.day}/{shifts.night})</span>
+                                        <span className={`text-xs md:text-sm font-bold ${isToday ? 'text-indigo-600 bg-indigo-100 px-1.5 rounded' : 'text-slate-700'}`}>
+                                            {dayNum} <span className="hidden md:inline text-[10px] text-slate-400 font-normal ml-1">({shifts.day}/{shifts.night})</span>
                                         </span>
                                     </div>
                                     
-                                    <div className="flex flex-col gap-1.5">
+                                    {/* MOBILE VIEW: Side-by-side columns inside cell */}
+                                    <div className="flex md:hidden flex-row justify-between items-stretch h-full gap-1">
+                                        {timeSlots.map((slot, idx) => {
+                                            const tillId = `T${slot.shift}`;
+                                            const color = getShiftColor(tillId);
+                                            const record = attendanceRecords.find(r => r.date === slot.dateRef && r.tillId === tillId);
+                                            let realPeopleCount = record ? record.presentStaffIds.filter(id => {
+                                                const member = staff.find(s => s.id === id);
+                                                return member && isRealPerson(member.name);
+                                            }).length : 0;
+
+                                            return (
+                                                <div 
+                                                    key={`${dayNum}-mob-${idx}`} 
+                                                    onClick={() => handleOpenEdit(slot.dateRef, tillId, record)}
+                                                    className={`
+                                                        flex flex-col items-center justify-center flex-1 rounded border
+                                                        ${record ? 'bg-slate-50' : 'bg-transparent opacity-50'}
+                                                    `}
+                                                >
+                                                    <span className="text-[9px] font-bold text-slate-400">{slot.label.short}</span>
+                                                    <div className="w-3 h-3 rounded-full my-1" style={{ backgroundColor: color }}></div>
+                                                    <span className="text-[10px] font-black text-slate-700">{record ? realPeopleCount : '-'}</span>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+
+                                    {/* DESKTOP VIEW: Stacked rows */}
+                                    <div className="hidden md:flex flex-col gap-1.5">
                                         {timeSlots.map((slot, idx) => {
                                             const tillId = `T${slot.shift}`;
                                             const color = getShiftColor(tillId);
@@ -316,7 +346,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                             <span className="hidden md:inline">{slot.label.full}</span>
                                                         </span>
                                                         
-                                                        {/* PALLINO ALLINEATO PERFETTAMENTE */}
                                                         <div 
                                                             className="w-5 h-5 rounded-full shadow-sm flex items-center justify-center text-[10px] text-white font-normal shrink-0 leading-none pt-[1px]" 
                                                             style={{ backgroundColor: color }}
