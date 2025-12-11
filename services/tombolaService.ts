@@ -13,7 +13,8 @@ import {
     DocumentSnapshot,
     QuerySnapshot,
     writeBatch,
-    increment
+    increment,
+    getDoc // Add missing import
 } from 'firebase/firestore';
 import { TombolaConfig, TombolaTicket, TombolaWin } from '../types';
 
@@ -194,7 +195,7 @@ export const TombolaService = {
 
             // 2. Fetch config once to get default price if missing
             const configRef = doc(db, 'tombola', 'config');
-            const configSnap = await getDoc(doc(db, 'tombola', 'config')); // use getDoc directly
+            const configSnap = await getDoc(configRef); 
             const currentConfig = configSnap.data() as TombolaConfig;
 
             let totalRefund = 0;
@@ -356,7 +357,6 @@ export const TombolaService = {
                 const newExtracted = [...currentConfig.extractedNumbers, nextNum];
                 
                 const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
-                
                 ticketsSnap.forEach(ticketDoc => {
                     const ticket = ticketDoc.data() as TombolaTicket;
                     if (!ticket.numbers) return;
