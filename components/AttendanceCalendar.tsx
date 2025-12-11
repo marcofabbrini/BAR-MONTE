@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings } from '../types';
 import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon } from './Icons';
@@ -261,13 +260,26 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                         {Array.from({ length: daysInMonth }).map((_, i) => {
                             const dayNum = i + 1;
                             const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
-                            const dateStr = dateObj.toISOString().split('T')[0];
-                            const isToday = new Date().toISOString().split('T')[0] === dateStr;
+                            
+                            // Correzione Calcolo Data Stringa: Costruzione manuale per evitare offset UTC
+                            const year = dateObj.getFullYear();
+                            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                            const day = String(dateObj.getDate()).padStart(2, '0');
+                            const dateStr = `${year}-${month}-${day}`;
+                            
+                            // Correzione Logica "Oggi": Confronto diretto componenti data locale
+                            const now = new Date();
+                            const isToday = now.getDate() === dayNum && now.getMonth() === currentDate.getMonth() && now.getFullYear() === currentDate.getFullYear();
 
                             const shifts = getShiftsForDate(dateObj);
+                            
+                            // Data precedente per Smontante (giorno prima)
                             const prevDate = new Date(dateObj);
                             prevDate.setDate(prevDate.getDate() - 1);
-                            const prevDateStr = prevDate.toISOString().split('T')[0];
+                            const prevYear = prevDate.getFullYear();
+                            const prevMonth = String(prevDate.getMonth() + 1).padStart(2, '0');
+                            const prevDay = String(prevDate.getDate()).padStart(2, '0');
+                            const prevDateStr = `${prevYear}-${prevMonth}-${prevDay}`;
                             
                             // 3 SLOT CRONOLOGICI
                             const timeSlots = [
@@ -277,13 +289,19 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             ];
 
                             return (
-                                <div key={dayNum} className={`min-h-[100px] md:min-h-[160px] p-1 md:p-2 border-r border-b border-slate-300 flex flex-col gap-1 ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
+                                <div 
+                                    key={dayNum} 
+                                    className={`
+                                        min-h-[100px] md:min-h-[160px] p-1 md:p-2 border-r border-b border-slate-300 flex flex-col gap-1 
+                                        ${isToday ? 'border-2 border-red-600 bg-white relative z-10' : 'bg-white'}
+                                    `}
+                                >
                                     <div className="flex justify-between items-center mb-1">
                                         <span className={`
-                                            text-xs md:text-sm font-bold
+                                            text-xs md:text-sm font-bold px-1
                                             ${isToday 
-                                                ? 'bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-sm' 
-                                                : 'text-slate-700 px-1'}
+                                                ? 'text-red-600 font-black text-lg' 
+                                                : 'text-slate-700'}
                                         `}>
                                             {dayNum}
                                         </span>
