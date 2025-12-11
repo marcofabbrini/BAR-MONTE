@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { StaffMember, Shift, ShiftSettings } from '../types';
-import { BackArrowIcon, DiceIcon, WalletIcon, CheckIcon } from './Icons';
+import { BackArrowIcon, WalletIcon, CheckIcon } from './Icons';
 
 interface DiceGameProps {
     onGoBack: () => void;
@@ -136,7 +137,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
     };
 
     // Componente Dado 3D
-    const Die3D = ({ val, rolling }: { val: number, rolling: boolean }) => {
+    const Die3D = ({ val, rolling, seed }: { val: number, rolling: boolean, seed: string }) => {
         const rotationMap: {[key: number]: string} = {
             1: 'rotateX(0deg) rotateY(0deg)',
             6: 'rotateX(180deg) rotateY(0deg)',
@@ -146,49 +147,60 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
             4: 'rotateX(90deg)'
         };
 
+        // Genera una durata casuale basata sul seed o random per diversificare la rotazione
+        const randomDuration = useMemo(() => {
+            return `${0.3 + Math.random() * 0.5}s`; // Durata tra 0.3s e 0.8s
+        }, [rolling, seed]);
+
+        // Stile base per i punti (più leggeri e meno marcati)
+        const dotStyle = "absolute bg-slate-400 w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]";
+
         return (
             <div className="scene w-8 h-8 md:w-10 md:h-10">
                 <div className={`cube ${rolling ? 'rolling' : ''}`} 
-                     style={{ transform: rolling ? undefined : rotationMap[val] }}>
+                     style={{ 
+                         transform: rolling ? undefined : rotationMap[val],
+                         animationDuration: rolling ? randomDuration : undefined
+                     }}>
                     
-                    {/* FACCIA 1 (FRONT) - FIXED CENTER WITH ABSOLUTE */}
+                    {/* FACCIA 1 (FRONT) */}
                     <div className="cube-face cube-face-front">
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-black rounded-full"></div>
+                        <div className={`${dotStyle} top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2`}></div>
                     </div>
                     {/* FACCIA 2 (RIGHT) */}
                     <div className="cube-face cube-face-right">
-                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className={`${dotStyle} top-1.5 left-1.5`}></div>
+                        <div className={`${dotStyle} bottom-1.5 right-1.5`}></div>
                     </div>
                     {/* FACCIA 3 (LEFT) */}
                     <div className="cube-face cube-face-left">
-                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className={`${dotStyle} top-1.5 left-1.5`}></div>
+                        <div className={`${dotStyle} top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2`}></div>
+                        <div className={`${dotStyle} bottom-1.5 right-1.5`}></div>
                     </div>
                     {/* FACCIA 4 (BOTTOM) */}
                     <div className="cube-face cube-face-bottom">
-                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className={`${dotStyle} top-1.5 left-1.5`}></div>
+                        <div className={`${dotStyle} top-1.5 right-1.5`}></div>
+                        <div className={`${dotStyle} bottom-1.5 left-1.5`}></div>
+                        <div className={`${dotStyle} bottom-1.5 right-1.5`}></div>
                     </div>
                     {/* FACCIA 5 (TOP) */}
                     <div className="cube-face cube-face-top">
-                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className={`${dotStyle} top-1.5 left-1.5`}></div>
+                        <div className={`${dotStyle} top-1.5 right-1.5`}></div>
+                        <div className={`${dotStyle} top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2`}></div>
+                        <div className={`${dotStyle} bottom-1.5 left-1.5`}></div>
+                        <div className={`${dotStyle} bottom-1.5 right-1.5`}></div>
                     </div>
                     {/* FACCIA 6 (BACK) */}
                     <div className="cube-face cube-face-back">
-                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1/2 left-1.5 transform -translate-y-1/2 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1/2 right-1.5 transform -translate-y-1/2 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className={`${dotStyle} top-1.5 left-1.5`}></div>
+                        <div className={`${dotStyle} top-1.5 right-1.5`}></div>
+                        <div className={`${dotStyle} top-1/2 left-1.5 transform -translate-y-1/2`}></div>
+                        <div className={`${dotStyle} top-1/2 right-1.5 transform -translate-y-1/2`}></div>
+                        <div className={`${dotStyle} bottom-1.5 left-1.5`}></div>
+                        <div className={`${dotStyle} bottom-1.5 right-1.5`}></div>
                     </div>
                 </div>
             </div>
@@ -208,7 +220,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                     <BackArrowIcon className="h-5 w-5" /> Esci
                 </button>
                 <h1 className="text-lg font-black uppercase tracking-widest flex items-center gap-2">
-                    <DiceIcon className="h-6 w-6" /> Chi Paga?
+                    <span className="text-2xl">🎲</span> Chi Paga?
                 </h1>
                 <div className="w-10"></div>
             </header>
@@ -260,7 +272,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                         disabled={gameStatus === 'rolling' || participants.length < 2}
                         className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black py-2 rounded-lg shadow-md uppercase tracking-wider text-sm transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-b-2 border-blue-800 flex items-center justify-center gap-2"
                     >
-                        {gameStatus === 'rolling' ? <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></div> : <DiceIcon className="h-4 w-4" />}
+                        {gameStatus === 'rolling' ? <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></div> : <span className="text-xl">🎲</span>}
                         {gameStatus === 'rolling' ? 'Lancio in corso...' : 'Lancia Dadi'}
                     </button>
                 </div>
@@ -293,8 +305,9 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
 
                                 <div className="flex items-center gap-3">
                                     <div className="flex gap-2">
-                                        <Die3D val={player.dice1} rolling={player.isRolling} />
-                                        <Die3D val={player.dice2} rolling={player.isRolling} />
+                                        {/* Pass seed to create variation */}
+                                        <Die3D val={player.dice1} rolling={player.isRolling} seed={player.id + '1'} />
+                                        <Die3D val={player.dice2} rolling={player.isRolling} seed={player.id + '2'} />
                                     </div>
                                     <div className="w-8 text-center">
                                         {!player.isRolling && player.total > 0 && (

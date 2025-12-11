@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel, StaffMember } from '../types';
-import { BackArrowIcon, CloverIcon, CheckIcon, TrashIcon, BanknoteIcon, InfoIcon, SaveIcon, EditIcon } from './Icons';
+import { BackArrowIcon, CheckIcon, BanknoteIcon, InfoIcon, EditIcon } from './Icons';
 
 interface AnalottoViewProps {
     onGoBack: () => void;
@@ -204,7 +204,7 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
                         <BackArrowIcon className="h-5 w-5" /> Esci
                     </button>
                     <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest flex items-center gap-2 drop-shadow-md">
-                        <CloverIcon className="h-6 w-6 text-yellow-400" /> Analotto VVF
+                        <span className="text-3xl">🎱</span> Analotto VVF
                     </h1>
                     <div className="flex items-center gap-3">
                         <button onClick={() => setIsInfoOpen(true)} className="p-2 bg-emerald-700/50 hover:bg-emerald-700 rounded-full text-emerald-200 hover:text-white transition-colors">

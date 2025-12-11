@@ -228,7 +228,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                         <BackArrowIcon className="h-5 w-5" /> Esci
                     </button>
                     <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest flex items-center gap-2 drop-shadow-md text-yellow-400" style={{ textShadow: '2px 2px 0px #7f1d1d' }}>
-                        <TrophyIcon className="h-6 w-6" /> Tombola VVF
+                        <span className="text-3xl">🎟️</span> Tombola VVF
                     </h1>
                     <div className="flex items-center gap-3">
                         {isSuperAdmin && config.status === 'active' && (
