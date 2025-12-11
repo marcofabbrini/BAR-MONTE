@@ -248,14 +248,14 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                     <BackArrowIcon className="h-5 w-5" /> Esci
                 </button>
                 <h1 className="text-lg font-black uppercase tracking-widest flex items-center gap-2">
-                    <DiceIcon className="h-6 w-6" /> Chi Paga?
+                    <span className="text-2xl filter drop-shadow-md">🎲</span> Chi Paga?
                 </h1>
                 <div className="w-10"></div>
             </header>
 
             <main className="flex-grow p-3 w-full max-w-lg mx-auto flex flex-col gap-4">
                 
-                {/* SELEZIONE PARTECIPANTI (ORIZZONTALE COMPATTA + PULSANTE LANCIA) */}
+                {/* SELEZIONE PARTECIPANTI (WRAP + PULSANTE LANCIA) */}
                 <div className="bg-white p-3 rounded-xl shadow-sm border border-blue-200">
                     <div className="flex justify-between items-center mb-2">
                         <h2 className="text-xs font-bold text-blue-800 uppercase flex items-center gap-2">
@@ -266,7 +266,8 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                         </span>
                     </div>
                     
-                    <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-blue-200 mb-2">
+                    {/* Changed from overflow-x-auto to flex-wrap to avoid horizontal scroll on mobile */}
+                    <div className="flex flex-wrap gap-2 justify-center pb-3 mb-2">
                         {currentShiftStaffList.map(s => {
                             const isSelected = participants.some(p => p.id === s.id);
                             return (
@@ -300,8 +301,12 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                         disabled={gameStatus === 'rolling' || participants.length < 2}
                         className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black py-2 rounded-lg shadow-md uppercase tracking-wider text-sm transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-b-2 border-blue-800 flex items-center justify-center gap-2"
                     >
-                        {gameStatus === 'rolling' ? <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></div> : <DiceIcon className="h-4 w-4" />}
-                        {gameStatus === 'rolling' ? 'Lancio in corso...' : 'Lancia Dadi'}
+                        {gameStatus === 'rolling' ? (
+                            <div className="animate-spin h-5 w-5 border-2 border-white rounded-full border-t-transparent"></div>
+                        ) : (
+                            <span className="text-2xl filter drop-shadow-md leading-none">🎲</span>
+                        )}
+                        <span>{gameStatus === 'rolling' ? 'Lancio in corso...' : 'Lancia Dadi'}</span>
                     </button>
                 </div>
 
