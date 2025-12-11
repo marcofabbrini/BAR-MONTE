@@ -1,4 +1,3 @@
-
 import { db } from '../firebaseConfig';
 import { 
     doc, 
@@ -13,7 +12,8 @@ import {
     where,
     DocumentSnapshot,
     QuerySnapshot,
-    writeBatch
+    writeBatch,
+    increment
 } from 'firebase/firestore';
 import { TombolaConfig, TombolaTicket, TombolaWin } from '../types';
 
@@ -183,51 +183,79 @@ export const TombolaService = {
         }
     },
 
+    // OPTIMIZED MASS REFUND USING BATCHES
     refundPlayerTickets: async (playerId: string, playerName: string) => {
         try {
-            // 1. Recupera i riferimenti fuori dalla transazione
+            // 1. Get ALL tickets first
             const q = query(collection(db, 'tombola_tickets'), where('playerId', '==', playerId));
             const querySnap = await getDocs(q);
-            const ticketRefs = querySnap.docs.map(d => d.ref);
+            
+            if (querySnap.empty) return;
 
-            if (ticketRefs.length === 0) return;
+            // 2. Fetch config once to get default price if missing
+            const configRef = doc(db, 'tombola', 'config');
+            const configSnap = await getDoc(doc(db, 'tombola', 'config')); // use getDoc directly
+            const currentConfig = configSnap.data() as TombolaConfig;
 
-            await runTransaction(db, async (t) => {
-                const configRef = doc(db, 'tombola', 'config');
-                const configSnap = await t.get(configRef);
-                const currentConfig = configSnap.data() as TombolaConfig;
+            let totalRefund = 0;
+            let totalRevenueDeduction = 0;
+            let totalJackpotDeduction = 0;
 
-                // 2. LEGGI TUTTI i documenti PRIMA di scrivere
-                const ticketSnaps = await Promise.all(ticketRefs.map(ref => t.get(ref)));
+            // 3. Prepare Batches (Firestore limits batch to 500 ops)
+            const batchArray = [];
+            let currentBatch = writeBatch(db);
+            let operationCounter = 0;
 
-                let totalRefund = 0;
-                let totalRevenueDeduction = 0;
-                let totalJackpotDeduction = 0;
+            querySnap.docs.forEach((docSnap) => {
+                const tData = docSnap.data() as TombolaTicket;
+                const amount = tData.pricePaid !== undefined ? tData.pricePaid : currentConfig.ticketPriceSingle;
+                
+                totalRefund += amount;
+                totalRevenueDeduction += (amount * 0.20);
+                totalJackpotDeduction += (amount * 0.80);
 
-                // 3. CALCOLA i totali basandoti sulle letture
-                for (const ticketSnap of ticketSnaps) {
-                    if(!ticketSnap.exists()) continue;
-                    const tData = ticketSnap.data() as TombolaTicket;
-                    const amount = tData.pricePaid !== undefined ? tData.pricePaid : currentConfig.ticketPriceSingle;
-                    
-                    totalRefund += amount;
-                    totalRevenueDeduction += (amount * 0.20);
-                    totalJackpotDeduction += (amount * 0.80);
+                currentBatch.delete(docSnap.ref);
+                operationCounter++;
+
+                if (operationCounter === 490) { // Safety buffer
+                    batchArray.push(currentBatch);
+                    currentBatch = writeBatch(db);
+                    operationCounter = 0;
                 }
-
-                // 4. ESEGUI TUTTE LE SCRITTURE
-                for (const ticketSnap of ticketSnaps) {
-                    if(ticketSnap.exists()) t.delete(ticketSnap.ref);
-                }
-
-                t.update(configRef, { jackpot: Math.max(0, (currentConfig.jackpot || 0) - totalJackpotDeduction) });
-
-                const cashRef = doc(collection(db, 'cash_movements'));
-                t.set(cashRef, { amount: totalRefund, reason: `Rimborso Totale (${playerName})`, timestamp: new Date().toISOString(), type: 'withdrawal', category: 'tombola' });
-
-                const barCashRef = doc(collection(db, 'cash_movements'));
-                t.set(barCashRef, { amount: totalRevenueDeduction, reason: `Storno Utile (${playerName})`, timestamp: new Date().toISOString(), type: 'withdrawal', category: 'bar' });
             });
+
+            // Add financial movements to the last batch
+            const cashRef = doc(collection(db, 'cash_movements')); // Generate ID automatically
+            currentBatch.set(cashRef, { 
+                amount: totalRefund, 
+                reason: `Rimborso Totale (${playerName})`, 
+                timestamp: new Date().toISOString(), 
+                type: 'withdrawal', 
+                category: 'tombola' 
+            });
+
+            const barCashRef = doc(collection(db, 'cash_movements')); // Generate ID automatically
+            currentBatch.set(barCashRef, { 
+                amount: totalRevenueDeduction, 
+                reason: `Storno Utile (${playerName})`, 
+                timestamp: new Date().toISOString(), 
+                type: 'withdrawal', 
+                category: 'bar' 
+            });
+
+            // Update Jackpot config in the last batch
+            // Note: If multiple users refund at exact same time, decrement might need transaction, 
+            // but for this use case decrementing via batch/atomic increment is safer for quota.
+            currentBatch.update(configRef, { 
+                jackpot: increment(-totalJackpotDeduction) 
+            });
+
+            batchArray.push(currentBatch);
+
+            // 4. Commit all batches
+            for (const batch of batchArray) {
+                await batch.commit();
+            }
 
         } catch (e) {
             console.error("TombolaService: Errore rimborso massivo", e);
@@ -235,54 +263,76 @@ export const TombolaService = {
         }
     },
 
-    // Reset totale della partita (Read All -> Write All pattern)
+    // OPTIMIZED FULL GAME RESET USING BATCHES
     refundAllGameTickets: async () => {
         try {
+            // 1. Fetch ALL tickets and WINS
             const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
-            const ticketRefs = ticketsSnap.docs.map(d => d.ref);
-            
             const winsSnap = await getDocs(collection(db, 'tombola_wins'));
-            const winRefs = winsSnap.docs.map(d => d.ref);
 
-            await runTransaction(db, async (t) => {
-                // READ CONFIG
-                const configRef = doc(db, 'tombola', 'config');
-                // READ TICKETS
-                const ticketDocs = await Promise.all(ticketRefs.map(ref => t.get(ref)));
+            // 2. Prepare Batches
+            const batchArray = [];
+            let currentBatch = writeBatch(db);
+            let operationCounter = 0;
 
-                let totalRefund = 0;
-                let totalRevenueDeduction = 0;
+            let totalRefund = 0;
+            let totalRevenueDeduction = 0;
 
-                ticketDocs.forEach(docSnap => {
-                    if(docSnap.exists()) {
-                        const tData = docSnap.data() as TombolaTicket;
-                        const amount = tData.pricePaid || 2; 
-                        totalRefund += amount;
-                        totalRevenueDeduction += (amount * 0.20);
-                    }
-                });
+            // Process Tickets
+            ticketsSnap.docs.forEach((docSnap) => {
+                const tData = docSnap.data() as TombolaTicket;
+                const amount = tData.pricePaid || 2; 
+                totalRefund += amount;
+                totalRevenueDeduction += (amount * 0.20);
 
-                // WRITES
-                ticketRefs.forEach(ref => t.delete(ref));
-                winRefs.forEach(ref => t.delete(ref));
+                currentBatch.delete(docSnap.ref);
+                operationCounter++;
 
-                t.update(configRef, { 
-                    jackpot: 0, 
-                    status: 'pending', 
-                    extractedNumbers: [],
-                    lastExtraction: new Date().toISOString(),
-                    targetDate: null,
-                    gameStartTime: null
-                });
-
-                if (totalRefund > 0) {
-                    const cashRef = doc(collection(db, 'cash_movements'));
-                    t.set(cashRef, { amount: totalRefund, reason: `ANNULLAMENTO TOMBOLA (Reset)`, timestamp: new Date().toISOString(), type: 'withdrawal', category: 'tombola' });
-
-                    const barCashRef = doc(collection(db, 'cash_movements'));
-                    t.set(barCashRef, { amount: totalRevenueDeduction, reason: `Storno Utile Tombola (Reset)`, timestamp: new Date().toISOString(), type: 'withdrawal', category: 'bar' });
+                if (operationCounter >= 450) {
+                    batchArray.push(currentBatch);
+                    currentBatch = writeBatch(db);
+                    operationCounter = 0;
                 }
             });
+
+            // Process Wins
+            winsSnap.docs.forEach((docSnap) => {
+                currentBatch.delete(docSnap.ref);
+                operationCounter++;
+                if (operationCounter >= 450) {
+                    batchArray.push(currentBatch);
+                    currentBatch = writeBatch(db);
+                    operationCounter = 0;
+                }
+            });
+
+            // Update Config
+            const configRef = doc(db, 'tombola', 'config');
+            currentBatch.update(configRef, { 
+                jackpot: 0, 
+                status: 'pending', 
+                extractedNumbers: [],
+                lastExtraction: new Date().toISOString(),
+                targetDate: null,
+                gameStartTime: null
+            });
+
+            // Add Financial Reversals if needed
+            if (totalRefund > 0) {
+                const cashRef = doc(collection(db, 'cash_movements'));
+                currentBatch.set(cashRef, { amount: totalRefund, reason: `ANNULLAMENTO TOMBOLA (Reset)`, timestamp: new Date().toISOString(), type: 'withdrawal', category: 'tombola' });
+
+                const barCashRef = doc(collection(db, 'cash_movements'));
+                currentBatch.set(barCashRef, { amount: totalRevenueDeduction, reason: `Storno Utile Tombola (Reset)`, timestamp: new Date().toISOString(), type: 'withdrawal', category: 'bar' });
+            }
+
+            batchArray.push(currentBatch);
+
+            // 3. Commit
+            for (const batch of batchArray) {
+                await batch.commit();
+            }
+
         } catch (e) {
             console.error("TombolaService: Errore annullamento totale", e);
             throw e;
@@ -306,6 +356,7 @@ export const TombolaService = {
                 const newExtracted = [...currentConfig.extractedNumbers, nextNum];
                 
                 const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
+                
                 ticketsSnap.forEach(ticketDoc => {
                     const ticket = ticketDoc.data() as TombolaTicket;
                     if (!ticket.numbers) return;

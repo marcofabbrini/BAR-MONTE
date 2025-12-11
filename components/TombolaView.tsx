@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TombolaConfig, TombolaTicket, TombolaWin, StaffMember, TillColors } from '../types';
 import { BackArrowIcon, TrophyIcon, TrashIcon, BoxIcon } from './Icons';
@@ -21,28 +20,14 @@ interface TombolaViewProps {
 }
 
 const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wins, onBuyTicket, onRefundTicket, staff, onStartGame, isSuperAdmin, onTransferFunds, onUpdateTombolaConfig, tillColors, onManualExtraction }) => {
-    const { refundPlayerTickets, refundAllGameTickets, endGame } = useTombola();
+    const { refundPlayerTickets } = useTombola();
     
     const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
     const [buyQuantity, setBuyQuantity] = useState(1);
-    const [targetDateInput, setTargetDateInput] = useState('');
-
-    useEffect(() => {
-        // Default target date: Today 20:00 or Tomorrow 20:00
-        const d = new Date();
-        d.setHours(20, 0, 0, 0);
-        if (Date.now() > d.getTime()) {
-            d.setDate(d.getDate() + 1);
-        }
-        const iso = d.toLocaleString('sv').replace(' ', 'T').slice(0, 16);
-        setTargetDateInput(iso);
-    }, []);
 
     const totalTickets = tickets ? tickets.length : 0;
     const maxTickets = config?.maxTickets || 168; 
     const progressPercent = maxTickets > 0 ? Math.min((totalTickets / maxTickets) * 100, 100) : 0;
-    const minStart = config?.minTicketsToStart || 0;
-    const ticketsNeededToStart = Math.max(0, minStart - totalTickets);
     
     const extractedNumbersSafe = useMemo(() => config?.extractedNumbers || [], [config]);
 
@@ -80,25 +65,9 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         }
     };
 
-    const handleRefundEntireGame = async () => {
-        if(!isSuperAdmin) return;
-        const confirmCode = Math.floor(Math.random() * 9000 + 1000);
-        const input = prompt(`PERICOLO: Stai per annullare L'INTERA TOMBOLA.\nTutti i biglietti saranno cancellati e i soldi rimborsati virtualmente.\nInserisci il codice ${confirmCode} per confermare:`);
-        if(input === confirmCode.toString()) {
-            try {
-                await refundAllGameTickets();
-                alert("Tombola annullata e resettata.");
-            } catch(e: any) {
-                alert("Errore reset: " + e.message);
-            }
-        }
-    };
-
-    const handleEndGame = async () => {
-        if(!isSuperAdmin) return;
-        if(window.confirm("Terminare la partita? L'estrazione si fermerà e lo stato passerà a completato.")) {
-            await endGame();
-        }
+    const handleManualExtract = async () => {
+        if (config.status !== 'active') return alert("Il gioco non è attivo!");
+        if (onManualExtraction) await onManualExtraction();
     };
 
     const myTickets = useMemo(() => {
@@ -183,28 +152,6 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         return unique.sort((a, b) => importance[a.type] - importance[b.type]);
     }, [wins]);
 
-    const handleTransfer = async () => {
-        if((config?.jackpot || 0) <= 0) return;
-        if(window.confirm(`Versare €${(config.jackpot || 0).toFixed(2)} in Cassa Bar?`)) {
-            await onTransferFunds(config.jackpot, 'Tombola');
-        }
-    };
-
-    const handleManualExtract = async () => {
-        if (config.status !== 'active') return alert("Il gioco non è attivo!");
-        if (onManualExtraction) await onManualExtraction();
-    };
-
-    const handleStartWithTime = async () => {
-        if (ticketsNeededToStart > 0) return;
-        if (!targetDateInput) {
-            if(!window.confirm("Nessuna data di fine impostata. L'estrazione sarà manuale?")) return;
-            await onStartGame();
-        } else {
-            await onStartGame(targetDateInput);
-        }
-    };
-
     const getTicketStyle = (playerId: string) => {
         const member = staff.find(s => s.id === playerId);
         const shift = member?.shift || 'a';
@@ -246,71 +193,19 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
 
             <main className="flex-grow p-4 w-full max-w-7xl mx-auto space-y-6">
                 
-                {/* Status Bar & Admin Controls */}
+                {/* Status Bar (No Admin Controls Here anymore) */}
                 {!selectedStaffId && (
                     <div className="bg-white p-4 rounded-xl shadow-lg border-b-4 border-stone-300">
                         <div className="flex justify-between items-end mb-2">
                             <span className="text-xs font-bold text-stone-600 uppercase">Avanzamento Vendite</span>
                             <span className="text-sm font-black text-stone-800">{totalTickets} / {config.maxTickets}</span>
                         </div>
-                        <div className="w-full bg-stone-200 rounded-full h-4 overflow-hidden border-inner shadow-inner mb-4">
+                        <div className="w-full bg-stone-200 rounded-full h-4 overflow-hidden border-inner shadow-inner mb-2">
                             <div className="bg-gradient-to-r from-green-600 to-emerald-400 h-full transition-all duration-1000 ease-out shadow-sm" style={{ width: `${progressPercent}%` }}></div>
                         </div>
                         
-                        {/* Admin Controls Area */}
-                        {isSuperAdmin && (
-                            <div className="bg-stone-100 p-3 rounded-lg border border-stone-200">
-                                <h4 className="text-[10px] font-black text-stone-500 uppercase mb-2">Gestione Gioco</h4>
-                                <div className="flex flex-col md:flex-row gap-2 items-center flex-wrap">
-                                    
-                                    {/* START CONTROLS (Only when pending) */}
-                                    {config.status === 'pending' && (
-                                        <>
-                                            <div className="flex-grow w-full md:w-auto">
-                                                <input 
-                                                    type="datetime-local" 
-                                                    value={targetDateInput} 
-                                                    onChange={(e) => setTargetDateInput(e.target.value)} 
-                                                    className="w-full bg-white border border-stone-300 rounded p-2 text-xs h-10"
-                                                    title="Data Fine Automatica"
-                                                />
-                                            </div>
-                                            <button 
-                                                onClick={handleStartWithTime} 
-                                                disabled={ticketsNeededToStart > 0} 
-                                                className={`w-full md:w-auto px-6 py-2 rounded-lg font-bold shadow-sm border-b-4 active:border-b-0 active:translate-y-1 transition-all uppercase text-xs h-10 ${ticketsNeededToStart > 0 ? 'bg-stone-300 text-stone-500 border-stone-400' : 'bg-green-600 border-green-800 text-white animate-pulse'}`}
-                                            >
-                                                Avvia Gioco
-                                            </button>
-                                            <button 
-                                                onClick={handleRefundEntireGame} 
-                                                className="w-full md:w-auto px-4 bg-red-100 border-b-4 border-red-300 text-red-600 font-bold py-2 rounded-lg shadow-sm active:border-b-0 active:translate-y-1 transition-all uppercase text-xs h-10"
-                                            >
-                                                Annulla Tutto
-                                            </button>
-                                        </>
-                                    )}
-
-                                    {/* ACTIVE CONTROLS */}
-                                    {config.status === 'active' && (
-                                        <>
-                                            <button onClick={handleEndGame} className="w-full md:w-auto px-6 bg-stone-700 border-b-4 border-stone-900 text-white font-bold py-2 rounded-lg shadow-sm active:border-b-0 active:translate-y-1 transition-all uppercase text-xs h-10">
-                                                Termina Partita
-                                            </button>
-                                            <span className="text-[10px] text-green-600 font-bold animate-pulse px-2">● In Corso</span>
-                                        </>
-                                    )}
-
-                                    {/* ALWAYS VISIBLE IF MONEY EXISTS */}
-                                    <button onClick={handleTransfer} className="w-full md:w-auto px-6 bg-amber-500 border-b-4 border-amber-700 text-white font-bold py-2 rounded-lg shadow-sm active:border-b-0 active:translate-y-1 transition-all uppercase text-xs h-10 ml-auto">
-                                        Versa Utile
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
                         {config.status === 'active' && config.targetDate && (
-                            <p className="text-center text-[10px] text-stone-400 mt-2 font-mono">
+                            <p className="text-center text-[10px] text-stone-400 mt-1 font-mono">
                                 Estrazione automatica attiva fino al: {new Date(config.targetDate).toLocaleString()}
                             </p>
                         )}

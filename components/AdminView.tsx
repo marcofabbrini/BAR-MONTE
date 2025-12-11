@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings } from '../types';
 import { type User } from 'firebase/auth';
@@ -9,6 +8,7 @@ import StockControl from './StockControl';
 import CashManagement from './CashManagement';
 import GamesHub from './GamesHub';
 import AttendanceCalendar from './AttendanceCalendar';
+import { useTombola } from '../contexts/TombolaContext';
 
 interface AdminViewProps {
     onGoBack: () => void;
@@ -81,6 +81,9 @@ const AdminView: React.FC<AdminViewProps> = ({
     generalSettings, onUpdateGeneralSettings,
     onSendNotification
 }) => {
+    // Tombola Context Hooks
+    const { startGame, endGame, refundAllGameTickets, transferFunds } = useTombola();
+
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
     const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
@@ -93,6 +96,9 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     // Accordion State
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
+
+    // Tombola Admin State
+    const [tombolaTargetDate, setTombolaTargetDate] = useState('');
 
     // Seasonality State
     const [seasonStart, setSeasonStart] = useState(seasonalityConfig?.startDate || '');
@@ -150,6 +156,14 @@ const AdminView: React.FC<AdminViewProps> = ({
     useEffect(() => {
         if(generalSettings) setWaterPrice(generalSettings.waterQuotaPrice);
     }, [generalSettings]);
+
+    // Init Tombola Date
+    useEffect(() => {
+        const d = new Date();
+        d.setHours(20, 0, 0, 0);
+        if (Date.now() > d.getTime()) { d.setDate(d.getDate() + 1); }
+        setTombolaTargetDate(d.toLocaleString('sv').replace(' ', 'T').slice(0, 16));
+    }, []);
 
     const filteredOrders = useMemo(() => {
         return orders.filter(o => {
@@ -264,6 +278,26 @@ const AdminView: React.FC<AdminViewProps> = ({
         alert("Notifica Inviata a tutti i dispositivi attivi!");
         setNotifTitle('');
         setNotifBody('');
+    };
+
+    // --- TOMBOLA HANDLERS ---
+    const handleTombolaStart = async () => {
+        if(!tombolaTargetDate) { if(!window.confirm("Nessuna data di fine. Avviare manualmente?")) return; }
+        await startGame(tombolaTargetDate);
+        alert("Tombola Avviata!");
+    };
+    const handleTombolaStop = async () => {
+        if(window.confirm("Terminare partita?")) await endGame();
+    };
+    const handleTombolaReset = async () => {
+        const c = Math.floor(Math.random()*9000+1000);
+        const i = prompt(`PERICOLO: RESET TOTALE TOMBOLA.\nInserisci codice ${c}:`);
+        if(i===c.toString()) await refundAllGameTickets();
+    };
+    const handleTombolaTransfer = async () => {
+        if(window.confirm(`Versare €${(tombolaConfig?.jackpot || 0).toFixed(2)} in cassa?`)) {
+            await transferFunds(tombolaConfig?.jackpot || 0);
+        }
     };
 
     const toggleSection = (section: string) => {
@@ -383,6 +417,47 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'settings' && (
                     <div className="space-y-4">
                         
+                        {/* TOMBOLA MANAGEMENT (SUPER ADMIN) */}
+                        {isSuperAdmin && (
+                            <div className="bg-orange-50 rounded-xl border border-orange-200 overflow-hidden">
+                                <button onClick={() => toggleSection('tombola')} className="w-full p-4 flex justify-between items-center text-left bg-orange-100 hover:bg-orange-200 transition-colors">
+                                    <h2 className="text-sm font-bold text-orange-800 uppercase tracking-wide flex items-center gap-2">
+                                        <GamepadIcon className="h-5 w-5" /> Gestione Tombola (Super Admin)
+                                    </h2>
+                                    <span>{expandedSection === 'tombola' ? '−' : '+'}</span>
+                                </button>
+                                {expandedSection === 'tombola' && (
+                                    <div className="p-6 bg-orange-50 animate-fade-in space-y-4">
+                                        <div className="flex flex-col md:flex-row gap-4">
+                                            <div className="flex-1">
+                                                <label className="text-xs font-bold text-orange-700 block mb-1">Data Fine Automatica</label>
+                                                <input type="datetime-local" value={tombolaTargetDate} onChange={e => setTombolaTargetDate(e.target.value)} className="w-full border p-2 rounded" />
+                                            </div>
+                                            <div className="flex items-end gap-2">
+                                                <button onClick={handleTombolaStart} disabled={tombolaConfig?.status === 'active'} className="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 disabled:opacity-50 text-sm">
+                                                    AVVIA
+                                                </button>
+                                                <button onClick={handleTombolaStop} disabled={tombolaConfig?.status !== 'active'} className="bg-stone-600 text-white px-4 py-2 rounded font-bold hover:bg-stone-700 disabled:opacity-50 text-sm">
+                                                    TERMINA
+                                                </button>
+                                                <button onClick={handleTombolaReset} className="bg-red-600 text-white px-4 py-2 rounded font-bold hover:bg-red-700 text-sm">
+                                                    RESET TOTALE
+                                                </button>
+                                                <button onClick={handleTombolaTransfer} className="bg-amber-500 text-white px-4 py-2 rounded font-bold hover:bg-amber-600 text-sm">
+                                                    VERSA UTILE
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="bg-white p-2 rounded border text-xs text-stone-500">
+                                            Stato attuale: <strong className="uppercase">{tombolaConfig?.status || 'N/D'}</strong> | 
+                                            Jackpot: <strong>€{(tombolaConfig?.jackpot || 0).toFixed(2)}</strong> |
+                                            Numeri Estratti: <strong>{tombolaConfig?.extractedNumbers?.length || 0}</strong>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* GENERAL SETTINGS */}
                         <div className="bg-slate-100 rounded-xl border border-slate-200 overflow-hidden">
                             <button onClick={() => toggleSection('general')} className="w-full p-4 flex justify-between items-center text-left bg-slate-200 hover:bg-slate-300 transition-colors">
