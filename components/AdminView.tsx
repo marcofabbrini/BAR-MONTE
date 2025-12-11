@@ -1,7 +1,11 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings } from '../types';
+<<<<<<< HEAD
+import firebase from 'firebase/compat/app';
+=======
 import { type User } from 'firebase/auth';
+>>>>>>> 471617c4899509b5a2bd71d3a2dc177d503cb894
 import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
@@ -38,7 +42,7 @@ interface AdminViewProps {
     onMassDelete: (date: string, type: 'orders' | 'movements') => Promise<void>;
     
     isAuthenticated: boolean;
-    currentUser: User | null;
+    currentUser: firebase.User | null;
     onLogin: () => void;
     onLogout: () => void;
     adminList: AdminUser[];
