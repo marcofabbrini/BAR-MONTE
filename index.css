@@ -113,6 +113,83 @@ body {
   100% { transform: rotateX(720deg) rotateY(360deg) rotateZ(360deg); }
 }
 
+/* --- ANIMAZIONI REPORT PERSONALIZZATE --- */
+
+/* Effetto Acqua Frizzante */
+@keyframes rise-bubbles {
+  0% { background-position: 0% 100%; }
+  100% { background-position: 0% 0%; }
+}
+
+.bg-bubbles {
+  position: relative;
+  overflow: hidden;
+  background-color: white; /* Fallback */
+}
+
+.bg-bubbles::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: radial-gradient(circle, rgba(59, 130, 246, 0.2) 10%, transparent 10%), radial-gradient(circle, rgba(59, 130, 246, 0.1) 10%, transparent 10%);
+  background-size: 20px 20px, 30px 30px;
+  background-position: 0 0, 15px 15px;
+  opacity: 0.6;
+  animation: rise-bubbles 4s linear infinite;
+  pointer-events: none;
+}
+
+/* Effetto Monete Rimbalzanti */
+@keyframes bounce-coins {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.bg-coins {
+  position: relative;
+  overflow: hidden;
+  background-color: white;
+}
+
+.bg-coins::before {
+  content: '🪙 💰 🪙';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  font-size: 4rem;
+  opacity: 0.05;
+  transform: rotate(-20deg);
+  animation: bounce-coins 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Effetto Videogames */
+@keyframes scroll-games {
+  0% { background-position: 0 0; }
+  100% { background-position: 40px 40px; }
+}
+
+.bg-videogames {
+  position: relative;
+  overflow: hidden;
+  background-color: white;
+}
+
+.bg-videogames::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(#eab308 2px, transparent 2px), radial-gradient(#ef4444 2px, transparent 2px);
+  background-size: 30px 30px;
+  background-position: 0 0, 15px 15px;
+  opacity: 0.1;
+  animation: scroll-games 3s linear infinite;
+  pointer-events: none;
+}
+
 /* Printing Resets */
 @media print {
   @page { margin: 0.5cm; }

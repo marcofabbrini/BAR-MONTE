@@ -1,9 +1,8 @@
-
 import React, { useMemo } from 'react';
-import { Order, Product, StaffMember, Shift } from '../types';
+import { Order, Product, StaffMember, Shift, GeneralSettings, TombolaConfig, AnalottoConfig } from '../types';
 import BarChart from './BarChart';
 import LineChart from './LineChart';
-import { LogoIcon, DropletIcon, LayersIcon, ChartBarIcon } from './Icons';
+import { LogoIcon, DropletIcon, LayersIcon, ChartBarIcon, GamepadIcon } from './Icons';
 
 interface StatisticsViewProps {
     filteredOrders: Order[];
@@ -11,14 +10,48 @@ interface StatisticsViewProps {
     allStaff: StaffMember[];
     filters: { startDate: string; endDate: string; selectedShift: Shift | 'all'; selectedStaffId: string; selectedProductId: string; };
     onSetFilters: { setStartDate: (d: string) => void; setEndDate: (d: string) => void; setSelectedShift: (s: Shift | 'all') => void; setSelectedStaffId: (id: string) => void; setSelectedProductId: (id: string) => void; };
+    generalSettings?: GeneralSettings;
+    tombolaConfig?: TombolaConfig;
+    analottoConfig?: AnalottoConfig;
 }
 
-const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProducts, allStaff, filters, onSetFilters }) => {
+const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProducts, allStaff, filters, onSetFilters, generalSettings, tombolaConfig, analottoConfig }) => {
     const { startDate, endDate, selectedShift, selectedStaffId, selectedProductId } = filters;
     const { setStartDate, setEndDate, setSelectedShift, setSelectedStaffId, setSelectedProductId } = onSetFilters;
 
     const activeOrders = useMemo(() => filteredOrders.filter(o => !o.isDeleted), [filteredOrders]);
     const totalSales = useMemo(() => activeOrders.reduce((sum, order) => sum + order.total, 0), [activeOrders]);
+
+    // Calcolo Totale Acqua (Quote e Incasso)
+    const waterStats = useMemo(() => {
+        let quotaCount = 0;
+        let itemsRevenue = 0; // Incasso basato sul prezzo del prodotto nell'ordine
+        const waterPrice = generalSettings?.waterQuotaPrice || 0;
+
+        activeOrders.forEach(order => {
+            order.items.forEach(item => {
+                if (item.product.name.toLowerCase().includes('acqua')) {
+                    quotaCount += item.quantity;
+                    itemsRevenue += (item.quantity * item.product.price);
+                }
+            });
+        });
+
+        // Se l'acqua ha prezzo 0 a sistema ma si usano le quote, calcoliamo valore quote
+        const estimatedQuotaValue = quotaCount * waterPrice;
+        
+        return { 
+            count: quotaCount, 
+            revenue: itemsRevenue > 0 ? itemsRevenue : estimatedQuotaValue 
+        };
+    }, [activeOrders, generalSettings]);
+
+    // Calcolo Montepremi Totale (Attuale)
+    const currentJackpotTotal = useMemo(() => {
+        const t = tombolaConfig?.jackpot || 0;
+        const a = analottoConfig?.jackpot || 0;
+        return t + a;
+    }, [tombolaConfig, analottoConfig]);
 
     // Vendite per Staff
     const salesByStaff = useMemo(() => {
@@ -132,21 +165,47 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 </div>
             </div>
 
-            {/* KPI CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white border-l-4 border-orange-500 p-6 rounded-xl shadow-sm">
-                    <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Incasso Totale</h2>
-                    <h2 className="text-3xl font-black text-slate-800 tracking-tight">€{totalSales.toFixed(2)}</h2>
+            {/* KPI CARDS CON SFONDI PERSONALIZZATI */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* CASSA BAR (Monete) */}
+                <div className="bg-white border-l-4 border-orange-500 p-6 rounded-xl shadow-sm bg-coins relative overflow-hidden">
+                    <div className="relative z-10">
+                        <h2 className="text-xs font-bold text-orange-900/70 uppercase tracking-widest mb-1 flex items-center gap-2">
+                            <ChartBarIcon className="h-4 w-4"/> Incasso Bar
+                        </h2>
+                        <h2 className="text-3xl font-black text-slate-800 tracking-tight">€{totalSales.toFixed(2)}</h2>
+                        <p className="text-[10px] text-slate-500 font-bold mt-1">Transazioni: {activeOrders.length}</p>
+                    </div>
                 </div>
-                <div className="bg-white border-l-4 border-green-500 p-6 rounded-xl shadow-sm">
-                    <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Volumi Totali</h2>
-                    <h2 className="text-3xl font-black text-slate-800 tracking-tight">
-                        {quantityTrend.reduce((acc, d) => acc + d.value, 0)} <span className="text-sm text-slate-400 font-medium">pezzi</span>
-                    </h2>
+
+                {/* TOTALE ACQUA (Bollicine) */}
+                <div className="bg-white border-l-4 border-blue-400 p-6 rounded-xl shadow-sm bg-bubbles relative overflow-hidden">
+                    <div className="relative z-10">
+                        <h2 className="text-xs font-bold text-blue-900/70 uppercase tracking-widest mb-1 flex items-center gap-2">
+                            <DropletIcon className="h-4 w-4"/> Consumo Acqua
+                        </h2>
+                        <h2 className="text-3xl font-black text-slate-800 tracking-tight">
+                            {waterStats.count} <span className="text-lg text-slate-500 font-medium">quote</span>
+                        </h2>
+                        <p className="text-[10px] text-slate-500 font-bold mt-1">
+                            Valore stimato: €{waterStats.revenue.toFixed(2)}
+                        </p>
+                    </div>
                 </div>
-                <div className="bg-white border-l-4 border-blue-400 p-6 rounded-xl shadow-sm">
-                    <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Transazioni</h2>
-                    <h2 className="text-3xl font-black text-slate-800 tracking-tight">{activeOrders.length}</h2>
+
+                {/* MONTEPREMI GIOCHI (Videogames) */}
+                <div className="bg-white border-l-4 border-purple-500 p-6 rounded-xl shadow-sm bg-videogames relative overflow-hidden">
+                    <div className="relative z-10">
+                        <h2 className="text-xs font-bold text-purple-900/70 uppercase tracking-widest mb-1 flex items-center gap-2">
+                            <GamepadIcon className="h-4 w-4"/> Montepremi Attuale
+                        </h2>
+                        <h2 className="text-3xl font-black text-slate-800 tracking-tight">€{currentJackpotTotal.toFixed(2)}</h2>
+                        <div className="flex gap-2 mt-1 text-[9px] font-bold text-slate-500 uppercase">
+                            <span>Tombola: €{(tombolaConfig?.jackpot || 0).toFixed(0)}</span>
+                            <span>•</span>
+                            <span>Analotto: €{(analottoConfig?.jackpot || 0).toFixed(0)}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 

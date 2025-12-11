@@ -461,7 +461,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                                             <div className="text-[8px] text-white">★</div>
                                                         </div>
                                                     </div>
-                                                    <div className="absolute top-2 right-6 text-emerald-400 opacity-50"><CloverIcon className="h-4 w-4" /></div>
+                                                    {/* REMOVED DECORATIVE ICON HERE */}
                                                     <div className="text-4xl mb-2 filter drop-shadow-sm group-hover:scale-110 transition-transform">🍀</div>
                                                     <h3 className="font-black text-emerald-800 text-xs uppercase mb-1">Analotto</h3>
                                                     <span className="bg-emerald-600 text-white px-3 py-1 rounded-full font-black text-sm">€{amt}</span>
@@ -475,7 +475,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                                         onClick={() => handleQuickTombola(1)}
                                                         className="bg-red-50 border border-red-200 rounded-2xl flex flex-col items-center justify-center p-2 shadow-sm hover:shadow-md hover:bg-red-100 transition-all h-36 relative group"
                                                     >
-                                                        <div className="absolute top-2 right-2 text-red-400 opacity-50"><TicketIcon className="h-4 w-4" /></div>
+                                                        {/* REMOVED DECORATIVE ICON HERE */}
                                                         <div className="text-4xl mb-2 filter drop-shadow-sm group-hover:scale-110 transition-transform">🎟️</div>
                                                         <h3 className="font-black text-red-800 text-xs uppercase mb-1">1 Cartella</h3>
                                                         <span className="bg-red-600 text-white px-3 py-1 rounded-full font-black text-sm">€{tombolaConfig.ticketPriceSingle}</span>
@@ -485,7 +485,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                                         className="bg-red-50 border border-red-200 rounded-2xl flex flex-col items-center justify-center p-2 shadow-sm hover:shadow-md hover:bg-red-100 transition-all h-36 relative group"
                                                     >
                                                         <div className="absolute top-0 left-0 bg-yellow-400 text-red-900 text-[9px] font-bold px-2 py-0.5 rounded-br-lg z-10">OFFERTA</div>
-                                                        <div className="absolute top-2 right-2 text-red-400 opacity-50"><TicketIcon className="h-4 w-4" /></div>
+                                                        {/* REMOVED DECORATIVE ICON HERE */}
                                                         <div className="text-4xl mb-2 filter drop-shadow-sm group-hover:scale-110 transition-transform">🎟️x6</div>
                                                         <h3 className="font-black text-red-800 text-xs uppercase mb-1">6 Cartelle</h3>
                                                         <span className="bg-red-600 text-white px-3 py-1 rounded-full font-black text-sm">€{tombolaConfig.ticketPriceBundle}</span>
