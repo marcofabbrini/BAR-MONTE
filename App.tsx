@@ -52,7 +52,7 @@ const AppContent: React.FC = () => {
 
     const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
 
-    // Calcolo Super Admin (Primo della lista)
+    // Calcolo Super Admin
     const isSuperAdmin = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
 
     // Auth Listener
@@ -86,8 +86,8 @@ const AppContent: React.FC = () => {
         if (member) await handleBuyTombolaTicketInternal(staffId, member.name, quantity);
     };
 
-    const handleTombolaStart = async (targetDate?: string) => {
-        await handleTombolaStartInternal(targetDate);
+    const handleTombolaStart = async () => {
+        await handleTombolaStartInternal();
         await sendNotification("TOMBOLA INIZIATA! 🎟️", "L'estrazione è partita. Corri a controllare la tua cartella!", "Sistema");
     };
 
@@ -113,27 +113,18 @@ const AppContent: React.FC = () => {
                 attendanceRecords={attendanceRecords}
                 generalSettings={generalSettings}
             />;
-            case 'reports': return <ReportsView 
-                onGoBack={() => setView('selection')} 
-                products={products} 
-                staff={staff} 
-                orders={orders}
-                generalSettings={generalSettings}
-                tombolaConfig={tombolaConfig}
-                analottoConfig={analottoConfig}
-            />;
+            case 'reports': return <ReportsView onGoBack={() => setView('selection')} products={products} staff={staff} orders={orders} />;
             case 'tombola': 
                 if (!tombolaConfig) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
                 return <TombolaView 
                 onGoBack={() => setView('selection')} 
                 config={tombolaConfig} tickets={tombolaTickets} wins={tombolaWins} 
                 onBuyTicket={handleBuyTombolaTicket} onRefundTicket={handleRefundTombolaTicket}
-                staff={staff} onStartGame={handleTombolaStart} 
-                isSuperAdmin={isAdmin} // Passiamo isAdmin generico per abilitare controlli a tutti gli admin
+                staff={staff} onStartGame={handleTombolaStart} isSuperAdmin={isSuperAdmin} 
                 onTransferFunds={(amount) => handleTransferTombolaFunds(amount)}
                 onUpdateTombolaConfig={handleUpdateTombolaConfig} tillColors={tillColors} onManualExtraction={handleManualTombolaExtraction}
             />;
-            case 'analotto': return <AnalottoView onGoBack={() => setView('selection')} config={analottoConfig} bets={analottoBets} extractions={analottoExtractions} staff={staff} onPlaceBet={handlePlaceAnalottoBet} onRunExtraction={handleAnalottoExtraction} isSuperAdmin={isAdmin} onTransferFunds={(amount) => handleTransferAnalottoFunds(amount)} onUpdateConfig={handleUpdateAnalottoConfig} onConfirmTicket={handleConfirmAnalottoTicket} />;
+            case 'analotto': return <AnalottoView onGoBack={() => setView('selection')} config={analottoConfig} bets={analottoBets} extractions={analottoExtractions} staff={staff} onPlaceBet={handlePlaceAnalottoBet} onRunExtraction={handleAnalottoExtraction} isSuperAdmin={isSuperAdmin} onTransferFunds={(amount) => handleTransferAnalottoFunds(amount)} onUpdateConfig={handleUpdateAnalottoConfig} onConfirmTicket={handleConfirmAnalottoTicket} />;
             case 'dice': return <DiceGame onGoBack={() => setView('selection')} staff={staff} shiftSettings={shiftSettings} />;
             case 'games': return <GamesHub onGoBack={() => setView('selection')} onPlayTombola={() => setView('tombola')} onPlayAnalotto={() => setView('analotto')} onPlayDice={() => setView('dice')} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} />;
             case 'calendar': return <ShiftCalendar onGoBack={() => setView('selection')} tillColors={tillColors} shiftSettings={shiftSettings} />;

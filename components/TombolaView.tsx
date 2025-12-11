@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { TombolaConfig, TombolaTicket, TombolaWin, StaffMember, TillColors } from '../types';
 import { BackArrowIcon, TrophyIcon, TrashIcon, BoxIcon } from './Icons';
@@ -297,21 +298,6 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                                 Termina Partita
                                             </button>
                                             <span className="text-[10px] text-green-600 font-bold animate-pulse px-2">● In Corso</span>
-                                        </>
-                                    )}
-
-                                    {/* COMPLETED CONTROLS */}
-                                    {config.status === 'completed' && (
-                                        <>
-                                            <div className="flex-grow text-[10px] text-blue-600 font-bold uppercase flex items-center">
-                                                <span className="mr-2 text-lg">🏁</span> Partita Conclusa
-                                            </div>
-                                            <button 
-                                                onClick={handleRefundEntireGame} 
-                                                className="w-full md:w-auto px-4 bg-red-100 border-b-4 border-red-300 text-red-600 font-bold py-2 rounded-lg shadow-sm active:border-b-0 active:translate-y-1 transition-all uppercase text-xs h-10"
-                                            >
-                                                Reset / Nuova Partita
-                                            </button>
                                         </>
                                     )}
 
