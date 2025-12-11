@@ -25,7 +25,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     // Calcolo Totale Acqua (Quote e Incasso)
     const waterStats = useMemo(() => {
         let quotaCount = 0;
-        let itemsRevenue = 0; // Incasso basato sul prezzo del prodotto nell'ordine
+        let itemsRevenue = 0; 
         const waterPrice = generalSettings?.waterQuotaPrice || 0;
 
         activeOrders.forEach(order => {
@@ -37,27 +37,22 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             });
         });
 
-        // Se l'acqua ha prezzo 0 a sistema ma si usano le quote, calcoliamo valore quote
         const estimatedQuotaValue = quotaCount * waterPrice;
-        
         return { 
             count: quotaCount, 
             revenue: itemsRevenue > 0 ? itemsRevenue : estimatedQuotaValue 
         };
     }, [activeOrders, generalSettings]);
 
-    // Calcolo Montepremi Totale (Attuale)
     const currentJackpotTotal = useMemo(() => {
         const t = tombolaConfig?.jackpot || 0;
         const a = analottoConfig?.jackpot || 0;
         return t + a;
     }, [tombolaConfig, analottoConfig]);
 
-    // Vendite per Staff
     const salesByStaff = useMemo(() => {
         const staffSales: { [key: string]: number } = {};
         activeOrders.forEach(o => { staffSales[o.staffName || 'Sconosciuto'] = (staffSales[o.staffName || 'Sconosciuto'] || 0) + o.total; });
-        
         return Object.entries(staffSales)
             .map(([name, value]) => {
                 const member = allStaff.find(s => s.name === name);
@@ -66,7 +61,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             .sort((a, b) => b.value - a.value);
     }, [activeOrders, allStaff]);
 
-    // Top Prodotti (Quantità)
     const salesByProduct = useMemo(() => {
         const prodSales: { [key: string]: { name: string, value: number, icon: string } } = {};
         activeOrders.forEach(o => o.items.forEach(i => {
@@ -79,7 +73,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         return Object.values(prodSales).sort((a, b) => b.value - a.value).slice(0, 10);
     }, [activeOrders, allProducts]);
 
-    // Volumi Categorie (Quantità)
     const categoryVolumes = useMemo(() => {
         const catVols: { [key: string]: number } = {};
         activeOrders.forEach(o => o.items.forEach(i => {
@@ -89,37 +82,45 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         return Object.entries(catVols).map(([name, value]) => ({ name, value, icon: '' })).sort((a,b) => b.value - a.value);
     }, [activeOrders]);
 
-    // === TRENDS ===
-    
-    // Helper per trend giornalieri
-    const getDailyTrend = (valueExtractor: (o: Order) => number, filter?: (o: Order) => boolean) => {
+    // Data for Pie Chart (Revenue by Shift)
+    const revenueByShift = useMemo(() => {
+        const data = { A: 0, B: 0, C: 0, D: 0 };
+        activeOrders.forEach(o => {
+            const staffMember = allStaff.find(s => s.id === o.staffId);
+            if (staffMember && staffMember.shift) {
+                const shiftKey = staffMember.shift.toUpperCase() as keyof typeof data;
+                if(data[shiftKey] !== undefined) {
+                    data[shiftKey] += o.total;
+                }
+            }
+        });
+        return [
+            { label: 'Turno A', value: data.A, color: '#ef4444' },
+            { label: 'Turno B', value: data.B, color: '#3b82f6' },
+            { label: 'Turno C', value: data.C, color: '#22c55e' },
+            { label: 'Turno D', value: data.D, color: '#eab308' },
+        ].filter(d => d.value > 0);
+    }, [activeOrders, allStaff]);
+
+    // Trends
+    const getDailyTrend = (valueExtractor: (o: Order) => number) => {
         const trend: { [key: string]: number } = {};
         const sortedOrders = [...activeOrders].sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        
         sortedOrders.forEach(o => {
-            if(filter && !filter(o)) return;
             const dateKey = new Date(o.timestamp).toISOString().split('T')[0];
             trend[dateKey] = (trend[dateKey] || 0) + valueExtractor(o);
         });
-        
         return Object.entries(trend).map(([date, value]) => ({ 
             label: new Date(date).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
             value 
         }));
     };
 
-    // 1. Trend Incassi (€)
     const salesTrend = useMemo(() => getDailyTrend(o => o.total), [activeOrders]);
-
-    // 2. Trend Quantità Totali (Pezzi)
     const quantityTrend = useMemo(() => getDailyTrend(o => o.items.reduce((acc, i) => acc + i.quantity, 0)), [activeOrders]);
-
-    // 3. Trend Consumo Acqua (Pezzi)
     const waterTrend = useMemo(() => {
         const waterIds = new Set(allProducts.filter(p => p.name.toLowerCase().includes('acqua')).map(p => p.id));
-        return getDailyTrend(
-            o => o.items.filter(i => waterIds.has(i.product.id)).reduce((acc, i) => acc + i.quantity, 0)
-        );
+        return getDailyTrend(o => o.items.filter(i => waterIds.has(i.product.id)).reduce((acc, i) => acc + i.quantity, 0));
     }, [activeOrders, allProducts]);
 
     const handlePrintPdf = () => window.print();
@@ -136,128 +137,144 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         if(range !== 'all') setEndDate(end);
     };
 
-    return (
-        <div className="max-w-7xl mx-auto space-y-8">
-            <div className="hidden print:block mb-8 text-center border-b pb-4">
-                <div className="flex items-center justify-center gap-2 mb-2"><LogoIcon className="h-8 w-8 text-slate-800" /><h1 className="text-2xl font-bold">Report Gestionale Bar</h1></div>
-                <p className="text-slate-500 text-sm">Periodo: {startDate || 'Inizio'} - {endDate || 'Oggi'}</p>
-            </div>
+    // Simple 3D Pie Chart Component (CSS Only)
+    const PieChart3D = ({ data }: { data: { label: string, value: number, color: string }[] }) => {
+        const total = data.reduce((acc, d) => acc + d.value, 0);
+        let currentAngle = 0;
+        const gradientString = data.map(d => {
+            const deg = (d.value / total) * 360;
+            const str = `${d.color} ${currentAngle}deg ${currentAngle + deg}deg`;
+            currentAngle += deg;
+            return str;
+        }).join(', ');
 
-            {/* FILTRI */}
-            <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200 print:hidden">
-                <div className="mb-4">
-                     <h2 className="text-2xl font-bold text-slate-800">Filtri di Analisi</h2>
-                </div>
+        return (
+            <div className="flex flex-col items-center justify-center p-4">
+                <div 
+                    className="w-48 h-48 rounded-full relative shadow-[0_10px_20px_rgba(0,0,0,0.3)] transition-transform hover:scale-105"
+                    style={{
+                        background: `conic-gradient(${gradientString})`,
+                        transform: 'rotateX(60deg) rotateZ(-45deg)', // 3D Tilt
+                        border: '4px solid rgba(255,255,255,0.2)'
+                    }}
+                ></div>
                 
-                <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-                    <button onClick={() => setDateRange('today')} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold whitespace-nowrap">Oggi</button>
-                    <button onClick={() => setDateRange('week')} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold whitespace-nowrap">Settimana</button>
-                    <button onClick={() => setDateRange('month')} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold whitespace-nowrap">Mese</button>
-                    <button onClick={() => setDateRange('all')} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full text-xs font-bold whitespace-nowrap">Tutto</button>
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
-                    <div><label className="text-[10px] font-bold text-slate-500 uppercase">Da</label><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full border p-2 rounded-lg text-sm" /></div>
-                    <div><label className="text-[10px] font-bold text-slate-500 uppercase">A</label><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full border p-2 rounded-lg text-sm" /></div>
-                    <div><label className="text-[10px] font-bold text-slate-500 uppercase">Turno</label><select value={selectedShift} onChange={e => setSelectedShift(e.target.value as any)} className="w-full border p-2 rounded-lg text-sm"><option value="all">Tutti</option><option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option></select></div>
-                    <div><label className="text-[10px] font-bold text-slate-500 uppercase">Utente</label><select value={selectedStaffId} onChange={e => setSelectedStaffId(e.target.value)} className="w-full border p-2 rounded-lg text-sm"><option value="all">Tutti</option>{allStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
-                    <div><label className="text-[10px] font-bold text-slate-500 uppercase">Prodotto</label><select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} className="w-full border p-2 rounded-lg text-sm"><option value="all">Tutti</option>{allProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
-                </div>
-            </div>
-
-            {/* KPI CARDS CON SFONDI PERSONALIZZATI */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* CASSA BAR (Monete) */}
-                <div className="bg-white border-l-4 border-orange-500 p-6 rounded-xl shadow-sm bg-coins relative overflow-hidden">
-                    <div className="relative z-10">
-                        <h2 className="text-xs font-bold text-orange-900/70 uppercase tracking-widest mb-1 flex items-center gap-2">
-                            <ChartBarIcon className="h-4 w-4"/> Incasso Bar
-                        </h2>
-                        <h2 className="text-3xl font-black text-slate-800 tracking-tight">€{totalSales.toFixed(2)}</h2>
-                        <p className="text-[10px] text-slate-500 font-bold mt-1">Transazioni: {activeOrders.length}</p>
-                    </div>
-                </div>
-
-                {/* TOTALE ACQUA (Bollicine) */}
-                <div className="bg-white border-l-4 border-blue-400 p-6 rounded-xl shadow-sm bg-bubbles relative overflow-hidden">
-                    <div className="relative z-10">
-                        <h2 className="text-xs font-bold text-blue-900/70 uppercase tracking-widest mb-1 flex items-center gap-2">
-                            <DropletIcon className="h-4 w-4"/> Consumo Acqua
-                        </h2>
-                        <h2 className="text-3xl font-black text-slate-800 tracking-tight">
-                            {waterStats.count} <span className="text-lg text-slate-500 font-medium">quote</span>
-                        </h2>
-                        <p className="text-[10px] text-slate-500 font-bold mt-1">
-                            Valore stimato: €{waterStats.revenue.toFixed(2)}
-                        </p>
-                    </div>
-                </div>
-
-                {/* MONTEPREMI GIOCHI (Videogames) */}
-                <div className="bg-white border-l-4 border-purple-500 p-6 rounded-xl shadow-sm bg-videogames relative overflow-hidden">
-                    <div className="relative z-10">
-                        <h2 className="text-xs font-bold text-purple-900/70 uppercase tracking-widest mb-1 flex items-center gap-2">
-                            <GamepadIcon className="h-4 w-4"/> Montepremi Attuale
-                        </h2>
-                        <h2 className="text-3xl font-black text-slate-800 tracking-tight">€{currentJackpotTotal.toFixed(2)}</h2>
-                        <div className="flex gap-2 mt-1 text-[9px] font-bold text-slate-500 uppercase">
-                            <span>Tombola: €{(tombolaConfig?.jackpot || 0).toFixed(0)}</span>
-                            <span>•</span>
-                            <span>Analotto: €{(analottoConfig?.jackpot || 0).toFixed(0)}</span>
+                {/* Legend */}
+                <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-1">
+                    {data.map(d => (
+                        <div key={d.label} className="flex items-center gap-2 text-xs">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }}></div>
+                            <span className="font-bold text-slate-600">{d.label}</span>
+                            <span className="font-black text-slate-800">€{d.value.toFixed(0)}</span>
                         </div>
-                    </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="max-w-7xl mx-auto space-y-4">
+            <div className="hidden print:block mb-4 text-center border-b pb-2">
+                <h1 className="text-xl font-bold">Report Bar VVF</h1>
+                <p className="text-slate-500 text-xs">{startDate || 'Inizio'} - {endDate || 'Oggi'}</p>
+            </div>
+
+            {/* FILTRI COMPATTI */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 print:hidden">
+                <div className="flex justify-between items-center mb-2">
+                     <h2 className="text-lg font-bold text-slate-800">Filtri</h2>
+                     <div className="flex gap-1">
+                        {['today','week','month','all'].map((r: any) => (
+                            <button key={r} onClick={() => setDateRange(r)} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] font-bold uppercase">{r}</button>
+                        ))}
+                     </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-2 items-end">
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full border p-1 rounded text-xs" />
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full border p-1 rounded text-xs" />
+                    <select value={selectedShift} onChange={e => setSelectedShift(e.target.value as any)} className="w-full border p-1 rounded text-xs"><option value="all">Turni: Tutti</option><option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option></select>
+                    <select value={selectedStaffId} onChange={e => setSelectedStaffId(e.target.value)} className="w-full border p-1 rounded text-xs"><option value="all">Staff: Tutti</option>{allStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+                    <select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} className="w-full border p-1 rounded text-xs"><option value="all">Prod: Tutti</option>{allProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
                 </div>
             </div>
 
-            {/* GRAFICI TREND */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                 {/* 1. Incasso */}
-                 <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
-                     <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
-                        <ChartBarIcon className="h-5 w-5 text-orange-500"/> Andamento Incassi (€)
-                     </h3>
-                     <div className="h-[250px] w-full"><LineChart data={salesTrend} height={250} color="text-orange-500" /></div>
+            {/* 3D PIE CHART SECTION */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <h3 className="text-center font-bold text-slate-700 uppercase text-xs tracking-widest mb-2">Ripartizione Incassi per Turno</h3>
+                {revenueByShift.length > 0 ? <PieChart3D data={revenueByShift} /> : <p className="text-center text-xs text-slate-400 py-4">Nessun dato per il grafico</p>}
+            </div>
+
+            {/* KPI CARDS (COMPACT & CLEAN) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white border-l-4 border-orange-500 p-4 rounded-xl shadow-sm">
+                    <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <ChartBarIcon className="h-3 w-3"/> Incasso Bar
+                    </h2>
+                    <h2 className="text-2xl font-black text-slate-800">€{totalSales.toFixed(2)}</h2>
                 </div>
 
-                {/* 2. Quantità Totali */}
-                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
-                     <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
-                        <LayersIcon className="h-5 w-5 text-green-500"/> Andamento Quantità (Pezzi)
-                     </h3>
-                     <div className="h-[250px] w-full"><LineChart data={quantityTrend} height={250} color="text-green-500" /></div>
+                <div className="bg-white border-l-4 border-blue-400 p-4 rounded-xl shadow-sm">
+                    <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <DropletIcon className="h-3 w-3"/> Consumo Acqua
+                    </h2>
+                    <h2 className="text-2xl font-black text-slate-800">{waterStats.count} <span className="text-sm text-slate-400">quote</span></h2>
+                    <p className="text-[9px] text-slate-400">Valore: €{waterStats.revenue.toFixed(2)}</p>
                 </div>
 
-                {/* 3. Consumo Acqua */}
-                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
-                     <h3 className="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
-                        <DropletIcon className="h-5 w-5 text-blue-400"/> Consumo Acqua (Pezzi)
+                <div className="bg-white border-l-4 border-purple-500 p-4 rounded-xl shadow-sm">
+                    <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <GamepadIcon className="h-3 w-3"/> Montepremi
+                    </h2>
+                    <h2 className="text-2xl font-black text-slate-800">€{currentJackpotTotal.toFixed(2)}</h2>
+                </div>
+            </div>
+
+            {/* GRAFICI TREND COMPATTI */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                 <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                     <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                        <ChartBarIcon className="h-4 w-4 text-orange-500"/> Trend Incassi (€)
                      </h3>
-                     <div className="h-[250px] w-full"><LineChart data={waterTrend} height={250} color="text-blue-400" /></div>
+                     <div className="h-[200px] w-full"><LineChart data={salesTrend} height={200} color="text-orange-500" /></div>
                 </div>
 
-                {/* 4. Distribuzione Categorie */}
-                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
-                    <h3 className="text-lg font-bold mb-4 text-slate-700 flex items-center gap-2">
-                        <LayersIcon className="h-5 w-5 text-purple-500"/> Volumi per Categoria
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                     <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                        <LayersIcon className="h-4 w-4 text-green-500"/> Trend Quantità (Pezzi)
+                     </h3>
+                     <div className="h-[200px] w-full"><LineChart data={quantityTrend} height={200} color="text-green-500" /></div>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                     <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
+                        <DropletIcon className="h-4 w-4 text-blue-400"/> Trend Acqua
+                     </h3>
+                     <div className="h-[200px] w-full"><LineChart data={waterTrend} height={200} color="text-blue-400" /></div>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                    <h3 className="text-sm font-bold mb-2 text-slate-700 flex items-center gap-2">
+                        <LayersIcon className="h-4 w-4 text-purple-500"/> Categorie
                     </h3>
-                    <BarChart data={categoryVolumes.slice(0, 8)} format="integer" barColor="bg-purple-500" />
+                    <BarChart data={categoryVolumes.slice(0, 6)} format="integer" barColor="bg-purple-500" />
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
-                    <h3 className="text-lg font-bold mb-4 text-slate-700">Performance Staff (€)</h3>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                    <h3 className="text-sm font-bold mb-2 text-slate-700">Staff (€)</h3>
                     <BarChart data={salesByStaff} format="currency" barColor="bg-blue-600" />
                 </div>
-                <div className="bg-white p-6 rounded-lg shadow-lg border border-slate-200">
-                    <h3 className="text-lg font-bold mb-4 text-slate-700">Top 10 Prodotti (Quantità)</h3>
+                <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                    <h3 className="text-sm font-bold mb-2 text-slate-700">Top Prodotti</h3>
                     <BarChart data={salesByProduct} format="integer" barColor="bg-orange-500" />
                 </div>
             </div>
 
-             <div className="text-center py-4 print:hidden">
-                <button onClick={handlePrintPdf} className="bg-slate-800 text-white font-bold py-3 px-6 rounded-lg hover:bg-slate-700 transition-colors shadow-lg">
-                    Stampa Report Completo (PDF)
+             <div className="text-center py-2 print:hidden">
+                <button onClick={handlePrintPdf} className="bg-slate-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-700 text-xs shadow-md">
+                    Stampa PDF
                 </button>
             </div>
         </div>

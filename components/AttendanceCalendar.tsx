@@ -260,26 +260,17 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                         {Array.from({ length: daysInMonth }).map((_, i) => {
                             const dayNum = i + 1;
                             const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
-                            
-                            // Correzione Calcolo Data Stringa: Costruzione manuale per evitare offset UTC
-                            const year = dateObj.getFullYear();
-                            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                            const day = String(dateObj.getDate()).padStart(2, '0');
-                            const dateStr = `${year}-${month}-${day}`;
-                            
-                            // Correzione Logica "Oggi": Confronto diretto componenti data locale
-                            const now = new Date();
-                            const isToday = now.getDate() === dayNum && now.getMonth() === currentDate.getMonth() && now.getFullYear() === currentDate.getFullYear();
-
+                            const dateStr = dateObj.toISOString().split('T')[0];
                             const shifts = getShiftsForDate(dateObj);
                             
+                            // Logica Giorno Corrente basata su data locale
+                            const today = new Date();
+                            const isToday = today.toDateString() === dateObj.toDateString();
+
                             // Data precedente per Smontante (giorno prima)
                             const prevDate = new Date(dateObj);
                             prevDate.setDate(prevDate.getDate() - 1);
-                            const prevYear = prevDate.getFullYear();
-                            const prevMonth = String(prevDate.getMonth() + 1).padStart(2, '0');
-                            const prevDay = String(prevDate.getDate()).padStart(2, '0');
-                            const prevDateStr = `${prevYear}-${prevMonth}-${prevDay}`;
+                            const prevDateStr = prevDate.toISOString().split('T')[0];
                             
                             // 3 SLOT CRONOLOGICI
                             const timeSlots = [
@@ -299,9 +290,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                     <div className="flex justify-between items-center mb-1">
                                         <span className={`
                                             text-xs md:text-sm font-bold px-1
-                                            ${isToday 
-                                                ? 'text-red-600 font-black text-lg' 
-                                                : 'text-slate-700'}
+                                            ${isToday ? 'text-red-600 font-black text-lg' : 'text-slate-700'}
                                         `}>
                                             {dayNum}
                                         </span>
