@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { TombolaConfig, AnalottoConfig } from '../types';
 import { BackArrowIcon, GamepadIcon, CloverIcon, DiceIcon } from './Icons';
@@ -34,7 +35,7 @@ const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, onPlayAnal
                     </h2>
                 )}
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     
                     {/* CARD TOMBOLA */}
                     <div onClick={onPlayTombola} className="relative bg-white rounded-3xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-2 border-red-100 h-64 flex flex-col items-center justify-center">
