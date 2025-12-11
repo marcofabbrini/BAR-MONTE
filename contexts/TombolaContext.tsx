@@ -9,7 +9,8 @@ interface TombolaContextType {
     isLoading: boolean;
     buyTicket: (playerId: string, playerName: string, quantity: number) => Promise<void>;
     refundTicket: (ticketId: string) => Promise<void>;
-    startGame: () => Promise<void>;
+    refundPlayerTickets: (playerId: string, playerName: string) => Promise<void>;
+    startGame: (targetDate?: string) => Promise<void>;
     manualExtraction: () => Promise<void>;
     updateConfig: (cfg: Partial<TombolaConfig>) => Promise<void>;
     transferFunds: (amount: number) => Promise<void>;
@@ -37,20 +38,41 @@ export const TombolaProvider: React.FC<{ children: ReactNode }> = ({ children })
         };
     }, []);
 
+    // AUTOMATIC EXTRACTION LOGIC
     useEffect(() => {
-        const runTombolaExtraction = async () => {
-            if (!config || !config.extractedNumbers || config.extractedNumbers.length >= 90) return;
-            if (config.status !== 'active') return;
+        const checkAutoExtraction = async () => {
+            if (!config || config.status !== 'active') return;
             
-            const now = new Date().getTime();
-            const last = new Date(config.lastExtraction).getTime();
-            const diffHours = (now - last) / (1000 * 60 * 60);
-            
-            if (diffHours >= 2) {
-                await TombolaService.manualExtraction();
+            // Se abbiamo una data target e una data inizio
+            if (config.targetDate && config.gameStartTime) {
+                const startTime = new Date(config.gameStartTime).getTime();
+                const targetTime = new Date(config.targetDate).getTime();
+                const now = Date.now();
+                const totalDuration = targetTime - startTime;
+                
+                // Se la durata è valida e il gioco non è finito
+                if (totalDuration > 0 && config.extractedNumbers.length < 90) {
+                    const totalNumbers = 90;
+                    const msPerNumber = totalDuration / totalNumbers;
+                    
+                    // Quanti numeri dovrebbero essere usciti teoricamente ad ora?
+                    // Esempio: sono passati 1000ms, msPerNum = 100 -> dovrebbero essere usciti 10 numeri
+                    const elapsedTime = now - startTime;
+                    const expectedCount = Math.min(90, Math.floor(elapsedTime / msPerNumber));
+                    
+                    // Se ne sono usciti meno del previsto, estrai!
+                    if (config.extractedNumbers.length < expectedCount) {
+                        console.log("Auto Extraction Triggered: Expected", expectedCount, "Current", config.extractedNumbers.length);
+                        await TombolaService.manualExtraction();
+                    }
+                }
+            } else {
+                // Fallback vecchia logica (es. se manca targetDate, estrazione manuale o lenta)
+                // Qui lasciamo solo la nuova logica temporizzata se configurata
             }
         };
-        const interval = setInterval(runTombolaExtraction, 60000);
+
+        const interval = setInterval(checkAutoExtraction, 10000); // Check every 10 seconds
         return () => clearInterval(interval);
     }, [config]);
 
@@ -62,8 +84,12 @@ export const TombolaProvider: React.FC<{ children: ReactNode }> = ({ children })
         await TombolaService.refundTicket(ticketId);
     };
 
-    const startGame = async () => {
-        await TombolaService.startGame();
+    const refundPlayerTickets = async (playerId: string, playerName: string) => {
+        await TombolaService.refundPlayerTickets(playerId, playerName);
+    };
+
+    const startGame = async (targetDate?: string) => {
+        await TombolaService.startGame(targetDate);
     };
 
     const manualExtraction = async () => {
@@ -86,6 +112,7 @@ export const TombolaProvider: React.FC<{ children: ReactNode }> = ({ children })
             isLoading,
             buyTicket,
             refundTicket,
+            refundPlayerTickets,
             startGame,
             manualExtraction,
             updateConfig,

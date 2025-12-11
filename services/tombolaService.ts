@@ -9,6 +9,7 @@ import {
     deleteDoc,
     query, 
     getDocs,
+    where,
     DocumentSnapshot,
     QuerySnapshot
 } from 'firebase/firestore';
@@ -180,6 +181,78 @@ export const TombolaService = {
         }
     },
 
+    // Nuova funzione per rimborso massivo in unica transazione
+    refundPlayerTickets: async (playerId: string, playerName: string) => {
+        try {
+            await runTransaction(db, async (t) => {
+                const configRef = doc(db, 'tombola', 'config');
+                const configSnap = await t.get(configRef);
+                if (!configSnap.exists()) throw new Error("Configurazione Tombola mancante");
+                const currentConfig = configSnap.data() as TombolaConfig;
+
+                if (currentConfig.status === 'active' || currentConfig.status === 'completed') {
+                    throw new Error("Impossibile annullare cartelle a gioco iniziato.");
+                }
+
+                // Query per trovare tutte le cartelle del giocatore
+                const q = query(collection(db, 'tombola_tickets'), where('playerId', '==', playerId));
+                const querySnap = await getDocs(q); // Nota: in una transaction è meglio leggere prima. Ma getDocs non è supportato direttamente in `t` v9 per query. 
+                // Tuttavia, per garantire consistenza, possiamo fare una query separata PRIMA della transazione, 
+                // MA per sicurezza nella transazione dobbiamo ri-leggere i documenti tramite riferimento diretto se vogliamo il lock.
+                // Firebase Firestore Client SDK transaction limitations: can't do query inside.
+                // Workaround: Read query outside, then pass refs to transaction. 
+            });
+            
+            // Retry with correct transaction pattern for bulk updates based on query results
+            // Since we can't query inside transaction easily without admin SDK, we iterate.
+            // BETTER APPROACH: Fetch IDs first, then run transaction on specific IDs.
+            
+            const q = query(collection(db, 'tombola_tickets'), where('playerId', '==', playerId));
+            const querySnap = await getDocs(q);
+            const ticketsToRefund = querySnap.docs.map(d => ({ ref: d.ref, data: d.data() as TombolaTicket }));
+
+            if (ticketsToRefund.length === 0) return;
+
+            await runTransaction(db, async (t) => {
+                const configRef = doc(db, 'tombola', 'config');
+                const configSnap = await t.get(configRef);
+                const currentConfig = configSnap.data() as TombolaConfig;
+
+                let totalRefund = 0;
+                let totalRevenueDeduction = 0;
+                let totalJackpotDeduction = 0;
+
+                for (const ticket of ticketsToRefund) {
+                    const ticketRef = ticket.ref;
+                    // Check existence in transaction to be safe
+                    const freshSnap = await t.get(ticketRef);
+                    if(!freshSnap.exists()) continue;
+
+                    const tData = freshSnap.data() as TombolaTicket;
+                    const amount = tData.pricePaid !== undefined ? tData.pricePaid : currentConfig.ticketPriceSingle;
+                    
+                    totalRefund += amount;
+                    totalRevenueDeduction += (amount * 0.20);
+                    totalJackpotDeduction += (amount * 0.80);
+
+                    t.delete(ticketRef);
+                }
+
+                t.update(configRef, { jackpot: Math.max(0, (currentConfig.jackpot || 0) - totalJackpotDeduction) });
+
+                const cashRef = doc(collection(db, 'cash_movements'));
+                t.set(cashRef, { amount: totalRefund, reason: `Rimborso Totale (${playerName})`, timestamp: new Date().toISOString(), type: 'withdrawal', category: 'tombola' });
+
+                const barCashRef = doc(collection(db, 'cash_movements'));
+                t.set(barCashRef, { amount: totalRevenueDeduction, reason: `Storno Utile (${playerName})`, timestamp: new Date().toISOString(), type: 'withdrawal', category: 'bar' });
+            });
+
+        } catch (e) {
+            console.error("TombolaService: Errore rimborso massivo", e);
+            throw e;
+        }
+    },
+
     manualExtraction: async () => {
         try {
             await runTransaction(db, async (t) => {
@@ -206,8 +279,25 @@ export const TombolaService = {
                     
                     if ([2,3,4,5,15].includes(count)) {
                         const type = count === 2 ? 'Ambo' : count === 3 ? 'Terno' : count === 4 ? 'Quaterna' : count === 5 ? 'Cinquina' : 'Tombola';
+                        
+                        // Check if this win already recorded? 
+                        // Simplified: We overwrite or add. But ideally we check duplicates.
+                        // For simplicity, we just add. Real tombola logic might be more complex.
+                        // Here we assume client handles display.
+                        
+                        // Better: Check if this specific ticket already has this win type.
+                        // But querying inside loop is bad. 
+                        // Optimization: We record all wins.
+                        
                         const winRef = doc(collection(db, 'tombola_wins'));
-                        t.set(winRef, { ticketId: ticketDoc.id, playerName: ticket.playerName, type, numbers: matches, timestamp: new Date().toISOString() });
+                        // Only add if not exists? In real game yes. Here we might just add.
+                        // To avoid spam, let's assume UI handles unique wins or we add a check later.
+                        // For now, allow duplicates as "re-announcements" or filter in UI.
+                        // Actually, let's create a deterministic ID: ticketId_type
+                        const winId = `${ticketDoc.id}_${type}`;
+                        const specificWinRef = doc(db, 'tombola_wins', winId);
+                        
+                        t.set(specificWinRef, { ticketId: ticketDoc.id, playerName: ticket.playerName, type, numbers: matches, timestamp: new Date().toISOString() });
                     }
                 });
 
@@ -218,8 +308,13 @@ export const TombolaService = {
         }
     },
 
-    startGame: async () => {
-        await updateDoc(doc(db, 'tombola', 'config'), { status: 'active', lastExtraction: new Date().toISOString() });
+    startGame: async (targetDate?: string) => {
+        await updateDoc(doc(db, 'tombola', 'config'), { 
+            status: 'active', 
+            lastExtraction: new Date().toISOString(),
+            gameStartTime: new Date().toISOString(),
+            targetDate: targetDate || null
+        });
     },
 
     updateConfig: async (cfg: Partial<TombolaConfig>) => {

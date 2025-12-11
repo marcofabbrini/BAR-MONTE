@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { TombolaConfig, TombolaTicket, TombolaWin, StaffMember, TillColors } from '../types';
 import { BackArrowIcon, TrophyIcon, TrashIcon, BoxIcon } from './Icons';
+import { useTombola } from '../contexts/TombolaContext';
 
 interface TombolaViewProps {
     onGoBack: () => void;
@@ -11,7 +11,7 @@ interface TombolaViewProps {
     onBuyTicket: (staffId: string, quantity: number) => Promise<void>;
     onRefundTicket: (ticketId: string) => Promise<void>;
     staff: StaffMember[];
-    onStartGame: () => Promise<void>;
+    onStartGame: (targetDate?: string) => Promise<void>;
     isSuperAdmin: boolean | null;
     onTransferFunds: (amount: number, gameName: string) => Promise<void>;
     onUpdateTombolaConfig: (cfg: Partial<TombolaConfig>) => Promise<void>;
@@ -20,19 +20,25 @@ interface TombolaViewProps {
 }
 
 const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wins, onBuyTicket, onRefundTicket, staff, onStartGame, isSuperAdmin, onTransferFunds, onUpdateTombolaConfig, tillColors, onManualExtraction }) => {
+    const { refundPlayerTickets } = useTombola(); // Use logic from context/service directly for bulk actions
+    
     const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
     const [buyQuantity, setBuyQuantity] = useState(1);
     
-    // Stati locali per edit prezzi
-    const [editPriceSingle, setEditPriceSingle] = useState(config?.ticketPriceSingle || 1);
-    const [editPriceBundle, setEditPriceBundle] = useState(config?.ticketPriceBundle || 5);
-    
+    // Target Date State for Auto Extraction
+    const [targetDateInput, setTargetDateInput] = useState('');
+
     useEffect(() => {
-        if(config) {
-            setEditPriceSingle(config.ticketPriceSingle);
-            setEditPriceBundle(config.ticketPriceBundle);
+        // Set default target date to today 20:00 or tomorrow if late
+        const d = new Date();
+        d.setHours(20, 0, 0, 0);
+        if (Date.now() > d.getTime()) {
+            d.setDate(d.getDate() + 1);
         }
-    }, [config]);
+        // Format to YYYY-MM-DDTHH:mm for datetime-local input
+        const iso = d.toLocaleString('sv').replace(' ', 'T').slice(0, 16);
+        setTargetDateInput(iso);
+    }, []);
 
     const totalTickets = tickets ? tickets.length : 0;
     const maxTickets = config?.maxTickets || 168; 
@@ -64,18 +70,14 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
 
     const handleRefundAllPlayer = async (playerId: string, playerName: string) => {
         if (!isSuperAdmin) return;
-        const playerTickets = tickets.filter(t => t.playerId === playerId);
-        if (playerTickets.length === 0) return;
-
-        if (window.confirm(`ATTENZIONE ADMIN:\nVuoi revocare TUTTE le ${playerTickets.length} cartelle di ${playerName}?\nL'importo verrà rimborsato e il montepremi aggiornato.`)) {
+        
+        if (window.confirm(`ATTENZIONE ADMIN:\nVuoi revocare TUTTE le cartelle di ${playerName}?\nL'importo verrà rimborsato e il montepremi aggiornato.`)) {
             try {
-                for (const t of playerTickets) {
-                    await onRefundTicket(t.id);
-                }
+                await refundPlayerTickets(playerId, playerName);
                 alert("Rimborso completato.");
             } catch (e: any) {
                 console.error(e);
-                alert("Errore durante il rimborso massivo.");
+                alert("Errore durante il rimborso massivo: " + e.message);
             }
         }
     };
@@ -143,6 +145,16 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         return Array.from(playersMap.values());
     }, [tickets, wins, staff, config]);
 
+    // Sorting Logic for Winners
+    const sortedWins = useMemo(() => {
+        const importance: Record<string, number> = { 'Tombola': 0, 'Cinquina': 1, 'Quaterna': 2, 'Terno': 3, 'Ambo': 4 };
+        return [...wins].sort((a, b) => {
+            const diff = importance[a.type] - importance[b.type];
+            if (diff !== 0) return diff;
+            return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+        });
+    }, [wins]);
+
     const handleTransfer = async () => {
         if((config?.jackpot || 0) <= 0) return;
         if(window.confirm(`Versare €${(config.jackpot || 0).toFixed(2)} in Cassa Bar?`)) {
@@ -155,17 +167,25 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         if (onManualExtraction) await onManualExtraction();
     };
 
-    // Helper per i temi delle cartelle basati sul turno
+    const handleStartWithTime = async () => {
+        if (ticketsNeededToStart > 0) return;
+        if (!targetDateInput) {
+            if(!window.confirm("Nessuna data di fine impostata. L'estrazione sarà manuale?")) return;
+            await onStartGame();
+        } else {
+            await onStartGame(targetDateInput);
+        }
+    };
+
     const getTicketStyle = (playerId: string) => {
         const member = staff.find(s => s.id === playerId);
         const shift = member?.shift || 'a';
         const tillId = `T${shift.toUpperCase()}`;
         const baseColor = tillColors ? (tillColors[tillId] || '#94a3b8') : '#94a3b8';
         
-        // Convert hex to rgb for opacity handling (simple approx)
         return {
             borderColor: baseColor,
-            backgroundColor: `${baseColor}26`, // ~15% opacity hex
+            backgroundColor: `${baseColor}26`, 
             headerBg: baseColor
         };
     };
@@ -209,14 +229,30 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                             <div className="bg-gradient-to-r from-green-600 to-emerald-400 h-full transition-all duration-1000 ease-out shadow-sm" style={{ width: `${progressPercent}%` }}></div>
                         </div>
                         {isSuperAdmin && (
-                            <div className="mt-4 flex gap-2">
-                                <button onClick={onStartGame} disabled={ticketsNeededToStart > 0 || config.status !== 'pending'} className={`flex-1 font-bold py-2 rounded-lg shadow-md border-b-4 active:border-b-0 active:translate-y-1 transition-all uppercase text-xs ${ticketsNeededToStart > 0 || config.status !== 'pending' ? 'bg-stone-300 text-stone-500 border-stone-400' : 'bg-green-600 border-green-800 text-white animate-pulse'}`}>
+                            <div className="mt-4 flex flex-col md:flex-row gap-2 items-center">
+                                {config.status === 'pending' && (
+                                    <div className="flex-grow w-full md:w-auto">
+                                        <label className="text-[9px] uppercase font-bold text-stone-500 block mb-1">Data/Ora Fine Estrazione (Automazione)</label>
+                                        <input 
+                                            type="datetime-local" 
+                                            value={targetDateInput} 
+                                            onChange={(e) => setTargetDateInput(e.target.value)} 
+                                            className="w-full bg-stone-50 border border-stone-300 rounded p-2 text-xs"
+                                        />
+                                    </div>
+                                )}
+                                <button onClick={handleStartWithTime} disabled={ticketsNeededToStart > 0 || config.status !== 'pending'} className={`w-full md:w-auto px-6 py-2 rounded-lg font-bold shadow-md border-b-4 active:border-b-0 active:translate-y-1 transition-all uppercase text-xs h-10 mt-auto ${ticketsNeededToStart > 0 || config.status !== 'pending' ? 'bg-stone-300 text-stone-500 border-stone-400' : 'bg-green-600 border-green-800 text-white animate-pulse'}`}>
                                     {config.status === 'active' ? 'Estrazione in corso' : 'Avvia Gioco'}
                                 </button>
-                                <button onClick={handleTransfer} className="flex-1 bg-amber-700 border-b-4 border-amber-900 text-white font-bold py-2 rounded-lg shadow-md active:border-b-0 active:translate-y-1 transition-all uppercase text-xs">
+                                <button onClick={handleTransfer} className="w-full md:w-auto px-6 bg-amber-700 border-b-4 border-amber-900 text-white font-bold py-2 rounded-lg shadow-md active:border-b-0 active:translate-y-1 transition-all uppercase text-xs h-10 mt-auto">
                                     Versa Utile
                                 </button>
                             </div>
+                        )}
+                        {config.status === 'active' && config.targetDate && (
+                            <p className="text-center text-[10px] text-stone-400 mt-2 font-mono">
+                                Estrazione automatica attiva fino al: {new Date(config.targetDate).toLocaleString()}
+                            </p>
                         )}
                     </div>
                 )}
@@ -251,19 +287,22 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                             </div>
                         </div>
 
-                        {/* VINCITORI */}
+                        {/* VINCITORI (2 Colonne, Ordinati) */}
                         <div className="mt-6 bg-white rounded-xl shadow-lg border-b-4 border-stone-200 p-4">
                             <h3 className="font-bold text-stone-700 text-xs uppercase flex items-center gap-2 mb-3">
                                 <TrophyIcon className="h-5 w-5 text-yellow-500" /> Vincite Registrate
                             </h3>
-                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-stone-300">
-                                {wins.slice().reverse().map(win => (
-                                    <div key={win.id} className="bg-yellow-50 pl-2 pr-4 py-1.5 rounded-lg border border-yellow-200 flex items-center gap-2 flex-shrink-0 shadow-sm">
-                                        <div className="bg-yellow-400 text-yellow-900 text-[10px] font-black px-1.5 py-0.5 rounded uppercase">{win.type}</div>
-                                        <span className="font-bold text-stone-800 text-xs">{win.playerName}</span>
+                            <div className="grid grid-cols-2 gap-2">
+                                {sortedWins.map(win => (
+                                    <div key={win.id} className="bg-yellow-50 pl-2 pr-4 py-1.5 rounded-lg border border-yellow-200 flex items-center gap-2 shadow-sm">
+                                        <div className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase ${win.type === 'Tombola' ? 'bg-red-500 text-white animate-pulse' : 'bg-yellow-400 text-yellow-900'}`}>
+                                            {win.type}
+                                        </div>
+                                        <span className="font-bold text-stone-800 text-xs truncate">{win.playerName}</span>
+                                        <span className="text-[9px] text-stone-400 ml-auto">{new Date(win.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                     </div>
                                 ))}
-                                {wins.length === 0 && <span className="text-xs text-stone-400 italic py-2">Nessuna vincita ancora...</span>}
+                                {wins.length === 0 && <span className="col-span-2 text-xs text-stone-400 italic py-2 text-center">Nessuna vincita ancora...</span>}
                             </div>
                         </div>
                     </div>
