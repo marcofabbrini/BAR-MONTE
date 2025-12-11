@@ -8,12 +8,19 @@ interface DiceGameProps {
     shiftSettings?: ShiftSettings;
 }
 
+interface DieConfig {
+    val: number;
+    animType: 'roll-a' | 'roll-b' | 'roll-c';
+    duration: string;
+    delay: string;
+}
+
 interface PlayerResult {
     id: string;
     name: string;
     icon: string;
-    dice1: number;
-    dice2: number;
+    d1: DieConfig;
+    d2: DieConfig;
     total: number;
     isRolling: boolean;
 }
@@ -68,8 +75,8 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
             id: s.id,
             name: s.name,
             icon: s.icon || '👤',
-            dice1: 1,
-            dice2: 1,
+            d1: { val: 1, animType: 'roll-a', duration: '0.5s', delay: '0s' },
+            d2: { val: 1, animType: 'roll-a', duration: '0.5s', delay: '0s' },
             total: 0,
             isRolling: false
         })));
@@ -77,13 +84,32 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
         setLoserScore(null);
     }, [activeShift, staff]);
 
+    const getRandomAnimation = (): DieConfig => {
+        const types: ('roll-a' | 'roll-b' | 'roll-c')[] = ['roll-a', 'roll-b', 'roll-c'];
+        const randomType = types[Math.floor(Math.random() * types.length)];
+        const randomDuration = (0.4 + Math.random() * 0.4).toFixed(2) + 's'; // 0.4s to 0.8s
+        const randomDelay = (Math.random() * 0.2).toFixed(2) + 's'; // 0s to 0.2s delay
+        return {
+            val: 1, // Placeholder until finalized
+            animType: randomType,
+            duration: randomDuration,
+            delay: randomDelay
+        };
+    };
+
     const handleRoll = () => {
         if (participants.length < 2) return alert("Servono almeno 2 partecipanti!");
         setGameStatus('rolling');
         setLoserScore(null);
 
-        // Set all to rolling
-        const rollingParticipants = participants.map(p => ({...p, isRolling: true, total: 0}));
+        // Set all to rolling with randomized animation parameters
+        const rollingParticipants = participants.map(p => ({
+            ...p, 
+            isRolling: true, 
+            total: 0,
+            d1: { ...p.d1, ...getRandomAnimation() },
+            d2: { ...p.d2, ...getRandomAnimation() }
+        }));
         setParticipants(rollingParticipants);
 
         // Simuliamo il tempo di lancio (animazione CSS gestisce il movimento)
@@ -94,13 +120,13 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
 
     const finalizeResults = () => {
         const finalResults = participants.map(p => {
-            const d1 = Math.floor(Math.random() * 6) + 1;
-            const d2 = Math.floor(Math.random() * 6) + 1;
+            const d1Val = Math.floor(Math.random() * 6) + 1;
+            const d2Val = Math.floor(Math.random() * 6) + 1;
             return {
                 ...p,
-                dice1: d1,
-                dice2: d2,
-                total: d1 + d2,
+                d1: { ...p.d1, val: d1Val },
+                d2: { ...p.d2, val: d2Val },
+                total: d1Val + d2Val,
                 isRolling: false
             };
         });
@@ -125,8 +151,8 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                     id: s.id,
                     name: s.name,
                     icon: s.icon || '👤',
-                    dice1: 1,
-                    dice2: 1,
+                    d1: { val: 1, animType: 'roll-a', duration: '0.5s', delay: '0s' },
+                    d2: { val: 1, animType: 'roll-a', duration: '0.5s', delay: '0s' },
                     total: 0,
                     isRolling: false
                 }]);
@@ -136,7 +162,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
     };
 
     // Componente Dado 3D
-    const Die3D = ({ val, rolling }: { val: number, rolling: boolean }) => {
+    const Die3D = ({ config, rolling }: { config: DieConfig, rolling: boolean }) => {
         const rotationMap: {[key: number]: string} = {
             1: 'rotateX(0deg) rotateY(0deg)',
             6: 'rotateX(180deg) rotateY(0deg)',
@@ -146,49 +172,63 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
             4: 'rotateX(90deg)'
         };
 
+        const animationStyle = rolling ? {
+            animationName: config.animType,
+            animationDuration: config.duration,
+            animationDelay: config.delay,
+            animationTimingFunction: 'linear',
+            animationIterationCount: 'infinite'
+        } : { 
+            transform: rotationMap[config.val],
+            transition: 'transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)'
+        };
+
+        // STYLE DOTS: Sottili (w-1.5 h-1.5) e meno marcati (bg-slate-400)
+        const dotClass = "absolute bg-slate-400 rounded-full w-1.5 h-1.5";
+        const centerDotClass = "absolute bg-slate-400 rounded-full w-2 h-2 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2";
+
         return (
             <div className="scene w-8 h-8 md:w-10 md:h-10">
-                <div className={`cube ${rolling ? 'rolling' : ''}`} 
-                     style={{ transform: rolling ? undefined : rotationMap[val] }}>
+                <div className="cube" style={animationStyle}>
                     
-                    {/* FACCIA 1 (FRONT) - FIXED CENTER WITH ABSOLUTE */}
+                    {/* FACCIA 1 (FRONT) */}
                     <div className="cube-face cube-face-front">
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-black rounded-full"></div>
+                        <div className={centerDotClass}></div>
                     </div>
                     {/* FACCIA 2 (RIGHT) */}
                     <div className="cube-face cube-face-right">
-                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className={`${dotClass} top-1.5 left-1.5`}></div>
+                        <div className={`${dotClass} bottom-1.5 right-1.5`}></div>
                     </div>
                     {/* FACCIA 3 (LEFT) */}
                     <div className="cube-face cube-face-left">
-                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className={`${dotClass} top-1.5 left-1.5`}></div>
+                        <div className={centerDotClass}></div>
+                        <div className={`${dotClass} bottom-1.5 right-1.5`}></div>
                     </div>
                     {/* FACCIA 4 (BOTTOM) */}
                     <div className="cube-face cube-face-bottom">
-                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className={`${dotClass} top-1.5 left-1.5`}></div>
+                        <div className={`${dotClass} top-1.5 right-1.5`}></div>
+                        <div className={`${dotClass} bottom-1.5 left-1.5`}></div>
+                        <div className={`${dotClass} bottom-1.5 right-1.5`}></div>
                     </div>
                     {/* FACCIA 5 (TOP) */}
                     <div className="cube-face cube-face-top">
-                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className={`${dotClass} top-1.5 left-1.5`}></div>
+                        <div className={`${dotClass} top-1.5 right-1.5`}></div>
+                        <div className={centerDotClass}></div>
+                        <div className={`${dotClass} bottom-1.5 left-1.5`}></div>
+                        <div className={`${dotClass} bottom-1.5 right-1.5`}></div>
                     </div>
                     {/* FACCIA 6 (BACK) */}
                     <div className="cube-face cube-face-back">
-                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1/2 left-1.5 transform -translate-y-1/2 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute top-1/2 right-1.5 transform -translate-y-1/2 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
-                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className={`${dotClass} top-1.5 left-1.5`}></div>
+                        <div className={`${dotClass} top-1.5 right-1.5`}></div>
+                        <div className={`${dotClass} top-1/2 left-1.5 transform -translate-y-1/2`}></div>
+                        <div className={`${dotClass} top-1/2 right-1.5 transform -translate-y-1/2`}></div>
+                        <div className={`${dotClass} bottom-1.5 left-1.5`}></div>
+                        <div className={`${dotClass} bottom-1.5 right-1.5`}></div>
                     </div>
                 </div>
             </div>
@@ -293,8 +333,8 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
 
                                 <div className="flex items-center gap-3">
                                     <div className="flex gap-2">
-                                        <Die3D val={player.dice1} rolling={player.isRolling} />
-                                        <Die3D val={player.dice2} rolling={player.isRolling} />
+                                        <Die3D config={player.d1} rolling={player.isRolling} />
+                                        <Die3D config={player.d2} rolling={player.isRolling} />
                                     </div>
                                     <div className="w-8 text-center">
                                         {!player.isRolling && player.total > 0 && (
