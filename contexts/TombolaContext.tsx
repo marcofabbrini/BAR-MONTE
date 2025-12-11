@@ -10,7 +10,9 @@ interface TombolaContextType {
     buyTicket: (playerId: string, playerName: string, quantity: number) => Promise<void>;
     refundTicket: (ticketId: string) => Promise<void>;
     refundPlayerTickets: (playerId: string, playerName: string) => Promise<void>;
+    refundAllGameTickets: () => Promise<void>;
     startGame: (targetDate?: string) => Promise<void>;
+    endGame: () => Promise<void>;
     manualExtraction: () => Promise<void>;
     updateConfig: (cfg: Partial<TombolaConfig>) => Promise<void>;
     transferFunds: (amount: number) => Promise<void>;
@@ -43,36 +45,27 @@ export const TombolaProvider: React.FC<{ children: ReactNode }> = ({ children })
         const checkAutoExtraction = async () => {
             if (!config || config.status !== 'active') return;
             
-            // Se abbiamo una data target e una data inizio
             if (config.targetDate && config.gameStartTime) {
                 const startTime = new Date(config.gameStartTime).getTime();
                 const targetTime = new Date(config.targetDate).getTime();
                 const now = Date.now();
                 const totalDuration = targetTime - startTime;
                 
-                // Se la durata è valida e il gioco non è finito
                 if (totalDuration > 0 && config.extractedNumbers.length < 90) {
                     const totalNumbers = 90;
                     const msPerNumber = totalDuration / totalNumbers;
-                    
-                    // Quanti numeri dovrebbero essere usciti teoricamente ad ora?
-                    // Esempio: sono passati 1000ms, msPerNum = 100 -> dovrebbero essere usciti 10 numeri
                     const elapsedTime = now - startTime;
                     const expectedCount = Math.min(90, Math.floor(elapsedTime / msPerNumber));
                     
-                    // Se ne sono usciti meno del previsto, estrai!
                     if (config.extractedNumbers.length < expectedCount) {
-                        console.log("Auto Extraction Triggered: Expected", expectedCount, "Current", config.extractedNumbers.length);
+                        console.log("Auto Extraction Triggered");
                         await TombolaService.manualExtraction();
                     }
                 }
-            } else {
-                // Fallback vecchia logica (es. se manca targetDate, estrazione manuale o lenta)
-                // Qui lasciamo solo la nuova logica temporizzata se configurata
             }
         };
 
-        const interval = setInterval(checkAutoExtraction, 10000); // Check every 10 seconds
+        const interval = setInterval(checkAutoExtraction, 10000); 
         return () => clearInterval(interval);
     }, [config]);
 
@@ -88,8 +81,16 @@ export const TombolaProvider: React.FC<{ children: ReactNode }> = ({ children })
         await TombolaService.refundPlayerTickets(playerId, playerName);
     };
 
+    const refundAllGameTickets = async () => {
+        await TombolaService.refundAllGameTickets();
+    };
+
     const startGame = async (targetDate?: string) => {
         await TombolaService.startGame(targetDate);
+    };
+
+    const endGame = async () => {
+        await TombolaService.endGame();
     };
 
     const manualExtraction = async () => {
@@ -113,7 +114,9 @@ export const TombolaProvider: React.FC<{ children: ReactNode }> = ({ children })
             buyTicket,
             refundTicket,
             refundPlayerTickets,
+            refundAllGameTickets,
             startGame,
+            endGame,
             manualExtraction,
             updateConfig,
             transferFunds
