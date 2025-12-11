@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo } from 'react';
-import { Product, StaffMember, Order, Shift, GeneralSettings, TombolaConfig, AnalottoConfig } from '../types';
+import { Product, StaffMember, Order, Shift } from '../types';
 import StatisticsView from './StatisticsView';
 import InsightsView from './InsightsView';
 import { BackArrowIcon, StatsIcon, LightbulbIcon } from './Icons';
@@ -9,9 +10,6 @@ interface ReportsViewProps {
     products: Product[];
     staff: StaffMember[];
     orders: Order[];
-    generalSettings?: GeneralSettings;
-    tombolaConfig?: TombolaConfig;
-    analottoConfig?: AnalottoConfig;
 }
 
 type ReportTab = 'statistics' | 'insights';
@@ -20,10 +18,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({
     onGoBack, 
     products, 
     staff, 
-    orders,
-    generalSettings,
-    tombolaConfig,
-    analottoConfig
+    orders
 }) => {
     const [activeTab, setActiveTab] = useState<ReportTab>('statistics');
     
@@ -103,9 +98,6 @@ const ReportsView: React.FC<ReportsViewProps> = ({
                             allStaff={staff}
                             filters={{ startDate, endDate, selectedShift, selectedStaffId, selectedProductId }}
                             onSetFilters={{ setStartDate, setEndDate, setSelectedShift, setSelectedStaffId, setSelectedProductId }}
-                            generalSettings={generalSettings}
-                            tombolaConfig={tombolaConfig}
-                            analottoConfig={analottoConfig}
                         />
                     )}
                     {activeTab === 'insights' && (

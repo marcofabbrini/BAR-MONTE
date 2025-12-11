@@ -284,7 +284,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                     key={dayNum} 
                                     className={`
                                         min-h-[100px] md:min-h-[160px] p-1 md:p-2 border-r border-b border-slate-300 flex flex-col gap-1 
-                                        ${isToday ? 'border-2 border-red-600 bg-white relative z-10' : 'bg-white'}
+                                        ${isToday ? 'border-2 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.5)] bg-white z-10' : 'bg-white'}
                                     `}
                                 >
                                     <div className="flex justify-between items-center mb-1">

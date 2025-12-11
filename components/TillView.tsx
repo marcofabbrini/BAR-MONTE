@@ -509,9 +509,9 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         {activeTab === 'history' && (
                             <div className="max-w-3xl mx-auto bg-white/90 backdrop-blur rounded-2xl p-4 shadow-sm border border-slate-100">
                                 
-                                {/* Water Quotas Table - Current Month Snapshot (ANIMATED BUBBLES) */}
+                                {/* Water Quotas Table - Current Month Snapshot (Clean Background) */}
                                 {!selectedStaffId && waterQuotas.length > 0 && (
-                                    <div className="mb-6 bg-blue-50 rounded-xl border border-blue-100 p-4 relative overflow-hidden bg-bubbles">
+                                    <div className="mb-6 bg-blue-50 rounded-xl border border-blue-100 p-4 relative overflow-hidden">
                                         <div className="relative z-10">
                                             <div className="flex justify-between items-center mb-3">
                                                 <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider flex items-center gap-2">
@@ -548,7 +548,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                     </div>
                                 )}
 
-                                <div className="mb-4 text-sm md:text-base font-black text-slate-500 uppercase text-center tracking-wider bg-slate-100/50 py-2 rounded-lg bg-coins relative overflow-hidden">
+                                <div className="mb-4 text-sm md:text-base font-black text-slate-500 uppercase text-center tracking-wider bg-slate-100/50 py-2 rounded-lg relative overflow-hidden">
                                     <span className="relative z-10">
                                         {selectedStaffId ? `Storico di ${selectedStaffMember?.name}` : 'Storico Completo Cassa'}
                                     </span>

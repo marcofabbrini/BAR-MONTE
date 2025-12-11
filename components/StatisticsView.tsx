@@ -137,8 +137,8 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         if(range !== 'all') setEndDate(end);
     };
 
-    // Simple 3D Pie Chart Component (CSS Only)
-    const PieChart3D = ({ data }: { data: { label: string, value: number, color: string }[] }) => {
+    // Standard 2D Pie Chart
+    const PieChart2D = ({ data }: { data: { label: string, value: number, color: string }[] }) => {
         const total = data.reduce((acc, d) => acc + d.value, 0);
         let currentAngle = 0;
         const gradientString = data.map(d => {
@@ -149,23 +149,21 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         }).join(', ');
 
         return (
-            <div className="flex flex-col items-center justify-center p-4">
+            <div className="flex flex-col items-center justify-center h-full">
                 <div 
-                    className="w-48 h-48 rounded-full relative shadow-[0_10px_20px_rgba(0,0,0,0.3)] transition-transform hover:scale-105"
+                    className="w-32 h-32 rounded-full relative shadow-sm border border-slate-100"
                     style={{
-                        background: `conic-gradient(${gradientString})`,
-                        transform: 'rotateX(60deg) rotateZ(-45deg)', // 3D Tilt
-                        border: '4px solid rgba(255,255,255,0.2)'
+                        background: `conic-gradient(${gradientString})`
                     }}
                 ></div>
                 
                 {/* Legend */}
-                <div className="mt-6 grid grid-cols-2 gap-x-4 gap-y-1">
+                <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-1">
                     {data.map(d => (
-                        <div key={d.label} className="flex items-center gap-2 text-xs">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }}></div>
-                            <span className="font-bold text-slate-600">{d.label}</span>
-                            <span className="font-black text-slate-800">€{d.value.toFixed(0)}</span>
+                        <div key={d.label} className="flex items-center gap-1.5 text-[10px]">
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }}></div>
+                            <span className="font-medium text-slate-500">{d.label}</span>
+                            <span className="font-bold text-slate-700">€{d.value.toFixed(0)}</span>
                         </div>
                     ))}
                 </div>
@@ -199,34 +197,38 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 </div>
             </div>
 
-            {/* 3D PIE CHART SECTION */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                <h3 className="text-center font-bold text-slate-700 uppercase text-xs tracking-widest mb-2">Ripartizione Incassi per Turno</h3>
-                {revenueByShift.length > 0 ? <PieChart3D data={revenueByShift} /> : <p className="text-center text-xs text-slate-400 py-4">Nessun dato per il grafico</p>}
-            </div>
-
-            {/* KPI CARDS (COMPACT & CLEAN) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white border-l-4 border-orange-500 p-4 rounded-xl shadow-sm">
-                    <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <ChartBarIcon className="h-3 w-3"/> Incasso Bar
-                    </h2>
-                    <h2 className="text-2xl font-black text-slate-800">€{totalSales.toFixed(2)}</h2>
+            {/* TOP ROW: GRAPH AND KPIS SIDE-BY-SIDE */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                
+                {/* 1. PIE CHART (Left Side) */}
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center">
+                    <h3 className="text-center font-bold text-slate-700 uppercase text-xs tracking-widest mb-2">Incassi per Turno</h3>
+                    {revenueByShift.length > 0 ? <PieChart2D data={revenueByShift} /> : <p className="text-center text-xs text-slate-400 py-4">Nessun dato</p>}
                 </div>
 
-                <div className="bg-white border-l-4 border-blue-400 p-4 rounded-xl shadow-sm">
-                    <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <DropletIcon className="h-3 w-3"/> Consumo Acqua
-                    </h2>
-                    <h2 className="text-2xl font-black text-slate-800">{waterStats.count} <span className="text-sm text-slate-400">quote</span></h2>
-                    <p className="text-[9px] text-slate-400">Valore: €{waterStats.revenue.toFixed(2)}</p>
-                </div>
+                {/* 2. KPI CARDS (Right Side - Spanning 2 cols) */}
+                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="bg-white border-l-4 border-orange-500 p-4 rounded-xl shadow-sm flex flex-col justify-center">
+                        <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1">
+                            <ChartBarIcon className="h-3 w-3"/> Incasso Bar
+                        </h2>
+                        <h2 className="text-2xl font-black text-slate-800">€{totalSales.toFixed(2)}</h2>
+                    </div>
 
-                <div className="bg-white border-l-4 border-purple-500 p-4 rounded-xl shadow-sm">
-                    <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                        <GamepadIcon className="h-3 w-3"/> Montepremi
-                    </h2>
-                    <h2 className="text-2xl font-black text-slate-800">€{currentJackpotTotal.toFixed(2)}</h2>
+                    <div className="bg-white border-l-4 border-blue-400 p-4 rounded-xl shadow-sm flex flex-col justify-center">
+                        <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1">
+                            <DropletIcon className="h-3 w-3"/> Consumo Acqua
+                        </h2>
+                        <h2 className="text-2xl font-black text-slate-800">{waterStats.count} <span className="text-sm text-slate-400">quote</span></h2>
+                        <p className="text-[9px] text-slate-400">Valore: €{waterStats.revenue.toFixed(2)}</p>
+                    </div>
+
+                    <div className="bg-white border-l-4 border-purple-500 p-4 rounded-xl shadow-sm flex flex-col justify-center">
+                        <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1">
+                            <GamepadIcon className="h-3 w-3"/> Montepremi
+                        </h2>
+                        <h2 className="text-2xl font-black text-slate-800">€{currentJackpotTotal.toFixed(2)}</h2>
+                    </div>
                 </div>
             </div>
 
