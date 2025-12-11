@@ -308,21 +308,18 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                 return member && isRealPerson(member.name);
                                             }).length : 0;
 
-                                            // Determine if we should treat as existing based on real people count
-                                            const hasAttendance = record && realPeopleCount > 0;
-
                                             return (
                                                 <div 
                                                     key={`${dayNum}-mob-${idx}`} 
                                                     onClick={() => handleOpenEdit(slot.dateRef, tillId, record)}
                                                     className={`
                                                         flex flex-col items-center justify-center flex-1 rounded border
-                                                        ${hasAttendance ? 'bg-slate-50' : 'bg-transparent opacity-50'}
+                                                        ${record ? 'bg-slate-50' : 'bg-transparent opacity-50'}
                                                     `}
                                                 >
                                                     <span className="text-[7px] font-bold text-slate-400 leading-none mb-0.5">{slot.label.short}</span>
                                                     <div className="w-2 h-2 rounded-full my-0.5" style={{ backgroundColor: color }}></div>
-                                                    <span className="text-[9px] font-black text-slate-700 leading-none">{hasAttendance ? realPeopleCount : '-'}</span>
+                                                    <span className="text-[9px] font-black text-slate-700 leading-none">{record ? realPeopleCount : '-'}</span>
                                                 </div>
                                             )
                                         })}
@@ -344,9 +341,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     }).length;
                                             }
 
-                                            // Determine if we should treat as existing based on real people count
-                                            const hasAttendance = record && realPeopleCount > 0;
-
                                             if (!record && !isSuperAdmin && readOnly) return null;
 
                                             return (
@@ -355,7 +349,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     onClick={() => handleOpenEdit(slot.dateRef, tillId, record)}
                                                     className={`
                                                         group relative flex items-center justify-between border rounded p-1 transition-all h-8
-                                                        ${hasAttendance ? 'bg-slate-50 hover:bg-white hover:shadow-md' : 'bg-transparent border-dashed border-slate-200 opacity-40 hover:opacity-100'}
+                                                        ${record ? 'bg-slate-50 hover:bg-white hover:shadow-md' : 'bg-transparent border-dashed border-slate-200 opacity-40 hover:opacity-100'}
                                                         ${readOnly ? 'cursor-default pointer-events-none' : 'cursor-pointer'}
                                                     `}
                                                 >
@@ -373,13 +367,13 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                         </div>
                                                         
                                                         <span className="text-xs font-bold text-slate-700 flex-grow text-right pr-1 leading-none">
-                                                            {hasAttendance ? realPeopleCount : (readOnly ? '-' : '+')}
+                                                            {record ? realPeopleCount : (readOnly ? '-' : '+')}
                                                         </span>
                                                     </div>
                                                     
-                                                    {!readOnly && onDeleteRecord && hasAttendance && (
+                                                    {!readOnly && onDeleteRecord && record && (
                                                         <button 
-                                                            onClick={(e) => { e.stopPropagation(); handleDelete(record!.id); }}
+                                                            onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }}
                                                             className="absolute -right-1 -top-1 text-slate-300 hover:text-red-500 bg-white shadow-sm border border-slate-100 p-0.5 rounded-full transition-colors hidden group-hover:block"
                                                             title="Resetta"
                                                         >

@@ -1,3 +1,4 @@
+
 export interface Product {
     id: string;
     name: string;
@@ -76,8 +77,8 @@ export interface TombolaConfig {
     jackpot: number;
     lastExtraction: string;
     extractedNumbers: number[];
-    gameStartTime?: string; // Data inizio gioco
-    targetDate?: string;    // Data fine prevista per automazione
+    gameStartTime?: string; // Data inizio gioco per calcolo intervalli
+    targetDate?: string;    // Data fine prevista (es. 25 Dicembre 20:00)
 }
 
 export interface TombolaTicket {

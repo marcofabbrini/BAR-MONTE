@@ -1,3 +1,4 @@
+
 import { db } from '../firebaseConfig';
 import { 
     doc, 
@@ -11,7 +12,8 @@ import {
     getDocs,
     where,
     DocumentSnapshot,
-    QuerySnapshot
+    QuerySnapshot,
+    writeBatch
 } from 'firebase/firestore';
 import { TombolaConfig, TombolaTicket, TombolaWin } from '../types';
 
@@ -150,6 +152,7 @@ export const TombolaService = {
             await runTransaction(db, async (t) => {
                 const configRef = doc(db, 'tombola', 'config');
                 const configSnap = await t.get(configRef);
+                if (!configSnap.exists()) throw new Error("Configurazione Tombola mancante");
                 const currentConfig = configSnap.data() as TombolaConfig;
 
                 if (currentConfig.status === 'active' || currentConfig.status === 'completed') {
@@ -180,10 +183,9 @@ export const TombolaService = {
         }
     },
 
-    // Correzione: Esegue tutte le letture PRIMA di tutte le scritture
     refundPlayerTickets: async (playerId: string, playerName: string) => {
         try {
-            // 1. Recupera gli ID fuori dalla transazione per semplicità (o potremmo usare una query, ma non direttamente in t)
+            // 1. Recupera i riferimenti fuori dalla transazione
             const q = query(collection(db, 'tombola_tickets'), where('playerId', '==', playerId));
             const querySnap = await getDocs(q);
             const ticketRefs = querySnap.docs.map(d => d.ref);
@@ -195,14 +197,14 @@ export const TombolaService = {
                 const configSnap = await t.get(configRef);
                 const currentConfig = configSnap.data() as TombolaConfig;
 
-                // 2. LEGGI TUTTO
+                // 2. LEGGI TUTTI i documenti PRIMA di scrivere
                 const ticketSnaps = await Promise.all(ticketRefs.map(ref => t.get(ref)));
 
                 let totalRefund = 0;
                 let totalRevenueDeduction = 0;
                 let totalJackpotDeduction = 0;
 
-                // 3. CALCOLA
+                // 3. CALCOLA i totali basandoti sulle letture
                 for (const ticketSnap of ticketSnaps) {
                     if(!ticketSnap.exists()) continue;
                     const tData = ticketSnap.data() as TombolaTicket;
@@ -213,7 +215,7 @@ export const TombolaService = {
                     totalJackpotDeduction += (amount * 0.80);
                 }
 
-                // 4. SCRIVI TUTTO
+                // 4. ESEGUI TUTTE LE SCRITTURE
                 for (const ticketSnap of ticketSnaps) {
                     if(ticketSnap.exists()) t.delete(ticketSnap.ref);
                 }
@@ -233,7 +235,7 @@ export const TombolaService = {
         }
     },
 
-    // Reset totale della partita (Read All -> Write All)
+    // Reset totale della partita (Read All -> Write All pattern)
     refundAllGameTickets: async () => {
         try {
             const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
@@ -303,10 +305,7 @@ export const TombolaService = {
                 
                 const newExtracted = [...currentConfig.extractedNumbers, nextNum];
                 
-                // Nota: In produzione con migliaia di ticket, leggere tutto qui potrebbe essere pesante.
-                // Per un bar locale è accettabile.
                 const ticketsSnap = await getDocs(collection(db, 'tombola_tickets'));
-                
                 ticketsSnap.forEach(ticketDoc => {
                     const ticket = ticketDoc.data() as TombolaTicket;
                     if (!ticket.numbers) return;
@@ -319,8 +318,6 @@ export const TombolaService = {
                         const winId = `${ticketDoc.id}_${type}`;
                         const specificWinRef = doc(db, 'tombola_wins', winId);
                         
-                        // Use set with merge to be safe, or just overwrite. 
-                        // Using current timestamp for the win event.
                         t.set(specificWinRef, { 
                             ticketId: ticketDoc.id, 
                             playerName: ticket.playerName, 
