@@ -248,7 +248,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
             <div className="flex-grow overflow-auto p-4">
                 {viewMode === 'calendar' && (
-                    <div className="grid grid-cols-7 border-l border-t border-slate-200">
+                    <div className="grid grid-cols-7 border-l border-t border-slate-200 min-w-[600px] md:min-w-0">
                         {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => (
                             <div key={d} className="p-2 text-center text-xs font-bold bg-slate-100 border-r border-b border-slate-200 text-slate-500 uppercase">{d}</div>
                         ))}
@@ -310,8 +310,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                         ${readOnly ? 'cursor-default pointer-events-none' : 'cursor-pointer'}
                                                     `}
                                                 >
-                                                    <div className="flex items-center gap-2 w-full">
-                                                        <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase w-6 md:w-auto md:min-w-[60px]">
+                                                    <div className="flex items-center gap-1 md:gap-2 w-full">
+                                                        <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase w-3 md:w-auto md:min-w-[60px] text-center md:text-left">
                                                             <span className="md:hidden">{slot.label.short}</span>
                                                             <span className="hidden md:inline">{slot.label.full}</span>
                                                         </span>
