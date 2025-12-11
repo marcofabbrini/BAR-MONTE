@@ -147,48 +147,48 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
         };
 
         return (
-            <div className="scene w-10 h-10 md:w-12 md:h-12">
+            <div className="scene w-8 h-8 md:w-10 md:h-10">
                 <div className={`cube ${rolling ? 'rolling' : ''}`} 
                      style={{ transform: rolling ? undefined : rotationMap[val] }}>
                     
-                    {/* FACCIA 1 */}
+                    {/* FACCIA 1 (FRONT) - FIXED CENTER WITH ABSOLUTE */}
                     <div className="cube-face cube-face-front">
-                        <div className="w-3 h-3 bg-black rounded-full"></div>
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-black rounded-full"></div>
                     </div>
-                    {/* FACCIA 2 */}
+                    {/* FACCIA 2 (RIGHT) */}
                     <div className="cube-face cube-face-right">
-                        <div className="absolute top-2 left-2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute bottom-2 right-2 w-2.5 h-2.5 bg-black rounded-full"></div>
+                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
                     </div>
-                    {/* FACCIA 3 */}
+                    {/* FACCIA 3 (LEFT) */}
                     <div className="cube-face cube-face-left">
-                        <div className="absolute top-2 left-2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute bottom-2 right-2 w-2.5 h-2.5 bg-black rounded-full"></div>
+                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
                     </div>
-                    {/* FACCIA 4 */}
+                    {/* FACCIA 4 (BOTTOM) */}
                     <div className="cube-face cube-face-bottom">
-                        <div className="absolute top-2 left-2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute bottom-2 left-2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute bottom-2 right-2 w-2.5 h-2.5 bg-black rounded-full"></div>
+                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute bottom-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
                     </div>
-                    {/* FACCIA 5 */}
+                    {/* FACCIA 5 (TOP) */}
                     <div className="cube-face cube-face-top">
-                        <div className="absolute top-2 left-2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute bottom-2 left-2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute bottom-2 right-2 w-2.5 h-2.5 bg-black rounded-full"></div>
+                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute bottom-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
                     </div>
-                    {/* FACCIA 6 */}
+                    {/* FACCIA 6 (BACK) */}
                     <div className="cube-face cube-face-back">
-                        <div className="absolute top-2 left-2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute top-1/2 left-2 transform -translate-y-1/2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute top-1/2 right-2 transform -translate-y-1/2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute bottom-2 left-2 w-2.5 h-2.5 bg-black rounded-full"></div>
-                        <div className="absolute bottom-2 right-2 w-2.5 h-2.5 bg-black rounded-full"></div>
+                        <div className="absolute top-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute top-1/2 left-1.5 transform -translate-y-1/2 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute top-1/2 right-1.5 transform -translate-y-1/2 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute bottom-1.5 left-1.5 w-2 h-2 bg-black rounded-full"></div>
+                        <div className="absolute bottom-1.5 right-1.5 w-2 h-2 bg-black rounded-full"></div>
                     </div>
                 </div>
             </div>
@@ -203,30 +203,30 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
 
     return (
         <div className="flex flex-col min-h-screen bg-blue-50 font-sans">
-            <header className="bg-blue-600 text-white p-4 shadow-lg sticky top-0 z-10 border-b-4 border-blue-800 flex justify-between items-center">
-                <button onClick={onGoBack} className="flex items-center gap-1 font-bold hover:text-white/80 transition-colors">
+            <header className="bg-blue-600 text-white p-3 shadow-lg sticky top-0 z-10 border-b-4 border-blue-800 flex justify-between items-center">
+                <button onClick={onGoBack} className="flex items-center gap-1 font-bold hover:text-white/80 transition-colors text-sm">
                     <BackArrowIcon className="h-5 w-5" /> Esci
                 </button>
-                <h1 className="text-xl font-black uppercase tracking-widest flex items-center gap-2">
+                <h1 className="text-lg font-black uppercase tracking-widest flex items-center gap-2">
                     <DiceIcon className="h-6 w-6" /> Chi Paga?
                 </h1>
                 <div className="w-10"></div>
             </header>
 
-            <main className="flex-grow p-4 w-full max-w-4xl mx-auto space-y-6">
+            <main className="flex-grow p-3 w-full max-w-lg mx-auto flex flex-col gap-4">
                 
-                {/* SELEZIONE PARTECIPANTI (Cards) */}
-                <div className="bg-white p-4 rounded-xl shadow-md border border-blue-200">
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-sm font-bold text-blue-800 uppercase flex items-center gap-2">
+                {/* SELEZIONE PARTECIPANTI (ORIZZONTALE COMPATTA + PULSANTE LANCIA) */}
+                <div className="bg-white p-3 rounded-xl shadow-sm border border-blue-200">
+                    <div className="flex justify-between items-center mb-2">
+                        <h2 className="text-xs font-bold text-blue-800 uppercase flex items-center gap-2">
                             Partecipanti (Turno {activeShift.toUpperCase()})
                         </h2>
-                        <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">
+                        <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
                             {participants.length}
                         </span>
                     </div>
                     
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                    <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-thin scrollbar-thumb-blue-200 mb-2">
                         {currentShiftStaffList.map(s => {
                             const isSelected = participants.some(p => p.id === s.id);
                             return (
@@ -234,32 +234,41 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                                     key={s.id} 
                                     onClick={() => toggleParticipant(s.id)}
                                     className={`
-                                        relative flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all duration-200
+                                        relative flex flex-col items-center justify-center p-2 rounded-lg border min-w-[70px] transition-all
                                         ${isSelected 
-                                            ? 'bg-blue-50 border-blue-500 shadow-md scale-105' 
-                                            : 'bg-slate-50 border-slate-200 opacity-60 hover:opacity-100 hover:border-blue-300'
+                                            ? 'bg-blue-50 border-blue-500 shadow-sm scale-95' 
+                                            : 'bg-slate-50 border-slate-200 opacity-60 hover:opacity-100'
                                         }
                                     `}
                                 >
                                     {isSelected && (
-                                        <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-0.5 shadow-sm">
-                                            <CheckIcon className="h-3 w-3" />
+                                        <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full p-0.5 shadow-sm z-10">
+                                            <CheckIcon className="h-2 w-2" />
                                         </div>
                                     )}
-                                    <div className="text-2xl mb-1">{s.icon || '👤'}</div>
-                                    <span className={`text-[10px] font-bold truncate w-full text-center ${isSelected ? 'text-blue-900' : 'text-slate-500'}`}>
+                                    <div className="text-xl mb-1">{s.icon || '👤'}</div>
+                                    <span className={`text-[9px] font-bold truncate w-full text-center leading-none ${isSelected ? 'text-blue-900' : 'text-slate-500'}`}>
                                         {s.name.split(' ')[0]}
                                     </span>
                                 </button>
                             );
                         })}
                     </div>
+
+                    <button 
+                        onClick={handleRoll}
+                        disabled={gameStatus === 'rolling' || participants.length < 2}
+                        className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black py-2 rounded-lg shadow-md uppercase tracking-wider text-sm transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-b-2 border-blue-800 flex items-center justify-center gap-2"
+                    >
+                        {gameStatus === 'rolling' ? <div className="animate-spin h-4 w-4 border-2 border-white rounded-full border-t-transparent"></div> : <DiceIcon className="h-4 w-4" />}
+                        {gameStatus === 'rolling' ? 'Lancio in corso...' : 'Lancia Dadi'}
+                    </button>
                 </div>
 
-                {/* GAME AREA */}
-                <div className="space-y-4">
+                {/* GAME AREA (COMPATTA) */}
+                <div className="space-y-2 pb-4">
                     {participants.length === 0 && (
-                        <div className="text-center py-10 text-slate-400 italic">
+                        <div className="text-center py-10 text-slate-400 italic text-sm">
                             Nessun partecipante selezionato.
                         </div>
                     )}
@@ -270,26 +279,26 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                             <div 
                                 key={player.id} 
                                 className={`
-                                    relative flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-500
-                                    ${isLoser ? 'bg-red-50 border-red-500 shadow-xl scale-105 z-10' : 'bg-white border-slate-100 shadow-sm'}
+                                    relative flex items-center justify-between p-2 rounded-lg border transition-all duration-300 h-14
+                                    ${isLoser ? 'bg-red-50 border-red-500 shadow-md z-10' : 'bg-white border-slate-100 shadow-sm'}
                                 `}
                             >
-                                <div className="flex items-center gap-3">
-                                    <div className="text-3xl">{player.icon}</div>
+                                <div className="flex items-center gap-2">
+                                    <div className="text-2xl">{player.icon}</div>
                                     <div>
-                                        <div className="font-bold text-slate-800">{player.name}</div>
-                                        {isLoser && <div className="text-[10px] font-black text-red-600 uppercase bg-red-100 px-2 py-0.5 rounded inline-block animate-pulse">Paga Tutto!</div>}
+                                        <div className="font-bold text-slate-800 text-sm">{player.name}</div>
+                                        {isLoser && <div className="text-[8px] font-black text-red-600 uppercase bg-red-100 px-1 py-px rounded inline-block animate-pulse">Paga!</div>}
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-4">
-                                    <div className="flex gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex gap-2">
                                         <Die3D val={player.dice1} rolling={player.isRolling} />
                                         <Die3D val={player.dice2} rolling={player.isRolling} />
                                     </div>
-                                    <div className="w-12 text-center">
+                                    <div className="w-8 text-center">
                                         {!player.isRolling && player.total > 0 && (
-                                            <span className={`text-2xl font-black animate-fade-in ${isLoser ? 'text-red-600' : 'text-slate-700'}`}>
+                                            <span className={`text-xl font-black animate-fade-in ${isLoser ? 'text-red-600' : 'text-slate-700'}`}>
                                                 {player.total}
                                             </span>
                                         )}
@@ -297,8 +306,8 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                                 </div>
 
                                 {isLoser && (
-                                    <div className="absolute -right-2 -top-2 bg-red-600 text-white p-2 rounded-full shadow-lg animate-bounce">
-                                        <WalletIcon className="h-6 w-6" />
+                                    <div className="absolute -right-2 -top-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg animate-bounce">
+                                        <WalletIcon className="h-4 w-4" />
                                     </div>
                                 )}
                             </div>
@@ -307,16 +316,6 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                 </div>
 
             </main>
-
-            <div className="sticky bottom-4 px-4 w-full max-w-4xl mx-auto">
-                <button 
-                    onClick={handleRoll}
-                    disabled={gameStatus === 'rolling' || participants.length < 2}
-                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black py-4 rounded-2xl shadow-xl uppercase tracking-wider text-xl transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-b-4 border-blue-800"
-                >
-                    {gameStatus === 'rolling' ? 'Lancio in corso...' : '🎲 Lancia Dadi'}
-                </button>
-            </div>
         </div>
     );
 };
