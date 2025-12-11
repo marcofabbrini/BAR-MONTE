@@ -1,4 +1,3 @@
-
 import { db } from '../firebaseConfig';
 import { 
     doc, 
@@ -10,22 +9,17 @@ import {
     updateDoc, 
     query, 
     orderBy,
-    FirestoreError,
     DocumentSnapshot,
     QuerySnapshot
 } from 'firebase/firestore';
 import { AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel } from '../types';
 
 export const AnalottoService = {
-    // --- LISTENERS ---
-    
-    // Ascolta la configurazione
     subscribeToConfig: (onUpdate: (config: AnalottoConfig) => void) => {
         return onSnapshot(doc(db, 'analotto', 'config'), (snapshot: DocumentSnapshot) => {
             if (snapshot.exists()) {
                 onUpdate(snapshot.data() as AnalottoConfig);
             } else {
-                // Inizializzazione se non esiste
                 const initialConfig: AnalottoConfig = { 
                     jackpot: 0, 
                     lastExtraction: '',
@@ -37,7 +31,6 @@ export const AnalottoService = {
         });
     },
 
-    // Ascolta le scommesse
     subscribeToBets: (onUpdate: (bets: AnalottoBet[]) => void) => {
         const q = query(collection(db, 'analotto_bets'), orderBy('timestamp', 'desc'));
         return onSnapshot(q, (snapshot: QuerySnapshot) => {
@@ -46,7 +39,6 @@ export const AnalottoService = {
         });
     },
 
-    // Ascolta le estrazioni
     subscribeToExtractions: (onUpdate: (extractions: AnalottoExtraction[]) => void) => {
         const q = query(collection(db, 'analotto_extractions'), orderBy('timestamp', 'desc'));
         return onSnapshot(q, (snapshot: QuerySnapshot) => {
@@ -55,35 +47,27 @@ export const AnalottoService = {
         });
     },
 
-    // --- ACTIONS ---
-
-    // Piazza una scommessa (Transazione complessa: Scommessa + Jackpot + Cassa)
     placeBet: async (betData: Omit<AnalottoBet, 'id' | 'timestamp'>) => {
         try {
             await runTransaction(db, async (t) => {
                 const configRef = doc(db, 'analotto', 'config');
-                const configSnap = await t.get(configRef); // Read First
+                const configSnap = await t.get(configRef);
                 
-                // Se non esiste la config, la creiamo al volo dentro la transazione per evitare crash
                 let currentJackpot = 0;
                 if (configSnap.exists()) {
                     currentJackpot = configSnap.data().jackpot || 0;
                 } else {
-                    t.set(configRef, { jackpot: 0 }); // Fallback
+                    t.set(configRef, { jackpot: 0 });
                 }
 
-                // 1. Crea Scommessa
                 const betRef = doc(collection(db, 'analotto_bets'));
                 t.set(betRef, { ...betData, timestamp: new Date().toISOString() });
 
-                // 2. Calcola ripartizione
                 const jackpotPart = betData.amount * 0.8;
                 const barPart = betData.amount * 0.2;
 
-                // 3. Aggiorna Jackpot
                 t.set(configRef, { jackpot: currentJackpot + jackpotPart }, { merge: true });
 
-                // 4. Registra movimento cassa Analotto (Incasso Lordo)
                 const cashRef = doc(collection(db, 'cash_movements'));
                 t.set(cashRef, { 
                     amount: betData.amount, 
@@ -93,7 +77,6 @@ export const AnalottoService = {
                     category: 'analotto' 
                 });
                 
-                // 5. Registra utile Bar (20%)
                 const barCashRef = doc(collection(db, 'cash_movements'));
                 t.set(barCashRef, { 
                     amount: barPart, 
@@ -109,7 +92,6 @@ export const AnalottoService = {
         }
     },
 
-    // Conferma un ticket "pending" (acquistato in cassa)
     confirmTicket: async (ticketId: string, numbers: number[], wheels: AnalottoWheel[]) => {
         try {
             await updateDoc(doc(db, 'analotto_bets', ticketId), {
@@ -123,7 +105,6 @@ export const AnalottoService = {
         }
     },
 
-    // Esegui Estrazione
     runExtraction: async () => {
         try {
             const wheels: AnalottoWheel[] = ['APS', 'Campagnola', 'Autoscala', 'Autobotte', 'Direttivo'];
@@ -149,18 +130,15 @@ export const AnalottoService = {
         }
     },
 
-    // Aggiorna configurazione (Regole, Orari)
     updateConfig: async (newConfig: Partial<AnalottoConfig>) => {
         await setDoc(doc(db, 'analotto', 'config'), newConfig, { merge: true });
     },
 
-    // Trasferimento fondi (Reset Jackpot -> Cassa Bar)
     transferFunds: async (amount: number) => {
         if (amount <= 0) return;
         try {
             await runTransaction(db, async (t) => {
                 t.update(doc(db, 'analotto', 'config'), { jackpot: 0 });
-                
                 const cashRef = doc(collection(db, 'cash_movements'));
                 t.set(cashRef, { 
                     amount: amount, 

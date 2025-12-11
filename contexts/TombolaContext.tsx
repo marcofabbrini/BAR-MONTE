@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { TombolaConfig, TombolaTicket, TombolaWin } from '../types';
 import { TombolaService } from '../services/tombolaService';
@@ -24,7 +23,6 @@ export const TombolaProvider: React.FC<{ children: ReactNode }> = ({ children })
     const [wins, setWins] = useState<TombolaWin[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Listeners
     useEffect(() => {
         const unsubConfig = TombolaService.subscribeToConfig(setConfig);
         const unsubTickets = TombolaService.subscribeToTickets(setTickets);
@@ -39,7 +37,6 @@ export const TombolaProvider: React.FC<{ children: ReactNode }> = ({ children })
         };
     }, []);
 
-    // Automatic Extraction Timer Logic (Moved from App.tsx)
     useEffect(() => {
         const runTombolaExtraction = async () => {
             if (!config || !config.extractedNumbers || config.extractedNumbers.length >= 90) return;
@@ -47,8 +44,6 @@ export const TombolaProvider: React.FC<{ children: ReactNode }> = ({ children })
             
             const now = new Date().getTime();
             const last = new Date(config.lastExtraction).getTime();
-            // Estrai ogni 60 secondi se l'ultima estrazione è vecchia di almeno 2 ore (logic legacy)
-            // Oppure logica personalizzata: qui manteniamo la logica originale
             const diffHours = (now - last) / (1000 * 60 * 60);
             
             if (diffHours >= 2) {

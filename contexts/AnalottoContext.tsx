@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel } from '../types';
 import { AnalottoService } from '../services/analottoService';

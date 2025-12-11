@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -25,7 +24,7 @@ const AppContent: React.FC = () => {
     const [view, setView] = useState<View>('selection');
     const [selectedTillId, setSelectedTillId] = useState<string | null>(null);
     
-    // Auth State (Minimal Local State)
+    // Auth State
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
 
@@ -82,7 +81,6 @@ const AppContent: React.FC = () => {
         if (permission === 'granted') new Notification("Notifiche Attivate!", { body: "Riceverai avvisi dal Bar VVF." });
     };
 
-    // Wrapper Actions
     const handleBuyTombolaTicket = async (staffId: string, quantity: number) => {
         const member = staff.find(s => s.id === staffId);
         if (member) await handleBuyTombolaTicketInternal(staffId, member.name, quantity);

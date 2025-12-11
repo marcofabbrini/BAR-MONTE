@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings } from '../types';
 import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon } from './Icons';
@@ -72,9 +71,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         let nightIndex = dayIndex - 1;
         if (nightIndex < 0) nightIndex += 4;
 
+        // Smontante = Notte del giorno PRIMA
+        let smontanteIndex = dayIndex - 2; 
+        if (smontanteIndex < 0) smontanteIndex += 4;
+
         return {
             day: shifts[dayIndex],
-            night: shifts[nightIndex]
+            night: shifts[nightIndex],
+            smontante: shifts[smontanteIndex]
         };
     };
 
@@ -263,11 +267,10 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             const prevDate = new Date(dateObj);
                             prevDate.setDate(prevDate.getDate() - 1);
                             const prevDateStr = prevDate.toISOString().split('T')[0];
-                            const prevShifts = getShiftsForDate(prevDate);
                             
                             // 3 SLOT CRONOLOGICI
                             const timeSlots = [
-                                { id: 'slot1', shift: prevShifts.night, label: getSlotLabel('smontante'), dateRef: prevDateStr },
+                                { id: 'slot1', shift: shifts.smontante, label: getSlotLabel('smontante'), dateRef: prevDateStr },
                                 { id: 'slot2', shift: shifts.day, label: getSlotLabel('giorno'), dateRef: dateStr },
                                 { id: 'slot3', shift: shifts.night, label: getSlotLabel('notte'), dateRef: dateStr }
                             ];

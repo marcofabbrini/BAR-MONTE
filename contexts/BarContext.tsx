@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification } from '../types';
 import { BarService } from '../services/barService';
@@ -17,7 +16,6 @@ interface BarContextType {
     activeToast: AppNotification | null;
     isLoading: boolean;
     setActiveToast: (n: AppNotification | null) => void;
-    // Actions
     addProduct: (d: any, email: string) => Promise<void>;
     updateProduct: (p: any) => Promise<void>;
     deleteProduct: (id: string) => Promise<void>;
@@ -95,7 +93,6 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return () => unsubs.forEach(u => u());
     }, []);
 
-    // Wrappers
     const addProduct = (d: any, e: string) => BarService.addProduct(d, e);
     const updateProduct = (p: any) => BarService.updateProduct(p);
     const deleteProduct = (id: string) => BarService.deleteProduct(id);

@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -16,7 +15,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Animazione Alone Rosso Pulsante per selezione utente */
 @keyframes red-pulse-glow {
   0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
   50% { box-shadow: 0 0 20px 5px rgba(239, 68, 68, 0.2); }
@@ -27,7 +25,6 @@ body {
   animation: red-pulse-glow 2s infinite;
 }
 
-/* Animazione Emoji Cadenti */
 .emoji-rain-container {
   position: absolute;
   top: 0;
@@ -45,7 +42,6 @@ body {
   will-change: transform;
 }
 
-/* Effetto Neve (Caduta lenta con oscillazione) */
 @keyframes fall {
   0% { transform: translateY(-10vh) translateX(0px) rotate(0deg); opacity: 0; }
   10% { opacity: var(--target-opacity, 0.8); }
@@ -53,14 +49,12 @@ body {
   100% { transform: translateY(110vh) translateX(-20px) rotate(360deg); opacity: 0; }
 }
 
-/* Effetto Pioggia (Caduta veloce verticale) */
 @keyframes rainfall {
   0% { transform: translateY(-10vh) translateX(0px); opacity: 0; }
   10% { opacity: var(--target-opacity, 0.8); }
   100% { transform: translateY(110vh) translateX(10px); opacity: 0; }
 }
 
-/* Effetto Volo (Movimento casuale fluttuante) */
 @keyframes float {
   0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
   10% { opacity: var(--target-opacity, 0.5); }
@@ -80,7 +74,7 @@ body {
   height: 100%;
   position: relative;
   transform-style: preserve-3d;
-  transition: transform 1s ease-out;
+  transition: transform 1.5s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .cube.rolling {
@@ -92,23 +86,19 @@ body {
   width: 100%;
   height: 100%;
   background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
-  backface-visibility: hidden; 
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  box-shadow: inset 0 0 15px rgba(0,0,0,0.05);
+  backface-visibility: hidden;
 }
 
-.cube-face-front  { transform: rotateY(  0deg) translateZ(24px); } /* Base 48px / 2 */
+.cube-face-front  { transform: rotateY(  0deg) translateZ(24px); }
 .cube-face-right  { transform: rotateY( 90deg) translateZ(24px); }
 .cube-face-back   { transform: rotateY(180deg) translateZ(24px); }
 .cube-face-left   { transform: rotateY(-90deg) translateZ(24px); }
 .cube-face-top    { transform: rotateX( 90deg) translateZ(24px); }
 .cube-face-bottom { transform: rotateX(-90deg) translateZ(24px); }
 
-/* Per mobile più piccolo (40px) */
 @media (max-width: 768px) {
   .cube-face-front  { transform: rotateY(  0deg) translateZ(20px); }
   .cube-face-right  { transform: rotateY( 90deg) translateZ(20px); }
@@ -121,4 +111,18 @@ body {
 @keyframes roll {
   0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
   100% { transform: rotateX(720deg) rotateY(360deg) rotateZ(360deg); }
+}
+
+/* Printing Resets */
+@media print {
+  @page { margin: 0.5cm; }
+  body { 
+    background: white; 
+    color: black;
+    height: auto;
+    overflow: visible;
+  }
+  .print\:hidden { display: none !important; }
+  .print\:block { display: block !important; }
+  .print\:absolute { position: absolute !important; }
 }

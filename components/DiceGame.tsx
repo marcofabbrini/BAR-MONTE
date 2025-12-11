@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { StaffMember, Shift, ShiftSettings } from '../types';
 import { BackArrowIcon, DiceIcon, WalletIcon, CheckIcon } from './Icons';
