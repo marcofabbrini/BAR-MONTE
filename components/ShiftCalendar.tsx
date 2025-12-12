@@ -126,49 +126,51 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         
         // Colore Sfondo
         const bgColor = isMyRest 
-            ? 'bg-purple-100 border-purple-200 ring-1 ring-purple-300' 
-            : (type === 'day' ? 'bg-orange-50/50 border-orange-100' : 'bg-slate-100/50 border-slate-100');
+            ? 'bg-purple-50 border-purple-200 ring-1 ring-purple-300' 
+            : (type === 'day' ? 'bg-orange-50/30 border-orange-100' : 'bg-slate-50 border-slate-100');
 
-        const textColor = isMyRest ? 'text-purple-700' : 'text-slate-600';
+        const textColor = isMyRest ? 'text-purple-700' : 'text-slate-500';
 
         return (
             <div 
                 className={`
-                    rounded px-1 md:px-2 py-1 shadow-sm border 
+                    rounded px-1.5 py-1 shadow-sm border 
                     flex items-center justify-between
-                    transition-all duration-300
+                    transition-all duration-300 min-h-[40px]
                     ${bgColor}
-                    ${isDimmed ? 'opacity-10 grayscale' : 'opacity-100'}
+                    ${isDimmed ? 'opacity-30 grayscale' : 'opacity-100'}
                 `}
             >
-                {/* ICONA E TESTO SX */}
-                <div className="flex items-center gap-1 min-w-0">
-                    <span className="text-sm md:text-lg leading-none filter drop-shadow-sm">{icon}</span> 
-                    <span className={`text-[10px] md:text-xs font-bold truncate hidden md:inline ${textColor}`}>
-                        {labelText}
-                    </span>
-                </div>
+                {/* TESTO SX */}
+                <span className={`text-[10px] md:text-xs font-bold truncate mr-1 ${textColor}`}>
+                    {labelText}
+                </span>
 
-                {/* INDICATORE DX */}
-                <div className="flex items-center gap-1">
-                    {/* Lettera Turno (A,B,C,D) */}
-                    <div 
-                        className="w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-black text-white shadow-sm"
-                        style={{ backgroundColor: color }}
-                    >
-                        {shift}
+                {/* INDICATORE DX (STACK VERTICALE) */}
+                <div className="flex flex-col items-center justify-center gap-0.5">
+                    
+                    {/* Contenitore Pallino con Icona Apice */}
+                    <div className="relative">
+                        {/* Icona Apice (Sole/Luna) con ombra */}
+                        <div className="absolute -top-1.5 -right-1.5 text-[10px] filter drop-shadow-md z-10 leading-none transform scale-90">
+                            {icon}
+                        </div>
+
+                        {/* Pallino Turno */}
+                        <div 
+                            className="w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-black text-white shadow-sm ring-1 ring-white/50"
+                            style={{ backgroundColor: color }}
+                        >
+                            {shift}
+                        </div>
                     </div>
                     
-                    {/* Indicatore Salto (Solo Numero) - Mostrato SEMPRE se calcolato */}
-                    {restingGroup && !isMyRest && (
-                        <div className="bg-slate-200 text-slate-500 text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-300 min-w-[20px] text-center" title={`Gruppo a Riposo: ${restingGroup}`}>
-                            {restingGroup}
-                        </div>
-                    )}
-                    
-                    {/* Indicatore se è il MIO riposo (Solo Numero) */}
-                    {isMyRest && (
-                        <div className="bg-purple-500 text-white text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded border border-purple-600 animate-pulse min-w-[20px] text-center">
+                    {/* Numero Salto (Sotto il pallino) */}
+                    {(restingGroup || isMyRest) && (
+                        <div className={`
+                            text-[8px] md:text-[9px] font-black px-1.5 py-px rounded border min-w-[16px] text-center leading-tight shadow-sm
+                            ${isMyRest ? 'bg-purple-500 text-white border-purple-600' : 'bg-white text-slate-400 border-slate-200'}
+                        `}>
                             {restingGroup}
                         </div>
                     )}
@@ -268,12 +270,12 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                                 <div 
                                     key={dayNum} 
                                     className={`
-                                        relative border-b border-r border-slate-100 min-h-[80px] md:min-h-[100px] p-1 md:p-2 flex flex-col gap-1.5 transition-all duration-300
+                                        relative border-b border-r border-slate-100 min-h-[100px] md:min-h-[120px] p-1 flex flex-col gap-1 transition-all duration-300
                                         ${isToday ? 'bg-green-50 border-green-400 ring-1 ring-inset ring-green-500 shadow-md z-10' : 'bg-white hover:bg-slate-50'}
                                     `}
                                 >
-                                    <div className="flex justify-between items-start">
-                                        <span className={`text-xs md:text-sm font-bold mb-0.5 ${isToday ? 'text-green-800' : 'text-slate-700'}`}>{dayNum}</span>
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className={`text-xs md:text-sm font-bold ${isToday ? 'text-green-800' : 'text-slate-700'}`}>{dayNum}</span>
                                         {isToday && <span className="text-[8px] md:text-[9px] font-black text-green-700 uppercase bg-green-200 px-1 rounded hidden md:inline">OGGI</span>}
                                     </div>
                                     
