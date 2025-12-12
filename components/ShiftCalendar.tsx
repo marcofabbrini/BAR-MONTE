@@ -159,17 +159,17 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                         {shift}
                     </div>
                     
-                    {/* Indicatore Salto (es. S-1) - Mostrato SEMPRE se calcolato */}
+                    {/* Indicatore Salto (Solo Numero) - Mostrato SEMPRE se calcolato */}
                     {restingGroup && !isMyRest && (
-                        <div className="bg-slate-200 text-slate-500 text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-300 min-w-[24px] text-center" title={`Gruppo a Riposo: ${restingGroup}`}>
-                            S-{restingGroup}
+                        <div className="bg-slate-200 text-slate-500 text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded border border-slate-300 min-w-[20px] text-center" title={`Gruppo a Riposo: ${restingGroup}`}>
+                            {restingGroup}
                         </div>
                     )}
                     
-                    {/* Indicatore se è il MIO riposo */}
+                    {/* Indicatore se è il MIO riposo (Solo Numero) */}
                     {isMyRest && (
-                        <div className="bg-purple-500 text-white text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded border border-purple-600 animate-pulse">
-                            S-{restingGroup}
+                        <div className="bg-purple-500 text-white text-[8px] md:text-[9px] font-bold px-1.5 py-0.5 rounded border border-purple-600 animate-pulse min-w-[20px] text-center">
+                            {restingGroup}
                         </div>
                     )}
                 </div>
