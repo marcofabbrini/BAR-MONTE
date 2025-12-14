@@ -1,3 +1,4 @@
+
 import { db } from '../firebaseConfig';
 import { 
     collection, 
@@ -14,6 +15,7 @@ import {
     runTransaction,
     getDoc,
     getDocs,
+    limit,
     DocumentSnapshot,
     QuerySnapshot
 } from 'firebase/firestore';
@@ -31,11 +33,13 @@ export const BarService = {
     },
 
     subscribeToOrders: (onUpdate: (data: Order[]) => void) => {
-        return onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc')), (s) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as Order))));
+        // FIX: Limite a 1000 per evitare Quota Exceeded e crash su mobile
+        return onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc'), limit(1000)), (s) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as Order))));
     },
 
     subscribeToCashMovements: (onUpdate: (data: CashMovement[]) => void) => {
-        return onSnapshot(query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc')), (s) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement))));
+        // FIX: Limite a 1000 per evitare Quota Exceeded
+        return onSnapshot(query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc'), limit(1000)), (s) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement))));
     },
 
     subscribeToAdmins: (onUpdate: (data: AdminUser[]) => void) => {

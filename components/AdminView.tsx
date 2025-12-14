@@ -270,6 +270,14 @@ const AdminView: React.FC<AdminViewProps> = ({
         setExpandedSection(prev => prev === section ? null : section);
     };
 
+    const handleClearLocalCache = () => {
+        if (window.confirm("Attenzione: Questa operazione svuota la memoria temporanea del browser (localStorage/sessionStorage) e ricarica la pagina. Utile se riscontri errori di 'Quota Exceeded'. Procedere?")) {
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.reload();
+        }
+    };
+
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
         <button onClick={() => setActiveTab(tab)} className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all w-20 h-16 text-[9px] md:text-[10px] font-bold gap-1 ${activeTab === tab ? 'bg-red-500 text-white shadow-md scale-105' : 'bg-white text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-100'}`}>
             <div className={`${activeTab === tab ? 'text-white' : 'text-current'} transform scale-90`}>{icon}</div>
@@ -387,7 +395,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <div className="bg-slate-100 rounded-xl border border-slate-200 overflow-hidden">
                             <button onClick={() => toggleSection('general')} className="w-full p-4 flex justify-between items-center text-left bg-slate-200 hover:bg-slate-300 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
-                                    <SettingsIcon className="h-5 w-5" /> Configurazione Generale
+                                    <SettingsIcon className="h-5 w-5" /> Configurazione Generale & Manutenzione
                                 </h2>
                                 <span>{expandedSection === 'general' ? '−' : '+'}</span>
                             </button>
@@ -405,9 +413,14 @@ const AdminView: React.FC<AdminViewProps> = ({
                                             />
                                         </div>
                                     </div>
-                                    <button onClick={handleSaveGeneral} className="bg-slate-700 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 mt-4 shadow-sm text-sm">
-                                        Salva Generale
-                                    </button>
+                                    <div className="flex gap-3 mt-4 items-center">
+                                        <button onClick={handleSaveGeneral} className="bg-slate-700 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 shadow-sm text-sm">
+                                            Salva Generale
+                                        </button>
+                                        <button onClick={handleClearLocalCache} className="bg-orange-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-orange-600 shadow-sm text-sm flex items-center gap-2">
+                                            ⚠️ Svuota Cache Browser (Risolvi Quota Exceeded)
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>

@@ -114,14 +114,11 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
 
     // Helper per renderizzare la cella turno
     const renderShiftRow = (shift: string, type: 'day' | 'night', isDimmed: boolean, date: Date) => {
-        
         const restingGroup = getRestingSubGroup(shift, date);
-        
-        // Determina se questo specifico utente è a riposo (solo se l'utente ha selezionato un gruppo)
         const isMyRest = userSubGroup !== 'none' && restingGroup === userSubGroup;
-        
         const color = getShiftColor(shift);
-        const icon = isMyRest ? '💤' : (type === 'day' ? '☀️' : '🌙');
+        const iconChar = isMyRest ? '💤' : (type === 'day' ? '☀️' : '🌙');
+        // Hide text on mobile
         const labelText = isMyRest ? 'RIPOSO' : (type === 'day' ? 'Giorno' : 'Notte');
         
         // Colore Sfondo
@@ -135,30 +132,30 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
             <div 
                 className={`
                     rounded px-1.5 py-1 shadow-sm border 
-                    flex items-center justify-between
-                    transition-all duration-300 min-h-[40px]
+                    flex flex-col md:flex-row items-center md:justify-between justify-center
+                    transition-all duration-300 min-h-[40px] gap-1 md:gap-0
                     ${bgColor}
                     ${isDimmed ? 'opacity-30 grayscale' : 'opacity-100'}
                 `}
             >
-                {/* TESTO SX */}
-                <span className={`text-[10px] md:text-xs font-bold truncate mr-1 ${textColor}`}>
+                {/* TESTO SX (Hidden on mobile) */}
+                <span className={`hidden md:block text-[10px] md:text-xs font-bold truncate mr-1 ${textColor}`}>
                     {labelText}
                 </span>
 
-                {/* INDICATORE DX (STACK VERTICALE) */}
-                <div className="flex flex-col items-center justify-center gap-0.5">
+                {/* INDICATORE DX (STACK VERTICALE SU MOBILE) */}
+                <div className="flex flex-col items-center justify-center gap-0.5 relative">
                     
                     {/* Contenitore Pallino con Icona Apice */}
                     <div className="relative">
                         {/* Icona Apice (Sole/Luna) con ombra */}
-                        <div className="absolute -top-1.5 -right-1.5 text-[10px] filter drop-shadow-md z-10 leading-none transform scale-90">
-                            {icon}
+                        <div className="absolute -top-2 -right-2 text-[10px] filter drop-shadow-md z-10 leading-none">
+                            {iconChar}
                         </div>
 
                         {/* Pallino Turno */}
                         <div 
-                            className="w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-black text-white shadow-sm ring-1 ring-white/50"
+                            className="w-6 h-6 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-black text-white shadow-sm ring-1 ring-white/50"
                             style={{ backgroundColor: color }}
                         >
                             {shift}
@@ -168,10 +165,10 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                     {/* Numero Salto (Sotto il pallino) */}
                     {(restingGroup || isMyRest) && (
                         <div className={`
-                            text-[8px] md:text-[9px] font-black px-1.5 py-px rounded border min-w-[16px] text-center leading-tight shadow-sm
+                            text-[8px] md:text-[9px] font-black px-1.5 py-px rounded border min-w-[16px] text-center leading-tight shadow-sm mt-0.5
                             ${isMyRest ? 'bg-purple-500 text-white border-purple-600' : 'bg-white text-slate-400 border-slate-200'}
                         `}>
-                            {restingGroup}
+                            {restingGroup} {/* Solo numero, niente "S-" */}
                         </div>
                     )}
                 </div>
