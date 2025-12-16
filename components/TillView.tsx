@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel, TombolaConfig, TombolaTicket, AttendanceRecord, GeneralSettings } from '../types';
 import OrderSummary from './OrderSummary';
@@ -32,6 +33,14 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     // PRESENZE STATE
     const [presentStaffIds, setPresentStaffIds] = useState<string[]>([]);
     const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+
+    // Calcolo stato chiusura turno
+    const today = new Date().toISOString().split('T')[0];
+    const existingAttendanceRecord = useMemo(() => 
+        attendanceRecords?.find(r => r.date === today && r.tillId === till.id),
+    [attendanceRecords, today, till.id]);
+    
+    const isShiftClosed = !!existingAttendanceRecord;
 
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
@@ -110,13 +119,17 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
     // ATTENDANCE LOGIC
     useEffect(() => {
-        const today = new Date().toISOString().split('T')[0];
+        // Se il turno è chiuso ufficialmente (su DB), usa quello
+        if (isShiftClosed && existingAttendanceRecord) {
+            setPresentStaffIds(existingAttendanceRecord.presentStaffIds);
+            return;
+        }
+
+        // Altrimenti usa local storage o default
         const storageKey = `attendance_v1_${till.id}_${today}`;
         const saved = localStorage.getItem(storageKey);
 
-        // Trova l'utente "Cassa" per assicurarsi che sia sempre presente
         const cassaUser = staffForShift.find(s => s.name.toLowerCase().includes('cassa'));
-        
         let initialIds: string[] = [];
 
         if (saved) {
@@ -124,18 +137,19 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         } else {
             // First time entry for today: Select ALL by default and open modal
             initialIds = staffForShift.map(s => s.id);
-            setIsAttendanceModalOpen(true);
+            if(!isShiftClosed) setIsAttendanceModalOpen(true);
         }
 
-        // Assicura che la cassa sia presente
         if (cassaUser && !initialIds.includes(cassaUser.id)) {
             initialIds.push(cassaUser.id);
         }
 
         setPresentStaffIds(initialIds);
-    }, [till.id, staffForShift]);
+    }, [till.id, staffForShift, isShiftClosed, existingAttendanceRecord, today]);
 
     const handleToggleAttendance = (id: string) => {
+        if (isShiftClosed) return; // Blocco modifiche se chiuso
+
         // Impedisci di deselezionare la cassa
         const member = allStaff.find(s => s.id === id);
         if (member && member.name.toLowerCase().includes('cassa')) return;
@@ -146,14 +160,12 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     };
 
     const handleProvisionalAttendance = () => {
-        const today = new Date().toISOString().split('T')[0];
         const storageKey = `attendance_v1_${till.id}_${today}`;
         localStorage.setItem(storageKey, JSON.stringify(presentStaffIds));
         setIsAttendanceModalOpen(false);
     };
 
     const confirmAttendance = () => {
-        const today = new Date().toISOString().split('T')[0];
         const storageKey = `attendance_v1_${till.id}_${today}`;
         localStorage.setItem(storageKey, JSON.stringify(presentStaffIds));
         
@@ -306,10 +318,11 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                         <button 
                                             key={member.id} 
                                             onClick={() => handleToggleAttendance(member.id)}
-                                            disabled={isCassa}
+                                            disabled={isCassa || isShiftClosed}
                                             className={`
                                                 flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200
-                                                ${isCassa ? 'opacity-80 bg-slate-100 border-slate-200 cursor-not-allowed' : ''}
+                                                ${(isCassa || isShiftClosed) ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer'}
+                                                ${isCassa ? 'bg-slate-100 border-slate-200' : ''}
                                                 ${isSelected && !isCassa ? 'border-green-500 bg-green-50 shadow-sm' : ''}
                                                 ${!isSelected && !isCassa ? 'border-slate-100 bg-slate-50 text-slate-300' : ''}
                                             `}
@@ -326,22 +339,36 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                 })}
                             </div>
 
-                            <div className="flex gap-3">
-                                <button 
-                                    onClick={handleProvisionalAttendance}
-                                    className="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-4 rounded-xl text-sm shadow-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <EyeIcon className="h-4 w-4" />
-                                    Provvisorio
-                                </button>
-                                <button 
-                                    onClick={confirmAttendance}
-                                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl text-sm shadow-md uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                                >
-                                    <LockIcon className="h-4 w-4" />
-                                    Chiudi Turno
-                                </button>
-                            </div>
+                            {isShiftClosed ? (
+                                <div className="bg-green-100 border border-green-200 text-green-800 p-4 rounded-xl text-center">
+                                    <div className="flex justify-center mb-2"><CheckIcon className="h-8 w-8 bg-green-200 rounded-full p-1" /></div>
+                                    <h3 className="font-bold text-lg uppercase">Turno Chiuso</h3>
+                                    <p className="text-xs mt-1">Le presenze per oggi sono state confermate.</p>
+                                    <button 
+                                        onClick={() => setIsAttendanceModalOpen(false)}
+                                        className="mt-3 text-xs font-bold underline hover:text-green-900"
+                                    >
+                                        Chiudi finestra
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex gap-3">
+                                    <button 
+                                        onClick={handleProvisionalAttendance}
+                                        className="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-4 rounded-xl text-sm shadow-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <EyeIcon className="h-4 w-4" />
+                                        Provvisorio
+                                    </button>
+                                    <button 
+                                        onClick={confirmAttendance}
+                                        className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl text-sm shadow-md uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <LockIcon className="h-4 w-4" />
+                                        Chiudi Turno
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -386,11 +413,14 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
                         <button 
                             onClick={() => setIsAttendanceModalOpen(true)}
-                            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg px-3 py-1 transition-all shadow-md h-full active:scale-95 border border-slate-600"
+                            className={`
+                                flex items-center gap-2 text-white rounded-lg px-3 py-1 transition-all shadow-md h-full active:scale-95 border border-slate-600
+                                ${isShiftClosed ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-800 hover:bg-slate-700'}
+                            `}
                             title="Modifica Presenze"
                         >
-                            <UsersIcon className="h-3 w-3" />
-                            <span className="text-[10px] font-bold uppercase tracking-wide">Presenze</span>
+                            {isShiftClosed ? <CheckIcon className="h-3 w-3" /> : <UsersIcon className="h-3 w-3" />}
+                            <span className="text-[10px] font-bold uppercase tracking-wide">{isShiftClosed ? 'Chiuso' : 'Presenze'}</span>
                         </button>
                     </div>
                 </header>

@@ -271,7 +271,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     };
 
     const handleClearLocalCache = () => {
-        if (window.confirm("Attenzione: Questa operazione svuota la memoria temporanea del browser (localStorage/sessionStorage) e ricarica la pagina. Utile se riscontri errori di 'Quota Exceeded'. Procedere?")) {
+        if (window.confirm("Attenzione: Questa operazione svuota la memoria temporanea del browser (localStorage/sessionStorage) e ricarica la pagina. Utile se riscontri errori di 'Quota Exceeded' o schermata bianca. Procedere?")) {
             localStorage.clear();
             sessionStorage.clear();
             window.location.reload();
@@ -418,7 +418,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                                             Salva Generale
                                         </button>
                                         <button onClick={handleClearLocalCache} className="bg-orange-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-orange-600 shadow-sm text-sm flex items-center gap-2">
-                                            ⚠️ Svuota Cache Browser (Risolvi Quota Exceeded)
+                                            ⚠️ Svuota Cache Browser (Fix Quota/Crash)
                                         </button>
                                     </div>
                                 </div>
