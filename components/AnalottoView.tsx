@@ -153,7 +153,7 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-emerald-50 font-sans relative">
+        <div className="flex flex-col min-h-dvh bg-emerald-50 font-sans relative">
             
             {/* INFO MODAL */}
             {isInfoOpen && (
@@ -198,7 +198,7 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
                 </div>
             )}
 
-            <header className="bg-emerald-800 text-emerald-100 p-4 shadow-xl sticky top-0 z-50 border-b-4 border-yellow-500">
+            <header className="bg-emerald-800 text-emerald-100 p-4 shadow-xl sticky top-0 z-50 border-b-4 border-yellow-500 mt-[env(safe-area-inset-top)]">
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <button onClick={onGoBack} className="flex items-center gap-1 font-bold hover:text-white transition-colors">
                         <BackArrowIcon className="h-5 w-5" /> Esci
@@ -225,7 +225,7 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
                 </div>
             </div>
 
-            <main className="flex-grow p-4 w-full max-w-5xl mx-auto space-y-6">
+            <main className="flex-grow p-4 w-full max-w-5xl mx-auto space-y-6 pb-20">
 
                 {viewMode === 'play' && (
                     <>

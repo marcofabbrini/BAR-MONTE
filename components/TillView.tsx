@@ -299,7 +299,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     };
 
     return (
-        <div className="flex flex-col min-h-screen bg-slate-50 md:flex-row relative">
+        <div className="flex flex-col min-h-dvh bg-slate-50 md:flex-row relative">
             
             {/* ATTENDANCE MODAL */}
             {isAttendanceModalOpen && (
@@ -388,8 +388,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                 </span>
             </div>
 
-            <div className="flex-grow flex flex-col w-full md:w-auto min-h-screen z-10">
-                <header className="sticky top-0 px-4 py-2 flex justify-between items-center shadow-sm z-30 border-b border-white/20 text-white transition-colors duration-300 backdrop-blur-md bg-opacity-90" style={{ backgroundColor: themeColor + 'E6' }}>
+            <div className="flex-grow flex flex-col w-full md:w-auto min-h-dvh z-10">
+                <header className="sticky top-0 px-4 py-2 flex justify-between items-center shadow-sm z-30 border-b border-white/20 text-white transition-colors duration-300 backdrop-blur-md bg-opacity-90 mt-[env(safe-area-inset-top)]" style={{ backgroundColor: themeColor + 'E6' }}>
                      <div className="flex items-center gap-3">
                          <button onClick={onGoBack} className="group flex items-center gap-1 transition-colors">
                             <div className="w-8 h-8 rounded-full bg-white/40 hover:bg-white/60 flex items-center justify-center transition-colors shadow-sm">
@@ -604,7 +604,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                 </main>
             </div>
             
-            <div className={`md:hidden fixed bottom-0 left-0 w-full bg-white shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] border-t border-slate-200 z-50 transition-transform duration-300 ${activeTab === 'order' ? 'translate-y-0' : 'translate-y-full'}`}>
+            <div className={`md:hidden fixed bottom-0 left-0 w-full bg-white shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.1)] border-t border-slate-200 z-50 transition-transform duration-300 pb-[env(safe-area-inset-bottom)] ${activeTab === 'order' ? 'translate-y-0' : 'translate-y-full'}`}>
                  <button onClick={() => setIsCartOpen(true)} className="w-full flex items-center justify-between p-3 bg-white active:bg-slate-50">
                     <div className="flex flex-col items-start">
                         <span className="text-[10px] text-slate-500 font-bold uppercase">{cartItemCount} Articoli</span>
@@ -617,7 +617,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                 </button>
             </div>
              {isCartOpen && (
-                <div className="md:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-center items-end animate-fade-in">
+                <div className="md:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-center items-end animate-fade-in pb-[env(safe-area-inset-bottom)]">
                     <div className="bg-slate-50 w-full h-[80vh] rounded-t-3xl shadow-2xl flex flex-col overflow-hidden animate-slide-up">
                         <div className="flex justify-between items-center p-4 border-b border-slate-200 bg-white">
                             <h2 className="text-lg font-bold text-slate-800">Il tuo Ordine</h2>

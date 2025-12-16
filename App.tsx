@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -95,7 +96,7 @@ const AppContent: React.FC = () => {
     const handleLogout = async () => { try { await signOut(auth); setView('selection'); } catch (e) { console.error(e); } };
 
     const renderContent = () => {
-        if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
+        if (isLoading) return <div className="flex items-center justify-center min-h-dvh"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
         switch (view) {
             case 'till': return <TillView 
                 till={TILLS.find(t=>t.id===selectedTillId)!} 
@@ -105,7 +106,7 @@ const AppContent: React.FC = () => {
                 allOrders={orders} 
                 onCompleteOrder={completeOrder} 
                 tillColors={tillColors} 
-                onSaveAttendance={(t, i) => saveAttendance(t, i)} 
+                onSaveAttendance={(t, i, d, c) => saveAttendance(t, i, d, c)} 
                 onPlaceAnalottoBet={handlePlaceAnalottoBet} 
                 tombolaConfig={tombolaConfig} 
                 tombolaTickets={tombolaTickets} 
@@ -115,7 +116,7 @@ const AppContent: React.FC = () => {
             />;
             case 'reports': return <ReportsView onGoBack={() => setView('selection')} products={products} staff={staff} orders={orders} />;
             case 'tombola': 
-                if (!tombolaConfig) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
+                if (!tombolaConfig) return <div className="flex items-center justify-center min-h-dvh"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
                 return <TombolaView 
                 onGoBack={() => setView('selection')} 
                 config={tombolaConfig} tickets={tombolaTickets} wins={tombolaWins} 
@@ -150,9 +151,9 @@ const AppContent: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 text-slate-800 relative">
+        <div className="min-h-dvh bg-slate-100 text-slate-800 relative safe-area-padding">
             {activeToast && (
-                <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-[90%] max-w-md animate-slide-up">
+                <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-[90%] max-w-md animate-slide-up mt-[env(safe-area-inset-top)]">
                     <div className="bg-white rounded-xl shadow-2xl border-l-8 border-yellow-400 p-4 flex items-start gap-4">
                         <div className="bg-yellow-100 p-2 rounded-full flex-shrink-0"><BellIcon className="h-6 w-6 text-yellow-600" /></div>
                         <div className="flex-grow">

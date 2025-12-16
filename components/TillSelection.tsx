@@ -197,7 +197,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     const tombolaNumberCount = tombolaConfig?.status === 'active' ? (tombolaConfig.extractedNumbers?.length || 0) : 0;
 
     return (
-        <div className="flex flex-col min-h-screen relative overflow-hidden font-sans transition-colors duration-500" style={{ backgroundColor }}>
+        <div className="flex flex-col min-h-dvh relative overflow-hidden font-sans transition-colors duration-500" style={{ backgroundColor }}>
             
             {seasonalityConfig?.animationType !== 'none' && (
                 <div className="emoji-rain-container pointer-events-none">
@@ -224,16 +224,16 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             {notificationPermission === 'default' && onRequestNotification && (
                 <button 
                     onClick={onRequestNotification}
-                    className="absolute top-4 left-4 bg-white p-2 rounded-full shadow-md text-yellow-500 animate-bounce z-50 hover:bg-yellow-50 transition-colors"
+                    className="absolute top-4 left-4 bg-white p-2 rounded-full shadow-md text-yellow-500 animate-bounce z-50 hover:bg-yellow-50 transition-colors mt-[env(safe-area-inset-top)]"
                     title="Attiva Notifiche"
                 >
                     <BellIcon className="h-6 w-6" />
                 </button>
             )}
 
-            <div className="flex-grow flex flex-col items-center justify-center p-4 z-10 w-full max-w-7xl mx-auto pb-16">
+            <div className="flex-grow flex flex-col items-center justify-center p-4 z-10 w-full max-w-7xl mx-auto pb-20">
                 
-                <div className="mb-4 md:mb-8 relative group transform transition-all duration-500">
+                <div className="mb-4 md:mb-8 relative group transform transition-all duration-500 mt-[env(safe-area-inset-top)]">
                     <img src="/logo.png" alt="Logo" className="h-20 w-auto md:h-32 object-contain drop-shadow-lg hover:scale-105" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 </div>
 
@@ -410,7 +410,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg">
+            <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
                 <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.6 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>

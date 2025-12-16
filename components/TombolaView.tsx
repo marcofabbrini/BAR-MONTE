@@ -218,11 +218,11 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         };
     };
     
-    if (!config) return <div className="flex items-center justify-center min-h-screen">Caricamento Tombola...</div>;
+    if (!config) return <div className="flex items-center justify-center min-h-dvh">Caricamento Tombola...</div>;
 
     return (
-        <div className="flex flex-col min-h-screen bg-stone-200 relative font-sans">
-            <header className="bg-red-900 text-yellow-100 p-3 shadow-2xl sticky top-0 z-50 border-b-4 border-yellow-600">
+        <div className="flex flex-col min-h-dvh bg-stone-200 relative font-sans">
+            <header className="bg-red-900 text-yellow-100 p-3 shadow-2xl sticky top-0 z-50 border-b-4 border-yellow-600 mt-[env(safe-area-inset-top)]">
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <button onClick={onGoBack} className="flex items-center gap-1 font-bold hover:text-white transition-colors">
                         <BackArrowIcon className="h-5 w-5" /> Esci
@@ -244,7 +244,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                 </div>
             </header>
 
-            <main className="flex-grow p-4 w-full max-w-7xl mx-auto space-y-6">
+            <main className="flex-grow p-4 w-full max-w-7xl mx-auto space-y-6 pb-20">
                 
                 {/* Status Bar & Admin Controls */}
                 {!selectedStaffId && (
