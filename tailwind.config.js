@@ -1,3 +1,4 @@
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -10,6 +11,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Exo', 'sans-serif'],
+        digital: ['"Share Tech Mono"', 'monospace'],
       },
       colors: {
         primary: {

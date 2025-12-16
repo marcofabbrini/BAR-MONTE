@@ -270,22 +270,27 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             return (
                                 <div key={till.id} className="col-span-3 h-40 md:h-64 flex gap-2 order-first scale-[1.02] z-10 transition-all duration-500">
                                     
-                                    {/* PULSANTE "GRACE PERIOD" (TURNO PRECEDENTE) */}
+                                    {/* PULSANTE "SMONTANTE" (TURNO PRECEDENTE) */}
                                     {graceTimeLeft > 0 && previousShiftTill && (
                                         <button 
                                             onClick={() => onSelectTill(previousShiftTill.id)}
-                                            className="w-1/5 bg-slate-100 rounded-2xl md:rounded-3xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center hover:bg-slate-200 hover:border-slate-400 transition-all relative overflow-hidden group shadow-lg"
+                                            className="w-1/4 bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-slate-200 flex flex-col items-center justify-center hover:bg-white hover:border-red-200 hover:shadow-lg transition-all relative overflow-hidden group shadow-md"
                                         >
-                                            <div className="absolute top-2 w-full text-center">
-                                                <span className="text-[9px] md:text-[10px] font-black text-red-500 uppercase animate-pulse tracking-tighter">
-                                                    Chiudi Turno
+                                            <div className="absolute top-2 w-full flex justify-center">
+                                                <span className="bg-red-500 text-white text-[8px] md:text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wide">
+                                                    SMONTANTE
                                                 </span>
                                             </div>
-                                            <div className="flex flex-col items-center justify-center">
-                                                <span className="text-2xl md:text-4xl font-black text-slate-400 group-hover:text-slate-600 transition-colors">
-                                                    {previousShiftTill.shift.toUpperCase()}
-                                                </span>
-                                                <span className="text-[10px] md:text-xs font-mono font-bold text-red-500 animate-pulse mt-1">
+                                            <div className="flex flex-col items-center justify-center mt-3 md:mt-4 gap-1">
+                                                <div 
+                                                    className="rounded-full flex items-center justify-center shadow-inner w-10 h-10 md:w-14 md:h-14 transition-transform group-hover:scale-110"
+                                                    style={{ backgroundColor: tillColors[previousShiftTill.id] || '#94a3b8' }}
+                                                >
+                                                    <span className="text-lg md:text-2xl font-black text-white select-none">
+                                                        {previousShiftTill.shift.toUpperCase()}
+                                                    </span>
+                                                </div>
+                                                <span className="text-sm md:text-xl font-digital text-slate-700 tracking-widest font-bold">
                                                     {formatCountdown(graceTimeLeft)}
                                                 </span>
                                             </div>
