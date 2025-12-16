@@ -1,7 +1,7 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig } from '../types';
-import { ChartBarIcon, LockIcon, CalendarIcon, GamepadIcon, SunIcon, CloudSunIcon, RainIcon, SnowIcon, BoltIcon, BellIcon, ClipboardIcon } from './Icons';
+import { ChartBarIcon, LockIcon, CalendarIcon, GamepadIcon, BellIcon, ClipboardIcon } from './Icons';
 
 interface TillSelectionProps {
     tills: Till[];
@@ -99,15 +99,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
     };
 
-    const getWeatherIcon = (code: number) => {
-        if (code === 0) return <SunIcon className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />;
-        if (code >= 1 && code <= 3) return <CloudSunIcon className="h-5 w-5 md:h-6 md:w-6 text-slate-400" />;
-        if (code >= 45 && code <= 48) return <CloudSunIcon className="h-5 w-5 md:h-6 md:w-6 text-slate-500" />; // Fog
-        if (code >= 51 && code <= 67) return <RainIcon className="h-5 w-5 md:h-6 md:w-6 text-blue-400" />;
-        if (code >= 71 && code <= 77) return <SnowIcon className="h-5 w-5 md:h-6 md:w-6 text-sky-300" />;
-        if (code >= 80 && code <= 82) return <RainIcon className="h-5 w-5 md:h-6 md:w-6 text-blue-500" />;
-        if (code >= 95) return <BoltIcon className="h-5 w-5 md:h-6 md:w-6 text-purple-500" />;
-        return <SunIcon className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />; // Default
+    const getWeatherEmoji = (code: number) => {
+        if (code === 0) return '☀️'; // Sereno
+        if (code >= 1 && code <= 3) return '⛅'; // Parz. nuvoloso
+        if (code >= 45 && code <= 48) return '🌫️'; // Nebbia
+        if (code >= 51 && code <= 67) return '🌧️'; // Pioggia
+        if (code >= 71 && code <= 77) return '❄️'; // Neve
+        if (code >= 80 && code <= 82) return '🌦️'; // Rovesci
+        if (code >= 95) return '⛈️'; // Temporale
+        return '☀️'; // Default
     };
 
     const animatedEmojis = useMemo(() => {
@@ -251,7 +251,9 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             <>
                                 <div className="h-4 w-px bg-slate-300"></div>
                                 <div className="flex items-center gap-1 md:gap-2">
-                                    {getWeatherIcon(weather.weathercode)}
+                                    <span className="text-2xl md:text-3xl filter drop-shadow-sm leading-none">
+                                        {getWeatherEmoji(weather.weathercode)}
+                                    </span>
                                     <span className="text-slate-700 font-black text-sm md:text-xl">{Math.round(weather.temperature)}°</span>
                                 </div>
                             </>
