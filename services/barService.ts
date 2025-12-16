@@ -195,10 +195,23 @@ export const BarService = {
     removeAdmin: async (id: string) => { await deleteDoc(doc(db, 'admins', id)); },
 
     // Attendance
-    saveAttendance: async (tillId: string, presentStaffIds: string[], dateOverride?: string) => {
+    saveAttendance: async (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string) => {
         const dateToUse = dateOverride || new Date().toISOString().split('T')[0];
         const docId = `${dateToUse}_${tillId}`; 
-        await setDoc(doc(db, 'shift_attendance', docId), { tillId, date: dateToUse, timestamp: new Date().toISOString(), presentStaffIds });
+        
+        const dataToSave: any = { 
+            tillId, 
+            date: dateToUse, 
+            timestamp: new Date().toISOString(), 
+            presentStaffIds 
+        };
+
+        if (closedBy) {
+            dataToSave.closedBy = closedBy;
+            dataToSave.closedAt = new Date().toISOString();
+        }
+
+        await setDoc(doc(db, 'shift_attendance', docId), dataToSave, { merge: true });
     },
     deleteAttendance: async (id: string) => { await deleteDoc(doc(db, 'shift_attendance', id)); },
 

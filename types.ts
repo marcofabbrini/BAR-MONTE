@@ -157,6 +157,8 @@ export interface AttendanceRecord {
     date: string;
     timestamp: string;
     presentStaffIds: string[];
+    closedBy?: string; // Nome di chi ha chiuso il turno
+    closedAt?: string; // Timestamp chiusura
 }
 
 export interface AppNotification {

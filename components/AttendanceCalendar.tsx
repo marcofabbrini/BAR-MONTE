@@ -1,13 +1,14 @@
+
 import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings } from '../types';
-import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon } from './Icons';
+import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon } from './Icons';
 
 interface AttendanceCalendarProps {
     attendanceRecords: AttendanceRecord[];
     staff: StaffMember[];
     tillColors: TillColors;
     onDeleteRecord?: (id: string) => Promise<void>;
-    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string) => Promise<void>;
+    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string) => Promise<void>;
     isSuperAdmin?: boolean;
     shiftSettings?: ShiftSettings;
     readOnly?: boolean;
@@ -23,6 +24,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     const [editingDate, setEditingDate] = useState<string>('');
     const [editingTillId, setEditingTillId] = useState<string>('');
     const [editingPresentIds, setEditingPresentIds] = useState<string[]>([]);
+    const [editingRecord, setEditingRecord] = useState<AttendanceRecord | undefined>(undefined);
 
     const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
     const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay();
@@ -111,8 +113,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const handleDelete = async (id: string) => {
         if (!onDeleteRecord || readOnly) return;
-        if (window.confirm("Vuoi resettare le presenze per questo turno specifico?")) {
+        if (window.confirm("Vuoi RIAPRIRE questo turno eliminando il record di chiusura?")) {
             await onDeleteRecord(id);
+            setIsEditModalOpen(false);
         }
     };
 
@@ -120,6 +123,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         if (readOnly) return;
         setEditingDate(date);
         setEditingTillId(tillId);
+        setEditingRecord(currentRecord);
         
         let initialIds: string[] = [];
         if (currentRecord) {
@@ -145,7 +149,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const saveEditing = async () => {
         if (!onSaveAttendance) return;
-        await onSaveAttendance(editingTillId, editingPresentIds, editingDate);
+        // In Admin Edit mode, we don't necessarily update 'closedBy' unless we want to "sign" the edit
+        // For simplicity, we keep the original closer or set 'Admin' if new
+        await onSaveAttendance(editingTillId, editingPresentIds, editingDate, editingRecord?.closedBy || 'Admin');
         setIsEditModalOpen(false);
     };
 
@@ -185,10 +191,22 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
                         <div className="p-4 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
-                            <h3 className="font-bold text-slate-800">Modifica Presenze - {new Date(editingDate).toLocaleDateString()}</h3>
+                            <div>
+                                <h3 className="font-bold text-slate-800">Modifica Presenze</h3>
+                                <p className="text-xs text-slate-500">{new Date(editingDate).toLocaleDateString()}</p>
+                            </div>
                             <button onClick={() => setIsEditModalOpen(false)} className="text-2xl leading-none">&times;</button>
                         </div>
-                        <div className="p-4 max-h-[60vh] overflow-y-auto">
+                        
+                        {editingRecord && (
+                            <div className="bg-green-50 p-3 border-b border-green-100 text-xs text-green-800 flex flex-col gap-1">
+                                <div className="font-bold flex items-center gap-1"><CheckIcon className="h-3 w-3" /> Turno Chiuso</div>
+                                <div>Da: <b>{editingRecord.closedBy || 'Sconosciuto'}</b></div>
+                                {editingRecord.closedAt && <div>Il: {new Date(editingRecord.closedAt).toLocaleString()}</div>}
+                            </div>
+                        )}
+
+                        <div className="p-4 max-h-[50vh] overflow-y-auto">
                             <div className="grid grid-cols-2 gap-2">
                                 {editingStaffList.map(member => {
                                     const isSelected = editingPresentIds.includes(member.id);
@@ -212,7 +230,13 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                 })}
                             </div>
                         </div>
-                        <div className="p-4 border-t border-slate-200 flex justify-end">
+                        <div className="p-4 border-t border-slate-200 flex justify-between items-center gap-3">
+                            {isSuperAdmin && editingRecord ? (
+                                <button onClick={() => handleDelete(editingRecord.id)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-2 border border-red-200">
+                                    <LockOpenIcon className="h-4 w-4" /> RIAPRI TURNO
+                                </button>
+                            ) : <div></div>}
+                            
                             <button onClick={saveEditing} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2">
                                 <SaveIcon className="h-4 w-4" /> Salva Modifiche
                             </button>
@@ -370,16 +394,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                             {record ? realPeopleCount : (readOnly ? '-' : '+')}
                                                         </span>
                                                     </div>
-                                                    
-                                                    {!readOnly && onDeleteRecord && record && (
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }}
-                                                            className="absolute -right-1 -top-1 text-slate-300 hover:text-red-500 bg-white shadow-sm border border-slate-100 p-0.5 rounded-full transition-colors hidden group-hover:block"
-                                                            title="Resetta"
-                                                        >
-                                                            <TrashIcon className="h-2 w-2" />
-                                                        </button>
-                                                    )}
                                                 </div>
                                             );
                                         })}

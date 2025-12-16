@@ -14,7 +14,7 @@ interface TillViewProps {
     allOrders: Order[];
     onCompleteOrder: (newOrder: Omit<Order, 'id'>) => Promise<void>;
     tillColors?: TillColors;
-    onSaveAttendance?: (tillId: string, presentStaffIds: string[]) => Promise<void>;
+    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string) => Promise<void>;
     onPlaceAnalottoBet?: (bet: Omit<AnalottoBet, 'id' | 'timestamp'>) => Promise<void>;
     tombolaConfig?: TombolaConfig;
     tombolaTickets?: TombolaTicket[];
@@ -40,7 +40,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         attendanceRecords?.find(r => r.date === today && r.tillId === till.id),
     [attendanceRecords, today, till.id]);
     
-    const isShiftClosed = !!existingAttendanceRecord;
+    const isShiftClosed = !!existingAttendanceRecord?.closedAt;
 
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
@@ -120,7 +120,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     // ATTENDANCE LOGIC
     useEffect(() => {
         // Se il turno è chiuso ufficialmente (su DB), usa quello
-        if (isShiftClosed && existingAttendanceRecord) {
+        if (existingAttendanceRecord) {
             setPresentStaffIds(existingAttendanceRecord.presentStaffIds);
             return;
         }
@@ -181,7 +181,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         }
 
         if (onSaveAttendance) {
-            onSaveAttendance(till.id, presentStaffIds);
+            // Registro come "Operatore Cassa [Turno]"
+            onSaveAttendance(till.id, presentStaffIds, undefined, `Operatore Cassa ${till.shift.toUpperCase()}`);
         }
 
         setIsAttendanceModalOpen(false);
@@ -343,7 +344,14 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                 <div className="bg-green-100 border border-green-200 text-green-800 p-4 rounded-xl text-center">
                                     <div className="flex justify-center mb-2"><CheckIcon className="h-8 w-8 bg-green-200 rounded-full p-1" /></div>
                                     <h3 className="font-bold text-lg uppercase">Turno Chiuso</h3>
-                                    <p className="text-xs mt-1">Le presenze per oggi sono state confermate.</p>
+                                    <p className="text-xs mt-1">
+                                        Chiuso da: <span className="font-bold">{existingAttendanceRecord?.closedBy || 'Sistema'}</span>
+                                    </p>
+                                    {existingAttendanceRecord?.closedAt && (
+                                        <p className="text-[10px] opacity-70">
+                                            alle ore {new Date(existingAttendanceRecord.closedAt).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}
+                                        </p>
+                                    )}
                                     <button 
                                         onClick={() => setIsAttendanceModalOpen(false)}
                                         className="mt-3 text-xs font-bold underline hover:text-green-900"
@@ -426,6 +434,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                 </header>
                 
                 <main className="flex-grow flex flex-col relative w-full pb-20 md:pb-4">
+                    {/* ... Rest of existing TillView content ... */}
                     <div className="px-4 py-2 z-20 sticky top-[50px] flex gap-2 overflow-x-auto">
                          <div className="bg-white/90 backdrop-blur p-1 rounded-xl shadow-sm inline-flex w-full md:w-auto border border-slate-100">
                             <button onClick={() => setActiveTab('order')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${activeTab === 'order' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>Al bar...</button>
@@ -538,8 +547,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                         )}
                         {activeTab === 'history' && (
                             <div className="max-w-3xl mx-auto bg-white/90 backdrop-blur rounded-2xl p-4 shadow-sm border border-slate-100">
-                                
-                                {/* Water Quotas Table - Current Month Snapshot (Clean Background) */}
+                                {/* ... History content ... */}
                                 {!selectedStaffId && waterQuotas.length > 0 && (
                                     <div className="mb-6 bg-blue-50 rounded-xl border border-blue-100 p-4 relative overflow-hidden">
                                         <div className="relative z-10">

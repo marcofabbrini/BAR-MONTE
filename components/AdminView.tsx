@@ -56,7 +56,7 @@ interface AdminViewProps {
     
     attendanceRecords: AttendanceRecord[];
     onDeleteAttendance: (id: string) => Promise<void>;
-    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string) => Promise<void>;
+    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string) => Promise<void>;
 
     generalSettings?: GeneralSettings;
     onUpdateGeneralSettings?: (cfg: GeneralSettings) => Promise<void>;
@@ -386,11 +386,11 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
-                {activeTab === 'attendance' && <AttendanceCalendar attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} onDeleteRecord={onDeleteAttendance} onSaveAttendance={onSaveAttendance} isSuperAdmin={isSuperAdmin} />}
+                {activeTab === 'attendance' && <AttendanceCalendar attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} onDeleteRecord={onDeleteAttendance} onSaveAttendance={(t, i, d) => onSaveAttendance && onSaveAttendance(t, i, d, currentUser?.email || 'Admin')} isSuperAdmin={isSuperAdmin} />}
                 
                 {activeTab === 'settings' && (
                     <div className="space-y-4">
-                        
+                        {/* ... (Existing Settings Content) ... */}
                         {/* GENERAL SETTINGS */}
                         <div className="bg-slate-100 rounded-xl border border-slate-200 overflow-hidden">
                             <button onClick={() => toggleSection('general')} className="w-full p-4 flex justify-between items-center text-left bg-slate-200 hover:bg-slate-300 transition-colors">
