@@ -156,7 +156,8 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
-        let shiftIndex = (anchorIndex + diffDays - 1) % 4;
+        // Calcolo turno attivo
+        let shiftIndex = (anchorIndex + diffDays) % 4;
         if (shiftIndex < 0) shiftIndex += 4;
         
         if (hour >= 20 || hour < 8) {
@@ -168,7 +169,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     }, [shiftSettings]);
 
     // Calcolo del turno precedente (per il pulsante Grace Period)
-    // Aggiornamento logica: Se Attuale=B, Precedente=D. Relazione +2 (o -2)
+    // Se Attuale=B, Precedente=D. Relazione +2 (o -2)
     const previousShiftCode = useMemo(() => {
         const shifts = ['a', 'b', 'c', 'd'];
         const currentIndex = shifts.indexOf(activeShift);
