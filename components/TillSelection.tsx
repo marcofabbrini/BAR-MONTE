@@ -169,14 +169,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     }, [shiftSettings]);
 
     // Calcolo del turno precedente (per il pulsante Grace Period)
-    // Se Attuale=B, Precedente=D. Relazione +2 (o -2)
     const previousShiftCode = useMemo(() => {
         const shifts = ['a', 'b', 'c', 'd'];
         const currentIndex = shifts.indexOf(activeShift);
         
-        // Logica specifica VVF: Il turno smontante dista 2 posizioni nella sequenza
-        // Esempio: B (index 1) -> D (index 3). 1 + 2 = 3.
-        const prevIndex = (currentIndex + 2) % 4;
+        // VVF ROTATION LOGIC:
+        // Se attivo è A (Notte), Smontante è B (Giorno). A=0, B=1 -> +1
+        // Se attivo è B (Giorno), Smontante è C (Notte prima?). B=1, C=2 -> +1
+        // Sequenza inversa: D -> C -> B -> A
+        const prevIndex = (currentIndex + 1) % 4;
         return shifts[prevIndex];
     }, [activeShift]);
 
@@ -265,7 +266,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     {visibleTills.map((till) => {
                         const bgColor = tillColors[till.id] || '#f97316';
                         const isActiveShift = till.shift === activeShift;
-                        const isOnlyOne = visibleTills.length === 1;
                         
                         // Layout principale per il turno attivo
                         if (isActiveShift) {
