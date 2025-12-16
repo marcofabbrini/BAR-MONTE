@@ -16,6 +16,7 @@ import {
     getDoc,
     getDocs,
     limit,
+    deleteField,
     DocumentSnapshot,
     QuerySnapshot
 } from 'firebase/firestore';
@@ -213,6 +214,15 @@ export const BarService = {
 
         await setDoc(doc(db, 'shift_attendance', docId), dataToSave, { merge: true });
     },
+    
+    // NUOVA FUNZIONE: RIAPRI TURNO (Rimuove closedAt e closedBy)
+    reopenAttendance: async (id: string) => {
+        await updateDoc(doc(db, 'shift_attendance', id), {
+            closedAt: deleteField(),
+            closedBy: deleteField()
+        });
+    },
+
     deleteAttendance: async (id: string) => { await deleteDoc(doc(db, 'shift_attendance', id)); },
 
     // Settings & Notifications

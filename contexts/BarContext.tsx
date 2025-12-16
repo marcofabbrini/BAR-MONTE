@@ -37,6 +37,7 @@ interface BarContextType {
     addAdmin: (email: string, by: string) => Promise<void>;
     removeAdmin: (id: string) => Promise<void>;
     saveAttendance: (till: string, ids: string[], date?: string, closedBy?: string) => Promise<void>;
+    reopenAttendance: (id: string) => Promise<void>;
     deleteAttendance: (id: string) => Promise<void>;
     updateTillColors: (c: TillColors) => Promise<void>;
     updateSeasonality: (cfg: SeasonalityConfig) => Promise<void>;
@@ -114,6 +115,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const addAdmin = (e: string, by: string) => BarService.addAdmin(e, by);
     const removeAdmin = (id: string) => BarService.removeAdmin(id);
     const saveAttendance = (t: string, i: string[], d?: string, c?: string) => BarService.saveAttendance(t, i, d, c);
+    const reopenAttendance = (id: string) => BarService.reopenAttendance(id);
     const deleteAttendance = (id: string) => BarService.deleteAttendance(id);
     const updateTillColors = (c: TillColors) => BarService.updateTillColors(c);
     const updateSeasonality = (c: SeasonalityConfig) => BarService.updateSeasonality(c);
@@ -127,7 +129,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
             addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
             addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
-            addAdmin, removeAdmin, saveAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete
+            addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete
         }}>
             {children}
         </BarContext.Provider>

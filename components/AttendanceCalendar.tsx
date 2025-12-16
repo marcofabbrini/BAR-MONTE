@@ -9,13 +9,14 @@ interface AttendanceCalendarProps {
     tillColors: TillColors;
     onDeleteRecord?: (id: string) => Promise<void>;
     onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string) => Promise<void>;
+    onReopenAttendance?: (id: string) => Promise<void>;
     isSuperAdmin?: boolean;
     shiftSettings?: ShiftSettings;
     readOnly?: boolean;
     onGoBack?: () => void;
 }
 
-const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord, onSaveAttendance, isSuperAdmin, shiftSettings, readOnly, onGoBack }) => {
+const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord, onSaveAttendance, onReopenAttendance, isSuperAdmin, shiftSettings, readOnly, onGoBack }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [viewMode, setViewMode] = useState<'calendar' | 'report'>('calendar');
     
@@ -111,10 +112,10 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         return statsByShift;
     }, [attendanceRecords, staff, currentDate]);
 
-    const handleDelete = async (id: string) => {
-        if (!onDeleteRecord || readOnly) return;
-        if (window.confirm("Vuoi RIAPRIRE questo turno eliminando il record di chiusura?")) {
-            await onDeleteRecord(id);
+    const handleReopen = async (id: string) => {
+        if (!onReopenAttendance || readOnly) return;
+        if (window.confirm("Vuoi RIAPRIRE questo turno? Il record delle presenze rimarrà salvato, ma il turno risulterà APERTO.")) {
+            await onReopenAttendance(id);
             setIsEditModalOpen(false);
         }
     };
@@ -149,8 +150,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const saveEditing = async () => {
         if (!onSaveAttendance) return;
-        // In Admin Edit mode, we don't necessarily update 'closedBy' unless we want to "sign" the edit
-        // For simplicity, we keep the original closer or set 'Admin' if new
         await onSaveAttendance(editingTillId, editingPresentIds, editingDate, editingRecord?.closedBy || 'Admin');
         setIsEditModalOpen(false);
     };
@@ -198,11 +197,11 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             <button onClick={() => setIsEditModalOpen(false)} className="text-2xl leading-none">&times;</button>
                         </div>
                         
-                        {editingRecord && (
+                        {editingRecord && editingRecord.closedAt && (
                             <div className="bg-green-50 p-3 border-b border-green-100 text-xs text-green-800 flex flex-col gap-1">
                                 <div className="font-bold flex items-center gap-1"><CheckIcon className="h-3 w-3" /> Turno Chiuso</div>
                                 <div>Da: <b>{editingRecord.closedBy || 'Sconosciuto'}</b></div>
-                                {editingRecord.closedAt && <div>Il: {new Date(editingRecord.closedAt).toLocaleString()}</div>}
+                                <div>Il: {new Date(editingRecord.closedAt).toLocaleString()}</div>
                             </div>
                         )}
 
@@ -231,8 +230,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             </div>
                         </div>
                         <div className="p-4 border-t border-slate-200 flex justify-between items-center gap-3">
-                            {isSuperAdmin && editingRecord ? (
-                                <button onClick={() => handleDelete(editingRecord.id)} className="bg-red-100 text-red-700 hover:bg-red-200 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 shadow-sm border border-red-200">
+                            {isSuperAdmin && editingRecord?.closedAt && onReopenAttendance ? (
+                                <button onClick={() => handleReopen(editingRecord.id)} className="bg-red-100 text-red-700 hover:bg-red-200 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 shadow-sm border border-red-200">
                                     <LockOpenIcon className="h-4 w-4" /> RIAPRI TURNO
                                 </button>
                             ) : <div></div>}
