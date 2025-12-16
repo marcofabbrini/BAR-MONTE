@@ -30,6 +30,9 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     // WEATHER & DATE STATE
     const [currentDate, setCurrentDate] = useState<string>('');
     const [weather, setWeather] = useState<WeatherData | null>(null);
+    
+    // GRACE PERIOD STATE
+    const [graceTimeLeft, setGraceTimeLeft] = useState<number>(0);
 
     useEffect(() => {
         // Format Date (es. "Lunedì, 27 Ottobre 2025")
@@ -55,6 +58,46 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const interval = setInterval(fetchWeather, 30 * 60 * 1000);
         return () => clearInterval(interval);
     }, []);
+
+    // Timer per il conto alla rovescia delle 3 ore (Grace Period)
+    useEffect(() => {
+        const calculateGracePeriod = () => {
+            const now = new Date();
+            const hour = now.getHours();
+            
+            // Determina l'orario di inizio dell'ultimo turno (08:00 o 20:00)
+            const shiftStartTime = new Date(now);
+            shiftStartTime.setMinutes(0);
+            shiftStartTime.setSeconds(0);
+            shiftStartTime.setMilliseconds(0);
+
+            if (hour >= 8 && hour < 20) {
+                shiftStartTime.setHours(8); // Turno Giorno iniziato alle 8
+            } else if (hour >= 20) {
+                shiftStartTime.setHours(20); // Turno Notte iniziato alle 20
+            } else {
+                shiftStartTime.setDate(shiftStartTime.getDate() - 1);
+                shiftStartTime.setHours(20); // Turno Notte iniziato ieri alle 20
+            }
+
+            const elapsed = now.getTime() - shiftStartTime.getTime();
+            const threeHoursMs = 3 * 60 * 60 * 1000;
+            const remaining = threeHoursMs - elapsed;
+
+            setGraceTimeLeft(remaining > 0 ? remaining : 0);
+        };
+
+        calculateGracePeriod(); // Immediato
+        const timer = setInterval(calculateGracePeriod, 1000); // Aggiorna ogni secondo
+        return () => clearInterval(timer);
+    }, []);
+
+    const formatCountdown = (ms: number) => {
+        const h = Math.floor(ms / (1000 * 60 * 60));
+        const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+        const s = Math.floor((ms % (1000 * 60)) / 1000);
+        return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    };
 
     const getWeatherIcon = (code: number) => {
         if (code === 0) return <SunIcon className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />;
@@ -122,6 +165,19 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
         return shifts[shiftIndex];
     }, [shiftSettings]);
+
+    // Calcolo del turno precedente (per il pulsante Grace Period)
+    const previousShiftCode = useMemo(() => {
+        const shifts = ['a', 'b', 'c', 'd'];
+        const currentIndex = shifts.indexOf(activeShift);
+        // Indietro di 1 (gestendo modulo negativo)
+        const prevIndex = (currentIndex - 1 + 4) % 4;
+        return shifts[prevIndex];
+    }, [activeShift]);
+
+    const previousShiftTill = useMemo(() => {
+        return tills.find(t => t.shift === previousShiftCode);
+    }, [tills, previousShiftCode]);
 
     const visibleTills = useMemo(() => {
         const active = tills.find(t => t.shift === activeShift);
@@ -203,39 +259,79 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         const bgColor = tillColors[till.id] || '#f97316';
                         const isActiveShift = till.shift === activeShift;
                         const isOnlyOne = visibleTills.length === 1;
-                        const gridClass = (isActiveShift || isOnlyOne) 
-                            ? "col-span-3 h-40 md:h-64 shadow-xl border-primary/20 scale-[1.02] z-10 order-first" 
-                            : "col-span-1 h-32 md:h-48 opacity-90 hover:opacity-100 hover:scale-[1.02]";
+                        
+                        // Layout principale per il turno attivo
+                        if (isActiveShift) {
+                            return (
+                                <div key={till.id} className="col-span-3 h-40 md:h-64 flex gap-2 order-first scale-[1.02] z-10 transition-all duration-500">
+                                    
+                                    {/* PULSANTE "GRACE PERIOD" (TURNO PRECEDENTE) */}
+                                    {graceTimeLeft > 0 && previousShiftTill && (
+                                        <button 
+                                            onClick={() => onSelectTill(previousShiftTill.id)}
+                                            className="w-1/5 bg-slate-100 rounded-2xl md:rounded-3xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center hover:bg-slate-200 hover:border-slate-400 transition-all relative overflow-hidden group shadow-lg"
+                                        >
+                                            <div className="absolute top-2 w-full text-center">
+                                                <span className="text-[9px] md:text-[10px] font-black text-red-500 uppercase animate-pulse tracking-tighter">
+                                                    Chiudi Turno
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-col items-center justify-center">
+                                                <span className="text-2xl md:text-4xl font-black text-slate-400 group-hover:text-slate-600 transition-colors">
+                                                    {previousShiftTill.shift.toUpperCase()}
+                                                </span>
+                                                <span className="text-[10px] md:text-xs font-mono font-bold text-red-500 animate-pulse mt-1">
+                                                    {formatCountdown(graceTimeLeft)}
+                                                </span>
+                                            </div>
+                                        </button>
+                                    )}
 
+                                    {/* PULSANTE TURNO ATTIVO */}
+                                    <button 
+                                        onClick={() => onSelectTill(till.id)} 
+                                        className={`
+                                            flex-grow relative bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-2 
+                                            border border-slate-100 flex flex-col items-center justify-center
+                                            transition-all duration-500 ease-out hover:shadow-2xl shadow-xl border-primary/20
+                                        `}
+                                    >
+                                        <span className="absolute top-4 right-4 bg-green-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full animate-pulse shadow-sm">
+                                            IN SERVIZIO
+                                        </span>
+                                        
+                                        <div 
+                                            className="rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110 w-20 h-20 md:w-32 md:h-32"
+                                            style={{ backgroundColor: bgColor }}
+                                        >
+                                            <span className="font-black text-white select-none text-4xl md:text-6xl">
+                                                {till.shift.toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <span className="font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg text-xl md:text-2xl">
+                                            {till.name}
+                                        </span>
+                                    </button>
+                                </div>
+                            );
+                        }
+
+                        // Layout standard per altri turni (se visibili, es. admin)
                         return (
                             <button 
                                 key={till.id} 
                                 onClick={() => onSelectTill(till.id)} 
-                                className={`
-                                    group relative bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-2 
-                                    border border-slate-100 flex flex-col items-center justify-center w-full 
-                                    transition-all duration-500 ease-out hover:shadow-2xl
-                                    ${gridClass}
-                                `}
+                                className="group relative bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-2 border border-slate-100 flex flex-col items-center justify-center w-full transition-all duration-500 ease-out hover:shadow-2xl col-span-1 h-32 md:h-48 opacity-90 hover:opacity-100 hover:scale-[1.02]"
                             >
-                                {(isActiveShift) && (
-                                    <span className="absolute top-4 right-4 bg-green-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full animate-pulse shadow-sm">
-                                        IN SERVIZIO
-                                    </span>
-                                )}
-                                
                                 <div 
-                                    className={`
-                                        rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110
-                                        ${(isActiveShift || isOnlyOne) ? 'w-20 h-20 md:w-32 md:h-32' : 'w-10 h-10 md:w-20 md:h-20'}
-                                    `} 
+                                    className="rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110 w-10 h-10 md:w-20 md:h-20"
                                     style={{ backgroundColor: bgColor }}
                                 >
-                                    <span className={`font-black text-white select-none ${(isActiveShift || isOnlyOne) ? 'text-4xl md:text-6xl' : 'text-xl md:text-4xl'}`}>
+                                    <span className="font-black text-white select-none text-xl md:text-4xl">
                                         {till.shift.toUpperCase()}
                                     </span>
                                 </div>
-                                <span className={`font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg ${(isActiveShift || isOnlyOne) ? 'text-xl md:text-2xl' : 'hidden md:block text-xs md:text-lg'}`}>
+                                <span className="font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg hidden md:block text-xs md:text-lg">
                                     {till.name}
                                 </span>
                             </button>
