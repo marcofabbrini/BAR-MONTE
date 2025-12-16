@@ -138,6 +138,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const now = new Date();
         const hour = now.getHours();
         const calculationDate = new Date(now);
+        // Se è prima delle 8, consideriamo ancora il "giorno operativo" precedente per il calcolo base
         if (hour < 8) {
             calculationDate.setDate(calculationDate.getDate() - 1);
         }
@@ -155,7 +156,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
-        let shiftIndex = (anchorIndex + diffDays) % 4;
+        let shiftIndex = (anchorIndex + diffDays - 1) % 4;
         if (shiftIndex < 0) shiftIndex += 4;
         
         if (hour >= 20 || hour < 8) {
@@ -167,11 +168,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     }, [shiftSettings]);
 
     // Calcolo del turno precedente (per il pulsante Grace Period)
+    // Aggiornamento logica: Se Attuale=B, Precedente=D. Relazione +2 (o -2)
     const previousShiftCode = useMemo(() => {
         const shifts = ['a', 'b', 'c', 'd'];
         const currentIndex = shifts.indexOf(activeShift);
-        // Indietro di 1 (gestendo modulo negativo)
-        const prevIndex = (currentIndex - 1 + 4) % 4;
+        
+        // Logica specifica VVF: Il turno smontante dista 2 posizioni nella sequenza
+        // Esempio: B (index 1) -> D (index 3). 1 + 2 = 3.
+        const prevIndex = (currentIndex + 2) % 4;
         return shifts[prevIndex];
     }, [activeShift]);
 
