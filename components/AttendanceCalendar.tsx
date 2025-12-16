@@ -232,7 +232,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                         </div>
                         <div className="p-4 border-t border-slate-200 flex justify-between items-center gap-3">
                             {isSuperAdmin && editingRecord ? (
-                                <button onClick={() => handleDelete(editingRecord.id)} className="text-red-500 hover:bg-red-50 px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-2 border border-red-200">
+                                <button onClick={() => handleDelete(editingRecord.id)} className="bg-red-100 text-red-700 hover:bg-red-200 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 shadow-sm border border-red-200">
                                     <LockOpenIcon className="h-4 w-4" /> RIAPRI TURNO
                                 </button>
                             ) : <div></div>}

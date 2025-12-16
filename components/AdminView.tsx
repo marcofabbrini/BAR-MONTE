@@ -386,7 +386,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
-                {activeTab === 'attendance' && <AttendanceCalendar attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} onDeleteRecord={onDeleteAttendance} onSaveAttendance={(t, i, d) => onSaveAttendance && onSaveAttendance(t, i, d, currentUser?.email || 'Admin')} isSuperAdmin={isSuperAdmin} />}
+                {activeTab === 'attendance' && <AttendanceCalendar attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} onDeleteRecord={onDeleteAttendance} onSaveAttendance={(t, i, d) => onSaveAttendance && onSaveAttendance(t, i, d, currentUser?.email || 'Admin')} isSuperAdmin={true} />}
                 
                 {activeTab === 'settings' && (
                     <div className="space-y-4">
