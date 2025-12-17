@@ -34,7 +34,11 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
         if (Date.now() > d.getTime()) {
             d.setDate(d.getDate() + 1);
         }
-        const iso = d.toLocaleString('sv').replace(' ', 'T').slice(0, 16);
+        
+        // FIX IPHONE: Manual formatting instead of toLocaleString('sv')
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const iso = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        
         setTargetDateInput(iso);
     }, []);
 
