@@ -36,8 +36,9 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
         }
         calculationDate.setHours(12, 0, 0, 0);
 
-        const anchorDateStr = shiftSettings?.anchorDate || '2025-12-20';
-        const anchorShift = shiftSettings?.anchorShift || 'b';
+        // BLINDATO 1 GEN 2025 = B
+        const anchorDateStr = '2025-01-01';
+        const anchorShift = 'b';
 
         const anchorDate = new Date(anchorDateStr);
         anchorDate.setHours(12, 0, 0, 0);
@@ -51,13 +52,13 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
         // Rotazione Inversa Day
         let shiftIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
         
-        // Night is Prev Index
+        // Night is Prev Index (Following Reverse Order)
         if (hour >= 20 || hour < 8) {
             shiftIndex = (shiftIndex - 1 + 4) % 4;
         }
 
         return shifts[shiftIndex] as Shift;
-    }, [shiftSettings, getNow]);
+    }, [getNow]);
 
     // Inizializza partecipanti in base al turno ATTIVO
     useEffect(() => {

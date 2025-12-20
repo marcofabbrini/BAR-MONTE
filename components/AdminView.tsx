@@ -104,10 +104,6 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [seasonOpacity, setSeasonOpacity] = useState(seasonalityConfig?.opacity || 0.5);
     const [seasonBg, setSeasonBg] = useState(seasonalityConfig?.backgroundColor || '#f8fafc');
 
-    // Shift Calibration State
-    const [calibDate, setCalibDate] = useState(shiftSettings.anchorDate || new Date().toISOString().split('T')[0]);
-    const [calibShift, setCalibShift] = useState<Shift>(shiftSettings.anchorShift || 'a');
-
     // RC Calibration State
     const [rcDate, setRcDate] = useState(shiftSettings.rcAnchorDate || '');
     const [rcShift, setRcShift] = useState<Shift>(shiftSettings.rcAnchorShift || 'a');
@@ -230,15 +226,6 @@ const AdminView: React.FC<AdminViewProps> = ({
             backgroundColor: seasonBg
         });
         alert("Stagionalità salvata con successo!");
-    };
-
-    const handleSaveShiftCalibration = async () => {
-        await onUpdateShiftSettings({
-            ...shiftSettings,
-            anchorDate: calibDate,
-            anchorShift: calibShift
-        });
-        alert("Turnario calibrato! Tutti i calcoli futuri partiranno da questa data.");
     };
 
     const handleSaveRcCalibration = async () => {
@@ -474,42 +461,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                                         ))}
                                     </div>
                                     <button onClick={saveSettings} className="mt-4 w-full bg-slate-800 text-white font-bold py-2 rounded-lg text-sm">Salva Colori</button>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* SHIFT CALIBRATION */}
-                        <div className="bg-green-50 rounded-xl border border-green-100 overflow-hidden">
-                            <button onClick={() => toggleSection('shift')} className="w-full p-4 flex justify-between items-center text-left bg-green-100 hover:bg-green-200 transition-colors">
-                                <h2 className="text-sm font-bold text-green-800 uppercase tracking-wide flex items-center gap-2">
-                                    <CalendarIcon className="h-5 w-5" /> Calibrazione Turnario
-                                </h2>
-                                <span>{expandedSection === 'shift' ? '−' : '+'}</span>
-                            </button>
-                            {expandedSection === 'shift' && (
-                                <div className="p-6 bg-green-50 animate-fade-in">
-                                    <p className="text-xs text-slate-500 mb-4">
-                                        Se il turnario non è sincronizzato correttamente, imposta qui la data di riferimento.
-                                        Scegli una data e il turno che era attivo in quel giorno. Il sistema ricalcolerà tutto automaticamente.
-                                    </p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-green-700 block mb-1">Data Riferimento</label>
-                                            <input type="date" value={calibDate} onChange={e => setCalibDate(e.target.value)} className="w-full border p-2 rounded" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-green-700 block mb-1">Turno attivo in questa data</label>
-                                            <select value={calibShift} onChange={e => setCalibShift(e.target.value as Shift)} className="w-full border p-2 rounded bg-white">
-                                                <option value="a">Turno A</option>
-                                                <option value="b">Turno B</option>
-                                                <option value="c">Turno C</option>
-                                                <option value="d">Turno D</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <button onClick={handleSaveShiftCalibration} className="bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-700 w-full mt-4 shadow-sm text-sm">
-                                        Salva e Calibra Turnario
-                                    </button>
                                 </div>
                             )}
                         </div>

@@ -150,8 +150,9 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         }
         calculationDate.setHours(12, 0, 0, 0);
 
-        const anchorDateStr = shiftSettings?.anchorDate || '2025-12-20';
-        const anchorShift = shiftSettings?.anchorShift || 'b';
+        // DEFAULT STABILE BLINDATO: 1 Gennaio 2025 = B
+        const anchorDateStr = '2025-01-01';
+        const anchorShift = 'b';
 
         const anchorDate = new Date(anchorDateStr);
         anchorDate.setHours(12, 0, 0, 0);
@@ -164,23 +165,21 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         
         // VVF ROTATION: Backward rotation (D->C->B->A) per il turno di Giorno
         // Formula: (Anchor - diffDays) modulo 4
-        // Logic: 20 Dec (Day 0) = B (Index 1)
-        // 21 Dec (Day 1) = A (Index 0) -> (1 - 1) = 0
         let shiftIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
         
-        // If it's night (>=20) or early morning (<8)
-        // La notte segue il turno giorno nella rotazione inversa (Quindi -1)
+        // Se è notte (dopo le 20) o prima mattina (prima delle 8 del giorno dopo),
+        // il turno attivo è il successivo nella sequenza inversa (quindi -1)
         // Es. Giorno B -> Notte A
         if (hour >= 20 || hour < 8) {
             shiftIndex = (shiftIndex - 1 + 4) % 4;
         }
 
         return shifts[shiftIndex];
-    }, [shiftSettings, currentTime]);
+    }, [currentTime]); // Removed shiftSettings dependency to ignore old DB settings
 
     // Calcolo del turno precedente (per il pulsante Grace Period)
-    // Se turno attuale è A (Notte, index 0), il precedente (Giorno) era B (Index 1). Quindi +1
-    // Se turno attuale è B (Giorno, index 1), il precedente (Notte ieri) era C (Index 2). Quindi +1
+    // Se turno attuale è A (Notte), Smontante è B (Giorno). A=0, B=1 -> +1
+    // Se turno attuale è B (Giorno), Smontante è C (Notte prima?). B=1, C=2 -> +1
     const previousShiftCode = useMemo(() => {
         const shifts = ['a', 'b', 'c', 'd'];
         const currentIndex = shifts.indexOf(activeShift);

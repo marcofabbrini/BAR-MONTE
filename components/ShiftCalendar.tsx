@@ -16,10 +16,10 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
     const [highlightShift, setHighlightShift] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
     const [userSubGroup, setUserSubGroup] = useState<number | 'none'>('none');
 
-    // ANCORA DINAMICA
+    // ANCORA DINAMICA BLINDATA: 1 GENNAIO 2025 = B
     const getShiftsForDate = (date: Date) => {
-        const anchorDateStr = shiftSettings?.anchorDate || '2025-12-20';
-        const anchorShift = shiftSettings?.anchorShift || 'b';
+        const anchorDateStr = '2025-01-01';
+        const anchorShift = 'b';
 
         const anchorDate = new Date(anchorDateStr);
         anchorDate.setHours(12, 0, 0, 0); // Fix DST
@@ -28,7 +28,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         targetDate.setHours(12, 0, 0, 0); // Fix DST
         
         const diffTime = targetDate.getTime() - anchorDate.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // Usa floor
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // Uso floor
         
         const shifts = ['A', 'B', 'C', 'D'];
         const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());

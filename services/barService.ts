@@ -74,10 +74,17 @@ export const BarService = {
 
     subscribeToShiftSettings: (onUpdate: (data: ShiftSettings) => void) => {
         return onSnapshot(doc(db, 'settings', 'shift'), (d) => {
-            if(d.exists()) onUpdate(d.data() as ShiftSettings);
-            else {
-                // UPDATE: 20 Dicembre 2025 è Turno B (Giorno)
-                setDoc(doc(db, 'settings', 'shift'), { anchorDate: '2025-12-20', anchorShift: 'b', rcAnchorDate: '', rcAnchorShift: 'a', rcAnchorSubGroup: 1 });
+            if(d.exists()) {
+                onUpdate(d.data() as ShiftSettings);
+            } else {
+                // DEFAULT STABILE: 1 Gennaio 2025 = Turno B
+                setDoc(doc(db, 'settings', 'shift'), { 
+                    anchorDate: '2025-01-01', 
+                    anchorShift: 'b', 
+                    rcAnchorDate: '', 
+                    rcAnchorShift: 'a', 
+                    rcAnchorSubGroup: 1 
+                });
             }
         });
     },
@@ -214,7 +221,6 @@ export const BarService = {
         await setDoc(doc(db, 'shift_attendance', docId), dataToSave, { merge: true });
     },
     
-    // NUOVA FUNZIONE: RIAPRI TURNO (Rimuove closedAt e closedBy)
     reopenAttendance: async (id: string) => {
         await updateDoc(doc(db, 'shift_attendance', id), {
             closedAt: deleteField(),

@@ -53,8 +53,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     const isRealPerson = (name: string) => !name.toLowerCase().includes('cassa');
 
     const getShiftsForDate = (date: Date) => {
-        const anchorDateStr = shiftSettings?.anchorDate || '2025-12-10';
-        const anchorShift = shiftSettings?.anchorShift || 'd';
+        const anchorDateStr = '2025-01-01';
+        const anchorShift = 'b';
 
         const anchorDate = new Date(anchorDateStr);
         anchorDate.setHours(12, 0, 0, 0); 
@@ -63,20 +63,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         targetDate.setHours(12, 0, 0, 0); 
         
         const diffTime = targetDate.getTime() - anchorDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
         
         const shifts = ['A', 'B', 'C', 'D'];
         const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
 
-        let dayIndex = (anchorIndex + diffDays) % 4;
-        if (dayIndex < 0) dayIndex += 4;
-        
-        let nightIndex = dayIndex - 1;
-        if (nightIndex < 0) nightIndex += 4;
-
-        // Smontante = Notte del giorno PRIMA
-        let smontanteIndex = dayIndex - 2; 
-        if (smontanteIndex < 0) smontanteIndex += 4;
+        let dayIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
+        let nightIndex = (dayIndex - 1 + 4) % 4;
+        let smontanteIndex = (dayIndex + 1) % 4; // Precedente nella rotazione inversa è +1
 
         return {
             day: shifts[dayIndex],
