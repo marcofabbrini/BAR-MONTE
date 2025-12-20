@@ -53,17 +53,16 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     const isRealPerson = (name: string) => !name.toLowerCase().includes('cassa');
 
     const getShiftsForDate = (date: Date) => {
-        const anchorDateStr = '2025-01-01';
         const anchorShift = 'b';
 
-        const anchorDate = new Date(anchorDateStr);
-        anchorDate.setHours(12, 0, 0, 0); 
+        // 1 Gen 2025 ore 12:00
+        const anchorDate = new Date(2025, 0, 1, 12, 0, 0);
         
         const targetDate = new Date(date);
         targetDate.setHours(12, 0, 0, 0); 
         
         const diffTime = targetDate.getTime() - anchorDate.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
         
         const shifts = ['A', 'B', 'C', 'D'];
         const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());

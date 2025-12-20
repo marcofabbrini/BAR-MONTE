@@ -37,14 +37,11 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
         calculationDate.setHours(12, 0, 0, 0);
 
         // BLINDATO 1 GEN 2025 = B
-        const anchorDateStr = '2025-01-01';
+        const anchorDate = new Date(2025, 0, 1, 12, 0, 0);
         const anchorShift = 'b';
 
-        const anchorDate = new Date(anchorDateStr);
-        anchorDate.setHours(12, 0, 0, 0);
-
         const diffTime = calculationDate.getTime() - anchorDate.getTime();
-        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // Uso floor
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); // Round per DST
 
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
