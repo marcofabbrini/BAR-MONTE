@@ -16,12 +16,12 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
     const [highlightShift, setHighlightShift] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
     const [userSubGroup, setUserSubGroup] = useState<number | 'none'>('none');
 
-    // ANCORA DINAMICA BLINDATA: 1 GENNAIO 2025 = B (BACKWARD ROTATION VVF)
+    // ANCORA DINAMICA BLINDATA: 20 Dicembre 2025 = B (FORWARD ROTATION)
     const getShiftsForDate = (date: Date) => {
         const anchorShift = 'b';
 
-        // Ancoraggio: 1 Gennaio 2025 ore 12:00
-        const anchorDate = new Date(2025, 0, 1, 12, 0, 0);
+        // Ancoraggio: 20 Dicembre 2025 ore 12:00
+        const anchorDate = new Date(2025, 11, 20, 12, 0, 0);
         
         const targetDate = new Date(date);
         targetDate.setHours(12, 0, 0, 0); 
@@ -32,11 +32,11 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         const shifts = ['A', 'B', 'C', 'D'];
         const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
 
-        // Calcolo Turno Giorno (Rotazione Backward: D->C->B->A)
-        // Formula: (Anchor - diff + 4) % 4
-        let dayIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
+        // Calcolo Turno Giorno (Rotazione Forward: A->B->C->D)
+        let dayIndex = (anchorIndex + diffDays) % 4;
+        if (dayIndex < 0) dayIndex += 4;
         
-        // VVF Standard: Notte è il turno successivo nel backward (es. Giorno B -> Notte A)
+        // Logica Notte: È il turno precedente (es. Giorno B -> Notte A)
         let nightIndex = (dayIndex - 1 + 4) % 4;
 
         return {
@@ -63,8 +63,8 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         const anchorShiftIndex = shifts.indexOf((shiftSettings.rcAnchorShift || 'A').toUpperCase());
         
         // Offset in giorni all'interno del ciclo di 4 giorni
-        // Con rotazione backward, la differenza va sottratta
-        const shiftOffset = (anchorShiftIndex - shiftIndex + 4) % 4;
+        // Con rotazione forward, la differenza di indice è diretta
+        const shiftOffset = (shiftIndex - anchorShiftIndex + 4) % 4;
         
         // Proiettiamo la data di ancoraggio per allinearla allo shift corrente
         const baseDateForShift = new Date(anchorDate);

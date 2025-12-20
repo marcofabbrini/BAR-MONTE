@@ -55,8 +55,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     const getShiftsForDate = (date: Date) => {
         const anchorShift = 'b';
 
-        // 1 Gen 2025 ore 12:00
-        const anchorDate = new Date(2025, 0, 1, 12, 0, 0);
+        // 20 Dicembre 2025 ore 12:00
+        const anchorDate = new Date(2025, 11, 20, 12, 0, 0);
         
         const targetDate = new Date(date);
         targetDate.setHours(12, 0, 0, 0); 
@@ -67,9 +67,15 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const shifts = ['A', 'B', 'C', 'D'];
         const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
 
-        let dayIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
+        // Calcolo Turno Giorno (Rotazione Forward: A->B->C->D)
+        let dayIndex = (anchorIndex + diffDays) % 4;
+        if (dayIndex < 0) dayIndex += 4;
+        
+        // Logica Notte: Precedente (es. Giorno B -> Notte A)
         let nightIndex = (dayIndex - 1 + 4) % 4;
-        let smontanteIndex = (dayIndex + 1) % 4; // Precedente nella rotazione backward è +1
+        
+        // Smontante: Quello prima di Giorno in rotazione forward è index - 1
+        let smontanteIndex = (dayIndex - 1 + 4) % 4; 
 
         return {
             day: shifts[dayIndex],

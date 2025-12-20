@@ -143,17 +143,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     const activeShift = useMemo(() => {
         const hour = currentTime.getHours();
         
-        // Determina la data operativa (se prima delle 8, è ancora "ieri")
+        // Data operativa (se prima delle 8, conta come ieri)
         const calculationDate = new Date(currentTime);
         if (hour < 8) {
             calculationDate.setDate(calculationDate.getDate() - 1);
         }
-        
-        // Normalizza a mezzogiorno per evitare problemi di DST
         calculationDate.setHours(12, 0, 0, 0);
 
-        // ANCORAGGIO: 1 Gennaio 2025 = B
-        const anchorDate = new Date(2025, 0, 1, 12, 0, 0);
+        // ANCORAGGIO ESPLICITO: 20 Dicembre 2025 = B
+        const anchorDate = new Date(2025, 11, 20, 12, 0, 0); // Mese 11 = Dicembre
         const anchorShift = 'b'; // Index 1
 
         const diffTime = calculationDate.getTime() - anchorDate.getTime();
@@ -162,13 +160,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
-        // ROTAZIONE VVF STANDARD (BACKWARD): D -> C -> B -> A
-        // Formula: (Anchor - Diff) % 4
-        let shiftIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
+        // ROTAZIONE IN AVANTI (A->B->C->D)
+        // Formula: (Anchor + Diff) % 4
+        // Aggiungiamo un multiplo di 4 grande per gestire diff negativi
+        let shiftIndex = (anchorIndex + diffDays) % 4;
+        if (shiftIndex < 0) shiftIndex += 4;
         
-        // Se è notte (dopo le 20) o prima mattina (prima delle 8 del giorno dopo),
-        // il turno attivo è il successivo nella sequenza inversa (quindi -1)
-        // Es. Giorno B -> Notte A
+        // LOGICA NOTTE: "Quando B smonta (20:00), monta A".
+        // Quindi la notte è il turno precedente nell'alfabeto.
         if (hour >= 20 || hour < 8) {
             shiftIndex = (shiftIndex - 1 + 4) % 4;
         }
@@ -176,12 +175,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return shifts[shiftIndex];
     }, [currentTime]);
 
+    // Calcolo "Smontante" (Chi c'era prima)
+    // Se Rotazione è A->B->C->D. 
+    // Chi c'era prima di B? A.
+    // (Current - 1)
     const previousShiftCode = useMemo(() => {
         const shifts = ['a', 'b', 'c', 'd'];
         const currentIndex = shifts.indexOf(activeShift);
-        // Smontante è quello che c'era prima. In Backward rotation, prima di A c'è B.
-        // (0 + 1) = 1.
-        const prevIndex = (currentIndex + 1) % 4;
+        const prevIndex = (currentIndex - 1 + 4) % 4;
         return shifts[prevIndex];
     }, [activeShift]);
 
