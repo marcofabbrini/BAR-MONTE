@@ -2,6 +2,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig } from '../types';
 import { ChartBarIcon, LockIcon, CalendarIcon, GamepadIcon, BellIcon, ClipboardIcon } from './Icons';
+import { useBar } from '../contexts/BarContext';
 
 interface TillSelectionProps {
     tills: Till[];
@@ -27,42 +28,28 @@ interface WeatherData {
 
 const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification }) => {
     
+    // Context for Reliable Time
+    const { getNow } = useBar();
+
     // WEATHER & DATE STATE
-    const [currentDate, setCurrentDate] = useState<string>('');
+    const [currentDateString, setCurrentDateString] = useState<string>('');
     const [weather, setWeather] = useState<WeatherData | null>(null);
+    const [currentTime, setCurrentTime] = useState<Date>(new Date());
     
     // GRACE PERIOD STATE
     const [graceTimeLeft, setGraceTimeLeft] = useState<number>(0);
 
+    // Sync Timer (Updates UI every second using reliable time)
     useEffect(() => {
-        // Format Date (es. "Lunedì, 27 Ottobre 2025")
-        const now = new Date();
-        const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
-        setCurrentDate(now.toLocaleDateString('it-IT', options));
+        const updateTick = () => {
+            const now = getNow();
+            setCurrentTime(now);
+            
+            // Format Date (es. "Lunedì, 27 Ottobre 2025")
+            const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+            setCurrentDateString(now.toLocaleDateString('it-IT', options));
 
-        // Fetch Weather for Montepulciano (SI)
-        // Lat: 43.1017, Lon: 11.7868
-        const fetchWeather = async () => {
-            try {
-                if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-                const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=43.1017&longitude=11.7868&current_weather=true');
-                if (!response.ok) return;
-                const data = await response.json();
-                if (data.current_weather) {
-                    setWeather(data.current_weather);
-                }
-            } catch (error) {}
-        };
-
-        fetchWeather();
-        const interval = setInterval(fetchWeather, 30 * 60 * 1000);
-        return () => clearInterval(interval);
-    }, []);
-
-    // Timer per il conto alla rovescia delle 3 ore (Grace Period)
-    useEffect(() => {
-        const calculateGracePeriod = () => {
-            const now = new Date();
+            // Grace Period Calculation
             const hour = now.getHours();
             
             // Determina l'orario di inizio dell'ultimo turno (08:00 o 20:00)
@@ -87,9 +74,28 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             setGraceTimeLeft(remaining > 0 ? remaining : 0);
         };
 
-        calculateGracePeriod(); // Immediato
-        const timer = setInterval(calculateGracePeriod, 1000); // Aggiorna ogni secondo
+        updateTick(); // Initial call
+        const timer = setInterval(updateTick, 1000);
         return () => clearInterval(timer);
+    }, [getNow]);
+
+    // Fetch Weather for Montepulciano (SI)
+    useEffect(() => {
+        const fetchWeather = async () => {
+            try {
+                if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+                const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=43.1017&longitude=11.7868&current_weather=true');
+                if (!response.ok) return;
+                const data = await response.json();
+                if (data.current_weather) {
+                    setWeather(data.current_weather);
+                }
+            } catch (error) {}
+        };
+
+        fetchWeather();
+        const interval = setInterval(fetchWeather, 30 * 60 * 1000);
+        return () => clearInterval(interval);
     }, []);
 
     const formatCountdown = (ms: number) => {
@@ -135,16 +141,16 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     }, [seasonalityConfig]);
 
     const activeShift = useMemo(() => {
-        const now = new Date();
-        const hour = now.getHours();
-        const calculationDate = new Date(now);
-        // Se è prima delle 8, consideriamo ancora il "giorno operativo" precedente per il calcolo base
+        // Use currentTime (synced with getNow)
+        const hour = currentTime.getHours();
+        const calculationDate = new Date(currentTime);
+        // Se è prima delle 8, consideriamo ancora il "giorno operativo" precedente
         if (hour < 8) {
             calculationDate.setDate(calculationDate.getDate() - 1);
         }
         calculationDate.setHours(12, 0, 0, 0);
 
-        const anchorDateStr = shiftSettings?.anchorDate || new Date().toISOString().split('T')[0];
+        const anchorDateStr = shiftSettings?.anchorDate || '2025-02-24';
         const anchorShift = shiftSettings?.anchorShift || 'b';
 
         const anchorDate = new Date(anchorDateStr);
@@ -156,27 +162,26 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
-        // Calcolo turno attivo
-        let shiftIndex = (anchorIndex + diffDays) % 4;
-        if (shiftIndex < 0) shiftIndex += 4;
+        // VVF ROTATION: Backward rotation (D->C->B->A)
+        // Formula: (Anchor - diffDays) modulo 4
+        let shiftIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
         
+        // If it's night (>=20) or early morning (<8), shift backward by 1
         if (hour >= 20 || hour < 8) {
-            shiftIndex = (shiftIndex - 1);
-            if (shiftIndex < 0) shiftIndex += 4;
+            shiftIndex = (shiftIndex - 1 + 4) % 4;
         }
 
         return shifts[shiftIndex];
-    }, [shiftSettings]);
+    }, [shiftSettings, currentTime]);
 
     // Calcolo del turno precedente (per il pulsante Grace Period)
     const previousShiftCode = useMemo(() => {
         const shifts = ['a', 'b', 'c', 'd'];
         const currentIndex = shifts.indexOf(activeShift);
         
-        // VVF ROTATION LOGIC:
+        // VVF ROTATION:
         // Se attivo è A (Notte), Smontante è B (Giorno). A=0, B=1 -> +1
         // Se attivo è B (Giorno), Smontante è C (Notte prima?). B=1, C=2 -> +1
-        // Sequenza inversa: D -> C -> B -> A
         const prevIndex = (currentIndex + 1) % 4;
         return shifts[prevIndex];
     }, [activeShift]);
@@ -246,7 +251,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     
                     <div className="mt-4 px-6 py-2 rounded-full inline-flex items-center gap-3 md:gap-4 bg-white/50 backdrop-blur-sm shadow-sm border border-white/40">
                         <p className="text-slate-600 font-bold text-sm md:text-xl tracking-wide capitalize">
-                            {currentDate}
+                            {currentDateString}
                         </p>
                         {weather && (
                             <>

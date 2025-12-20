@@ -5,6 +5,7 @@ import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
 import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon, TicketIcon, LockIcon, EyeIcon } from './Icons';
+import { useBar } from '../contexts/BarContext';
 
 interface TillViewProps {
     till: Till;
@@ -24,6 +25,7 @@ interface TillViewProps {
 }
 
 const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet, tombolaConfig, tombolaTickets, onBuyTombolaTicket, attendanceRecords, generalSettings }) => {
+    const { getNow } = useBar();
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
@@ -34,8 +36,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     const [presentStaffIds, setPresentStaffIds] = useState<string[]>([]);
     const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
 
-    // Calcolo stato chiusura turno
-    const today = new Date().toISOString().split('T')[0];
+    // Calcolo stato chiusura turno con data affidabile
+    const today = getNow().toISOString().split('T')[0];
     const existingAttendanceRecord = useMemo(() => 
         attendanceRecords?.find(r => r.date === today && r.tillId === till.id),
     [attendanceRecords, today, till.id]);
@@ -98,7 +100,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     // Calcolo Quote Acqua (Mese Corrente) per la visualizzazione nella tabellina
     const waterQuotas = useMemo(() => {
         if (!attendanceRecords) return [];
-        const now = new Date();
+        const now = getNow();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
 
@@ -115,7 +117,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
             })
             .sort((a,b) => b.count - a.count);
         return quotas;
-    }, [attendanceRecords, staffForShift]);
+    }, [attendanceRecords, staffForShift, getNow]);
 
     // ATTENDANCE LOGIC
     useEffect(() => {
@@ -182,7 +184,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
         if (onSaveAttendance) {
             // Registro come "Operatore Cassa [Turno]"
-            onSaveAttendance(till.id, presentStaffIds, undefined, `Operatore Cassa ${till.shift.toUpperCase()}`);
+            onSaveAttendance(till.id, presentStaffIds, today, `Operatore Cassa ${till.shift.toUpperCase()}`);
         }
 
         setIsAttendanceModalOpen(false);
@@ -218,7 +220,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         const newOrder: Omit<Order, 'id'> = {
             items: currentOrder.map(item => ({ product: item.product, quantity: item.quantity })),
             total: cartTotal,
-            timestamp: new Date().toISOString(),
+            timestamp: getNow().toISOString(), // Use Reliable Time
             staffId: selectedStaffId,
             staffName: selectedStaffMember?.name,
             tillId: till.id,
@@ -232,7 +234,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
             alert(`Errore nel completamento dell'ordine: ${error.message || 'Errore sconosciuto'}. Riprova.`);
             setIsCartOpen(true); // Reopen if failed
         }
-    }, [currentOrder, cartTotal, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder, clearOrder]);
+    }, [currentOrder, cartTotal, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder, clearOrder, getNow]);
 
     const handleStaffSelection = (id: string) => {
         if (!presentStaffIds.includes(id)) return;
@@ -307,7 +309,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                     <div className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-lg overflow-hidden animate-slide-up">
                         <div className="p-6 text-center border-b border-slate-50">
                             <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Presenze Turno {till.shift.toUpperCase()}</h2>
-                            <p className="text-xs text-slate-400 mt-1 font-medium">Chi è in servizio oggi?</p>
+                            <p className="text-xs text-slate-400 mt-1 font-medium">Chi è in servizio oggi ({new Date(today).toLocaleDateString()})?</p>
                         </div>
                         
                         <div className="p-6">

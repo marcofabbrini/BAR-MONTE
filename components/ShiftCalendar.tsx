@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { TillColors, ShiftSettings } from '../types';
 import { BackArrowIcon, CalendarIcon } from './Icons';
+import { useBar } from '../contexts/BarContext';
 
 interface ShiftCalendarProps {
     onGoBack: () => void;
@@ -10,13 +11,14 @@ interface ShiftCalendarProps {
 }
 
 const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shiftSettings }) => {
-    const [currentDate, setCurrentDate] = useState(new Date());
+    const { getNow } = useBar();
+    const [currentDate, setCurrentDate] = useState(getNow());
     const [highlightShift, setHighlightShift] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
     const [userSubGroup, setUserSubGroup] = useState<number | 'none'>('none');
 
     // ANCORA DINAMICA
     const getShiftsForDate = (date: Date) => {
-        const anchorDateStr = shiftSettings?.anchorDate || new Date().toISOString().split('T')[0];
+        const anchorDateStr = shiftSettings?.anchorDate || '2025-02-24';
         const anchorShift = shiftSettings?.anchorShift || 'b';
 
         const anchorDate = new Date(anchorDateStr);
@@ -31,13 +33,14 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         const shifts = ['A', 'B', 'C', 'D'];
         const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
 
-        // Calcolo Turno Giorno
-        let dayIndex = (anchorIndex + diffDays) % 4;
-        if (dayIndex < 0) dayIndex += 4;
+        // Calcolo Turno Giorno (Rotazione Inversa: D->C->B->A)
+        // Formula: (Anchor - diff + 4) % 4
+        let dayIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
         
-        // VVF Standard: 12-24 12-48 (La notte è il turno precedente nella sequenza)
-        let nightIndex = dayIndex - 1;
-        if (nightIndex < 0) nightIndex += 4;
+        // VVF Standard: Notte è il turno che "segue" in ordine alfabetico (perché rotazione è inversa)
+        // Se Giorno è B (1). Notte è A (0).
+        // 1 - 1 = 0.
+        let nightIndex = (dayIndex - 1 + 4) % 4;
 
         return {
             day: shifts[dayIndex],
@@ -96,7 +99,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         setCurrentDate(newDate);
     };
 
-    const jumpToToday = () => setCurrentDate(new Date());
+    const jumpToToday = () => setCurrentDate(getNow());
 
     const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
 
@@ -257,7 +260,8 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                             const dayNum = i + 1;
                             const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
                             const shifts = getShiftsForDate(date);
-                            const isToday = new Date().toDateString() === date.toDateString();
+                            // Use reliable date for today check
+                            const isToday = getNow().toDateString() === date.toDateString();
                             
                             const isFilterActive = highlightShift !== null;
                             const isDayDimmed = isFilterActive && shifts.day !== highlightShift;

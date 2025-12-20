@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification } from '../types';
 import { BarService } from '../services/barService';
 
@@ -44,7 +44,10 @@ interface BarContextType {
     updateShiftSettings: (cfg: ShiftSettings) => Promise<void>;
     updateGeneralSettings: (cfg: GeneralSettings) => Promise<void>;
     sendNotification: (title: string, body: string, sender: string) => Promise<void>;
-    massDelete: (date: string, type: 'orders' | 'movements') => Promise<void>;
+    massDelete: (d: string, t: 'orders'|'movements') => Promise<void>;
+    
+    // Time Sync
+    getNow: () => Date;
 }
 
 const BarContext = createContext<BarContextType | undefined>(undefined);
@@ -62,6 +65,38 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
     const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    
+    // Time Offset (Difference between Server Time and Local Time in ms)
+    const [timeOffset, setTimeOffset] = useState(0);
+
+    // Fetch reliable time on mount
+    useEffect(() => {
+        const fetchTime = async () => {
+            try {
+                // Fonte attendibile per l'orario Italiano (Europe/Rome)
+                const response = await fetch('https://worldtimeapi.org/api/timezone/Europe/Rome');
+                if (response.ok) {
+                    const data = await response.json();
+                    const serverTime = new Date(data.datetime).getTime();
+                    const localTime = Date.now();
+                    const offset = serverTime - localTime;
+                    setTimeOffset(offset);
+                    console.log("Time synchronized. Offset:", offset, "ms");
+                }
+            } catch (error) {
+                console.warn("Could not fetch world time, falling back to local clock.", error);
+            }
+        };
+        fetchTime();
+        
+        // Re-sync every 30 minutes
+        const interval = setInterval(fetchTime, 30 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const getNow = useCallback(() => {
+        return new Date(Date.now() + timeOffset);
+    }, [timeOffset]);
 
     useEffect(() => {
         const unsubs = [
@@ -129,7 +164,8 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
             addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
             addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
-            addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete
+            addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
+            getNow
         }}>
             {children}
         </BarContext.Provider>

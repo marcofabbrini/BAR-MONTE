@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { StaffMember, Shift, ShiftSettings } from '../types';
 import { BackArrowIcon, WalletIcon, CheckIcon } from './Icons';
+import { useBar } from '../contexts/BarContext';
 
 interface DiceGameProps {
     onGoBack: () => void;
@@ -20,13 +21,14 @@ interface PlayerResult {
 }
 
 const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) => {
+    const { getNow } = useBar();
     const [participants, setParticipants] = useState<PlayerResult[]>([]);
     const [gameStatus, setGameStatus] = useState<'idle' | 'rolling' | 'finished'>('idle');
     const [loserScore, setLoserScore] = useState<number | null>(null);
 
-    // CALCOLO TURNO ATTIVO (Logica duplicata da TillSelection per sicurezza)
+    // CALCOLO TURNO ATTIVO (Rotazione Inversa D->C->B->A)
     const activeShift = useMemo(() => {
-        const now = new Date();
+        const now = getNow();
         const hour = now.getHours();
         const calculationDate = new Date(now);
         if (hour < 8) {
@@ -34,7 +36,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
         }
         calculationDate.setHours(12, 0, 0, 0);
 
-        const anchorDateStr = shiftSettings?.anchorDate || new Date().toISOString().split('T')[0];
+        const anchorDateStr = shiftSettings?.anchorDate || '2025-02-24';
         const anchorShift = shiftSettings?.anchorShift || 'b';
 
         const anchorDate = new Date(anchorDateStr);
@@ -46,16 +48,15 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
-        let shiftIndex = (anchorIndex + diffDays) % 4;
-        if (shiftIndex < 0) shiftIndex += 4;
+        // Rotazione Inversa
+        let shiftIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
         
         if (hour >= 20 || hour < 8) {
-            shiftIndex = (shiftIndex - 1);
-            if (shiftIndex < 0) shiftIndex += 4;
+            shiftIndex = (shiftIndex - 1 + 4) % 4;
         }
 
         return shifts[shiftIndex] as Shift;
-    }, [shiftSettings]);
+    }, [shiftSettings, getNow]);
 
     // Inizializza partecipanti in base al turno ATTIVO
     useEffect(() => {
@@ -207,8 +208,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
         );
     };
 
-    // Filtra lista staff globale per mostrare solo il turno corrente (per permettere di ri-aggiungere qualcuno se deselezionato)
-    // Esclude sempre cassa
+    // Filtra lista staff globale per mostrare solo il turno corrente
     const currentShiftStaffList = useMemo(() => {
         return staff.filter(s => s.shift === activeShift && !s.name.toLowerCase().includes('cassa'));
     }, [staff, activeShift]);
