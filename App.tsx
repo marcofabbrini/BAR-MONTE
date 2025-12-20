@@ -34,7 +34,7 @@ const AppContent: React.FC = () => {
         products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
         addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
         addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
-        addAdmin, removeAdmin, saveAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete
+        addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete
     } = useBar();
 
     const { 
@@ -142,7 +142,7 @@ const AppContent: React.FC = () => {
                 tombolaConfig={tombolaConfig} onNavigateToTombola={() => setView('tombola')}
                 seasonalityConfig={seasonalityConfig} onUpdateSeasonality={updateSeasonality}
                 shiftSettings={shiftSettings} onUpdateShiftSettings={updateShiftSettings}
-                attendanceRecords={attendanceRecords} onDeleteAttendance={deleteAttendance} onSaveAttendance={(t, i, d) => saveAttendance(t, i, d)}
+                attendanceRecords={attendanceRecords} onDeleteAttendance={deleteAttendance} onSaveAttendance={(t, i, d) => saveAttendance(t, i, d)} onReopenAttendance={reopenAttendance}
                 generalSettings={generalSettings} onUpdateGeneralSettings={updateGeneralSettings}
                 onSendNotification={(t,b,tg) => sendNotification(t, b, currentUser?.email || 'Sistema')}
             />;

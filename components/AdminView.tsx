@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings } from '../types';
 import { type User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -287,6 +287,9 @@ const AdminView: React.FC<AdminViewProps> = ({
         );
     }
 
+    // Helper per data odierna (per riapertura turni)
+    const today = new Date().toISOString().split('T')[0];
+
     return (
         <div className="min-h-dvh bg-slate-50 flex flex-col font-sans">
             <header className="bg-white border-b border-slate-200 p-3 sticky top-0 z-50 mt-[env(safe-area-inset-top)]">
@@ -378,7 +381,45 @@ const AdminView: React.FC<AdminViewProps> = ({
                 
                 {activeTab === 'settings' && (
                     <div className="space-y-4">
-                        {/* ... (Existing Settings Content) ... */}
+                        
+                        {/* SUPER ADMIN SHIFT REOPENING (Top of Config Page) */}
+                        {isSuperAdmin && (
+                            <div className="bg-white rounded-xl border border-red-200 overflow-hidden mb-6 shadow-sm">
+                                <div className="bg-red-50 p-4 border-b border-red-100 flex justify-between items-center">
+                                     <h2 className="text-sm font-bold text-red-800 uppercase flex items-center gap-2">
+                                        <LockOpenIcon className="h-5 w-5" /> Gestione Emergenza Turni (Oggi: {today})
+                                    </h2>
+                                </div>
+                                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {tills.map(till => {
+                                        const record = attendanceRecords.find(r => r.date === today && r.tillId === till.id);
+                                        const isClosed = !!record?.closedAt;
+                                        
+                                        return (
+                                            <div key={till.id} className="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-sm text-slate-700">{till.name}</span>
+                                                    <span className="text-[10px] text-slate-500 uppercase">{isClosed ? `Chiuso da ${record.closedBy || '?'}` : 'Aperto / Non Iniziato'}</span>
+                                                </div>
+                                                {isClosed ? (
+                                                    <button 
+                                                        onClick={() => onReopenAttendance && record && onReopenAttendance(record.id)}
+                                                        className="bg-red-600 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-red-700 shadow-sm flex items-center gap-1"
+                                                    >
+                                                        <LockOpenIcon className="h-3 w-3" /> RIAPRI
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-green-600 font-bold text-xs flex items-center gap-1">
+                                                        <CheckIcon className="h-4 w-4" /> ATTIVO
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         {/* GENERAL SETTINGS */}
                         <div className="bg-slate-100 rounded-xl border border-slate-200 overflow-hidden">
                             <button onClick={() => toggleSection('general')} className="w-full p-4 flex justify-between items-center text-left bg-slate-200 hover:bg-slate-300 transition-colors">
