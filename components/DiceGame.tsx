@@ -26,7 +26,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
     const [gameStatus, setGameStatus] = useState<'idle' | 'rolling' | 'finished'>('idle');
     const [loserScore, setLoserScore] = useState<number | null>(null);
 
-    // CALCOLO TURNO ATTIVO (Rotazione Forward A->B->C->D)
+    // CALCOLO TURNO ATTIVO (Rotazione Backward D->C->B->A)
     const activeShift = useMemo(() => {
         const now = getNow();
         const hour = now.getHours();
@@ -46,8 +46,8 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
-        // Rotazione Forward Day (A->B->C->D)
-        let shiftIndex = ((anchorIndex + diffDays) % 4 + 4) % 4;
+        // Rotazione Backward Day (D->C->B->A)
+        let shiftIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
         
         // Night is Prev Index
         if (hour >= 20 || hour < 8) {

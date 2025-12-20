@@ -141,36 +141,34 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     }, [seasonalityConfig]);
 
     const activeShift = useMemo(() => {
-        // Use currentTime (synced with getNow)
         const hour = currentTime.getHours();
+        
+        // Determina la data operativa (se prima delle 8, è ancora "ieri")
         const calculationDate = new Date(currentTime);
-        // Se è prima delle 8, consideriamo ancora il "giorno operativo" precedente per il calcolo della rotazione base
         if (hour < 8) {
             calculationDate.setDate(calculationDate.getDate() - 1);
         }
+        
+        // Normalizza a mezzogiorno per evitare problemi di DST
         calculationDate.setHours(12, 0, 0, 0);
 
-        // DEFAULT STABILE BLINDATO: 1 Gennaio 2025 = B
-        // Mese 0 = Gennaio
+        // ANCORAGGIO: 1 Gennaio 2025 = B
         const anchorDate = new Date(2025, 0, 1, 12, 0, 0);
-        const anchorShift = 'b';
+        const anchorShift = 'b'; // Index 1
 
         const diffTime = calculationDate.getTime() - anchorDate.getTime();
-        // USARE ROUND PER EVITARE PROBLEMI ORA LEGALE (DST)
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
 
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
-        // VVF ROTATION: FORWARD rotation (A->B->C->D) per il turno di Giorno
-        // Formula: (Anchor + diffDays) modulo 4
-        let shiftIndex = ((anchorIndex + diffDays) % 4 + 4) % 4;
+        // ROTAZIONE VVF STANDARD (BACKWARD): D -> C -> B -> A
+        // Formula: (Anchor - Diff) % 4
+        let shiftIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
         
         // Se è notte (dopo le 20) o prima mattina (prima delle 8 del giorno dopo),
-        // il turno attivo è il PRECEDENTE nella sequenza (es. Giorno B -> Notte A)
-        // NOTA: Con rotazione Forward, il turno notturno è quello che ha fatto il giorno il giorno PRIMA?
-        // No, in VVF Salto: Giorno B -> Notte A.
-        // B (1) -> A (0). Quindi -1.
+        // il turno attivo è il successivo nella sequenza inversa (quindi -1)
+        // Es. Giorno B -> Notte A
         if (hour >= 20 || hour < 8) {
             shiftIndex = (shiftIndex - 1 + 4) % 4;
         }
@@ -178,16 +176,12 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return shifts[shiftIndex];
     }, [currentTime]);
 
-    // Calcolo del turno precedente (per il pulsante Grace Period)
-    // Se turno attuale è A (0), Smontante è quello che c'era prima.
-    // Con rotazione Forward: ... C -> D -> A -> B ...
-    // Se A è attivo, prima c'era D. (0 - 1) -> 3.
     const previousShiftCode = useMemo(() => {
         const shifts = ['a', 'b', 'c', 'd'];
         const currentIndex = shifts.indexOf(activeShift);
-        // Smontante è SEMPRE index - 1 (indipendentemente che sia giorno o notte, 
-        // è chi ha lasciato il servizio)
-        const prevIndex = (currentIndex - 1 + 4) % 4;
+        // Smontante è quello che c'era prima. In Backward rotation, prima di A c'è B.
+        // (0 + 1) = 1.
+        const prevIndex = (currentIndex + 1) % 4;
         return shifts[prevIndex];
     }, [activeShift]);
 
