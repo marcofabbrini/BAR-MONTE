@@ -162,13 +162,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
-        // VVF ROTATION: Backward rotation (D->C->B->A) per il turno di Giorno
-        // Formula: (Anchor - diffDays) modulo 4
-        let shiftIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
+        // VVF ROTATION: FORWARD rotation (A->B->C->D) per il turno di Giorno
+        // Formula: (Anchor + diffDays) modulo 4
+        let shiftIndex = ((anchorIndex + diffDays) % 4 + 4) % 4;
         
         // Se è notte (dopo le 20) o prima mattina (prima delle 8 del giorno dopo),
-        // il turno attivo è il successivo nella sequenza inversa (quindi -1)
-        // Es. Giorno B -> Notte A
+        // il turno attivo è il PRECEDENTE nella sequenza (es. Giorno B -> Notte A)
+        // NOTA: Con rotazione Forward, il turno notturno è quello che ha fatto il giorno il giorno PRIMA?
+        // No, in VVF Salto: Giorno B -> Notte A.
+        // B (1) -> A (0). Quindi -1.
         if (hour >= 20 || hour < 8) {
             shiftIndex = (shiftIndex - 1 + 4) % 4;
         }
@@ -177,12 +179,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     }, [currentTime]);
 
     // Calcolo del turno precedente (per il pulsante Grace Period)
-    // Se turno attuale è A (Notte), Smontante è B (Giorno). A=0, B=1 -> +1
-    // Se turno attuale è B (Giorno), Smontante è C (Notte prima?). B=1, C=2 -> +1
+    // Se turno attuale è A (0), Smontante è quello che c'era prima.
+    // Con rotazione Forward: ... C -> D -> A -> B ...
+    // Se A è attivo, prima c'era D. (0 - 1) -> 3.
     const previousShiftCode = useMemo(() => {
         const shifts = ['a', 'b', 'c', 'd'];
         const currentIndex = shifts.indexOf(activeShift);
-        const prevIndex = (currentIndex + 1) % 4;
+        // Smontante è SEMPRE index - 1 (indipendentemente che sia giorno o notte, 
+        // è chi ha lasciato il servizio)
+        const prevIndex = (currentIndex - 1 + 4) % 4;
         return shifts[prevIndex];
     }, [activeShift]);
 

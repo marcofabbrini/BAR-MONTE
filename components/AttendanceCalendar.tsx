@@ -67,9 +67,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const shifts = ['A', 'B', 'C', 'D'];
         const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
 
-        let dayIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
+        let dayIndex = ((anchorIndex + diffDays) % 4 + 4) % 4;
         let nightIndex = (dayIndex - 1 + 4) % 4;
-        let smontanteIndex = (dayIndex + 1) % 4; // Precedente nella rotazione inversa è +1
+        let smontanteIndex = (dayIndex - 1 + 4) % 4; // Precedente nella rotazione forward è -1
 
         return {
             day: shifts[dayIndex],

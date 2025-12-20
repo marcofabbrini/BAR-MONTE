@@ -16,7 +16,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
     const [highlightShift, setHighlightShift] = useState<'A' | 'B' | 'C' | 'D' | null>(null);
     const [userSubGroup, setUserSubGroup] = useState<number | 'none'>('none');
 
-    // ANCORA DINAMICA BLINDATA: 1 GENNAIO 2025 = B
+    // ANCORA DINAMICA BLINDATA: 1 GENNAIO 2025 = B (FORWARD ROTATION)
     const getShiftsForDate = (date: Date) => {
         const anchorShift = 'b';
 
@@ -33,10 +33,10 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         const shifts = ['A', 'B', 'C', 'D'];
         const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
 
-        // Calcolo Turno Giorno (Rotazione Inversa: D->C->B->A)
-        let dayIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
+        // Calcolo Turno Giorno (Rotazione Forward: A->B->C->D)
+        let dayIndex = ((anchorIndex + diffDays) % 4 + 4) % 4;
         
-        // VVF Standard: Notte è il turno che "segue" in ordine alfabetico (perché rotazione è inversa)
+        // VVF Standard: Notte è il turno che ha smontato ieri (A->D, B->A ecc)
         // Se Giorno è B (1). Notte è A (0).
         let nightIndex = (dayIndex - 1 + 4) % 4;
 
@@ -64,7 +64,8 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         const anchorShiftIndex = shifts.indexOf((shiftSettings.rcAnchorShift || 'A').toUpperCase());
         
         // Offset in giorni all'interno del ciclo di 4 giorni
-        const shiftOffset = shiftIndex - anchorShiftIndex;
+        // Con rotazione forward, la differenza di indice è diretta
+        const shiftOffset = (shiftIndex - anchorShiftIndex + 4) % 4;
         
         // Proiettiamo la data di ancoraggio per allinearla allo shift corrente
         const baseDateForShift = new Date(anchorDate);
