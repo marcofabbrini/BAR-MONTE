@@ -175,16 +175,27 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return shifts[shiftIndex];
     }, [currentTime]);
 
-    // Calcolo "Smontante" (Chi c'era prima)
-    // Se Rotazione è A->B->C->D. 
-    // Chi c'era prima di B? A.
-    // (Current - 1)
+    // Calcolo "Smontante" (Chi c'era prima del turno attivo)
     const previousShiftCode = useMemo(() => {
         const shifts = ['a', 'b', 'c', 'd'];
         const currentIndex = shifts.indexOf(activeShift);
-        const prevIndex = (currentIndex - 1 + 4) % 4;
+        const hour = currentTime.getHours();
+        const isNight = hour >= 20 || hour < 8;
+
+        // SE È NOTTE (es. A): Il turno precedente era il Giorno dello stesso gruppo A? NO.
+        // User dice: "Quando monta A alle 20, il turno smontante è B".
+        // A=0, B=1. Quindi se Current=0, Prev=1. Relazione: +1.
+        
+        // SE È GIORNO (es. C): Il turno precedente era la Notte (di ieri).
+        // User dice: "Quando monta C, smonta A".
+        // C=2, A=0. Quindi se Current=2, Prev=0. Relazione: -2.
+
+        const prevIndex = isNight 
+            ? (currentIndex + 1) % 4 
+            : (currentIndex - 2 + 4) % 4;
+
         return shifts[prevIndex];
-    }, [activeShift]);
+    }, [activeShift, currentTime]);
 
     const previousShiftTill = useMemo(() => {
         return tills.find(t => t.shift === previousShiftCode);

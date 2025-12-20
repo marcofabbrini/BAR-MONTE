@@ -74,8 +74,10 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         // Logica Notte: Precedente (es. Giorno B -> Notte A)
         let nightIndex = (dayIndex - 1 + 4) % 4;
         
-        // Smontante: Quello prima di Giorno in rotazione forward è index - 1
-        let smontanteIndex = (dayIndex - 1 + 4) % 4; 
+        // Smontante: È il turno che smonta alle 08:00 (cioè la Notte di IERI)
+        // Se oggi Giorno è C (2), la notte di ieri era A (0).
+        // Relazione: (2 - 2) = 0.
+        let smontanteIndex = (dayIndex - 2 + 4) % 4; 
 
         return {
             day: shifts[dayIndex],
