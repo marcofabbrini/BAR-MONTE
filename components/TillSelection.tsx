@@ -36,16 +36,18 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     const [weather, setWeather] = useState<WeatherData | null>(null);
     const [currentTime, setCurrentTime] = useState<Date>(new Date());
     
-    // GRACE PERIOD STATE
+    // TIMER STATES
     const [graceTimeLeft, setGraceTimeLeft] = useState<number>(0);
+    const [activeShiftTimeLeft, setActiveShiftTimeLeft] = useState<number>(0);
 
-    // Sync Timer (Updates UI every second using reliable time)
+    // Sync Timer (Updates UI frequently for centiseconds)
     useEffect(() => {
         const updateTick = () => {
             const now = getNow();
             setCurrentTime(now);
             
             // Format Date (es. "Lunedì, 27 Ottobre 2025")
+            // Aggiorniamo la stringa data solo se cambia il giorno per efficienza, ma qui lo facciamo ad ogni tick per semplicità dato che è leggero
             const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
             setCurrentDateString(now.toLocaleDateString('it-IT', options));
 
@@ -72,10 +74,32 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             const remaining = threeHoursMs - elapsed;
 
             setGraceTimeLeft(remaining > 0 ? remaining : 0);
+
+            // Active Shift Remaining Time Calculation
+            let shiftEndTime = new Date(now);
+            shiftEndTime.setMinutes(0);
+            shiftEndTime.setSeconds(0);
+            shiftEndTime.setMilliseconds(0);
+
+            if (hour >= 8 && hour < 20) {
+                // Giorno: finisce alle 20:00
+                shiftEndTime.setHours(20);
+            } else if (hour >= 20) {
+                // Notte (prima di mezzanotte): finisce domani alle 08:00
+                shiftEndTime.setDate(shiftEndTime.getDate() + 1);
+                shiftEndTime.setHours(8);
+            } else {
+                // Notte (dopo mezzanotte): finisce oggi alle 08:00
+                shiftEndTime.setHours(8);
+            }
+
+            const remainingActive = shiftEndTime.getTime() - now.getTime();
+            setActiveShiftTimeLeft(remainingActive > 0 ? remainingActive : 0);
         };
 
         updateTick(); // Initial call
-        const timer = setInterval(updateTick, 1000);
+        // Refresh rate ~41ms (approx 24fps) to show centiseconds smoothly without killing CPU
+        const timer = setInterval(updateTick, 41); 
         return () => clearInterval(timer);
     }, [getNow]);
 
@@ -102,7 +126,9 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const h = Math.floor(ms / (1000 * 60 * 60));
         const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
         const s = Math.floor((ms % (1000 * 60)) / 1000);
-        return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        const cs = Math.floor((ms % 1000) / 10); // Centesimi (2 cifre)
+        
+        return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
     };
 
     const getWeatherEmoji = (code: number) => {
@@ -308,7 +334,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                                         {previousShiftTill.shift.toUpperCase()}
                                                     </span>
                                                 </div>
-                                                <span className="text-sm md:text-xl font-digital text-slate-700 tracking-widest font-bold">
+                                                <span className="text-sm md:text-lg font-sans font-extralight text-slate-700 tracking-widest tabular-nums">
                                                     {formatCountdown(graceTimeLeft)}
                                                 </span>
                                             </div>
@@ -339,6 +365,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                         <span className="font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg text-xl md:text-2xl">
                                             {till.name}
                                         </span>
+
+                                        {/* ACTIVE SHIFT COUNTDOWN */}
+                                        {activeShiftTimeLeft > 0 && (
+                                            <span className="absolute bottom-3 right-4 text-[9px] md:text-[10px] font-sans font-extralight text-slate-400 tabular-nums opacity-80">
+                                                -{formatCountdown(activeShiftTimeLeft)}
+                                            </span>
+                                        )}
                                     </button>
                                 </div>
                             );
