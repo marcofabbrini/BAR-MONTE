@@ -36,21 +36,22 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
         }
         calculationDate.setHours(12, 0, 0, 0);
 
-        const anchorDateStr = shiftSettings?.anchorDate || '2025-02-24';
+        const anchorDateStr = shiftSettings?.anchorDate || '2025-12-20';
         const anchorShift = shiftSettings?.anchorShift || 'b';
 
         const anchorDate = new Date(anchorDateStr);
         anchorDate.setHours(12, 0, 0, 0);
 
         const diffTime = calculationDate.getTime() - anchorDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // Uso floor
 
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
-        // Rotazione Inversa
+        // Rotazione Inversa Day
         let shiftIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
         
+        // Night is Prev Index
         if (hour >= 20 || hour < 8) {
             shiftIndex = (shiftIndex - 1 + 4) % 4;
         }

@@ -144,29 +144,33 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         // Use currentTime (synced with getNow)
         const hour = currentTime.getHours();
         const calculationDate = new Date(currentTime);
-        // Se è prima delle 8, consideriamo ancora il "giorno operativo" precedente
+        // Se è prima delle 8, consideriamo ancora il "giorno operativo" precedente per il calcolo della rotazione base
         if (hour < 8) {
             calculationDate.setDate(calculationDate.getDate() - 1);
         }
         calculationDate.setHours(12, 0, 0, 0);
 
-        const anchorDateStr = shiftSettings?.anchorDate || '2025-02-24';
+        const anchorDateStr = shiftSettings?.anchorDate || '2025-12-20';
         const anchorShift = shiftSettings?.anchorShift || 'b';
 
         const anchorDate = new Date(anchorDateStr);
         anchorDate.setHours(12, 0, 0, 0);
 
         const diffTime = calculationDate.getTime() - anchorDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // Uso floor per giorni interi
 
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
-        // VVF ROTATION: Backward rotation (D->C->B->A)
+        // VVF ROTATION: Backward rotation (D->C->B->A) per il turno di Giorno
         // Formula: (Anchor - diffDays) modulo 4
+        // Logic: 20 Dec (Day 0) = B (Index 1)
+        // 21 Dec (Day 1) = A (Index 0) -> (1 - 1) = 0
         let shiftIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
         
-        // If it's night (>=20) or early morning (<8), shift backward by 1
+        // If it's night (>=20) or early morning (<8)
+        // La notte segue il turno giorno nella rotazione inversa (Quindi -1)
+        // Es. Giorno B -> Notte A
         if (hour >= 20 || hour < 8) {
             shiftIndex = (shiftIndex - 1 + 4) % 4;
         }
@@ -175,13 +179,11 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     }, [shiftSettings, currentTime]);
 
     // Calcolo del turno precedente (per il pulsante Grace Period)
+    // Se turno attuale è A (Notte, index 0), il precedente (Giorno) era B (Index 1). Quindi +1
+    // Se turno attuale è B (Giorno, index 1), il precedente (Notte ieri) era C (Index 2). Quindi +1
     const previousShiftCode = useMemo(() => {
         const shifts = ['a', 'b', 'c', 'd'];
         const currentIndex = shifts.indexOf(activeShift);
-        
-        // VVF ROTATION:
-        // Se attivo è A (Notte), Smontante è B (Giorno). A=0, B=1 -> +1
-        // Se attivo è B (Giorno), Smontante è C (Notte prima?). B=1, C=2 -> +1
         const prevIndex = (currentIndex + 1) % 4;
         return shifts[prevIndex];
     }, [activeShift]);

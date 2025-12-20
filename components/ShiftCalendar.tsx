@@ -18,7 +18,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
 
     // ANCORA DINAMICA
     const getShiftsForDate = (date: Date) => {
-        const anchorDateStr = shiftSettings?.anchorDate || '2025-02-24';
+        const anchorDateStr = shiftSettings?.anchorDate || '2025-12-20';
         const anchorShift = shiftSettings?.anchorShift || 'b';
 
         const anchorDate = new Date(anchorDateStr);
@@ -28,13 +28,14 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         targetDate.setHours(12, 0, 0, 0); // Fix DST
         
         const diffTime = targetDate.getTime() - anchorDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); // Usa round
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); // Usa floor
         
         const shifts = ['A', 'B', 'C', 'D'];
         const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
 
         // Calcolo Turno Giorno (Rotazione Inversa: D->C->B->A)
         // Formula: (Anchor - diff + 4) % 4
+        // Example: Anchor=B(1). Day 20(diff 0) -> 1. Day 21(diff 1) -> 0(A).
         let dayIndex = (anchorIndex - (diffDays % 4) + 4) % 4;
         
         // VVF Standard: Notte è il turno che "segue" in ordine alfabetico (perché rotazione è inversa)
