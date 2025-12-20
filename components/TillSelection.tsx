@@ -1,7 +1,7 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig } from '../types';
-import { ChartBarIcon, LockIcon, CalendarIcon, GamepadIcon, BellIcon, ClipboardIcon } from './Icons';
+import { BellIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 
 interface TillSelectionProps {
@@ -368,7 +368,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
                                         {/* ACTIVE SHIFT COUNTDOWN */}
                                         {activeShiftTimeLeft > 0 && (
-                                            <span className="absolute bottom-3 right-4 text-[9px] md:text-[10px] font-sans font-extralight text-slate-400 tabular-nums opacity-80">
+                                            <span className="absolute bottom-3 right-4 text-[9px] md:text-[10px] font-sans font-extralight text-slate-600 tabular-nums opacity-90">
                                                 -{formatCountdown(activeShiftTimeLeft)}
                                             </span>
                                         )}
@@ -378,14 +378,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         }
 
                         // Layout standard per altri turni (se visibili, es. admin)
+                        // ALTEZZA RIDOTTA: h-20 md:h-40 (era h-32 md:h-48)
                         return (
                             <button 
                                 key={till.id} 
                                 onClick={() => onSelectTill(till.id)} 
-                                className="group relative bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-2 border border-slate-100 flex flex-col items-center justify-center w-full transition-all duration-500 ease-out hover:shadow-2xl col-span-1 h-32 md:h-48 opacity-90 hover:opacity-100 hover:scale-[1.02]"
+                                className="group relative bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-2 border border-slate-100 flex flex-col items-center justify-center w-full transition-all duration-500 ease-out hover:shadow-2xl col-span-1 h-20 md:h-40 opacity-90 hover:opacity-100 hover:scale-[1.02]"
                             >
                                 <div 
-                                    className="rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110 w-10 h-10 md:w-20 md:h-20"
+                                    className="rounded-full flex items-center justify-center shadow-inner mb-1 md:mb-2 transition-transform duration-300 group-hover:scale-110 w-10 h-10 md:w-20 md:h-20"
                                     style={{ backgroundColor: bgColor }}
                                 >
                                     <span className="font-black text-white select-none text-xl md:text-4xl">
@@ -403,25 +404,25 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 {/* GESTIONE (PRIMA RIGA) - PRESENZE | REPORT | ADMIN */}
                 <div className="grid grid-cols-3 gap-3 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
                     {/* Pulsante: Presenze */}
-                    <button onClick={onSelectAttendance} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-2 md:p-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24 md:h-24">
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center group-hover:bg-indigo-100 group-hover:scale-110 transition-all shrink-0">
-                            <ClipboardIcon className="h-4 w-4 md:h-5 md:w-5" />
+                    <button onClick={onSelectAttendance} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-indigo-500/10 hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] border border-slate-100 p-2 md:p-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24 md:h-24">
+                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                            📋
                         </div>
                         <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-indigo-600 transition-colors">Presenze</span>
                     </button>
 
                     {/* Pulsante: Report */}
-                    <button onClick={onSelectReports} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-2 md:p-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24 md:h-24">
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-violet-50 text-violet-500 rounded-xl flex items-center justify-center group-hover:bg-violet-100 group-hover:scale-110 transition-all shrink-0">
-                            <ChartBarIcon className="h-4 w-4 md:h-5 md:w-5" />
+                    <button onClick={onSelectReports} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-violet-500/10 hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] border border-slate-100 p-2 md:p-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24 md:h-24">
+                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                            📊
                         </div>
                         <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-violet-600 transition-colors">Report</span>
                     </button>
                     
                     {/* Pulsante: Admin */}
-                    <button onClick={onSelectAdmin} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-2 md:p-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24 md:h-24">
-                        <div className="w-8 h-8 md:w-10 md:h-10 bg-slate-50 text-slate-500 rounded-xl flex items-center justify-center group-hover:bg-slate-100 group-hover:scale-110 transition-all shrink-0">
-                            <LockIcon className="h-4 w-4 md:h-5 md:w-5" />
+                    <button onClick={onSelectAdmin} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/10 hover:shadow-[0_0_15px_rgba(100,116,139,0.5)] border border-slate-100 p-2 md:p-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24 md:h-24">
+                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                            🔐
                         </div>
                         <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Admin</span>
                     </button>
@@ -434,14 +435,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
                 {/* EXTRA (SECONDA RIGA) - EXTRA HUB & TURNARIO */}
                 <div className="grid grid-cols-2 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
-                    <button onClick={onSelectGames} className="relative bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
+                    <button onClick={onSelectGames} className="relative bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-amber-500/10 hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
                         {tombolaNumberCount > 0 && (
                             <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full shadow-md animate-bounce z-20 border-2 border-white">
                                 {tombolaNumberCount}
                             </div>
                         )}
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center group-hover:bg-amber-100 group-hover:scale-110 transition-all shrink-0">
-                            <GamepadIcon className="h-5 w-5 md:h-6 md:w-6" />
+                        <div className="text-3xl md:text-4xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                            🎮
                         </div>
                         <div className="flex flex-col items-center md:items-start min-w-0">
                             <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-amber-600 transition-colors">Extra Hub</span>
@@ -449,9 +450,9 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                     </button>
 
-                    <button onClick={onSelectCalendar} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-sky-50 text-sky-500 rounded-xl flex items-center justify-center group-hover:bg-sky-100 group-hover:scale-110 transition-all shrink-0">
-                            <CalendarIcon className="h-5 w-5 md:h-6 md:w-6" />
+                    <button onClick={onSelectCalendar} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sky-500/10 hover:shadow-[0_0_15px_rgba(14,165,233,0.5)] border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
+                        <div className="text-3xl md:text-4xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                            📅
                         </div>
                         <div className="flex flex-col items-center md:items-start min-w-0">
                             <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-sky-600 transition-colors">Turnario</span>
