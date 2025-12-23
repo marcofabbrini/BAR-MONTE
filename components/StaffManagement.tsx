@@ -12,6 +12,7 @@ interface StaffManagementProps {
 
 const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, onUpdateStaff, onDeleteStaff }) => {
     const [name, setName] = useState('');
+    const [grade, setGrade] = useState('');
     const [shift, setShift] = useState<Shift>('a');
     const [rcSubGroup, setRcSubGroup] = useState<number>(1); // 1-8
     const [icon, setIcon] = useState('');
@@ -25,12 +26,14 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             const memberToEdit = staff.find(member => member.id === isEditing);
             if (memberToEdit) {
                 setName(memberToEdit.name);
+                setGrade(memberToEdit.grade || '');
                 setShift(memberToEdit.shift);
                 setRcSubGroup(memberToEdit.rcSubGroup || 1);
                 setIcon(memberToEdit.icon || '');
             }
         } else {
             setName('');
+            setGrade('');
             setShift('a');
             setRcSubGroup(1);
             setIcon('');
@@ -52,16 +55,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         try {
             if (isEditing) {
                 const memberToUpdate = staff.find(m => m.id === isEditing);
-                if (memberToUpdate) await onUpdateStaff({ ...memberToUpdate, name: name.trim(), shift, rcSubGroup, icon });
+                if (memberToUpdate) await onUpdateStaff({ ...memberToUpdate, name: name.trim(), grade: grade.trim(), shift, rcSubGroup, icon });
             } else {
-                await onAddStaff({ name: name.trim(), shift, rcSubGroup, icon });
+                await onAddStaff({ name: name.trim(), grade: grade.trim(), shift, rcSubGroup, icon });
             }
             handleCancel();
         } catch (error) { console.error(error); alert("Errore nel salvataggio."); }
     };
     
     const handleEdit = (member: StaffMember) => { setIsEditing(member.id); };
-    const handleCancel = () => { setIsEditing(null); setName(''); setShift('a'); setRcSubGroup(1); setIcon(''); };
+    const handleCancel = () => { setIsEditing(null); setName(''); setGrade(''); setShift('a'); setRcSubGroup(1); setIcon(''); };
     const handleDeleteStaff = async (id: string) => { if (window.confirm('Eliminare membro?')) await onDeleteStaff(id); };
 
     return (
@@ -70,25 +73,29 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             <div className="bg-white p-6 rounded-lg shadow-lg mb-8 border border-slate-200 print:hidden">
                 <h2 className="text-2xl font-bold text-slate-800 mb-4">{isEditing ? 'Modifica Personale' : 'Aggiungi Personale'}</h2>
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                    <div className="col-span-1 md:col-span-2">
+                    <div className="col-span-1 md:col-span-1">
                         <label className="text-sm font-medium text-slate-600">Icona</label>
-                         <input type="text" placeholder="😀" value={icon} onChange={(e) => setIcon(e.target.value)} className="w-full mt-1 bg-slate-100 rounded-md px-4 py-2 text-center text-xl" />
+                         <input type="text" placeholder="😀" value={icon} onChange={(e) => setIcon(e.target.value)} className="w-full mt-1 bg-slate-100 rounded-md px-2 py-2 text-center text-xl" />
+                    </div>
+                    <div className="col-span-1 md:col-span-2">
+                         <label className="text-sm font-medium text-slate-600">Grado</label>
+                        <input type="text" placeholder="Es. VESC" value={grade} onChange={(e) => setGrade(e.target.value)} className="w-full mt-1 bg-slate-100 rounded-md px-3 py-2 uppercase font-bold" />
                     </div>
                     <div className="col-span-1 md:col-span-4">
-                         <label className="text-sm font-medium text-slate-600">Nome e Cognome</label>
+                         <label className="text-sm font-medium text-slate-600">Cognome e Nome</label>
                         <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full mt-1 bg-slate-100 rounded-md px-4 py-2" required />
                     </div>
-                    <div className="col-span-1 md:col-span-3">
-                        <label className="text-sm font-medium text-slate-600">Turno Servizio</label>
-                        <select value={shift} onChange={(e) => setShift(e.target.value as Shift)} className="w-full mt-1 bg-slate-100 rounded-md px-4 py-2">
-                            <option value="a">Turno A</option>
-                            <option value="b">Turno B</option>
-                            <option value="c">Turno C</option>
-                            <option value="d">Turno D</option>
+                    <div className="col-span-1 md:col-span-2">
+                        <label className="text-sm font-medium text-slate-600">Turno</label>
+                        <select value={shift} onChange={(e) => setShift(e.target.value as Shift)} className="w-full mt-1 bg-slate-100 rounded-md px-3 py-2 font-bold">
+                            <option value="a">A</option>
+                            <option value="b">B</option>
+                            <option value="c">C</option>
+                            <option value="d">D</option>
                         </select>
                     </div>
                     <div className="col-span-1 md:col-span-3">
-                        <label className="text-sm font-medium text-slate-600">Gruppo Salto (1-8)</label>
+                        <label className="text-sm font-medium text-slate-600">Salto (1-8)</label>
                         <select value={rcSubGroup} onChange={(e) => setRcSubGroup(parseInt(e.target.value))} className="w-full mt-1 bg-purple-50 text-purple-700 font-bold border border-purple-200 rounded-md px-4 py-2">
                             {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
                                 <option key={num} value={num}>Gruppo {num}</option>
@@ -131,8 +138,11 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                 <div className="flex items-center gap-3 w-full sm:w-auto">
                                     <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-2xl shadow-sm border border-slate-200 flex-shrink-0">{member.icon || member.name.charAt(0)}</div>
                                     <div>
-                                        <p className="font-bold text-slate-800 text-lg">{member.name}</p>
-                                        <div className="flex gap-2 items-center text-sm">
+                                        <div className="flex items-center gap-2">
+                                            {member.grade && <span className="bg-slate-200 text-slate-600 text-xs font-black px-1.5 py-0.5 rounded uppercase">{member.grade}</span>}
+                                            <p className="font-bold text-slate-800 text-lg">{member.name}</p>
+                                        </div>
+                                        <div className="flex gap-2 items-center text-sm mt-1">
                                             <span className="bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-600">
                                                 Turno: <span className="font-bold text-primary">{member.shift.toUpperCase()}</span>
                                             </span>

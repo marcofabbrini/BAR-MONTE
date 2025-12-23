@@ -40,6 +40,7 @@ export type Shift = 'a' | 'b' | 'c' | 'd';
 export interface StaffMember {
     id: string;
     name: string;
+    grade?: string; // Grado (es. VESC, CR, CSE)
     shift: Shift;
     rcSubGroup?: number; // Gruppo di salto 1-8
     icon?: string;
