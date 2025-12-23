@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus } from '../types';
 import { type User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -210,7 +210,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     };
 
     const handleColorChange = (tillId: string, color: string) => setColors(prev => ({ ...prev, [tillId]: color }));
-    const saveSettings = async () => { await onUpdateTillColors(colors); alert('Impostazioni salvate!'); };
+    const saveSettings = async () => { await onUpdateTillColors(colors); alert('Impostazioni colori salvate!'); };
     const handleAddAdminSubmit = async (e: React.FormEvent) => { e.preventDefault(); if(!newAdminEmail.trim()) return; await onAddAdmin(newAdminEmail.trim()); setNewAdminEmail(''); };
     const handleMassDelete = async (type: 'orders' | 'movements') => { if (!massDeleteDate) return alert("Seleziona data."); if (window.confirm(`ATTENZIONE: Eliminazione DEFINITIVA antecedenti a ${massDeleteDate}. Confermi?`)) await onMassDelete(massDeleteDate, type); };
     
@@ -266,9 +266,10 @@ const AdminView: React.FC<AdminViewProps> = ({
         }
     };
 
+    // AUMENTATE DIMENSIONI ICONE (h-8 w-8)
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
-        <button onClick={() => setActiveTab(tab)} className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all w-20 h-16 text-[9px] md:text-[10px] font-bold gap-1 ${activeTab === tab ? 'bg-red-500 text-white shadow-md scale-105' : 'bg-white text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-100'}`}>
-            <div className={`${activeTab === tab ? 'text-white' : 'text-current'} transform scale-90`}>{icon}</div>
+        <button onClick={() => setActiveTab(tab)} className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all w-20 h-20 text-[10px] font-bold gap-1 ${activeTab === tab ? 'bg-red-500 text-white shadow-md scale-105' : 'bg-white text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-100'}`}>
+            <div className={`${activeTab === tab ? 'text-white' : 'text-current'} transform transition-transform`}>{icon}</div>
             <span className="text-center leading-tight">{label}</span>
         </button>
     );
@@ -287,9 +288,6 @@ const AdminView: React.FC<AdminViewProps> = ({
         );
     }
 
-    // Helper per data odierna (per riapertura turni)
-    const today = new Date().toISOString().split('T')[0];
-
     return (
         <div className="min-h-dvh bg-slate-50 flex flex-col font-sans">
             <header className="bg-white border-b border-slate-200 p-3 sticky top-0 z-50 mt-[env(safe-area-inset-top)]">
@@ -306,17 +304,17 @@ const AdminView: React.FC<AdminViewProps> = ({
                     <div className="flex flex-col gap-2 w-full">
                         {/* RIGA 1: OPERATIVITÀ */}
                         <div className="flex flex-wrap justify-center gap-2 border-b border-slate-100 pb-2">
-                            <TabButton tab="movements" label="Movimenti" icon={<ListIcon className="h-6 w-6" />} />
-                            <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon className="h-6 w-6" />} />
-                            <TabButton tab="stock" label="Stock" icon={<BoxIcon className="h-6 w-6" />} />
-                            <TabButton tab="products" label="Prodotti" icon={<StarIcon className="h-6 w-6" />} />
+                            <TabButton tab="movements" label="Movimenti" icon={<ListIcon className="h-8 w-8" />} />
+                            <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon className="h-8 w-8" />} />
+                            <TabButton tab="stock" label="Stock" icon={<BoxIcon className="h-8 w-8" />} />
+                            <TabButton tab="products" label="Prodotti" icon={<StarIcon className="h-8 w-8" />} />
                         </div>
                         {/* RIGA 2: GESTIONE */}
                         <div className="flex flex-wrap justify-center gap-2">
-                            <TabButton tab="admins" label="Admin" icon={<UserPlusIcon className="h-6 w-6" />} />
-                            <TabButton tab="staff" label="Staff" icon={<StaffIcon className="h-6 w-6" />} />
-                            <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-6 w-6" />} />
-                            <TabButton tab="attendance" label="Presenze" icon={<ClipboardIcon className="h-6 w-6" />} />
+                            <TabButton tab="admins" label="Admin" icon={<LockIcon className="h-8 w-8" />} />
+                            <TabButton tab="staff" label="Staff" icon={<StaffIcon className="h-8 w-8" />} />
+                            <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-8 w-8" />} />
+                            <TabButton tab="attendance" label="Presenze" icon={<ClipboardIcon className="h-8 w-8" />} />
                         </div>
                     </div>
                 </div>
@@ -380,18 +378,127 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'attendance' && <AttendanceCalendar attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} onDeleteRecord={onDeleteAttendance} onSaveAttendance={(t, i, d, c, det) => onSaveAttendance && onSaveAttendance(t, i, d, currentUser?.email || 'Admin', det)} isSuperAdmin={true} onReopenAttendance={onReopenAttendance} />}
                 
                 {activeTab === 'settings' && (
-                    <div className="space-y-4">
-                        {/* ... existing settings sections ... */}
-                        {/* GENERAL SETTINGS */}
-                        <div className="bg-slate-100 rounded-xl border border-slate-200 overflow-hidden">
-                            <button onClick={() => toggleSection('general')} className="w-full p-4 flex justify-between items-center text-left bg-slate-200 hover:bg-slate-300 transition-colors">
+                    <div className="space-y-4 max-w-4xl mx-auto">
+                        
+                        {/* 1. CONFIGURAZIONE COLORI CASSE */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('colors')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
-                                    <SettingsIcon className="h-5 w-5" /> Configurazione Generale & Manutenzione
+                                    <PaletteIcon className="h-5 w-5 text-indigo-500" /> Colori Casse & Temi
+                                </h2>
+                                <span>{expandedSection === 'colors' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'colors' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                        {tills.map(till => (
+                                            <div key={till.id}>
+                                                <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Cassa {till.id}</label>
+                                                <input type="color" value={colors[till.id] || '#000000'} onChange={(e) => handleColorChange(till.id, e.target.value)} className="w-full h-10 p-1 rounded border cursor-pointer" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button onClick={saveSettings} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm w-full md:w-auto">Salva Colori</button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 2. STAGIONALITÀ */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('seasonality')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <SparklesIcon className="h-5 w-5 text-amber-500" /> Stagionalità & Effetti
+                                </h2>
+                                <span>{expandedSection === 'seasonality' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'seasonality' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100 space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Inizio</label><input type="date" value={seasonStart} onChange={e => setSeasonStart(e.target.value)} className="w-full border p-2 rounded" /></div>
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Fine</label><input type="date" value={seasonEnd} onChange={e => setSeasonEnd(e.target.value)} className="w-full border p-2 rounded" /></div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 block mb-1">Preset</label>
+                                            <select value={seasonPreset} onChange={e => setSeasonPreset(e.target.value as any)} className="w-full border p-2 rounded">
+                                                <option value="custom">Personalizzato</option>
+                                                <option value="christmas">Natale</option>
+                                                <option value="easter">Pasqua</option>
+                                                <option value="summer">Estate</option>
+                                                <option value="halloween">Halloween</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 block mb-1">Animazione</label>
+                                            <select value={seasonAnim} onChange={e => setSeasonAnim(e.target.value as any)} className="w-full border p-2 rounded">
+                                                <option value="none">Nessuna</option>
+                                                <option value="snow">Neve (Giù)</option>
+                                                <option value="rain">Pioggia (Veloce)</option>
+                                                <option value="float">Fluttuante (Sparso)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 block mb-1">Opacità Emojis</label>
+                                            <input type="number" step="0.1" min="0" max="1" value={seasonOpacity} onChange={e => setSeasonOpacity(parseFloat(e.target.value))} className="w-full border p-2 rounded" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 block mb-1">Lista Emoji (separati da virgola)</label>
+                                        <input type="text" value={seasonEmojis} onChange={e => setSeasonEmojis(e.target.value)} className="w-full border p-2 rounded" placeholder="❄️, 🎄, 🎁" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 block mb-1">Colore Sfondo (Hex)</label>
+                                        <div className="flex gap-2">
+                                            <input type="color" value={seasonBg} onChange={e => setSeasonBg(e.target.value)} className="h-10 w-20 border rounded cursor-pointer" />
+                                            <input type="text" value={seasonBg} onChange={e => setSeasonBg(e.target.value)} className="flex-grow border p-2 rounded" />
+                                        </div>
+                                    </div>
+                                    <button onClick={handleSaveSeasonality} className="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold text-sm w-full md:w-auto">Applica Stagionalità</button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 3. CALIBRAZIONE TURNI (SALTO) */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('shift')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <CalendarIcon className="h-5 w-5 text-blue-500" /> Calibrazione Turni & Salto
+                                </h2>
+                                <span>{expandedSection === 'shift' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'shift' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100 space-y-4">
+                                    <p className="text-xs text-slate-500 italic bg-blue-50 p-3 rounded">
+                                        Configura un punto di ancoraggio noto per calcolare correttamente il "Salto" (Riposo Compensativo) a rotazione di 8 gruppi.
+                                    </p>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Data Nota</label><input type="date" value={rcDate} onChange={e => setRcDate(e.target.value)} className="w-full border p-2 rounded" /></div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 block mb-1">Turno in quella data</label>
+                                            <select value={rcShift} onChange={e => setRcShift(e.target.value as any)} className="w-full border p-2 rounded uppercase font-bold">
+                                                <option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 block mb-1">Gruppo che SALTA (1-8)</label>
+                                            <input type="number" min="1" max="8" value={rcSubGroup} onChange={e => setRcSubGroup(parseInt(e.target.value))} className="w-full border p-2 rounded" />
+                                        </div>
+                                    </div>
+                                    <button onClick={handleSaveRcCalibration} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm w-full md:w-auto">Salva Calibrazione</button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 4. CONFIGURAZIONE GENERALE */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('general')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <SettingsIcon className="h-5 w-5 text-slate-600" /> Configurazione Generale & Manutenzione
                                 </h2>
                                 <span>{expandedSection === 'general' ? '−' : '+'}</span>
                             </button>
                             {expandedSection === 'general' && (
-                                <div className="p-6 bg-slate-50 animate-fade-in">
+                                <div className="p-6 bg-slate-50 animate-fade-in border-t border-slate-100">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="text-xs font-bold text-slate-500 block mb-1">Prezzo Quota Acqua (€)</label>
@@ -404,18 +511,37 @@ const AdminView: React.FC<AdminViewProps> = ({
                                             />
                                         </div>
                                     </div>
-                                    <div className="flex gap-3 mt-4 items-center">
-                                        <button onClick={handleSaveGeneral} className="bg-slate-700 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 shadow-sm text-sm">
+                                    <div className="flex flex-col md:flex-row gap-3 mt-4 items-center">
+                                        <button onClick={handleSaveGeneral} className="bg-slate-700 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 shadow-sm text-sm w-full md:w-auto">
                                             Salva Generale
                                         </button>
-                                        <button onClick={handleClearLocalCache} className="bg-orange-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-orange-600 shadow-sm text-sm flex items-center gap-2">
+                                        <button onClick={handleClearLocalCache} className="bg-orange-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-orange-600 shadow-sm text-sm flex items-center justify-center gap-2 w-full md:w-auto">
                                             ⚠️ Svuota Cache Browser (Fix Quota/Crash)
                                         </button>
                                     </div>
                                 </div>
                             )}
                         </div>
-                        {/* ... other sections ... */}
+
+                        {/* 5. NOTIFICHE */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('notifications')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <BellIcon className="h-5 w-5 text-red-500" /> Invia Notifica Push
+                                </h2>
+                                <span>{expandedSection === 'notifications' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'notifications' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100 space-y-3">
+                                    <input type="text" placeholder="Titolo Notifica" value={notifTitle} onChange={e => setNotifTitle(e.target.value)} className="w-full border p-2 rounded font-bold" />
+                                    <textarea placeholder="Messaggio..." value={notifBody} onChange={e => setNotifBody(e.target.value)} className="w-full border p-2 rounded h-20" />
+                                    <button onClick={handleSendNotif} className="bg-red-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-600 shadow-md w-full md:w-auto">
+                                        Invia a Tutti
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                     </div>
                 )}
                 
