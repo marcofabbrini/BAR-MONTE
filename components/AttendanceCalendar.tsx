@@ -102,11 +102,13 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     };
 
     // Helper per calcolare chi è in salto (riposo compensativo) per un dato giorno e turno
-    // Questa logica deve corrispondere a quella di ShiftCalendar.tsx
     const getRestingSubGroup = (shift: string, date: Date) => {
-        if (!shiftSettings?.rcAnchorDate) return null;
-        
-        const anchorDate = new Date(shiftSettings.rcAnchorDate);
+        // Fallback default se setting mancanti: 1 Gennaio 2025
+        const anchorDateStr = shiftSettings?.rcAnchorDate || '2025-01-01'; 
+        const anchorShiftStr = shiftSettings?.rcAnchorShift || 'A';
+        const anchorSubGroup = shiftSettings?.rcAnchorSubGroup || 1;
+
+        const anchorDate = new Date(anchorDateStr);
         anchorDate.setHours(12, 0, 0, 0);
         
         const effectiveDate = new Date(date);
@@ -114,7 +116,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
         const shifts = ['A', 'B', 'C', 'D'];
         const shiftIndex = shifts.indexOf(shift.toUpperCase());
-        const anchorShiftIndex = shifts.indexOf((shiftSettings.rcAnchorShift || 'A').toUpperCase());
+        const anchorShiftIndex = shifts.indexOf(anchorShiftStr.toUpperCase());
         
         // Offset
         const shiftOffset = (shiftIndex - anchorShiftIndex + 4) % 4;
@@ -126,7 +128,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         
         const cycles = Math.floor(diffDays / 4);
-        const anchorSubGroup = shiftSettings.rcAnchorSubGroup || 1;
         
         let currentSubGroup = (anchorSubGroup + cycles) % 8;
         if (currentSubGroup <= 0) currentSubGroup += 8;
@@ -522,6 +523,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                 
                                                 const status = getStatusForCell(person.id, record);
                                                 
+                                                // Logica Salto Turno Personale
+                                                const isJumpDay = day.rcGroup === person.rcSubGroup;
+                                                
                                                 return (
                                                     <td 
                                                         key={`${person.id}-${day.dayNum}`} 
@@ -529,12 +533,20 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                             text-center border-b border-r border-slate-200 transition-colors relative
                                                             ${day.isWorking ? 'bg-orange-50/30' : ''}
                                                             ${status ? 'bg-white' : 'hover:bg-slate-100'}
-                                                            ${readOnly ? 'cursor-default' : 'cursor-pointer'}
+                                                            ${readOnly || isJumpDay ? 'cursor-default' : 'cursor-pointer'}
+                                                            ${isJumpDay ? 'bg-slate-200/50' : ''}
                                                         `}
-                                                        onClick={() => handleOpenEdit(dateStr, tillId, record)}
+                                                        onClick={() => !isJumpDay && handleOpenEdit(dateStr, tillId, record)}
                                                         title={`${day.dayNum}/${currentDate.getMonth()+1} - ${person.name}`}
                                                     >
-                                                        {status && (
+                                                        {/* Se è giorno di salto, mostra "R" forzato se non c'è altro status, oppure mostra status se manuale */}
+                                                        {isJumpDay ? (
+                                                            <div className="absolute inset-0 flex items-center justify-center p-1 opacity-50">
+                                                                <div className="w-full h-full flex items-center justify-center rounded font-bold text-[10px] bg-slate-300 text-slate-600 border border-slate-400">
+                                                                    R
+                                                                </div>
+                                                            </div>
+                                                        ) : status && (
                                                             <div className="absolute inset-0 flex items-center justify-center p-1">
                                                                 <div 
                                                                     className={`
