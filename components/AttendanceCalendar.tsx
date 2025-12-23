@@ -191,7 +191,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         }));
     };
 
-    const saveEditing = async () => {
+    const saveEditing = async (shouldValidate: boolean = false) => {
         if (!onSaveAttendance) return;
         
         // Converti la mappa locale nel formato per il DB
@@ -205,11 +205,16 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             }
         });
 
+        const user = editingRecord?.closedBy || 'Admin';
+        
+        // Se valida, passa il closedBy per chiudere il turno. Se solo salva, passa undefined (o mantieni quello esistente se c'era)
+        const closingUser = shouldValidate ? user : (editingRecord?.closedBy ? editingRecord.closedBy : undefined);
+
         await onSaveAttendance(
             editingTillId, 
             presentIds, 
             editingDate, 
-            editingRecord?.closedBy || 'Admin',
+            closingUser,
             finalDetails
         );
         setIsEditModalOpen(false);
@@ -304,7 +309,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                         
                         {editingRecord && editingRecord.closedAt && (
                             <div className="bg-green-50 p-3 border-b border-green-100 text-xs text-green-800 flex flex-col gap-1">
-                                <div className="font-bold flex items-center gap-1"><CheckIcon className="h-3 w-3" /> Turno Chiuso</div>
+                                <div className="font-bold flex items-center gap-1"><CheckIcon className="h-3 w-3" /> Turno Chiuso e Validato</div>
                                 <div>Da: <b>{editingRecord.closedBy || 'Sconosciuto'}</b></div>
                                 <div>Il: {new Date(editingRecord.closedAt).toLocaleString()}</div>
                             </div>
@@ -360,16 +365,30 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                 })}
                             </div>
                         </div>
-                        <div className="p-4 border-t border-slate-200 flex justify-between items-center gap-3 bg-slate-50">
-                            {isSuperAdmin && editingRecord?.closedAt && onReopenAttendance ? (
-                                <button onClick={() => handleReopen(editingRecord.id)} className="bg-red-100 text-red-700 hover:bg-red-200 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 shadow-sm border border-red-200">
-                                    <LockOpenIcon className="h-4 w-4" /> RIAPRI TURNO
-                                </button>
-                            ) : <div></div>}
-                            
-                            <button onClick={saveEditing} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-blue-700">
-                                <SaveIcon className="h-4 w-4" /> Salva Modifiche
-                            </button>
+                        <div className="p-4 border-t border-slate-200 flex flex-col gap-2 bg-slate-50">
+                            {/* AZIONI SE TURNO CHIUSO */}
+                            {editingRecord?.closedAt ? (
+                                <div className="flex justify-between w-full">
+                                    {isSuperAdmin && onReopenAttendance && (
+                                        <button onClick={() => handleReopen(editingRecord.id)} className="bg-red-100 text-red-700 hover:bg-red-200 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 shadow-sm border border-red-200">
+                                            <LockOpenIcon className="h-4 w-4" /> RIAPRI TURNO
+                                        </button>
+                                    )}
+                                    <button onClick={() => saveEditing(false)} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-blue-700 ml-auto">
+                                        <SaveIcon className="h-4 w-4" /> Aggiorna Modifiche
+                                    </button>
+                                </div>
+                            ) : (
+                                /* AZIONI SE TURNO APERTO */
+                                <div className="flex gap-2 w-full">
+                                    <button onClick={() => saveEditing(false)} className="flex-1 bg-slate-200 text-slate-700 px-4 py-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-300">
+                                        Salva Bozze
+                                    </button>
+                                    <button onClick={() => saveEditing(true)} className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:bg-green-700 uppercase tracking-wide">
+                                        <CheckIcon className="h-4 w-4" /> Conferma e Valida
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -503,10 +522,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                 
                                                 const status = getStatusForCell(person.id, record);
                                                 
-                                                // Se non c'è stato specifico, calcola se è il giorno di salto per questa persona
-                                                // (Solo visivo, non salva su DB se non confermato)
-                                                // Logica: se day.rcGroup corrisponde a person.rcSubGroup, potrebbe essere Riposo
-                                                
                                                 return (
                                                     <td 
                                                         key={`${person.id}-${day.dayNum}`} 
@@ -525,6 +540,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                                     className={`
                                                                         w-full h-full flex items-center justify-center rounded font-bold text-[10px] uppercase shadow-sm border
                                                                         ${STATUS_CONFIG[status].color} ${STATUS_CONFIG[status].textColor}
+                                                                        ${record?.closedAt ? 'ring-1 ring-black/10' : ''}
                                                                     `}
                                                                 >
                                                                     {STATUS_CONFIG[status].short}
@@ -629,6 +645,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                         group relative flex items-center justify-between border rounded p-1 transition-all h-8
                                                         ${record ? 'bg-slate-50 hover:bg-white hover:shadow-md' : 'bg-transparent border-dashed border-slate-200 opacity-40 hover:opacity-100'}
                                                         ${readOnly ? 'cursor-default pointer-events-none' : 'cursor-pointer'}
+                                                        ${record?.closedAt ? 'border-solid border-slate-300' : ''}
                                                     `}
                                                 >
                                                     <div className="flex items-center gap-1 md:gap-2 w-full">
@@ -644,7 +661,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                             {slot.shift}
                                                         </div>
                                                         
-                                                        <span className="text-xs font-bold text-slate-700 flex-grow text-right pr-1 leading-none">
+                                                        <span className="text-xs font-bold text-slate-700 flex-grow text-right pr-1 leading-none flex items-center justify-end gap-1">
+                                                            {record && record.closedAt && <LockIcon className="h-2 w-2 text-slate-400"/>}
                                                             {record ? realPeopleCount : (readOnly ? '-' : '+')}
                                                         </span>
                                                     </div>

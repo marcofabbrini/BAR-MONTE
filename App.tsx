@@ -101,6 +101,7 @@ const AppContent: React.FC = () => {
             case 'till': return <TillView 
                 till={TILLS.find(t=>t.id===selectedTillId)!} 
                 onGoBack={() => { setSelectedTillId(null); setView('selection'); }} 
+                onRedirectToAttendance={() => setView('attendance_view')}
                 products={products} 
                 allStaff={staff} 
                 allOrders={orders} 

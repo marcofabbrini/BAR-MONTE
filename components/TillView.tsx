@@ -4,12 +4,13 @@ import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, 
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
-import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon, TicketIcon, LockIcon, EyeIcon } from './Icons';
+import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon, TicketIcon, LockIcon, EyeIcon, ClipboardIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 
 interface TillViewProps {
     till: Till;
     onGoBack: () => void;
+    onRedirectToAttendance: () => void; // New prop for redirection
     products: Product[];
     allStaff: StaffMember[];
     allOrders: Order[];
@@ -24,7 +25,7 @@ interface TillViewProps {
     generalSettings?: GeneralSettings;
 }
 
-const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet, tombolaConfig, tombolaTickets, onBuyTombolaTicket, attendanceRecords, generalSettings }) => {
+const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttendance, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet, tombolaConfig, tombolaTickets, onBuyTombolaTicket, attendanceRecords, generalSettings }) => {
     const { getNow } = useBar();
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
@@ -34,20 +35,29 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
 
     // PRESENZE STATE
     const [presentStaffIds, setPresentStaffIds] = useState<string[]>([]);
-    const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
-
+    
     // Calcolo stato chiusura turno con data affidabile
     const today = getNow().toISOString().split('T')[0];
     const existingAttendanceRecord = useMemo(() => 
         attendanceRecords?.find(r => r.date === today && r.tillId === till.id),
     [attendanceRecords, today, till.id]);
     
-    const isShiftClosed = !!existingAttendanceRecord?.closedAt;
+    // STRICT MODE: Turno deve essere CHIUSO (validato) per operare
+    const isShiftValidated = !!existingAttendanceRecord?.closedAt;
 
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
     const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift), [allStaff, till.shift]);
     
+    // Load attendance from validated record only
+    useEffect(() => {
+        if (isShiftValidated && existingAttendanceRecord) {
+            setPresentStaffIds(existingAttendanceRecord.presentStaffIds);
+        } else {
+            setPresentStaffIds([]);
+        }
+    }, [isShiftValidated, existingAttendanceRecord]);
+
     // Ordinamento Staff: "Cassa" per primo, poi alfabetico
     const sortedStaffForShift = useMemo(() => {
         return [...staffForShift].sort((a, b) => {
@@ -119,81 +129,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         return quotas;
     }, [attendanceRecords, staffForShift, getNow]);
 
-    // ATTENDANCE LOGIC
-    useEffect(() => {
-        // Se il turno è chiuso ufficialmente (su DB), usa quello
-        if (existingAttendanceRecord) {
-            setPresentStaffIds(existingAttendanceRecord.presentStaffIds);
-            return;
-        }
-
-        // Altrimenti usa local storage o default
-        const storageKey = `attendance_v1_${till.id}_${today}`;
-        const saved = localStorage.getItem(storageKey);
-
-        const cassaUser = staffForShift.find(s => s.name.toLowerCase().includes('cassa'));
-        let initialIds: string[] = [];
-
-        if (saved) {
-            initialIds = JSON.parse(saved);
-        } else {
-            // First time entry for today: Select ALL by default and open modal
-            initialIds = staffForShift.map(s => s.id);
-            if(!isShiftClosed) setIsAttendanceModalOpen(true);
-        }
-
-        if (cassaUser && !initialIds.includes(cassaUser.id)) {
-            initialIds.push(cassaUser.id);
-        }
-
-        setPresentStaffIds(initialIds);
-    }, [till.id, staffForShift, isShiftClosed, existingAttendanceRecord, today]);
-
-    const handleToggleAttendance = (id: string) => {
-        if (isShiftClosed) return; // Blocco modifiche se chiuso
-
-        // Impedisci di deselezionare la cassa
-        const member = allStaff.find(s => s.id === id);
-        if (member && member.name.toLowerCase().includes('cassa')) return;
-
-        setPresentStaffIds(prev => 
-            prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
-        );
-    };
-
-    const handleProvisionalAttendance = () => {
-        const storageKey = `attendance_v1_${till.id}_${today}`;
-        localStorage.setItem(storageKey, JSON.stringify(presentStaffIds));
-        setIsAttendanceModalOpen(false);
-    };
-
-    const confirmAttendance = () => {
-        const storageKey = `attendance_v1_${till.id}_${today}`;
-        localStorage.setItem(storageKey, JSON.stringify(presentStaffIds));
-        
-        // Verifica numero presenze (esclusa cassa)
-        const realPeopleCount = presentStaffIds.filter(id => {
-            const member = allStaff.find(s => s.id === id);
-            return member && !member.name.toLowerCase().includes('cassa');
-        }).length;
-
-        if (realPeopleCount !== 5) {
-            const confirm = window.confirm(`Attenzione: Risultano ${realPeopleCount} operatori presenti (standard 5). Confermi la chiusura?`);
-            if (!confirm) return;
-        }
-
-        if (onSaveAttendance) {
-            // Genera mappa dettagli default: se presenti -> 'present'
-            const details: Record<string, AttendanceStatus> = {};
-            presentStaffIds.forEach(id => details[id] = 'present');
-
-            // Registro come "Operatore Cassa [Turno]"
-            onSaveAttendance(till.id, presentStaffIds, today, `Operatore Cassa ${till.shift.toUpperCase()}`, details);
-        }
-
-        setIsAttendanceModalOpen(false);
-    };
-
     const addToOrder = useCallback((product: Product) => {
         if (product.stock <= 0) return;
         setCurrentOrder(prevOrder => {
@@ -241,6 +176,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     }, [currentOrder, cartTotal, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder, clearOrder, getNow]);
 
     const handleStaffSelection = (id: string) => {
+        // Double check just in case, though UI hides non-present
         if (!presentStaffIds.includes(id)) return;
         setIsAnimatingSelection(true);
         setTimeout(() => {
@@ -306,82 +242,32 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
     return (
         <div className="flex flex-col min-h-dvh bg-slate-50 md:flex-row relative">
             
-            {/* ATTENDANCE MODAL */}
-            {isAttendanceModalOpen && (
-                <div className="fixed inset-0 z-[100] bg-white/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 w-full max-w-lg overflow-hidden animate-slide-up">
-                        <div className="p-6 text-center border-b border-slate-50">
-                            <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Presenze Turno {till.shift.toUpperCase()}</h2>
-                            <p className="text-xs text-slate-400 mt-1 font-medium">Chi è in servizio oggi ({new Date(today).toLocaleDateString()})?</p>
+            {/* BLOCKING MODAL: PRESENZE NON VALIDATE */}
+            {!isShiftValidated && (
+                <div className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center animate-bounce-slow border-b-8 border-red-500">
+                        <div className="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <ClipboardIcon className="h-10 w-10 text-red-500" />
                         </div>
+                        <h2 className="text-2xl font-black text-slate-800 uppercase mb-2">Presenze Mancanti</h2>
+                        <p className="text-slate-600 mb-8">
+                            Prima di aprire la cassa, devi inserire e <b>VALIDARE</b> le presenze del turno odierno ({new Date(today).toLocaleDateString()}).
+                        </p>
                         
-                        <div className="p-6">
-                            <div className="grid grid-cols-2 gap-3 mb-6 max-h-[50vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-                                {sortedStaffForShift.map(member => {
-                                    const isSelected = presentStaffIds.includes(member.id);
-                                    const isCassa = member.name.toLowerCase().includes('cassa');
-                                    return (
-                                        <button 
-                                            key={member.id} 
-                                            onClick={() => handleToggleAttendance(member.id)}
-                                            disabled={isCassa || isShiftClosed}
-                                            className={`
-                                                flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-200
-                                                ${(isCassa || isShiftClosed) ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer'}
-                                                ${isCassa ? 'bg-slate-100 border-slate-200' : ''}
-                                                ${isSelected && !isCassa ? 'border-green-500 bg-green-50 shadow-sm' : ''}
-                                                ${!isSelected && !isCassa ? 'border-slate-100 bg-slate-50 text-slate-300' : ''}
-                                            `}
-                                        >
-                                            <div className="text-3xl mb-1 filter drop-shadow-sm">{member.icon || '👤'}</div>
-                                            <p className={`font-bold text-sm leading-tight ${isSelected ? 'text-slate-800' : 'text-slate-400'}`}>{member.name}</p>
-                                            {isCassa ? (
-                                                <div className="mt-1 text-slate-400 flex items-center gap-1 text-[10px] uppercase font-bold"><LockIcon className="h-3 w-3" /> Obbligatorio</div>
-                                            ) : (
-                                                isSelected && <div className="mt-1 text-green-500"><CheckIcon className="h-4 w-4" /></div>
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            {isShiftClosed ? (
-                                <div className="bg-green-100 border border-green-200 text-green-800 p-4 rounded-xl text-center">
-                                    <div className="flex justify-center mb-2"><CheckIcon className="h-8 w-8 bg-green-200 rounded-full p-1" /></div>
-                                    <h3 className="font-bold text-lg uppercase">Turno Chiuso</h3>
-                                    <p className="text-xs mt-1">
-                                        Chiuso da: <span className="font-bold">{existingAttendanceRecord?.closedBy || 'Sistema'}</span>
-                                    </p>
-                                    {existingAttendanceRecord?.closedAt && (
-                                        <p className="text-[10px] opacity-70">
-                                            alle ore {new Date(existingAttendanceRecord.closedAt).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}
-                                        </p>
-                                    )}
-                                    <button 
-                                        onClick={() => setIsAttendanceModalOpen(false)}
-                                        className="mt-3 text-xs font-bold underline hover:text-green-900"
-                                    >
-                                        Chiudi finestra
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="flex gap-3">
-                                    <button 
-                                        onClick={handleProvisionalAttendance}
-                                        className="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold py-4 rounded-xl text-sm shadow-sm uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        <EyeIcon className="h-4 w-4" />
-                                        Provvisorio
-                                    </button>
-                                    <button 
-                                        onClick={confirmAttendance}
-                                        className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl text-sm shadow-md uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        <LockIcon className="h-4 w-4" />
-                                        Chiudi Turno
-                                    </button>
-                                </div>
-                            )}
+                        <div className="flex flex-col gap-3">
+                            <button 
+                                onClick={onRedirectToAttendance}
+                                className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+                            >
+                                <UsersIcon className="h-5 w-5" />
+                                Vai a Gestione Presenze
+                            </button>
+                            <button 
+                                onClick={onGoBack}
+                                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold py-3 rounded-xl transition-all"
+                            >
+                                Torna Indietro
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -393,7 +279,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                 </span>
             </div>
 
-            <div className="flex-grow flex flex-col w-full md:w-auto min-h-dvh z-10">
+            <div className={`flex-grow flex flex-col w-full md:w-auto min-h-dvh z-10 ${!isShiftValidated ? 'filter blur-sm pointer-events-none' : ''}`}>
                 <header className="sticky top-0 px-4 py-2 flex justify-between items-center shadow-sm z-30 border-b border-white/20 text-white transition-colors duration-300 backdrop-blur-md bg-opacity-90 mt-[env(safe-area-inset-top)]" style={{ backgroundColor: themeColor + 'E6' }}>
                      <div className="flex items-center gap-3">
                          <button onClick={onGoBack} className="group flex items-center gap-1 transition-colors">
@@ -423,23 +309,10 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                 Turno {till.shift}
                             </span>
                         </div>
-
-                        <button 
-                            onClick={() => setIsAttendanceModalOpen(true)}
-                            className={`
-                                flex items-center gap-2 text-white rounded-lg px-3 py-1 transition-all shadow-md h-full active:scale-95 border border-slate-600
-                                ${isShiftClosed ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-800 hover:bg-slate-700'}
-                            `}
-                            title="Modifica Presenze"
-                        >
-                            {isShiftClosed ? <CheckIcon className="h-3 w-3" /> : <UsersIcon className="h-3 w-3" />}
-                            <span className="text-[10px] font-bold uppercase tracking-wide">{isShiftClosed ? 'Chiuso' : 'Presenze'}</span>
-                        </button>
                     </div>
                 </header>
                 
                 <main className="flex-grow flex flex-col relative w-full pb-20 md:pb-4">
-                    {/* ... Rest of existing TillView content ... */}
                     <div className="px-4 py-2 z-20 sticky top-[50px] flex gap-2 overflow-x-auto">
                          <div className="bg-white/90 backdrop-blur p-1 rounded-xl shadow-sm inline-flex w-full md:w-auto border border-slate-100">
                             <button onClick={() => setActiveTab('order')} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-xs font-bold transition-all duration-200 ${activeTab === 'order' ? 'bg-slate-800 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'}`}>Al bar...</button>
@@ -457,22 +330,24 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
                                         <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Chi sei?</h3>
                                         <div className={`grid grid-cols-4 sm:grid-cols-6 gap-3 p-4 rounded-xl ${!selectedStaffId ? 'animate-red-pulse' : ''}`}>
                                             {sortedStaffForShift.map(staff => {
+                                                // FILTER: Show ONLY staff present in the validated record
                                                 const isPresent = presentStaffIds.includes(staff.id);
+                                                if (!isPresent) return null;
+
                                                 const isCassa = staff.name.toLowerCase().includes('cassa');
                                                 
                                                 return (
                                                     <button 
                                                         key={staff.id} 
                                                         onClick={() => handleStaffSelection(staff.id)}
-                                                        disabled={!isPresent}
-                                                        className={`group flex flex-col items-center gap-1 transition-all ${!isPresent ? 'opacity-30 grayscale cursor-not-allowed hidden' : 'hover:scale-110 cursor-pointer'}`}
+                                                        className={`group flex flex-col items-center gap-1 transition-all hover:scale-110 cursor-pointer`}
                                                     >
                                                         <div 
                                                             className={`
                                                                 w-14 h-14 rounded-full shadow-md border-2 flex items-center justify-center text-2xl transition-all 
-                                                                ${!isPresent ? 'bg-slate-100 border-slate-200' : 'border-slate-100 group-hover:border-primary'}
+                                                                border-slate-100 group-hover:border-primary
                                                             `}
-                                                            style={isCassa && isPresent ? { backgroundColor: themeColor, color: 'white', borderColor: themeColor } : { backgroundColor: 'white' }}
+                                                            style={isCassa ? { backgroundColor: themeColor, color: 'white', borderColor: themeColor } : { backgroundColor: 'white' }}
                                                         >
                                                             {staff.icon || <span className={`text-lg font-bold ${isCassa ? 'text-white' : 'text-slate-600'}`}>{getInitials(staff.name)}</span>}
                                                         </div>
