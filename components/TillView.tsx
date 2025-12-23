@@ -6,6 +6,7 @@ import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
 import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon, TicketIcon, LockIcon, EyeIcon, ClipboardIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
+import { GradeBadge } from './StaffManagement';
 
 interface TillViewProps {
     till: Till;
@@ -296,8 +297,12 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                 onClick={handleStaffDeselection}
                                 className="hidden md:flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-full pr-3 pl-1 py-1 transition-all animate-fade-in h-full mr-2"
                             >
-                                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs shadow-sm text-slate-800">
-                                    {selectedStaffMember.icon || getInitials(selectedStaffMember.name)}
+                                <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs shadow-sm text-slate-800 overflow-hidden border border-white/50">
+                                    {selectedStaffMember.photoUrl ? (
+                                        <img src={selectedStaffMember.photoUrl} className="w-full h-full object-cover" />
+                                    ) : (
+                                        selectedStaffMember.icon || getInitials(selectedStaffMember.name)
+                                    )}
                                 </div>
                                 <span className="font-bold text-xs">{selectedStaffMember.name}</span>
                             </button>
@@ -328,7 +333,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                 {!selectedStaffId && (
                                     <div className={`mb-4 transition-all duration-300 ${isAnimatingSelection ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
                                         <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Chi sei?</h3>
-                                        <div className={`grid grid-cols-4 sm:grid-cols-6 gap-3 p-4 rounded-xl ${!selectedStaffId ? 'animate-red-pulse' : ''}`}>
+                                        <div className={`grid grid-cols-4 sm:grid-cols-6 gap-4 p-4 rounded-xl ${!selectedStaffId ? 'animate-red-pulse' : ''}`}>
                                             {sortedStaffForShift.map(staff => {
                                                 // FILTER: Show ONLY staff present in the validated record
                                                 const isPresent = presentStaffIds.includes(staff.id);
@@ -340,18 +345,26 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                                     <button 
                                                         key={staff.id} 
                                                         onClick={() => handleStaffSelection(staff.id)}
-                                                        className={`group flex flex-col items-center gap-1 transition-all hover:scale-110 cursor-pointer`}
+                                                        className={`group flex flex-col items-center gap-2 transition-all hover:scale-110 cursor-pointer`}
                                                     >
                                                         <div 
                                                             className={`
-                                                                w-14 h-14 rounded-full shadow-md border-2 flex items-center justify-center text-2xl transition-all 
-                                                                border-slate-100 group-hover:border-primary
+                                                                relative w-16 h-16 rounded-full shadow-md border-2 flex items-center justify-center text-2xl transition-all overflow-visible
+                                                                border-slate-100 group-hover:border-primary bg-white
                                                             `}
-                                                            style={isCassa ? { backgroundColor: themeColor, color: 'white', borderColor: themeColor } : { backgroundColor: 'white' }}
+                                                            style={isCassa ? { backgroundColor: themeColor, borderColor: themeColor } : { }}
                                                         >
-                                                            {staff.icon || <span className={`text-lg font-bold ${isCassa ? 'text-white' : 'text-slate-600'}`}>{getInitials(staff.name)}</span>}
+                                                            <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white">
+                                                                {staff.photoUrl ? (
+                                                                    <img src={staff.photoUrl} alt={staff.name} className="w-full h-full object-cover" />
+                                                                ) : (
+                                                                    <span className={`text-2xl font-bold ${isCassa ? 'text-white' : 'text-slate-600'}`}>{staff.icon || getInitials(staff.name)}</span>
+                                                                )}
+                                                            </div>
+                                                            {/* VISUAL BADGE */}
+                                                            {!isCassa && staff.grade && <GradeBadge grade={staff.grade} />}
                                                         </div>
-                                                        <span className="text-[10px] font-bold text-slate-600 group-hover:text-primary">{staff.name.split(' ')[0]}</span>
+                                                        <span className="text-[10px] font-bold text-slate-600 group-hover:text-primary truncate w-full text-center">{staff.name.split(' ')[0]}</span>
                                                     </button>
                                                 );
                                             })}

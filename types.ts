@@ -44,6 +44,7 @@ export interface StaffMember {
     shift: Shift;
     rcSubGroup?: number; // Gruppo di salto 1-8
     icon?: string;
+    photoUrl?: string; // Base64 image data
 }
 
 export interface TillColors {
