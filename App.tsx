@@ -106,7 +106,7 @@ const AppContent: React.FC = () => {
                 allOrders={orders} 
                 onCompleteOrder={completeOrder} 
                 tillColors={tillColors} 
-                onSaveAttendance={(t, i, d, c) => saveAttendance(t, i, d, c)} 
+                onSaveAttendance={(t, i, d, c, det) => saveAttendance(t, i, d, c, det)} 
                 onPlaceAnalottoBet={handlePlaceAnalottoBet} 
                 tombolaConfig={tombolaConfig} 
                 tombolaTickets={tombolaTickets} 
@@ -129,7 +129,16 @@ const AppContent: React.FC = () => {
             case 'dice': return <DiceGame onGoBack={() => setView('selection')} staff={staff} shiftSettings={shiftSettings} />;
             case 'games': return <GamesHub onGoBack={() => setView('selection')} onPlayTombola={() => setView('tombola')} onPlayAnalotto={() => setView('analotto')} onPlayDice={() => setView('dice')} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} />;
             case 'calendar': return <ShiftCalendar onGoBack={() => setView('selection')} tillColors={tillColors} shiftSettings={shiftSettings} />;
-            case 'attendance_view': return <AttendanceCalendar onGoBack={() => setView('selection')} attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} isSuperAdmin={false} shiftSettings={shiftSettings} readOnly={true} />;
+            case 'attendance_view': return <AttendanceCalendar 
+                onGoBack={() => setView('selection')} 
+                attendanceRecords={attendanceRecords} 
+                staff={staff} 
+                tillColors={tillColors} 
+                isSuperAdmin={isSuperAdmin} 
+                shiftSettings={shiftSettings} 
+                onSaveAttendance={(t, i, d, c, det) => saveAttendance(t, i, d, c || (currentUser?.email || 'Utente'), det)}
+                onReopenAttendance={isSuperAdmin ? reopenAttendance : undefined}
+            />;
             case 'admin': return <AdminView 
                 onGoBack={() => setView('selection')} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements}
                 onUpdateTillColors={updateTillColors} onDeleteOrders={(ids, em) => deleteOrders(ids, em)} onPermanentDeleteOrder={permanentDeleteOrder} onUpdateOrder={updateOrder}
@@ -142,7 +151,7 @@ const AppContent: React.FC = () => {
                 tombolaConfig={tombolaConfig} onNavigateToTombola={() => setView('tombola')}
                 seasonalityConfig={seasonalityConfig} onUpdateSeasonality={updateSeasonality}
                 shiftSettings={shiftSettings} onUpdateShiftSettings={updateShiftSettings}
-                attendanceRecords={attendanceRecords} onDeleteAttendance={deleteAttendance} onSaveAttendance={(t, i, d) => saveAttendance(t, i, d)} onReopenAttendance={reopenAttendance}
+                attendanceRecords={attendanceRecords} onDeleteAttendance={deleteAttendance} onSaveAttendance={(t, i, d, c, det) => saveAttendance(t, i, d, c, det)} onReopenAttendance={reopenAttendance}
                 generalSettings={generalSettings} onUpdateGeneralSettings={updateGeneralSettings}
                 onSendNotification={(t,b,tg) => sendNotification(t, b, currentUser?.email || 'Sistema')}
             />;

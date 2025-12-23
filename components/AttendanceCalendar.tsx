@@ -126,7 +126,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             if (currentRecord) {
                 // Se c'è un record dettagliato, usa quello
                 if (currentRecord.attendanceDetails && currentRecord.attendanceDetails[s.id]) {
-                    initialDetails[s.id] = currentRecord.attendanceDetails[s.id];
+                    initialDetails[s.id] = currentRecord.attendanceDetails[s.id] as AttendanceStatus;
                 } 
                 // Fallback: se è in presentStaffIds ma non in details, è "present"
                 else if (currentRecord.presentStaffIds.includes(s.id)) {
@@ -168,7 +168,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         Object.entries(editingDetails).forEach(([id, status]) => {
             if (status !== 'absent') {
                 presentIds.push(id); // Tutti quelli non assenti finiscono nell'array legacy per compatibilità
-                finalDetails[id] = status;
+                finalDetails[id] = status as AttendanceStatus;
             }
         });
 
@@ -434,9 +434,10 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     <td 
                                                         key={`${person.id}-${day.dayNum}`} 
                                                         className={`
-                                                            text-center border-b border-r border-slate-200 cursor-pointer transition-colors relative
+                                                            text-center border-b border-r border-slate-200 transition-colors relative
                                                             ${day.isWorking ? 'bg-orange-50/30' : ''}
-                                                            hover:bg-slate-100
+                                                            ${status ? 'bg-white' : 'hover:bg-slate-100'}
+                                                            ${readOnly ? 'cursor-default' : 'cursor-pointer'}
                                                         `}
                                                         onClick={() => handleOpenEdit(dateStr, tillId, record)}
                                                         title={`${day.dayNum}/${currentDate.getMonth()+1} - ${person.name}`}
