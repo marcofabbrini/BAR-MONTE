@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings } from '../types';
-import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon } from './Icons';
+import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon, GridIcon, SettingsIcon } from './Icons';
 
 interface AttendanceCalendarProps {
     attendanceRecords: AttendanceRecord[];
@@ -18,7 +18,9 @@ interface AttendanceCalendarProps {
 
 const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord, onSaveAttendance, onReopenAttendance, isSuperAdmin, shiftSettings, readOnly, onGoBack }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [viewMode, setViewMode] = useState<'calendar' | 'report'>('calendar');
+    // 3 MODALITÀ: 'matrix' (Nuova Tabella), 'calendar' (Vecchio Turnario), 'services' (Disattivato)
+    const [viewMode, setViewMode] = useState<'matrix' | 'calendar' | 'services'>('matrix');
+    const [matrixShift, setMatrixShift] = useState<Shift>('a');
     
     // EDITING STATE
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -75,8 +77,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         let nightIndex = (dayIndex - 1 + 4) % 4;
         
         // Smontante: È il turno che smonta alle 08:00 (cioè la Notte di IERI)
-        // Se oggi Giorno è C (2), la notte di ieri era A (0).
-        // Relazione: (2 - 2) = 0.
         let smontanteIndex = (dayIndex - 2 + 4) % 4; 
 
         return {
@@ -85,33 +85,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             smontante: shifts[smontanteIndex]
         };
     };
-
-    const reportData = useMemo(() => {
-        const statsByShift: Record<string, { name: string, count: number }[]> = {
-            'a': [], 'b': [], 'c': [], 'd': []
-        };
-
-        const staffByShift = {
-            'a': staff.filter(s => s.shift === 'a' && isRealPerson(s.name)),
-            'b': staff.filter(s => s.shift === 'b' && isRealPerson(s.name)),
-            'c': staff.filter(s => s.shift === 'c' && isRealPerson(s.name)),
-            'd': staff.filter(s => s.shift === 'd' && isRealPerson(s.name)),
-        };
-
-        const recordsInMonth = attendanceRecords.filter(r => {
-            const d = new Date(r.date);
-            return d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear();
-        });
-
-        Object.entries(staffByShift).forEach(([shift, members]) => {
-            statsByShift[shift] = members.map(m => {
-                const count = recordsInMonth.filter(r => r.presentStaffIds.includes(m.id)).length;
-                return { name: m.name, count };
-            }).sort((a,b) => b.count - a.count);
-        });
-
-        return statsByShift;
-    }, [attendanceRecords, staff, currentDate]);
 
     const handleReopen = async (id: string) => {
         if (!onReopenAttendance || readOnly) return;
@@ -175,25 +148,43 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         }
     };
 
+    // --- LOGICA MATRICE ---
+    const matrixData = useMemo(() => {
+        const shiftStaff = staff.filter(s => s.shift === matrixShift && isRealPerson(s.name)).sort((a,b) => a.name.localeCompare(b.name));
+        const days = Array.from({ length: daysInMonth }, (_, i) => {
+            const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i + 1);
+            const shifts = getShiftsForDate(date);
+            const isWorking = shifts.day === matrixShift.toUpperCase() || shifts.night === matrixShift.toUpperCase();
+            return {
+                date,
+                dayNum: i + 1,
+                shifts,
+                isWorking
+            };
+        });
+        return { shiftStaff, days };
+    }, [staff, matrixShift, currentDate, daysInMonth]);
+
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-300 overflow-hidden h-full flex flex-col relative">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-300 overflow-hidden h-full flex flex-col relative min-h-screen md:min-h-0">
             
             {onGoBack && (
-                <div className="p-4 border-b border-slate-200 bg-white sticky top-0 z-20 flex items-center gap-2">
+                <div className="p-4 border-b border-slate-200 bg-white sticky top-0 z-30 flex items-center gap-2 shadow-sm">
                     <button onClick={onGoBack} className="flex items-center gap-1 font-bold text-slate-500 hover:text-slate-800">
                         <BackArrowIcon className="h-5 w-5" /> Indietro
                     </button>
-                    <h1 className="text-xl font-bold text-slate-800 ml-4">Calendario Presenze</h1>
+                    <h1 className="text-xl font-bold text-slate-800 ml-4 hidden md:block">Gestione Presenze</h1>
                 </div>
             )}
 
+            {/* EDIT MODAL */}
             {isEditModalOpen && (
                 <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up">
                         <div className="p-4 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
                             <div>
                                 <h3 className="font-bold text-slate-800">Modifica Presenze</h3>
-                                <p className="text-xs text-slate-500">{new Date(editingDate).toLocaleDateString()}</p>
+                                <p className="text-xs text-slate-500">{new Date(editingDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                             </div>
                             <button onClick={() => setIsEditModalOpen(false)} className="text-2xl leading-none">&times;</button>
                         </div>
@@ -245,32 +236,141 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 </div>
             )}
 
-            <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center bg-slate-50 gap-4">
-                <div className="flex gap-2">
+            {/* TOP BAR: MESE E VIEW SWITCHER */}
+            <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center bg-slate-50 gap-4 sticky top-[60px] md:top-0 z-20 shadow-sm">
+                
+                {/* 3 PULSANTI DI SELEZIONE VIEW */}
+                <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
                     <button 
-                        onClick={() => setViewMode('calendar')}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 ${viewMode === 'calendar' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200'}`}
+                        onClick={() => setViewMode('matrix')}
+                        className={`flex-1 md:flex-none px-4 py-3 rounded-xl text-xs font-bold flex flex-col md:flex-row items-center justify-center gap-2 transition-all ${viewMode === 'matrix' ? 'bg-slate-800 text-white shadow-lg scale-105' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
                     >
-                        <CalendarIcon className="h-4 w-4" /> Calendario
+                        <GridIcon className="h-5 w-5" /> 
+                        <span>Tabella Presenze</span>
                     </button>
                     <button 
-                        onClick={() => setViewMode('report')}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 ${viewMode === 'report' ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200'}`}
+                        onClick={() => setViewMode('calendar')}
+                        className={`flex-1 md:flex-none px-4 py-3 rounded-xl text-xs font-bold flex flex-col md:flex-row items-center justify-center gap-2 transition-all ${viewMode === 'calendar' ? 'bg-slate-800 text-white shadow-lg scale-105' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
                     >
-                        <ClipboardIcon className="h-4 w-4" /> Report Tabellare
+                        <CalendarIcon className="h-5 w-5" /> 
+                        <span>Turnario</span>
+                    </button>
+                    <button 
+                        disabled
+                        className="flex-1 md:flex-none px-4 py-3 rounded-xl text-xs font-bold flex flex-col md:flex-row items-center justify-center gap-2 bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+                    >
+                        <SettingsIcon className="h-5 w-5" /> 
+                        <span>Servizi</span>
                     </button>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500">←</button>
-                    <h2 className="text-lg font-black text-slate-800 uppercase w-40 text-center">
-                        {monthNames[currentDate.getMonth()]} <span className="text-slate-400">{currentDate.getFullYear()}</span>
+                {/* CONTROLLI MESE */}
+                <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
+                    <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">←</button>
+                    <h2 className="text-lg font-black text-slate-800 uppercase w-32 md:w-40 text-center leading-none">
+                        {monthNames[currentDate.getMonth()]} <span className="text-xs text-slate-400 block font-medium">{currentDate.getFullYear()}</span>
                     </h2>
-                    <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-200 rounded-full text-slate-500">→</button>
+                    <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">→</button>
                 </div>
             </div>
 
-            <div className="flex-grow overflow-auto p-2 md:p-4">
+            <div className="flex-grow overflow-auto bg-white relative">
+                
+                {/* 1. MATRIX VIEW (NUOVA) */}
+                {viewMode === 'matrix' && (
+                    <div className="flex flex-col h-full">
+                        {/* Selettore Turno per Matrice */}
+                        <div className="flex justify-center gap-4 p-4 bg-slate-50 border-b border-slate-200 sticky top-0 left-0 z-10">
+                            <span className="text-xs font-bold text-slate-500 uppercase self-center">Seleziona Turno:</span>
+                            {(['a', 'b', 'c', 'd'] as Shift[]).map(shift => {
+                                const tillId = `T${shift.toUpperCase()}`;
+                                const color = getShiftColor(tillId);
+                                return (
+                                    <button 
+                                        key={shift}
+                                        onClick={() => setMatrixShift(shift)}
+                                        className={`
+                                            w-10 h-10 rounded-full font-black text-sm shadow-sm transition-all border-2
+                                            ${matrixShift === shift ? 'scale-110 ring-2 ring-offset-2 ring-slate-300' : 'opacity-60 hover:opacity-100'}
+                                        `}
+                                        style={{ backgroundColor: color, color: 'white', borderColor: matrixShift === shift ? 'white' : 'transparent' }}
+                                    >
+                                        {shift.toUpperCase()}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex-grow overflow-auto relative">
+                            <table className="w-full text-xs border-collapse">
+                                <thead className="bg-slate-100 text-slate-600 sticky top-0 z-20 shadow-sm">
+                                    <tr>
+                                        <th className="p-3 text-left font-bold border-b border-r border-slate-200 min-w-[120px] sticky left-0 bg-slate-100 z-30">
+                                            Nominativo
+                                        </th>
+                                        {matrixData.days.map(day => (
+                                            <th 
+                                                key={day.dayNum} 
+                                                className={`
+                                                    p-1 min-w-[35px] text-center border-b border-r border-slate-200 font-bold
+                                                    ${day.isWorking ? 'bg-orange-100 text-orange-800' : ''}
+                                                    ${[0,6].includes(day.date.getDay()) ? 'text-red-500' : ''}
+                                                `}
+                                            >
+                                                <div className="flex flex-col">
+                                                    <span>{day.dayNum}</span>
+                                                    <span className="text-[9px] opacity-70 font-normal">{['D','L','M','M','G','V','S'][day.date.getDay()]}</span>
+                                                </div>
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {matrixData.shiftStaff.length === 0 && (
+                                        <tr><td colSpan={daysInMonth + 1} className="p-8 text-center text-slate-400 italic">Nessun dipendente in questo turno.</td></tr>
+                                    )}
+                                    {matrixData.shiftStaff.map(person => (
+                                        <tr key={person.id} className="hover:bg-slate-50 transition-colors group">
+                                            <td className="p-3 border-b border-r border-slate-200 font-medium text-slate-800 sticky left-0 bg-white group-hover:bg-slate-50 z-10 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                                                {person.name}
+                                            </td>
+                                            {matrixData.days.map(day => {
+                                                const tillId = `T${matrixShift.toUpperCase()}`;
+                                                const dateStr = day.date.toISOString().split('T')[0];
+                                                const record = attendanceRecords.find(r => r.date === dateStr && r.tillId === tillId);
+                                                const isPresent = record?.presentStaffIds.includes(person.id);
+                                                
+                                                return (
+                                                    <td 
+                                                        key={`${person.id}-${day.dayNum}`} 
+                                                        className={`
+                                                            text-center border-b border-r border-slate-200 cursor-pointer transition-colors relative
+                                                            ${day.isWorking ? 'bg-orange-50/30' : ''}
+                                                            ${isPresent ? 'bg-green-50' : 'hover:bg-slate-100'}
+                                                        `}
+                                                        onClick={() => handleOpenEdit(dateStr, tillId, record)}
+                                                        title={`${day.dayNum}/${currentDate.getMonth()+1} - Clicca per modificare`}
+                                                    >
+                                                        {isPresent && (
+                                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div className="p-2 text-[10px] text-slate-400 text-center bg-slate-50 border-t border-slate-200">
+                            Le colonne evidenziate indicano i giorni di servizio previsti per il turno {matrixShift.toUpperCase()}. Clicca su una casella per modificare le presenze del giorno.
+                        </div>
+                    </div>
+                )}
+
+                {/* 2. CALENDAR VIEW (VECCHIO TURNARIO) */}
                 {viewMode === 'calendar' && (
                     <div className="grid grid-cols-7 border-l border-t border-slate-300">
                         {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => (
@@ -287,7 +387,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             const dateStr = dateObj.toISOString().split('T')[0];
                             const shifts = getShiftsForDate(dateObj);
                             
-                            // Logica Giorno Corrente basata su data locale
+                            // Logica Giorno Corrente
                             const today = new Date();
                             const isToday = today.toDateString() === dateObj.toDateString();
 
@@ -321,36 +421,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                         <span className="hidden md:inline text-[10px] text-slate-400 font-normal ml-1">({shifts.day}/{shifts.night})</span>
                                     </div>
                                     
-                                    {/* MOBILE VIEW: Side-by-side columns inside cell */}
-                                    <div className="flex md:hidden flex-row justify-between items-stretch h-full gap-0.5">
-                                        {timeSlots.map((slot, idx) => {
-                                            const tillId = `T${slot.shift}`;
-                                            const color = getShiftColor(tillId);
-                                            const record = attendanceRecords.find(r => r.date === slot.dateRef && r.tillId === tillId);
-                                            let realPeopleCount = record ? record.presentStaffIds.filter(id => {
-                                                const member = staff.find(s => s.id === id);
-                                                return member && isRealPerson(member.name);
-                                            }).length : 0;
-
-                                            return (
-                                                <div 
-                                                    key={`${dayNum}-mob-${idx}`} 
-                                                    onClick={() => handleOpenEdit(slot.dateRef, tillId, record)}
-                                                    className={`
-                                                        flex flex-col items-center justify-center flex-1 rounded border
-                                                        ${record ? 'bg-slate-50' : 'bg-transparent opacity-50'}
-                                                    `}
-                                                >
-                                                    <span className="text-[7px] font-bold text-slate-400 leading-none mb-0.5">{slot.label.short}</span>
-                                                    <div className="w-2 h-2 rounded-full my-0.5" style={{ backgroundColor: color }}></div>
-                                                    <span className="text-[9px] font-black text-slate-700 leading-none">{record ? realPeopleCount : '-'}</span>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-
                                     {/* DESKTOP VIEW: Stacked rows */}
-                                    <div className="hidden md:flex flex-col gap-1.5">
+                                    <div className="flex flex-col gap-1.5 h-full justify-evenly">
                                         {timeSlots.map((slot, idx) => {
                                             const tillId = `T${slot.shift}`;
                                             const color = getShiftColor(tillId);
@@ -365,6 +437,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     }).length;
                                             }
 
+                                            // In readOnly mode (es. utente normale), mostra solo se c'è un record o se è admin
                                             if (!record && !isSuperAdmin && readOnly) return null;
 
                                             return (
@@ -404,43 +477,12 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                     </div>
                 )}
 
-                {viewMode === 'report' && (
-                    <div className="max-w-6xl mx-auto p-4">
-                        <div className="bg-indigo-50 border border-indigo-100 rounded-lg p-4 mb-6 text-center">
-                            <h3 className="text-indigo-900 font-bold text-lg">Riepilogo Presenze - {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}</h3>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {(['a', 'b', 'c', 'd'] as string[]).map(shiftKey => {
-                                const shiftData = reportData[shiftKey];
-                                const tillId = `T${shiftKey.toUpperCase()}`;
-                                const color = getShiftColor(tillId);
-
-                                return (
-                                    <div key={shiftKey} className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden flex flex-col">
-                                        <div className="p-3 text-white font-bold uppercase text-center tracking-wider" style={{ backgroundColor: color }}>
-                                            Turno {shiftKey.toUpperCase()}
-                                        </div>
-                                        <div className="p-0 flex-grow">
-                                            {shiftData.length === 0 ? (
-                                                <p className="text-center text-slate-400 py-4 text-xs italic">Nessun dato</p>
-                                            ) : (
-                                                <table className="w-full text-sm">
-                                                    <tbody className="divide-y divide-slate-100">
-                                                        {shiftData.map((person, idx) => (
-                                                            <tr key={idx} className="hover:bg-slate-50">
-                                                                <td className="p-3 text-slate-700 font-medium">{person.name}</td>
-                                                                <td className="p-3 text-right font-bold text-slate-900">{person.count}</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                {/* 3. SERVICES VIEW (PLACEHOLDER) */}
+                {viewMode === 'services' && (
+                    <div className="flex flex-col items-center justify-center h-full text-slate-400 p-10">
+                        <SettingsIcon className="h-16 w-16 mb-4 opacity-50" />
+                        <h3 className="text-xl font-bold">Sezione in Arrivo</h3>
+                        <p>La gestione servizi sarà disponibile presto.</p>
                     </div>
                 )}
             </div>
