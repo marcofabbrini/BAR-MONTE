@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings } from '../types';
+import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings, AttendanceStatus } from '../types';
 import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon, GridIcon, SettingsIcon } from './Icons';
 
 interface AttendanceCalendarProps {
@@ -8,13 +8,25 @@ interface AttendanceCalendarProps {
     staff: StaffMember[];
     tillColors: TillColors;
     onDeleteRecord?: (id: string) => Promise<void>;
-    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string) => Promise<void>;
+    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string, details?: Record<string, AttendanceStatus>) => Promise<void>;
     onReopenAttendance?: (id: string) => Promise<void>;
     isSuperAdmin?: boolean;
     shiftSettings?: ShiftSettings;
     readOnly?: boolean;
     onGoBack?: () => void;
 }
+
+// Configurazione Stati Presenza
+const STATUS_CONFIG: Record<AttendanceStatus | 'absent', { label: string, short: string, color: string, textColor: string }> = {
+    'present': { label: 'Presente', short: 'P', color: 'bg-green-100 border-green-300', textColor: 'text-green-800' },
+    'substitution': { label: 'Sostituzione', short: 'S', color: 'bg-blue-100 border-blue-300', textColor: 'text-blue-800' },
+    'mission': { label: 'Missione', short: 'M', color: 'bg-purple-100 border-purple-300', textColor: 'text-purple-800' },
+    'sick': { label: 'Malattia', short: 'X', color: 'bg-red-100 border-red-300', textColor: 'text-red-800' },
+    'leave': { label: 'Ferie', short: 'F', color: 'bg-yellow-100 border-yellow-300', textColor: 'text-yellow-800' },
+    'rest': { label: 'Riposo Comp.', short: 'R', color: 'bg-slate-200 border-slate-400', textColor: 'text-slate-700' },
+    'permit': { label: 'Permesso', short: 'H', color: 'bg-orange-100 border-orange-300', textColor: 'text-orange-800' },
+    'absent': { label: 'Assente', short: '', color: 'bg-white border-slate-200', textColor: 'text-slate-400' }
+};
 
 const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord, onSaveAttendance, onReopenAttendance, isSuperAdmin, shiftSettings, readOnly, onGoBack }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -26,7 +38,10 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingDate, setEditingDate] = useState<string>('');
     const [editingTillId, setEditingTillId] = useState<string>('');
-    const [editingPresentIds, setEditingPresentIds] = useState<string[]>([]);
+    
+    // Mappa locale per editing: { staffId: status }
+    const [editingDetails, setEditingDetails] = useState<Record<string, AttendanceStatus | 'absent'>>({});
+    
     const [editingRecord, setEditingRecord] = useState<AttendanceRecord | undefined>(undefined);
 
     const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
@@ -100,31 +115,70 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         setEditingTillId(tillId);
         setEditingRecord(currentRecord);
         
-        let initialIds: string[] = [];
-        if (currentRecord) {
-            initialIds = [...currentRecord.presentStaffIds];
-        } else {
-            const shift = tillId.replace('T', '').toLowerCase();
-            const cassaUser = staff.find(s => s.shift === shift && s.name.toLowerCase().includes('cassa'));
-            if(cassaUser) initialIds.push(cassaUser.id);
-        }
+        // Inizializza mappa stati
+        const initialDetails: Record<string, AttendanceStatus | 'absent'> = {};
         
-        setEditingPresentIds(initialIds);
+        // Trova staff del turno
+        const shift = tillId.replace('T', '').toLowerCase();
+        const shiftStaff = staff.filter(s => s.shift === shift);
+
+        shiftStaff.forEach(s => {
+            if (currentRecord) {
+                // Se c'è un record dettagliato, usa quello
+                if (currentRecord.attendanceDetails && currentRecord.attendanceDetails[s.id]) {
+                    initialDetails[s.id] = currentRecord.attendanceDetails[s.id];
+                } 
+                // Fallback: se è in presentStaffIds ma non in details, è "present"
+                else if (currentRecord.presentStaffIds.includes(s.id)) {
+                    initialDetails[s.id] = 'present';
+                } else {
+                    initialDetails[s.id] = 'absent';
+                }
+            } else {
+                // Nuovo record: Cassa presente di default, altri assenti
+                if (s.name.toLowerCase().includes('cassa')) {
+                    initialDetails[s.id] = 'present';
+                } else {
+                    initialDetails[s.id] = 'absent';
+                }
+            }
+        });
+        
+        setEditingDetails(initialDetails);
         setIsEditModalOpen(true);
     };
 
-    const toggleEditingPresence = (id: string) => {
+    const updateStaffStatus = (id: string, status: AttendanceStatus | 'absent') => {
         const member = staff.find(s => s.id === id);
-        if (member && member.name.toLowerCase().includes('cassa')) return;
+        if (member && member.name.toLowerCase().includes('cassa')) return; // Cassa sempre locked
 
-        setEditingPresentIds(prev => 
-            prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]
-        );
+        setEditingDetails(prev => ({
+            ...prev,
+            [id]: status
+        }));
     };
 
     const saveEditing = async () => {
         if (!onSaveAttendance) return;
-        await onSaveAttendance(editingTillId, editingPresentIds, editingDate, editingRecord?.closedBy || 'Admin');
+        
+        // Converti la mappa locale nel formato per il DB
+        const presentIds: string[] = [];
+        const finalDetails: Record<string, AttendanceStatus> = {};
+
+        Object.entries(editingDetails).forEach(([id, status]) => {
+            if (status !== 'absent') {
+                presentIds.push(id); // Tutti quelli non assenti finiscono nell'array legacy per compatibilità
+                finalDetails[id] = status;
+            }
+        });
+
+        await onSaveAttendance(
+            editingTillId, 
+            presentIds, 
+            editingDate, 
+            editingRecord?.closedBy || 'Admin',
+            finalDetails
+        );
         setIsEditModalOpen(false);
     };
 
@@ -165,6 +219,22 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         return { shiftStaff, days };
     }, [staff, matrixShift, currentDate, daysInMonth]);
 
+    const getStatusForCell = (personId: string, record?: AttendanceRecord) => {
+        if (!record) return null;
+        
+        // 1. Cerca nel dettaglio specifico
+        if (record.attendanceDetails && record.attendanceDetails[personId]) {
+            return record.attendanceDetails[personId];
+        }
+        
+        // 2. Fallback array legacy (Assume Presente)
+        if (record.presentStaffIds.includes(personId)) {
+            return 'present';
+        }
+
+        return null; // Assente
+    };
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-300 overflow-hidden h-full flex flex-col relative min-h-screen md:min-h-0">
             
@@ -180,7 +250,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             {/* EDIT MODAL */}
             {isEditModalOpen && (
                 <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-slide-up">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
                         <div className="p-4 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
                             <div>
                                 <h3 className="font-bold text-slate-800">Modifica Presenze</h3>
@@ -197,38 +267,57 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             </div>
                         )}
 
-                        <div className="p-4 max-h-[50vh] overflow-y-auto">
-                            <div className="grid grid-cols-2 gap-2">
+                        <div className="p-4 overflow-y-auto flex-grow">
+                            <div className="space-y-2">
                                 {editingStaffList.map(member => {
-                                    const isSelected = editingPresentIds.includes(member.id);
+                                    const currentStatus = editingDetails[member.id] || 'absent';
                                     const isCassa = member.name.toLowerCase().includes('cassa');
+                                    
                                     return (
-                                        <button 
+                                        <div 
                                             key={member.id} 
-                                            onClick={() => toggleEditingPresence(member.id)}
-                                            disabled={isCassa}
                                             className={`
-                                                flex flex-col items-center justify-center p-2 rounded-lg border transition-all
-                                                ${isCassa ? 'opacity-70 bg-slate-100 cursor-not-allowed' : ''}
-                                                ${isSelected && !isCassa ? 'border-green-500 bg-green-50' : 'border-slate-200'}
+                                                flex items-center justify-between p-3 rounded-lg border transition-all
+                                                ${currentStatus !== 'absent' ? 'bg-slate-50 border-slate-300' : 'bg-white border-slate-100'}
                                             `}
                                         >
-                                            <span className="text-xl">{member.icon || '👤'}</span>
-                                            <span className="text-xs font-bold">{member.name}</span>
-                                            {isCassa ? <LockIcon className="h-3 w-3 mt-1 text-slate-400"/> : isSelected && <CheckIcon className="h-4 w-4 mt-1 text-green-600"/>}
-                                        </button>
+                                            <div className="flex items-center gap-3">
+                                                <div className="text-2xl">{member.icon || '👤'}</div>
+                                                <span className="text-sm font-bold text-slate-700">{member.name}</span>
+                                            </div>
+
+                                            {isCassa ? (
+                                                <span className="text-xs font-bold text-slate-400 flex items-center gap-1 bg-slate-100 px-2 py-1 rounded">
+                                                    <LockIcon className="h-3 w-3"/> Presente
+                                                </span>
+                                            ) : (
+                                                <select 
+                                                    value={currentStatus}
+                                                    onChange={(e) => updateStaffStatus(member.id, e.target.value as AttendanceStatus | 'absent')}
+                                                    className={`
+                                                        border rounded-md px-2 py-1.5 text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-slate-300
+                                                        ${currentStatus !== 'absent' ? STATUS_CONFIG[currentStatus].textColor : 'text-slate-400'}
+                                                        ${currentStatus !== 'absent' ? 'bg-white shadow-sm' : 'bg-slate-50'}
+                                                    `}
+                                                >
+                                                    {Object.entries(STATUS_CONFIG).map(([key, conf]) => (
+                                                        <option key={key} value={key}>{conf.label}</option>
+                                                    ))}
+                                                </select>
+                                            )}
+                                        </div>
                                     )
                                 })}
                             </div>
                         </div>
-                        <div className="p-4 border-t border-slate-200 flex justify-between items-center gap-3">
+                        <div className="p-4 border-t border-slate-200 flex justify-between items-center gap-3 bg-slate-50">
                             {isSuperAdmin && editingRecord?.closedAt && onReopenAttendance ? (
                                 <button onClick={() => handleReopen(editingRecord.id)} className="bg-red-100 text-red-700 hover:bg-red-200 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 shadow-sm border border-red-200">
                                     <LockOpenIcon className="h-4 w-4" /> RIAPRI TURNO
                                 </button>
                             ) : <div></div>}
                             
-                            <button onClick={saveEditing} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2">
+                            <button onClick={saveEditing} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-blue-700">
                                 <SaveIcon className="h-4 w-4" /> Salva Modifiche
                             </button>
                         </div>
@@ -338,7 +427,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                 const tillId = `T${matrixShift.toUpperCase()}`;
                                                 const dateStr = day.date.toISOString().split('T')[0];
                                                 const record = attendanceRecords.find(r => r.date === dateStr && r.tillId === tillId);
-                                                const isPresent = record?.presentStaffIds.includes(person.id);
+                                                
+                                                const status = getStatusForCell(person.id, record);
                                                 
                                                 return (
                                                     <td 
@@ -346,14 +436,21 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                         className={`
                                                             text-center border-b border-r border-slate-200 cursor-pointer transition-colors relative
                                                             ${day.isWorking ? 'bg-orange-50/30' : ''}
-                                                            ${isPresent ? 'bg-green-50' : 'hover:bg-slate-100'}
+                                                            hover:bg-slate-100
                                                         `}
                                                         onClick={() => handleOpenEdit(dateStr, tillId, record)}
-                                                        title={`${day.dayNum}/${currentDate.getMonth()+1} - Clicca per modificare`}
+                                                        title={`${day.dayNum}/${currentDate.getMonth()+1} - ${person.name}`}
                                                     >
-                                                        {isPresent && (
-                                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                                        {status && (
+                                                            <div className="absolute inset-0 flex items-center justify-center p-1">
+                                                                <div 
+                                                                    className={`
+                                                                        w-full h-full flex items-center justify-center rounded font-bold text-[10px] uppercase shadow-sm border
+                                                                        ${STATUS_CONFIG[status].color} ${STATUS_CONFIG[status].textColor}
+                                                                    `}
+                                                                >
+                                                                    {STATUS_CONFIG[status].short}
+                                                                </div>
                                                             </div>
                                                         )}
                                                     </td>
@@ -364,8 +461,13 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                 </tbody>
                             </table>
                         </div>
-                        <div className="p-2 text-[10px] text-slate-400 text-center bg-slate-50 border-t border-slate-200">
-                            Le colonne evidenziate indicano i giorni di servizio previsti per il turno {matrixShift.toUpperCase()}. Clicca su una casella per modificare le presenze del giorno.
+                        <div className="p-2 text-[10px] text-slate-400 text-center bg-slate-50 border-t border-slate-200 flex justify-center gap-4 flex-wrap">
+                            {Object.entries(STATUS_CONFIG).filter(([k]) => k !== 'absent').map(([key, conf]) => (
+                                <span key={key} className="flex items-center gap-1">
+                                    <span className={`w-3 h-3 rounded border text-[8px] flex items-center justify-center ${conf.color} ${conf.textColor}`}>{conf.short}</span>
+                                    <span>{conf.label}</span>
+                                </span>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -430,6 +532,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                             
                                             let realPeopleCount = 0;
                                             if (record) {
+                                                // Conteggio semplificato: chiunque NON sia assente e NON sia cassa
                                                 realPeopleCount = record.presentStaffIds
                                                     .filter(id => {
                                                         const member = staff.find(s => s.id === id);

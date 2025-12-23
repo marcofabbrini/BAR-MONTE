@@ -151,12 +151,15 @@ export interface GeneralSettings {
     waterQuotaPrice: number;
 }
 
+export type AttendanceStatus = 'present' | 'substitution' | 'mission' | 'sick' | 'leave' | 'rest' | 'permit';
+
 export interface AttendanceRecord {
     id: string;
     tillId: string;
     date: string;
     timestamp: string;
-    presentStaffIds: string[];
+    presentStaffIds: string[]; // Legacy & Quick Lookup
+    attendanceDetails?: Record<string, AttendanceStatus>; // Mappa dettagliata ID -> Status
     closedBy?: string; // Nome di chi ha chiuso il turno
     closedAt?: string; // Timestamp chiusura
 }

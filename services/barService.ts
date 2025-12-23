@@ -20,7 +20,7 @@ import {
     DocumentSnapshot,
     QuerySnapshot
 } from 'firebase/firestore';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus } from '../types';
 
 export const BarService = {
     // --- LISTENERS ---
@@ -202,7 +202,7 @@ export const BarService = {
     removeAdmin: async (id: string) => { await deleteDoc(doc(db, 'admins', id)); },
 
     // Attendance
-    saveAttendance: async (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string) => {
+    saveAttendance: async (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string, attendanceDetails?: Record<string, AttendanceStatus>) => {
         const dateToUse = dateOverride || new Date().toISOString().split('T')[0];
         const docId = `${dateToUse}_${tillId}`; 
         
@@ -212,6 +212,10 @@ export const BarService = {
             timestamp: new Date().toISOString(), 
             presentStaffIds 
         };
+
+        if (attendanceDetails) {
+            dataToSave.attendanceDetails = attendanceDetails;
+        }
 
         if (closedBy) {
             dataToSave.closedBy = closedBy;

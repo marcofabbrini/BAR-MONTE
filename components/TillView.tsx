@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel, TombolaConfig, TombolaTicket, AttendanceRecord, GeneralSettings } from '../types';
+import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel, TombolaConfig, TombolaTicket, AttendanceRecord, GeneralSettings, AttendanceStatus } from '../types';
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
@@ -15,7 +15,7 @@ interface TillViewProps {
     allOrders: Order[];
     onCompleteOrder: (newOrder: Omit<Order, 'id'>) => Promise<void>;
     tillColors?: TillColors;
-    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string) => Promise<void>;
+    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string, details?: Record<string, AttendanceStatus>) => Promise<void>;
     onPlaceAnalottoBet?: (bet: Omit<AnalottoBet, 'id' | 'timestamp'>) => Promise<void>;
     tombolaConfig?: TombolaConfig;
     tombolaTickets?: TombolaTicket[];
@@ -183,8 +183,12 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         }
 
         if (onSaveAttendance) {
+            // Genera mappa dettagli default: se presenti -> 'present'
+            const details: Record<string, AttendanceStatus> = {};
+            presentStaffIds.forEach(id => details[id] = 'present');
+
             // Registro come "Operatore Cassa [Turno]"
-            onSaveAttendance(till.id, presentStaffIds, today, `Operatore Cassa ${till.shift.toUpperCase()}`);
+            onSaveAttendance(till.id, presentStaffIds, today, `Operatore Cassa ${till.shift.toUpperCase()}`, details);
         }
 
         setIsAttendanceModalOpen(false);
@@ -253,7 +257,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
 
-    // --- ANALOTTO LOGIC ---
+    // ... (Logiche Analotto/Tombola invariate)
     const handleQuickAnalotto = async (amount: number) => {
         if (!selectedStaffId) {
             alert("Seleziona prima un utente per giocare.");
@@ -277,7 +281,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, products, allStaff,
         }
     };
 
-    // --- TOMBOLA LOGIC ---
     const handleQuickTombola = async (quantity: number) => {
         if (!selectedStaffId) {
             alert("Seleziona prima un utente per giocare.");

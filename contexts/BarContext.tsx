@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus } from '../types';
 import { BarService } from '../services/barService';
 
 interface BarContextType {
@@ -36,7 +36,7 @@ interface BarContextType {
     stockCorrection: (pid: string, stock: number) => Promise<void>;
     addAdmin: (email: string, by: string) => Promise<void>;
     removeAdmin: (id: string) => Promise<void>;
-    saveAttendance: (till: string, ids: string[], date?: string, closedBy?: string) => Promise<void>;
+    saveAttendance: (till: string, ids: string[], date?: string, closedBy?: string, details?: Record<string, AttendanceStatus>) => Promise<void>;
     reopenAttendance: (id: string) => Promise<void>;
     deleteAttendance: (id: string) => Promise<void>;
     updateTillColors: (c: TillColors) => Promise<void>;
@@ -149,7 +149,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const stockCorrection = (p: string, s: number) => BarService.stockCorrection(p, s);
     const addAdmin = (e: string, by: string) => BarService.addAdmin(e, by);
     const removeAdmin = (id: string) => BarService.removeAdmin(id);
-    const saveAttendance = (t: string, i: string[], d?: string, c?: string) => BarService.saveAttendance(t, i, d, c);
+    const saveAttendance = (t: string, i: string[], d?: string, c?: string, det?: Record<string, AttendanceStatus>) => BarService.saveAttendance(t, i, d, c, det);
     const reopenAttendance = (id: string) => BarService.reopenAttendance(id);
     const deleteAttendance = (id: string) => BarService.deleteAttendance(id);
     const updateTillColors = (c: TillColors) => BarService.updateTillColors(c);
