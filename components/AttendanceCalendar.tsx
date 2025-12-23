@@ -143,9 +143,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         }
     };
 
-    const handleOpenEdit = (date: string, tillId: string, currentRecord?: AttendanceRecord) => {
+    const handleOpenEdit = (dateStr: string, tillId: string, currentRecord?: AttendanceRecord) => {
         if (readOnly) return;
-        setEditingDate(date);
+        setEditingDate(dateStr);
         setEditingTillId(tillId);
         setEditingRecord(currentRecord);
         
@@ -155,6 +155,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         // Trova staff del turno
         const shift = tillId.replace('T', '').toLowerCase();
         const shiftStaff = staff.filter(s => s.shift === shift);
+
+        // Calcola il gruppo di riposo per questa data/turno
+        const rcGroup = getRestingSubGroup(shift, new Date(dateStr));
 
         shiftStaff.forEach(s => {
             if (currentRecord) {
@@ -169,11 +172,16 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                     initialDetails[s.id] = 'absent';
                 }
             } else {
-                // Nuovo record: Cassa presente di default, altri assenti
+                // Nuovo record
                 if (s.name.toLowerCase().includes('cassa')) {
                     initialDetails[s.id] = 'present';
                 } else {
-                    initialDetails[s.id] = 'absent';
+                    // SE è il giorno di salto dell'utente, pre-imposta "Rest" invece di "Absent"
+                    if (s.rcSubGroup === rcGroup) {
+                        initialDetails[s.id] = 'rest';
+                    } else {
+                        initialDetails[s.id] = 'absent';
+                    }
                 }
             }
         });
@@ -283,6 +291,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
         return null; // Assente
     };
+
+    const todayStr = new Date().toISOString().split('T')[0];
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-300 overflow-hidden h-full flex flex-col relative min-h-screen md:min-h-0">
@@ -468,42 +478,52 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                         <th className="p-3 text-left font-bold border-b border-r border-slate-200 min-w-[200px] sticky left-0 bg-slate-100 z-30">
                                             Nominativo
                                         </th>
-                                        {matrixData.days.map(day => (
-                                            <th 
-                                                key={day.dayNum} 
-                                                className={`
-                                                    p-1 min-w-[35px] text-center border-b border-r border-slate-200 font-bold
-                                                    ${day.isWorking ? 'bg-orange-100 text-orange-800' : ''}
-                                                    ${[0,6].includes(day.date.getDay()) ? 'text-red-500' : ''}
-                                                `}
-                                            >
-                                                <div className="flex flex-col">
-                                                    <span>{day.dayNum}</span>
-                                                    <span className="text-[9px] opacity-70 font-normal">{['D','L','M','M','G','V','S'][day.date.getDay()]}</span>
-                                                </div>
-                                            </th>
-                                        ))}
+                                        {matrixData.days.map(day => {
+                                            const isToday = day.date.toISOString().split('T')[0] === todayStr;
+                                            return (
+                                                <th 
+                                                    key={day.dayNum} 
+                                                    className={`
+                                                        p-1 min-w-[35px] text-center border-b border-r border-slate-200 font-bold relative
+                                                        ${day.isWorking ? 'bg-orange-100 text-orange-800' : ''}
+                                                        ${[0,6].includes(day.date.getDay()) ? 'text-red-500' : ''}
+                                                        ${isToday ? '!border-l-2 !border-r-2 !border-t-2 !border-red-600 bg-red-50/20' : ''}
+                                                    `}
+                                                >
+                                                    <div className="flex flex-col relative z-10">
+                                                        <span>{day.dayNum}</span>
+                                                        <span className="text-[9px] opacity-70 font-normal">{['D','L','M','M','G','V','S'][day.date.getDay()]}</span>
+                                                    </div>
+                                                </th>
+                                            );
+                                        })}
                                     </tr>
                                     {/* RIGA 2: RIPOSI COMPENSATIVI (Salto) */}
                                     <tr className="bg-slate-200 text-slate-600 text-[10px]">
                                         <th className="p-2 text-right font-bold border-b border-r border-slate-300 sticky left-0 bg-slate-200 z-30 italic">
                                             Salto (Riposo Comp.):
                                         </th>
-                                        {matrixData.days.map(day => (
-                                            <th 
-                                                key={`rc-${day.dayNum}`} 
-                                                className="p-1 text-center border-b border-r border-slate-300 font-black text-purple-700 bg-purple-50"
-                                            >
-                                                {day.rcGroup ? `S-${day.rcGroup}` : '-'}
-                                            </th>
-                                        ))}
+                                        {matrixData.days.map(day => {
+                                            const isToday = day.date.toISOString().split('T')[0] === todayStr;
+                                            return (
+                                                <th 
+                                                    key={`rc-${day.dayNum}`} 
+                                                    className={`
+                                                        p-1 text-center border-b border-r border-slate-300 font-black text-purple-700 bg-purple-50
+                                                        ${isToday ? '!border-l-2 !border-r-2 !border-red-600 bg-red-50/20' : ''}
+                                                    `}
+                                                >
+                                                    {day.rcGroup ? `S-${day.rcGroup}` : '-'}
+                                                </th>
+                                            );
+                                        })}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {matrixData.shiftStaff.length === 0 && (
                                         <tr><td colSpan={daysInMonth + 1} className="p-8 text-center text-slate-400 italic">Nessun dipendente in questo turno.</td></tr>
                                     )}
-                                    {matrixData.shiftStaff.map(person => (
+                                    {matrixData.shiftStaff.map((person, personIndex) => (
                                         <tr key={person.id} className="hover:bg-slate-50 transition-colors group">
                                             <td className="p-3 border-b border-r border-slate-200 font-medium text-slate-800 sticky left-0 bg-white group-hover:bg-slate-50 z-10 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                                                 <div className="flex flex-col">
@@ -522,10 +542,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                 const record = attendanceRecords.find(r => r.date === dateStr && r.tillId === tillId);
                                                 
                                                 const status = getStatusForCell(person.id, record);
+                                                const isToday = dateStr === todayStr;
                                                 
                                                 // Logica Salto Turno Personale
                                                 const isJumpDay = day.rcGroup === person.rcSubGroup;
                                                 
+                                                // È l'ultima riga?
+                                                const isLastRow = personIndex === matrixData.shiftStaff.length - 1;
+
                                                 return (
                                                     <td 
                                                         key={`${person.id}-${day.dayNum}`} 
@@ -533,14 +557,16 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                             text-center border-b border-r border-slate-200 transition-colors relative
                                                             ${day.isWorking ? 'bg-orange-50/30' : ''}
                                                             ${status ? 'bg-white' : 'hover:bg-slate-100'}
-                                                            ${readOnly || isJumpDay ? 'cursor-default' : 'cursor-pointer'}
-                                                            ${isJumpDay ? 'bg-slate-200/50' : ''}
+                                                            ${readOnly ? 'cursor-default' : 'cursor-pointer'}
+                                                            ${isJumpDay && !status ? 'bg-slate-200/50' : ''}
+                                                            ${isToday ? '!border-l-2 !border-r-2 !border-red-600 bg-red-50/10' : ''}
+                                                            ${isToday && isLastRow ? '!border-b-2' : ''}
                                                         `}
-                                                        onClick={() => !isJumpDay && handleOpenEdit(dateStr, tillId, record)}
+                                                        onClick={() => handleOpenEdit(dateStr, tillId, record)}
                                                         title={`${day.dayNum}/${currentDate.getMonth()+1} - ${person.name}`}
                                                     >
-                                                        {/* Se è giorno di salto, mostra "R" forzato se non c'è altro status, oppure mostra status se manuale */}
-                                                        {isJumpDay ? (
+                                                        {/* Visualizza R se è giorno di salto E non c'è status esplicito, MA cliccabile per editing */}
+                                                        {(isJumpDay && !status) ? (
                                                             <div className="absolute inset-0 flex items-center justify-center p-1 opacity-50">
                                                                 <div className="w-full h-full flex items-center justify-center rounded font-bold text-[10px] bg-slate-300 text-slate-600 border border-slate-400">
                                                                     R
