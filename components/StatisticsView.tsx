@@ -21,12 +21,30 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     const { startDate, endDate, selectedShift, selectedStaffId, selectedProductId } = filters;
     const { setStartDate, setEndDate, setSelectedShift, setSelectedStaffId, setSelectedProductId } = onSetFilters;
 
-    // LOCAL STATES FOR CHART FILTERS
-    const [waterChartFilter, setWaterChartFilter] = useState<'all' | 'A' | 'B' | 'C' | 'D'>('all');
-    const [shiftRevenueFilter, setShiftRevenueFilter] = useState<'all' | 'A' | 'B' | 'C' | 'D'>('all');
+    // LOCAL STATES FOR CHART FILTERS (Multi-select)
+    const [waterChartFilter, setWaterChartFilter] = useState<string[]>(['A', 'B', 'C', 'D']);
+    const [shiftRevenueFilter, setShiftRevenueFilter] = useState<string[]>(['A', 'B', 'C', 'D']);
 
     const activeOrders = useMemo(() => filteredOrders.filter(o => !o.isDeleted), [filteredOrders]);
     const totalSales = useMemo(() => activeOrders.reduce((sum, order) => sum + order.total, 0), [activeOrders]);
+
+    // Helper per toggle filtri multipli
+    const toggleChartFilter = (currentFilters: string[], setFilters: (f: string[]) => void, value: string) => {
+        if (value === 'all') {
+            setFilters(['A', 'B', 'C', 'D']);
+            return;
+        }
+        
+        let newFilters = [...currentFilters];
+        if (newFilters.includes(value)) {
+            newFilters = newFilters.filter(f => f !== value);
+        } else {
+            newFilters.push(value);
+        }
+        
+        if (newFilters.length === 0) newFilters = ['A', 'B', 'C', 'D']; // Fallback a tutti se vuoto
+        setFilters(newFilters);
+    };
 
     // 1. DATA FOR WATER QUOTA CHART
     const waterTrendData = useMemo(() => {
@@ -74,10 +92,8 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             color: colors[shift as keyof typeof colors]
         }));
 
-        if (waterChartFilter !== 'all') {
-            return allDatasets.filter(ds => ds.label.includes(waterChartFilter));
-        }
-        return allDatasets;
+        // Filter based on multi-selection
+        return allDatasets.filter(ds => waterChartFilter.some(f => ds.label.includes(f)));
     }, [attendanceRecords, allStaff, generalSettings, startDate, endDate, waterChartFilter]);
 
 
@@ -108,10 +124,8 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             color: colors[shift as keyof typeof colors]
         }));
 
-        if (shiftRevenueFilter !== 'all') {
-            return allDatasets.filter(ds => ds.label.includes(shiftRevenueFilter));
-        }
-        return allDatasets;
+        // Filter based on multi-selection
+        return allDatasets.filter(ds => shiftRevenueFilter.some(f => ds.label.includes(f)));
     }, [activeOrders, allStaff, shiftRevenueFilter]);
 
 
@@ -238,18 +252,27 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         );
     };
 
-    // Helper component for chart filters
-    const ChartFilterButtons = ({ current, setFilter }: { current: string, setFilter: (v: any) => void }) => (
+    // Helper component for chart filters (Multi-Select)
+    const ChartFilterButtons = ({ current, setFilter }: { current: string[], setFilter: (val: string) => void }) => (
         <div className="flex bg-slate-100 p-1 rounded-lg gap-1">
-            {['all', 'A', 'B', 'C', 'D'].map(v => (
-                <button
-                    key={v}
-                    onClick={() => setFilter(v)}
-                    className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${current === v ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
-                >
-                    {v === 'all' ? 'Tutti' : v}
-                </button>
-            ))}
+            <button
+                onClick={() => setFilter('all')}
+                className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${current.length === 4 ? 'bg-slate-800 text-white shadow' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+                Tutti
+            </button>
+            {['A', 'B', 'C', 'D'].map(v => {
+                const isActive = current.includes(v);
+                return (
+                    <button
+                        key={v}
+                        onClick={() => setFilter(v)}
+                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${isActive ? 'bg-white shadow text-slate-800 border border-slate-200' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        {v}
+                    </button>
+                )
+            })}
         </div>
     );
 
@@ -311,7 +334,10 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                             <p className="text-[10px] text-slate-400">Valore economico presenze</p>
                         </div>
                     </div>
-                    <ChartFilterButtons current={waterChartFilter} setFilter={setWaterChartFilter} />
+                    <ChartFilterButtons 
+                        current={waterChartFilter} 
+                        setFilter={(v) => toggleChartFilter(waterChartFilter, setWaterChartFilter, v)} 
+                    />
                 </div>
                 <div className="h-[300px] w-full">
                     <LineChart 
@@ -333,7 +359,10 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                             <p className="text-[10px] text-slate-400">Andamento vendite per squadra</p>
                         </div>
                     </div>
-                    <ChartFilterButtons current={shiftRevenueFilter} setFilter={setShiftRevenueFilter} />
+                    <ChartFilterButtons 
+                        current={shiftRevenueFilter} 
+                        setFilter={(v) => toggleChartFilter(shiftRevenueFilter, setShiftRevenueFilter, v)} 
+                    />
                 </div>
                 <div className="h-[300px] w-full">
                     <LineChart 

@@ -14,8 +14,8 @@ interface LineChartProps {
     datasets?: Dataset[]; 
     height?: number; 
     color?: string;
-    yAxisLabel?: string; // Nuova prop
-    xAxisLabel?: string; // Nuova prop
+    yAxisLabel?: string;
+    xAxisLabel?: string;
 }
 
 const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, color = '#f97316', yAxisLabel, xAxisLabel }) => {
@@ -33,11 +33,12 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
                 if (p.value > max) max = p.value;
             });
         });
-        return max || 10;
+        // Aggiunge il 10% di margine superiore per evitare che la linea tocchi il bordo
+        return (max || 10) * 1.1;
     }, [normalizedDatasets]);
 
-    const paddingLeft = 50; // Increased for Y label
-    const paddingBottom = 40; // Increased for X label
+    const paddingLeft = 50; 
+    const paddingBottom = 40; 
     const paddingTop = 20;
     const paddingRight = 20;
     
@@ -167,25 +168,27 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
                                 filter="url(#glow)" 
                             />
 
-                            {/* Data Points (Dots) */}
+                            {/* Data Points (Invisible but Interactable) */}
                             {points.map((p, i) => (
                                 <g key={i} className="group">
+                                    {/* Cerchio invisibile (opacity 0) ma presente per il tooltip */}
                                     <circle 
                                         cx={p.x} 
                                         cy={p.y} 
-                                        r="4" 
-                                        fill="white" 
-                                        stroke={ds.color} 
-                                        strokeWidth="2" 
-                                        className="transition-all duration-200 group-hover:r-6 cursor-pointer"
-                                        style={{ opacity: drawProgress === 1 ? 1 : 0, transition: `opacity 0.3s ${i * 0.05}s` }}
+                                        r="6" 
+                                        fill="transparent" 
+                                        stroke="none" 
+                                        className="cursor-pointer"
                                     />
                                     
-                                    {/* Tooltip */}
+                                    {/* Tooltip on Hover */}
                                     <g className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-                                        <rect x={p.x - 30} y={p.y - 35} width="60" height="24" rx="4" fill="rgba(0,0,0,0.8)" />
-                                        <text x={p.x} y={p.y - 19} textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">
-                                            {ds.label}: {p.val.toFixed(0)}
+                                        <rect x={p.x - 30} y={p.y - 45} width="60" height="35" rx="4" fill="rgba(255,255,255,0.95)" stroke="#e2e8f0" strokeWidth="1" className="shadow-lg" />
+                                        <text x={p.x} y={p.y - 30} textAnchor="middle" fill="#1e293b" fontSize="10" fontWeight="bold">
+                                            {ds.label}
+                                        </text>
+                                        <text x={p.x} y={p.y - 18} textAnchor="middle" fill={ds.color} fontSize="11" fontWeight="black">
+                                            {p.val.toFixed(0)}
                                         </text>
                                     </g>
                                 </g>
