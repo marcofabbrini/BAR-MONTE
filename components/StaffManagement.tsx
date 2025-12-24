@@ -23,7 +23,7 @@ const VVF_GRADES = [
     { id: 'CRE', label: 'Capo Reparto Esp.', short: 'CRE', type: 'bar', count: 3 },
 ];
 
-// --- NUOVO COMPONENTE BADGE GRAFICO (Schiacciato) ---
+// --- NUOVO COMPONENTE BADGE GRAFICO (Schiacciato e Squadrato) ---
 export const GradeBadge = ({ grade }: { grade?: string }) => {
     if (!grade) return null;
     const conf = VVF_GRADES.find(g => g.id === grade || g.short === grade);
@@ -31,7 +31,7 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
     // Fallback per gradi sconosciuti
     if (!conf) {
         return (
-            <div className="absolute -top-1 -right-1 z-10 flex items-center justify-center h-4 px-1 rounded text-[8px] font-black text-white bg-slate-500 border border-slate-600 uppercase">
+            <div className="absolute -top-1 -right-1 z-10 flex items-center justify-center h-3 px-1 rounded-[1px] text-[7px] font-black text-white bg-slate-500 border border-slate-600 uppercase">
                 {grade}
             </div>
         );
@@ -44,25 +44,25 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
             className={`
                 absolute -top-1 -right-2 z-10 
                 flex flex-col items-center justify-center gap-[1px]
-                min-w-[24px] px-0.5 py-[1px] rounded-[3px] shadow-sm
+                min-w-[20px] px-0.5 py-[1px] rounded-[1px] shadow-sm
                 bg-[#722F37] /* Amaranto VVF */
                 ${isBar ? 'border-[1px] border-yellow-400' : 'border-[0.5px] border-[#5a232b]'}
             `}
             title={conf.label}
         >
-            {/* RENDER CHEVRONS (V rovesciate Argentate - Più larghe e basse) */}
+            {/* RENDER CHEVRONS (V rovesciate Argentate - Strette e Basse) */}
             {!isBar && Array.from({ length: conf.count }).map((_, i) => (
-                <div key={i} className="w-full flex justify-center -mt-[2.5px] first:mt-0">
-                     {/* SVG Chevron Down Silver (Flattened) */}
-                     <svg width="14" height="5" viewBox="0 0 14 5" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M1 1 L7 4 L13 1" stroke="#E2E8F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <div key={i} className="w-full flex justify-center -mt-[2px] first:mt-0">
+                     {/* SVG Chevron Down Silver (Flattened & Narrower) */}
+                     <svg width="12" height="4" viewBox="0 0 12 4" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1 L6 3 L11 1" stroke="#E2E8F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                 </div>
             ))}
 
-            {/* RENDER BARS (Barre Dorate - Più sottili e larghe) */}
+            {/* RENDER BARS (Barre Dorate - Più strette) */}
             {isBar && Array.from({ length: conf.count }).map((_, i) => (
-                <div key={i} className="w-[18px] h-[2px] bg-yellow-400 rounded-full shadow-sm my-[0.5px]"></div>
+                <div key={i} className="w-[14px] h-[2px] bg-yellow-400 rounded-sm shadow-sm my-[0.5px]"></div>
             ))}
         </div>
     );
@@ -191,7 +191,12 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         }
     };
     
-    const handleEdit = (member: StaffMember) => { setIsEditing(member.id); };
+    const handleEdit = (member: StaffMember) => { 
+        setIsEditing(member.id); 
+        // Scroll to top to see the form
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    
     const handleCancel = () => { setIsEditing(null); resetForm(); };
     const handleDeleteStaff = async (id: string) => { if (window.confirm('Eliminare membro?')) await onDeleteStaff(id); };
 
@@ -307,10 +312,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredStaff.length === 0 ? <p className="col-span-full text-center text-slate-400 italic py-10">Nessun personale trovato.</p> : 
                     filteredStaff.map(member => (
-                        <div key={member.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4 group hover:shadow-md transition-all">
+                        <div key={member.id} className="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center gap-3 group hover:shadow-md transition-all">
                             
-                            {/* AVATAR IN LISTA */}
-                            <div className="relative w-14 h-14 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0 overflow-visible">
+                            {/* AVATAR IN LISTA (Slightly smaller on mobile for better fit) */}
+                            <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center flex-shrink-0 overflow-visible">
                                 <div className="w-full h-full rounded-full overflow-hidden">
                                     {member.photoUrl ? (
                                         <img src={member.photoUrl} alt={member.name} className="w-full h-full object-cover" />
@@ -324,7 +329,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
 
                             <div className="flex-grow min-w-0">
                                 <div className="flex justify-between items-start">
-                                    <div>
+                                    <div className="min-w-0">
                                         <p className="font-bold text-slate-800 text-sm truncate">{member.name}</p>
                                         <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{VVF_GRADES.find(g=>g.id===member.grade)?.label || member.grade || 'Personale'}</p>
                                     </div>
@@ -339,7 +344,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                 </div>
                             </div>
 
-                            <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Actions always visible on mobile/touch, hover on desktop */}
+                            <div className="flex flex-col gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                                  <button onClick={() => handleEdit(member)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"><EditIcon className="h-4 w-4" /></button>
                                 <button onClick={() => handleDeleteStaff(member.id)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"><TrashIcon className="h-4 w-4" /></button>
                             </div>
