@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Order, StaffMember, AttendanceRecord, GeneralSettings } from '../types';
 import { PrinterIcon } from './Icons';
@@ -84,7 +85,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
         });
 
         // Add Water Quotas if applicable
-        if (attendanceRecords && tillId && startDate) {
+        if (attendanceRecords && startDate) {
             staff.forEach(member => {
                 if (filterStaffId !== 'all' && member.id !== filterStaffId) return;
                 if (member.name.toLowerCase().includes('cassa')) return;
@@ -92,11 +93,24 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                 // Calcola presenze nel range selezionato
                 const count = attendanceRecords.filter(r => {
                     const rDate = r.date;
-                    // Filtra per till se necessario (o globale se si vuole storico generale)
-                    if (r.tillId !== tillId) return false;
+                    // Se tillId è fornito (siamo dentro TillView), filtriamo per quella cassa.
+                    // Altrimenti (siamo in AdminView globale), contiamo tutto.
+                    if (tillId && r.tillId !== tillId) return false;
                     
                     const inRange = (!startDate || rDate >= startDate) && (!endDate || rDate <= endDate);
-                    return inRange && r.presentStaffIds.includes(member.id);
+                    if (!inRange) return false;
+
+                    // --- LOGICA SPECIALE STATUS ---
+                    // Se abbiamo i dettagli, controlliamo se lo status è "Pagante" (Presente o Sostituzione)
+                    if (r.attendanceDetails && r.attendanceDetails[member.id]) {
+                        const status = r.attendanceDetails[member.id];
+                        // Solo Presente (P) e Sostituzione (S) pagano l'acqua.
+                        // Ferie, Malattia, Riposo, Permesso, Missione NON pagano.
+                        return status === 'present' || status === 'substitution';
+                    }
+
+                    // Fallback per record vecchi (dove la presenza implicava essere lì)
+                    return r.presentStaffIds.includes(member.id);
                 }).length;
 
                 if (count > 0) {
@@ -258,7 +272,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                                                 <tr className="border-b border-blue-200 bg-blue-50/30">
                                                     <td className="py-2 align-top text-blue-500 font-bold">RIEPILOGO</td>
                                                     <td className="py-2 align-top font-bold text-slate-700 flex items-center gap-2">
-                                                        <span>🥛 Quote Acqua ({data.waterQuotas} presenze)</span>
+                                                        <span>🥛 Quote Acqua ({data.waterQuotas} presenze effettive)</span>
                                                     </td>
                                                     <td className="py-2 align-top text-right font-black text-blue-700">
                                                         €{data.waterCost.toFixed(2)}
