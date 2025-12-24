@@ -120,9 +120,20 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
             .map(member => {
                 const count = attendanceRecords.filter(r => {
                     const d = new Date(r.date);
-                    return d.getMonth() === currentMonth && 
-                           d.getFullYear() === currentYear && 
-                           r.presentStaffIds.includes(member.id);
+                    const isSameMonth = d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+                    if (!isSameMonth) return false;
+
+                    // --- LOGICA SPECIALE STATUS (FIX) ---
+                    // Se abbiamo i dettagli, controlliamo se lo status è "Pagante" (Presente o Sostituzione)
+                    if (r.attendanceDetails && r.attendanceDetails[member.id]) {
+                        const status = r.attendanceDetails[member.id];
+                        // Solo Presente (P) e Sostituzione (S) pagano l'acqua.
+                        // Ferie, Malattia, Riposo, Permesso, Missione NON pagano.
+                        return status === 'present' || status === 'substitution';
+                    }
+
+                    // Fallback per record vecchi
+                    return r.presentStaffIds.includes(member.id);
                 }).length;
                 return { name: member.name, count, id: member.id };
             })
@@ -344,24 +355,26 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                                     <button 
                                                         key={staff.id} 
                                                         onClick={() => handleStaffSelection(staff.id)}
-                                                        className={`group flex flex-col items-center gap-2 transition-all hover:scale-110 cursor-pointer`}
+                                                        className={`group flex flex-col items-center gap-2 transition-all cursor-pointer`}
                                                     >
-                                                        <div 
-                                                            className={`
-                                                                relative w-16 h-16 rounded-full shadow-md border-2 flex items-center justify-center text-2xl transition-all overflow-visible flex-shrink-0
-                                                                border-slate-100 group-hover:border-primary bg-white
-                                                            `}
-                                                            style={isCassa ? { backgroundColor: themeColor, borderColor: themeColor } : { }}
-                                                        >
-                                                            <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white aspect-square">
+                                                        {/* FIXED AVATAR CONTAINER */}
+                                                        <div className="relative w-16 h-16 flex-shrink-0 group-hover:scale-105 transition-transform">
+                                                            <div className={`
+                                                                w-full h-full rounded-full overflow-hidden flex items-center justify-center text-2xl border-2 shadow-md
+                                                                ${isCassa ? 'bg-primary border-primary-dark text-white' : 'bg-white border-slate-100 group-hover:border-primary'}
+                                                            `}>
                                                                 {staff.photoUrl ? (
                                                                     <img src={staff.photoUrl} alt={staff.name} className="w-full h-full object-cover" />
                                                                 ) : (
-                                                                    <span className={`text-2xl font-bold ${isCassa ? 'text-white' : 'text-slate-600'}`}>{staff.icon || getInitials(staff.name)}</span>
+                                                                    <span className="pb-1">{staff.icon || getInitials(staff.name)}</span>
                                                                 )}
                                                             </div>
                                                             {/* VISUAL BADGE */}
-                                                            {!isCassa && staff.grade && <GradeBadge grade={staff.grade} />}
+                                                            {!isCassa && staff.grade && (
+                                                                <div className="absolute -top-1 -right-1 z-20">
+                                                                    <GradeBadge grade={staff.grade} />
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <span className="text-[10px] font-bold text-slate-600 group-hover:text-primary truncate w-full text-center">{staff.name.split(' ')[0]}</span>
                                                     </button>
