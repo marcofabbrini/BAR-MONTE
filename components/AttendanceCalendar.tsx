@@ -215,9 +215,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const finalDetails: Record<string, AttendanceStatus> = {};
 
         Object.entries(editingDetails).forEach(([id, status]) => {
+            // FIX: Ora salviamo TUTTI gli stati in finalDetails, anche 'absent'.
+            // Questo forza la sovrascrittura nel DB di eventuali stati precedenti (es. 'present').
+            // Se non lo facessimo, il merge del DB manterrebbe il vecchio stato.
+            finalDetails[id] = status as AttendanceStatus;
+
+            // Per la compatibilità con la lista "presentStaffIds", aggiungiamo solo se NON assente.
             if (status !== 'absent') {
                 presentIds.push(id);
-                finalDetails[id] = status as AttendanceStatus;
             }
         });
 
