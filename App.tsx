@@ -13,13 +13,14 @@ import AnalottoView from './components/AnalottoView';
 import DiceGame from './components/DiceGame';
 import ShiftCalendar from './components/ShiftCalendar';
 import AttendanceCalendar from './components/AttendanceCalendar';
+import InteractiveModelViewer from './components/InteractiveModelViewer';
 import { TILLS } from './constants';
 import { BellIcon } from './components/Icons';
 import { AnalottoProvider, useAnalotto } from './contexts/AnalottoContext';
 import { TombolaProvider, useTombola } from './contexts/TombolaContext';
 import { BarProvider, useBar } from './contexts/BarContext';
 
-type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice' | 'attendance_view';
+type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice' | 'attendance_view' | '3d_viewer';
 
 const AppContent: React.FC = () => {
     const [view, setView] = useState<View>('selection');
@@ -128,8 +129,9 @@ const AppContent: React.FC = () => {
             />;
             case 'analotto': return <AnalottoView onGoBack={() => setView('selection')} config={analottoConfig} bets={analottoBets} extractions={analottoExtractions} staff={staff} onPlaceBet={handlePlaceAnalottoBet} onRunExtraction={handleAnalottoExtraction} isSuperAdmin={isSuperAdmin} onTransferFunds={(amount) => handleTransferAnalottoFunds(amount)} onUpdateConfig={handleUpdateAnalottoConfig} onConfirmTicket={handleConfirmAnalottoTicket} />;
             case 'dice': return <DiceGame onGoBack={() => setView('selection')} staff={staff} shiftSettings={shiftSettings} />;
-            case 'games': return <GamesHub onGoBack={() => setView('selection')} onPlayTombola={() => setView('tombola')} onPlayAnalotto={() => setView('analotto')} onPlayDice={() => setView('dice')} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} />;
+            case 'games': return <GamesHub onGoBack={() => setView('selection')} onPlayTombola={() => setView('tombola')} onPlayAnalotto={() => setView('analotto')} onPlayDice={() => setView('dice')} onOpen3DViewer={() => setView('3d_viewer')} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} />;
             case 'calendar': return <ShiftCalendar onGoBack={() => setView('selection')} tillColors={tillColors} shiftSettings={shiftSettings} />;
+            case '3d_viewer': return <InteractiveModelViewer onGoBack={() => setView('games')} />;
             case 'attendance_view': return <AttendanceCalendar 
                 onGoBack={() => setView('selection')} 
                 attendanceRecords={attendanceRecords} 
