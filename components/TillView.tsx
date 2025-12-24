@@ -188,13 +188,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
     }, [currentOrder, cartTotal, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder, clearOrder, getNow]);
 
     const handleStaffSelection = (id: string) => {
-        // Double check just in case, though UI hides non-present
-        if (!presentStaffIds.includes(id) && !selectedStaffId) {
-             // Allow selection if explicitly visible (handled in render) but fallback logic might prevent it
-             // Actually, presentStaffIds includes everyone in the record, even absent ones in old logic?
-             // No, presentStaffIds only has check-ins.
-             // But we are now using status.
-        }
         setIsAnimatingSelection(true);
         setTimeout(() => {
             setSelectedStaffId(id);
@@ -352,21 +345,24 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                             {sortedStaffForShift.map(staff => {
                                                 const isCassa = staff.name.toLowerCase().includes('cassa');
                                                 
-                                                // --- VISIBILITY LOGIC ---
+                                                // --- NUOVA LOGICA VISIBILITÀ (STRICT) ---
                                                 let isVisiblyPresent = false;
-                                                if (existingAttendanceRecord?.attendanceDetails && existingAttendanceRecord.attendanceDetails[staff.id]) {
-                                                    // Se esiste il dettaglio, mostra SOLO se status = present o substitution
+                                                
+                                                if (existingAttendanceRecord?.attendanceDetails) {
+                                                    // Se esiste il record dettagliato, controlliamo lo status
                                                     const status = existingAttendanceRecord.attendanceDetails[staff.id];
+                                                    // VISIBILE SOLO SE: Presente (P) o Sostituzione (S)
                                                     isVisiblyPresent = status === 'present' || status === 'substitution';
+                                                    
+                                                    // Eccezione: Mostra sempre "Cassa" se salvata (fallback di sicurezza)
+                                                    if (isCassa && existingAttendanceRecord.presentStaffIds.includes(staff.id)) {
+                                                        isVisiblyPresent = true;
+                                                    }
                                                 } else {
-                                                    // Fallback per vecchi record o se non ci sono dettagli
+                                                    // Fallback per record vecchi (Legacy): usa lista generica
                                                     isVisiblyPresent = presentStaffIds.includes(staff.id);
                                                 }
 
-                                                // La cassa generica è sempre visibile se è stata salvata (di solito lo è)
-                                                // Ma per sicurezza, rispettiamo il record. 
-                                                // Se qualcuno ha messo "assente" alla cassa (improbabile), non la mostriamo.
-                                                
                                                 if (!isVisiblyPresent) return null;
                                                 
                                                 return (
@@ -376,13 +372,13 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                                         className={`group flex flex-col items-center gap-2 transition-all cursor-pointer`}
                                                     >
                                                         {/* FIXED AVATAR CONTAINER */}
-                                                        <div className="relative w-16 h-16 flex-shrink-0 group-hover:scale-105 transition-transform">
+                                                        <div className="relative w-16 h-16 flex-shrink-0 group-hover:scale-105 transition-transform mx-auto">
                                                             <div className={`
                                                                 w-full h-full rounded-full overflow-hidden flex items-center justify-center text-2xl border-2 shadow-md
                                                                 ${isCassa ? 'bg-primary border-primary-dark text-white' : 'bg-white border-slate-100 group-hover:border-primary'}
                                                             `}>
                                                                 {staff.photoUrl ? (
-                                                                    <img src={staff.photoUrl} alt={staff.name} className="w-full h-full object-cover" />
+                                                                    <img src={staff.photoUrl} alt={staff.name} className="w-full h-full object-cover rounded-full" />
                                                                 ) : (
                                                                     <span className="pb-1">{staff.icon || getInitials(staff.name)}</span>
                                                                 )}

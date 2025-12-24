@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import { Order, Product, StaffMember, Shift, GeneralSettings, TombolaConfig, AnalottoConfig } from '../types';
 import BarChart from './BarChart';
@@ -22,27 +23,43 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     const activeOrders = useMemo(() => filteredOrders.filter(o => !o.isDeleted), [filteredOrders]);
     const totalSales = useMemo(() => activeOrders.reduce((sum, order) => sum + order.total, 0), [activeOrders]);
 
-    // Calcolo Totale Acqua (Quote e Incasso)
-    const waterStats = useMemo(() => {
-        let quotaCount = 0;
-        let itemsRevenue = 0; 
+    // Calcolo Dettagliato Quote Acqua (Per Turno e Totale)
+    const waterStatsDetailed = useMemo(() => {
+        const stats = {
+            total: { count: 0, revenue: 0 },
+            a: { count: 0, revenue: 0 },
+            b: { count: 0, revenue: 0 },
+            c: { count: 0, revenue: 0 },
+            d: { count: 0, revenue: 0 },
+        };
         const waterPrice = generalSettings?.waterQuotaPrice || 0;
 
         activeOrders.forEach(order => {
+            // Identifica il turno dell'operatore che ha fatto l'ordine
+            const staffMember = allStaff.find(s => s.id === order.staffId);
+            const shift = staffMember?.shift?.toLowerCase() as 'a' | 'b' | 'c' | 'd';
+
             order.items.forEach(item => {
                 if (item.product.name.toLowerCase().includes('acqua')) {
-                    quotaCount += item.quantity;
-                    itemsRevenue += (item.quantity * item.product.price);
+                    const qty = item.quantity;
+                    // Se il prodotto ha un prezzo > 0 usa quello, altrimenti usa il prezzo quota settings
+                    const unitPrice = item.product.price > 0 ? item.product.price : waterPrice;
+                    const rev = qty * unitPrice;
+
+                    // Aggiorna Totale
+                    stats.total.count += qty;
+                    stats.total.revenue += rev;
+
+                    // Aggiorna Turno Specifico
+                    if (shift && stats[shift]) {
+                        stats[shift].count += qty;
+                        stats[shift].revenue += rev;
+                    }
                 }
             });
         });
-
-        const estimatedQuotaValue = quotaCount * waterPrice;
-        return { 
-            count: quotaCount, 
-            revenue: itemsRevenue > 0 ? itemsRevenue : estimatedQuotaValue 
-        };
-    }, [activeOrders, generalSettings]);
+        return stats;
+    }, [activeOrders, allStaff, generalSettings]);
 
     const currentJackpotTotal = useMemo(() => {
         const t = tombolaConfig?.jackpot || 0;
@@ -110,15 +127,18 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             const dateKey = new Date(o.timestamp).toISOString().split('T')[0];
             trend[dateKey] = (trend[dateKey] || 0) + valueExtractor(o);
         });
-        return Object.entries(trend).map(([date, value]) => ({ 
-            label: new Date(date).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
-            value 
-        }));
+        return Object.entries(trend)
+            .sort((a, b) => a[0].localeCompare(b[0])) // Ensure Strict Date Sorting
+            .map(([date, value]) => ({ 
+                label: new Date(date).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
+                value 
+            }));
     };
 
     const salesTrend = useMemo(() => getDailyTrend(o => o.total), [activeOrders]);
     const quantityTrend = useMemo(() => getDailyTrend(o => o.items.reduce((acc, i) => acc + i.quantity, 0)), [activeOrders]);
     const waterTrend = useMemo(() => {
+        // Find all water product IDs
         const waterIds = new Set(allProducts.filter(p => p.name.toLowerCase().includes('acqua')).map(p => p.id));
         return getDailyTrend(o => o.items.filter(i => waterIds.has(i.product.id)).reduce((acc, i) => acc + i.quantity, 0));
     }, [activeOrders, allProducts]);
@@ -172,7 +192,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-4">
+        <div className="max-w-7xl mx-auto space-y-6">
             <div className="hidden print:block mb-4 text-center border-b pb-2">
                 <h1 className="text-xl font-bold">Report Bar VVF</h1>
                 <p className="text-slate-500 text-xs">{startDate || 'Inizio'} - {endDate || 'Oggi'}</p>
@@ -207,27 +227,60 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 </div>
 
                 {/* 2. KPI CARDS (Right Side - Spanning 2 cols) */}
-                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-white border-l-4 border-orange-500 p-4 rounded-xl shadow-sm flex flex-col justify-center">
                         <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1">
                             <ChartBarIcon className="h-3 w-3"/> Incasso Bar
                         </h2>
-                        <h2 className="text-2xl font-black text-slate-800">€{totalSales.toFixed(2)}</h2>
-                    </div>
-
-                    <div className="bg-white border-l-4 border-blue-400 p-4 rounded-xl shadow-sm flex flex-col justify-center">
-                        <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1">
-                            <DropletIcon className="h-3 w-3"/> Consumo Acqua
-                        </h2>
-                        <h2 className="text-2xl font-black text-slate-800">{waterStats.count} <span className="text-sm text-slate-400">quote</span></h2>
-                        <p className="text-[9px] text-slate-400">Valore: €{waterStats.revenue.toFixed(2)}</p>
+                        <h2 className="text-3xl font-black text-slate-800">€{totalSales.toFixed(2)}</h2>
+                        <p className="text-xs text-slate-400">Totale vendite periodo</p>
                     </div>
 
                     <div className="bg-white border-l-4 border-purple-500 p-4 rounded-xl shadow-sm flex flex-col justify-center">
                         <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1">
-                            <GamepadIcon className="h-3 w-3"/> Montepremi
+                            <GamepadIcon className="h-3 w-3"/> Montepremi Attivi
                         </h2>
-                        <h2 className="text-2xl font-black text-slate-800">€{currentJackpotTotal.toFixed(2)}</h2>
+                        <h2 className="text-3xl font-black text-slate-800">€{currentJackpotTotal.toFixed(2)}</h2>
+                        <p className="text-xs text-slate-400">Tombola + Analotto</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* WATER DETAILED SECTION */}
+            <div className="bg-blue-50/50 p-4 rounded-xl shadow-sm border border-blue-100">
+                <h3 className="text-sm font-bold text-blue-800 mb-4 flex items-center gap-2 border-b border-blue-200 pb-2">
+                    <DropletIcon className="h-4 w-4"/> Analisi Quote Acqua
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {/* TOTAL */}
+                    <div className="bg-white p-3 rounded-lg border border-blue-200 shadow-sm flex flex-col items-center">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">TOTALE</span>
+                        <span className="text-2xl font-black text-blue-600">{waterStatsDetailed.total.count}</span>
+                        <span className="text-xs font-bold text-slate-600">€{waterStatsDetailed.total.revenue.toFixed(2)}</span>
+                    </div>
+                    {/* A */}
+                    <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
+                        <span className="text-[10px] font-bold text-red-400 uppercase">Turno A</span>
+                        <span className="text-xl font-black text-slate-700">{waterStatsDetailed.a.count}</span>
+                        <span className="text-[10px] text-slate-500">€{waterStatsDetailed.a.revenue.toFixed(2)}</span>
+                    </div>
+                    {/* B */}
+                    <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
+                        <span className="text-[10px] font-bold text-blue-400 uppercase">Turno B</span>
+                        <span className="text-xl font-black text-slate-700">{waterStatsDetailed.b.count}</span>
+                        <span className="text-[10px] text-slate-500">€{waterStatsDetailed.b.revenue.toFixed(2)}</span>
+                    </div>
+                    {/* C */}
+                    <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
+                        <span className="text-[10px] font-bold text-green-400 uppercase">Turno C</span>
+                        <span className="text-xl font-black text-slate-700">{waterStatsDetailed.c.count}</span>
+                        <span className="text-[10px] text-slate-500">€{waterStatsDetailed.c.revenue.toFixed(2)}</span>
+                    </div>
+                    {/* D */}
+                    <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
+                        <span className="text-[10px] font-bold text-yellow-500 uppercase">Turno D</span>
+                        <span className="text-xl font-black text-slate-700">{waterStatsDetailed.d.count}</span>
+                        <span className="text-[10px] text-slate-500">€{waterStatsDetailed.d.revenue.toFixed(2)}</span>
                     </div>
                 </div>
             </div>
@@ -238,21 +291,21 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                      <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
                         <ChartBarIcon className="h-4 w-4 text-orange-500"/> Trend Incassi (€)
                      </h3>
-                     <div className="h-[200px] w-full"><LineChart data={salesTrend} height={200} color="text-orange-500" /></div>
+                     <div className="h-[200px] w-full"><LineChart data={salesTrend} height={200} color="#f97316" /></div>
                 </div>
 
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
                      <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
                         <LayersIcon className="h-4 w-4 text-green-500"/> Trend Quantità (Pezzi)
                      </h3>
-                     <div className="h-[200px] w-full"><LineChart data={quantityTrend} height={200} color="text-green-500" /></div>
+                     <div className="h-[200px] w-full"><LineChart data={quantityTrend} height={200} color="#22c55e" /></div>
                 </div>
 
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
                      <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                        <DropletIcon className="h-4 w-4 text-blue-400"/> Trend Acqua
+                        <DropletIcon className="h-4 w-4 text-blue-400"/> Trend Acqua (Quantità)
                      </h3>
-                     <div className="h-[200px] w-full"><LineChart data={waterTrend} height={200} color="text-blue-400" /></div>
+                     <div className="h-[200px] w-full"><LineChart data={waterTrend} height={200} color="#3b82f6" /></div>
                 </div>
 
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
