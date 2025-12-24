@@ -539,7 +539,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                         )}
                                                     </div>
                                                     {/* Badge Grado con CSS per posizione corretta - MORE OVERLAP */}
-                                                    <div className="absolute -top-3 -right-3 scale-[0.9] origin-center z-20">
+                                                    <div className="absolute top-1/2 -right-3 -translate-y-1/2 z-20">
                                                         <GradeBadge grade={person.grade} />
                                                     </div>
                                                 </div>

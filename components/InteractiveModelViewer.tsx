@@ -1,8 +1,10 @@
 import React, { useState, Suspense, useMemo } from 'react';
 import { Canvas, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stage, Html, useProgress } from '@react-three/drei';
-import { STLLoader } from 'three/examples/jsm/loaders/STLLoader';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+// @ts-ignore
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
+// @ts-ignore
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { BackArrowIcon } from './Icons';
 import * as THREE from 'three';
 
