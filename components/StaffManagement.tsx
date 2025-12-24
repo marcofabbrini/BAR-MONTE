@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StaffMember, Shift } from '../types';
 import { EditIcon, TrashIcon, PlusIcon, SaveIcon, UserPlusIcon } from './Icons';
+import { VVF_GRADES } from '../constants';
 
 interface StaffManagementProps {
     staff: StaffMember[];
@@ -9,19 +10,6 @@ interface StaffManagementProps {
     onUpdateStaff: (staffMember: StaffMember) => Promise<void>;
     onDeleteStaff: (staffId: string) => Promise<void>;
 }
-
-// Configurazione Gradi VVF
-const VVF_GRADES = [
-    { id: 'VIG', label: 'Vigile del Fuoco', short: 'VIG', type: 'chevron', count: 1 },
-    { id: 'VE', label: 'Vigile Esperto', short: 'VE', type: 'chevron', count: 2 },
-    { id: 'VESC', label: 'Vigile Esp. Scatto', short: 'VESC', type: 'chevron', count: 2 },
-    { id: 'VC', label: 'Vigile Coord.', short: 'VC', type: 'chevron', count: 3 },
-    { id: 'VCSC', label: 'Vigile Coord. Scatto', short: 'VCSC', type: 'chevron', count: 3 },
-    { id: 'CS', label: 'Capo Squadra', short: 'CS', type: 'bar', count: 1 },
-    { id: 'CQE', label: 'Capo Squadra Esp.', short: 'CQE', type: 'bar', count: 2 },
-    { id: 'CR', label: 'Capo Reparto', short: 'CR', type: 'bar', count: 3 },
-    { id: 'CRE', label: 'Capo Reparto Esp.', short: 'CRE', type: 'bar', count: 3 },
-];
 
 // --- NUOVO COMPONENTE BADGE GRAFICO (Posizionato più in alto e più stondato) ---
 export const GradeBadge = ({ grade }: { grade?: string }) => {
@@ -42,7 +30,6 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
     return (
         <div 
             className={`
-                absolute -top-[6px] -right-[6px] z-10 
                 flex flex-col items-center justify-center gap-[1px]
                 w-[26px] h-[18px] rounded-[3px] shadow-sm
                 bg-[#722F37] /* Amaranto VVF */
@@ -345,7 +332,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                 </div>
                                 {/* Badge Grado */}
                                 {member.grade && (
-                                    <div className="origin-center scale-90 absolute top-[-6px] right-[-6px]">
+                                    <div className="absolute -top-1 -right-1 z-10">
                                         <GradeBadge grade={member.grade} />
                                     </div>
                                 )}

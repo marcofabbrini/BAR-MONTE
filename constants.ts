@@ -52,3 +52,16 @@ export const INITIAL_STAFF_MEMBERS: StaffMember[] = [
     { id: 'staff-3', name: 'Paolo Verdi', shift: 'c', rcSubGroup: 1, icon: '👨‍💻' },
     { id: 'staff-4', name: 'Anna Neri', shift: 'd', rcSubGroup: 1, icon: '👩‍🎨' },
 ];
+
+// Configurazione Gradi VVF
+export const VVF_GRADES = [
+    { id: 'VIG', label: 'Vigile del Fuoco', short: 'VIG', type: 'chevron', count: 1 },
+    { id: 'VE', label: 'Vigile Esperto', short: 'VE', type: 'chevron', count: 2 },
+    { id: 'VESC', label: 'Vigile Esp. Scatto', short: 'VESC', type: 'chevron', count: 2 },
+    { id: 'VC', label: 'Vigile Coord.', short: 'VC', type: 'chevron', count: 3 },
+    { id: 'VCSC', label: 'Vigile Coord. Scatto', short: 'VCSC', type: 'chevron', count: 3 },
+    { id: 'CS', label: 'Capo Squadra', short: 'CS', type: 'bar', count: 1 },
+    { id: 'CQE', label: 'Capo Squadra Esp.', short: 'CQE', type: 'bar', count: 2 },
+    { id: 'CR', label: 'Capo Reparto', short: 'CR', type: 'bar', count: 3 },
+    { id: 'CRE', label: 'Capo Reparto Esp.', short: 'CRE', type: 'bar', count: 3 },
+];

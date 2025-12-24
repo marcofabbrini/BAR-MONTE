@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings, AttendanceStatus } from '../types';
 import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon, GridIcon, SettingsIcon, PrinterIcon, WhatsAppIcon } from './Icons';
 import { GradeBadge } from './StaffManagement';
+import { VVF_GRADES } from '../constants';
 
 interface AttendanceCalendarProps {
     attendanceRecords: AttendanceRecord[];
@@ -217,6 +218,34 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         setIsEditModalOpen(false);
     };
 
+    // Helper to clear attendances for the current month/view
+    const handleBulkDeleteMonth = async () => {
+        if(!isSuperAdmin || !onDeleteRecord) return;
+        if(!window.confirm(`Sei sicuro di voler ELIMINARE TUTTE le presenze del mese di ${monthNames[currentDate.getMonth()]} per il turno ${matrixShift.toUpperCase()}? Questa operazione è irreversibile.`)) return;
+
+        const tillId = `T${matrixShift.toUpperCase()}`;
+        const recordsToDelete = attendanceRecords.filter(r => {
+            const d = new Date(r.date);
+            return d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear() && r.tillId === tillId;
+        });
+
+        if(recordsToDelete.length === 0) return alert("Nessun record trovato per questo mese/turno.");
+
+        let count = 0;
+        for(const r of recordsToDelete) {
+            await onDeleteRecord(r.id);
+            count++;
+        }
+        alert(`${count} record eliminati.`);
+    };
+
+    // Helper to get sorting rank
+    const getStaffRank = (gradeId?: string) => {
+        if(!gradeId) return -1;
+        const index = VVF_GRADES.findIndex(g => g.id === gradeId);
+        return index !== -1 ? index : -1;
+    };
+
     const editingStaffList = useMemo(() => {
         if (!editingTillId) return [];
         const shift = editingTillId.replace('T', '').toLowerCase();
@@ -225,6 +254,12 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
              const bIsCassa = b.name.toLowerCase().includes('cassa');
              if (aIsCassa && !bIsCassa) return -1;
              if (!aIsCassa && bIsCassa) return 1;
+             
+             // Sort by Rank DESC (assuming higher index in VVF_GRADES is higher rank)
+             const rankA = getStaffRank(a.grade);
+             const rankB = getStaffRank(b.grade);
+             if (rankA !== rankB) return rankB - rankA;
+
              return a.name.localeCompare(b.name);
         });
     }, [staff, editingTillId]);
@@ -232,7 +267,12 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     const matrixData = useMemo(() => {
         const shiftStaff = staff
             .filter(s => s.shift === matrixShift && isRealPerson(s.name))
-            .sort((a,b) => a.name.localeCompare(b.name));
+            .sort((a,b) => {
+                const rankA = getStaffRank(a.grade);
+                const rankB = getStaffRank(b.grade);
+                if (rankA !== rankB) return rankB - rankA; // Sort Descending Rank
+                return a.name.localeCompare(b.name);
+            });
 
         const days = Array.from({ length: daysInMonth }, (_, i) => {
             const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i + 1);
@@ -306,13 +346,24 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                         <BackArrowIcon className="h-5 w-5" /> Indietro
                     </button>
                     <h1 className="text-xl font-bold text-slate-800 ml-4 hidden md:block">Gestione Presenze</h1>
+                    
+                    {/* BULK DELETE BUTTON */}
+                    {isSuperAdmin && (
+                        <button 
+                            onClick={handleBulkDeleteMonth}
+                            className="ml-auto bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-red-200"
+                            title="Elimina tutte le presenze di questo mese per il turno selezionato"
+                        >
+                            <TrashIcon className="h-4 w-4" /> Reset Mese
+                        </button>
+                    )}
                 </div>
             )}
 
             {/* EDIT MODAL */}
             {isEditModalOpen && (
                 <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 print:hidden">
-                    {/* ... (Modal content remains same) ... */}
+                    {/* ... (Modal content) ... */}
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
                         <div className="p-4 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
                             <div>
@@ -345,13 +396,20 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                             `}
                                         >
                                             <div className="flex items-center gap-3">
-                                                <div className="text-2xl">{member.icon || '👤'}</div>
+                                                {/* Edit Modal Avatar & Grade */}
+                                                <div className="relative">
+                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xl overflow-hidden border border-slate-200">
+                                                        {member.photoUrl ? <img src={member.photoUrl} className="w-full h-full object-cover" /> : (member.icon || '👤')}
+                                                    </div>
+                                                    {member.grade && <div className="absolute -bottom-1 -right-1 scale-75"><GradeBadge grade={member.grade} /></div>}
+                                                </div>
+                                                
                                                 <div>
                                                     <span className="text-sm font-bold text-slate-700 block">
-                                                        {member.grade ? `${member.grade} ` : ''}{member.name}
+                                                        {member.name}
                                                     </span>
                                                     <span className="text-[10px] text-slate-400 font-bold">
-                                                        {member.shift.toUpperCase()}{member.rcSubGroup || ''}
+                                                        {member.grade ? `${member.grade} - ` : ''}{member.shift.toUpperCase()}{member.rcSubGroup || ''}
                                                     </span>
                                                 </div>
                                             </div>
@@ -538,8 +596,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                             <span className="text-xl">{person.icon || '👤'}</span>
                                                         )}
                                                     </div>
-                                                    {/* Badge Grado con CSS per posizione corretta - MORE OVERLAP */}
-                                                    <div className="absolute top-1/2 -right-3 -translate-y-1/2 z-20">
+                                                    {/* Badge Grado con CSS per posizione corretta - OVERLAPPING LINE and AVATAR EDGE */}
+                                                    <div className="absolute -bottom-1.5 -right-1.5 z-20 transform translate-x-1/4">
                                                         <GradeBadge grade={person.grade} />
                                                     </div>
                                                 </div>
