@@ -52,7 +52,13 @@ const AppContent: React.FC = () => {
         updateConfig: handleUpdateTombolaConfig, transferFunds: handleTransferTombolaFunds
     } = useTombola();
 
-    const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
+    // FIX IPHONE CRASH: Check if 'Notification' exists in window before accessing .permission
+    const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+            return Notification.permission;
+        }
+        return 'default';
+    });
 
     // Calcolo Super Admin
     const isSuperAdmin = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
@@ -77,7 +83,10 @@ const AppContent: React.FC = () => {
     }, []);
 
     const requestNotificationPermission = async () => {
-        if (!('Notification' in window)) return;
+        if (typeof window === 'undefined' || !('Notification' in window)) {
+            alert("Le notifiche non sono supportate su questo dispositivo/browser.");
+            return;
+        }
         const permission = await Notification.requestPermission();
         setNotificationPermission(permission);
         if (permission === 'granted') new Notification("Notifiche Attivate!", { body: "Riceverai avvisi dal Bar VVF." });

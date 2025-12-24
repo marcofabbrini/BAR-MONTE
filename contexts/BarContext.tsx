@@ -117,7 +117,8 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                         audio.volume = 0.5;
                         audio.play().catch(() => {});
-                        if (Notification.permission === 'granted' && document.visibilityState === 'hidden') {
+                        // FIX: Check if Notification exists in window (safeguard for iOS/WebView)
+                        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && document.visibilityState === 'hidden') {
                             new Notification(n.title, { body: n.body, icon: '/logo.png' });
                         }
                         setTimeout(() => setActiveToast(null), 5000);
