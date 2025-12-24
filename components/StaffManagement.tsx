@@ -23,7 +23,7 @@ const VVF_GRADES = [
     { id: 'CRE', label: 'Capo Reparto Esp.', short: 'CRE', type: 'bar', count: 3 },
 ];
 
-// --- NUOVO COMPONENTE BADGE GRAFICO (Schiacciato e Squadrato) ---
+// --- NUOVO COMPONENTE BADGE GRAFICO (Posizionato più in alto e più stondato) ---
 export const GradeBadge = ({ grade }: { grade?: string }) => {
     if (!grade) return null;
     const conf = VVF_GRADES.find(g => g.id === grade || g.short === grade);
@@ -31,7 +31,7 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
     // Fallback per gradi sconosciuti
     if (!conf) {
         return (
-            <div className="absolute -top-1 -right-1 z-10 flex items-center justify-center h-3 px-1 rounded-[1px] text-[7px] font-black text-white bg-slate-500 border border-slate-600 uppercase">
+            <div className="absolute -top-2 -right-1 z-10 flex items-center justify-center h-3 px-1 rounded-[3px] text-[7px] font-black text-white bg-slate-500 border border-slate-600 uppercase">
                 {grade}
             </div>
         );
@@ -42,9 +42,9 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
     return (
         <div 
             className={`
-                absolute -top-1 -right-2 z-10 
+                absolute -top-2 -right-2 z-10 
                 flex flex-col items-center justify-center gap-[1px]
-                min-w-[20px] px-0.5 py-[1px] rounded-[1px] shadow-sm
+                min-w-[20px] px-0.5 py-[1px] rounded-[3px] shadow-sm
                 bg-[#722F37] /* Amaranto VVF */
                 ${isBar ? 'border-[1px] border-yellow-400' : 'border-[0.5px] border-[#5a232b]'}
             `}
@@ -78,27 +78,14 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [isProcessingImg, setIsProcessingImg] = useState(false);
     
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    
     // File Input Ref
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Filtri
     const [filterShifts, setFilterShifts] = useState<Set<Shift>>(new Set(['a', 'b', 'c', 'd']));
-
-    useEffect(() => {
-        if (isEditing) {
-            const memberToEdit = staff.find(member => member.id === isEditing);
-            if (memberToEdit) {
-                setName(memberToEdit.name);
-                setGrade(memberToEdit.grade || '');
-                setShift(memberToEdit.shift);
-                setRcSubGroup(memberToEdit.rcSubGroup || 1);
-                setIcon(memberToEdit.icon || '');
-                setPhotoUrl(memberToEdit.photoUrl || '');
-            }
-        } else {
-            resetForm();
-        }
-    }, [isEditing, staff]);
 
     const resetForm = () => {
         setName('');
@@ -107,7 +94,29 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         setRcSubGroup(1);
         setIcon('');
         setPhotoUrl('');
+        setIsEditing(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleOpenAdd = () => {
+        resetForm();
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEdit = (member: StaffMember) => {
+        setIsEditing(member.id);
+        setName(member.name);
+        setGrade(member.grade || '');
+        setShift(member.shift);
+        setRcSubGroup(member.rcSubGroup || 1);
+        setIcon(member.icon || '');
+        setPhotoUrl(member.photoUrl || '');
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        resetForm();
     };
 
     const toggleFilter = (s: Shift) => {
@@ -183,115 +192,127 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             } else {
                 await onAddStaff(dataToSave);
             }
-            setIsEditing(null);
-            resetForm();
+            handleCloseModal();
         } catch (error) { 
             console.error(error); 
             alert("Errore nel salvataggio. L'immagine potrebbe essere troppo grande, prova un'altra foto."); 
         }
     };
     
-    const handleEdit = (member: StaffMember) => { 
-        setIsEditing(member.id); 
-        // Scroll to top to see the form
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-    
-    const handleCancel = () => { setIsEditing(null); resetForm(); };
     const handleDeleteStaff = async (id: string) => { if (window.confirm('Eliminare membro?')) await onDeleteStaff(id); };
 
     return (
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-5xl mx-auto relative">
             
-            {/* Form Aggiunta/Modifica */}
-            <div className="bg-white p-6 rounded-xl shadow-lg mb-8 border border-slate-200 print:hidden relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-800"></div>
-                <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-2">
-                    {isEditing ? <EditIcon className="h-6 w-6 text-blue-500"/> : <UserPlusIcon className="h-6 w-6 text-green-500"/>}
-                    {isEditing ? 'Modifica Scheda Utente' : 'Nuova Anagrafica VVF'}
-                </h2>
-                
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                    
-                    {/* AVATAR UPLOAD SECTION */}
-                    <div className="col-span-1 md:col-span-3 flex flex-col items-center gap-3">
-                        <div className="relative w-24 h-24 rounded-full border-4 border-slate-100 shadow-inner bg-slate-50 flex items-center justify-center overflow-hidden group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                            {isProcessingImg ? (
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800"></div>
-                            ) : photoUrl ? (
-                                <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-4xl">{icon || '👤'}</span>
-                            )}
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <span className="text-white text-xs font-bold">Carica</span>
-                            </div>
-                            
-                            {/* LIVE PREVIEW BADGE */}
-                            {grade && <div className="scale-150 origin-top-right absolute top-2 right-2"><GradeBadge grade={grade} /></div>}
-                        </div>
-                        
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            onChange={handleFileChange} 
-                            accept="image/*" 
-                            className="hidden" 
-                        />
-                        
-                        <div className="w-full">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase text-center block mb-1">Oppure Emoji</label>
-                            <input type="text" placeholder="Es. 👨‍🚒" value={icon} onChange={(e) => { setIcon(e.target.value); if(e.target.value) setPhotoUrl(''); }} className="w-full bg-slate-100 rounded-md px-2 py-1.5 text-center text-lg border-transparent focus:bg-white focus:ring-2 focus:ring-slate-200 transition-all" />
-                        </div>
-                    </div>
-
-                    {/* FIELDS SECTION */}
-                    <div className="col-span-1 md:col-span-9 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="col-span-2">
-                             <label className="text-xs font-bold text-slate-500 uppercase">Cognome e Nome</label>
-                             <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Es. Rossi Mario" required />
-                        </div>
-
-                        <div>
-                             <label className="text-xs font-bold text-slate-500 uppercase">Qualifica / Grado</label>
-                             <select value={grade} onChange={(e) => setGrade(e.target.value)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="">-- Seleziona Grado --</option>
-                                {VVF_GRADES.map(g => (
-                                    <option key={g.id} value={g.id}>{g.label}</option>
-                                ))}
-                             </select>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase">Turno</label>
-                                <select value={shift} onChange={(e) => setShift(e.target.value as Shift)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 font-bold uppercase">
-                                    <option value="a">A</option>
-                                    <option value="b">B</option>
-                                    <option value="c">C</option>
-                                    <option value="d">D</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase">Salto (1-8)</label>
-                                <select value={rcSubGroup} onChange={(e) => setRcSubGroup(parseInt(e.target.value))} className="w-full mt-1 bg-purple-50 text-purple-700 font-bold border border-purple-200 rounded-lg px-3 py-2.5">
-                                    {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                                        <option key={num} value={num}>Gr. {num}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="col-span-2 flex gap-3 mt-4">
-                            <button type="submit" disabled={isProcessingImg} className="flex-1 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-400 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-95">
-                               {isEditing ? <SaveIcon className="h-5 w-5" /> : <PlusIcon className="h-5 w-5" />} 
-                               {isEditing ? 'Aggiorna Scheda' : 'Salva Personale'}
-                            </button>
-                            {isEditing && <button type="button" onClick={handleCancel} className="bg-slate-200 text-slate-600 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 transition-colors">Annulla</button>}
-                        </div>
-                    </div>
-                </form>
+            {/* Pulsante Nuovo Dipendente Mobile/Desktop */}
+            <div className="mb-6 flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                <div>
+                    <h2 className="text-lg font-bold text-slate-800">Gestione Personale</h2>
+                    <p className="text-xs text-slate-500">Anagrafica VVF Turni A-B-C-D</p>
+                </div>
+                <button 
+                    onClick={handleOpenAdd} 
+                    className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md transition-all active:scale-95"
+                >
+                    <UserPlusIcon className="h-5 w-5" /> 
+                    <span className="hidden md:inline">Nuovo</span>
+                </button>
             </div>
+
+            {/* MODALE POPUP */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up relative">
+                        {/* Header Modale */}
+                        <div className="bg-slate-50 border-b border-slate-200 p-4 flex justify-between items-center">
+                            <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
+                                {isEditing ? <EditIcon className="h-5 w-5 text-blue-500"/> : <UserPlusIcon className="h-5 w-5 text-green-500"/>}
+                                {isEditing ? 'Modifica Scheda' : 'Nuovo Inserimento'}
+                            </h3>
+                            <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+                        </div>
+
+                        {/* Body Form */}
+                        <div className="p-6">
+                            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                                {/* AVATAR UPLOAD SECTION */}
+                                <div className="flex flex-col items-center gap-3">
+                                    <div className="relative w-24 h-24 rounded-full border-4 border-slate-100 shadow-inner bg-slate-50 flex items-center justify-center overflow-hidden group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                        {isProcessingImg ? (
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800"></div>
+                                        ) : photoUrl ? (
+                                            <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-4xl">{icon || '👤'}</span>
+                                        )}
+                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <span className="text-white text-xs font-bold">Carica</span>
+                                        </div>
+                                        
+                                        {/* LIVE PREVIEW BADGE */}
+                                        {grade && <div className="scale-150 origin-top-right absolute top-3 right-3"><GradeBadge grade={grade} /></div>}
+                                    </div>
+                                    
+                                    <input 
+                                        type="file" 
+                                        ref={fileInputRef} 
+                                        onChange={handleFileChange} 
+                                        accept="image/*" 
+                                        className="hidden" 
+                                    />
+                                    
+                                    <div className="w-1/2">
+                                        <input type="text" placeholder="Emoji (es. 👨‍🚒)" value={icon} onChange={(e) => { setIcon(e.target.value); if(e.target.value) setPhotoUrl(''); }} className="w-full bg-slate-100 rounded-md px-2 py-1 text-center text-sm border-transparent focus:bg-white focus:ring-2 focus:ring-slate-200 transition-all" />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="col-span-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Cognome e Nome</label>
+                                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Es. Rossi Mario" required />
+                                    </div>
+
+                                    <div className="col-span-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Qualifica / Grado</label>
+                                        <select value={grade} onChange={(e) => setGrade(e.target.value)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                            <option value="">-- Seleziona Grado --</option>
+                                            {VVF_GRADES.map(g => (
+                                                <option key={g.id} value={g.id}>{g.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Turno</label>
+                                        <select value={shift} onChange={(e) => setShift(e.target.value as Shift)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 font-bold uppercase">
+                                            <option value="a">A</option>
+                                            <option value="b">B</option>
+                                            <option value="c">C</option>
+                                            <option value="d">D</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Salto (1-8)</label>
+                                        <select value={rcSubGroup} onChange={(e) => setRcSubGroup(parseInt(e.target.value))} className="w-full mt-1 bg-purple-50 text-purple-700 font-bold border border-purple-200 rounded-lg px-3 py-2.5">
+                                            {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                                                <option key={num} value={num}>Gr. {num}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button type="button" onClick={handleCloseModal} className="flex-1 bg-slate-200 text-slate-600 font-bold py-3 px-6 rounded-lg hover:bg-slate-300 transition-colors">Annulla</button>
+                                    <button type="submit" disabled={isProcessingImg} className="flex-1 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-400 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-95">
+                                    {isEditing ? <SaveIcon className="h-5 w-5" /> : <PlusIcon className="h-5 w-5" />} 
+                                    {isEditing ? 'Salva' : 'Aggiungi'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Filtri */}
             <div className="mb-6 flex gap-3 items-center flex-wrap">
@@ -346,7 +367,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
 
                             {/* Actions always visible on mobile/touch, hover on desktop */}
                             <div className="flex flex-col gap-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                                 <button onClick={() => handleEdit(member)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"><EditIcon className="h-4 w-4" /></button>
+                                 <button onClick={() => handleOpenEdit(member)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"><EditIcon className="h-4 w-4" /></button>
                                 <button onClick={() => handleDeleteStaff(member.id)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"><TrashIcon className="h-4 w-4" /></button>
                             </div>
                         </div>
