@@ -30,9 +30,40 @@ const STATUS_CONFIG: Record<AttendanceStatus | 'absent', { label: string, short:
 
 const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord, onSaveAttendance, onReopenAttendance, isSuperAdmin, shiftSettings, readOnly, onGoBack }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
+    
+    // Funzione helper spostata qui per essere usata nell'inizializzazione
+    const getShiftsForDateSync = (date: Date) => {
+        const anchorShift = 'b';
+        const anchorDate = new Date(2025, 11, 20, 12, 0, 0);
+        const targetDate = new Date(date);
+        targetDate.setHours(12, 0, 0, 0);
+        const diffTime = targetDate.getTime() - anchorDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        const shifts = ['A', 'B', 'C', 'D'];
+        const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
+        let dayIndex = (anchorIndex + diffDays) % 4;
+        if (dayIndex < 0) dayIndex += 4;
+        let nightIndex = (dayIndex - 1 + 4) % 4;
+        return { day: shifts[dayIndex], night: shifts[nightIndex] };
+    };
+
     // 3 MODALITÀ: 'matrix' (Nuova Tabella), 'calendar' (Vecchio Turnario), 'services' (Disattivato)
     const [viewMode, setViewMode] = useState<'matrix' | 'calendar' | 'services'>('matrix');
-    const [matrixShift, setMatrixShift] = useState<Shift>('a');
+    
+    // Inizializza il turno visualizzato in base all'ora corrente
+    const [matrixShift, setMatrixShift] = useState<Shift>(() => {
+        const now = new Date();
+        const hour = now.getHours();
+        const shifts = getShiftsForDateSync(now);
+        
+        // Logica: Se siamo tra le 08:00 e le 20:00 -> Mostra Giorno.
+        // Se siamo tra le 20:00 e le 08:00 -> Mostra Notte.
+        if (hour >= 8 && hour < 20) {
+            return shifts.day.toLowerCase() as Shift;
+        } else {
+            return shifts.night.toLowerCase() as Shift;
+        }
+    });
     
     // EDITING STATE
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -69,35 +100,21 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const isRealPerson = (name: string) => !name.toLowerCase().includes('cassa');
 
+    // Manteniamo la funzione originale per compatibilità nel render, anche se la logica è duplicata in getShiftsForDateSync
     const getShiftsForDate = (date: Date) => {
-        const anchorShift = 'b';
-
-        // 20 Dicembre 2025 ore 12:00
-        const anchorDate = new Date(2025, 11, 20, 12, 0, 0);
+        const shifts = getShiftsForDateSync(date);
         
-        const targetDate = new Date(date);
-        targetDate.setHours(12, 0, 0, 0); 
-        
-        const diffTime = targetDate.getTime() - anchorDate.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
-        
-        const shifts = ['A', 'B', 'C', 'D'];
-        const anchorIndex = shifts.indexOf(anchorShift.toUpperCase());
-
-        // Calcolo Turno Giorno (Rotazione Forward: A->B->C->D)
-        let dayIndex = (anchorIndex + diffDays) % 4;
-        if (dayIndex < 0) dayIndex += 4;
-        
-        // Logica Notte: Precedente (es. Giorno B -> Notte A)
-        let nightIndex = (dayIndex - 1 + 4) % 4;
-        
-        // Smontante: È il turno che smonta alle 08:00 (cioè la Notte di IERI)
-        let smontanteIndex = (dayIndex - 2 + 4) % 4; 
+        // Per calcolare smontante (turno notte di ieri), prendiamo l'indice della notte e andiamo indietro di 1 nel ciclo logico dei turni notturni... 
+        // Oppure semplicemente ricalcoliamo: Day A -> Night D -> Smontante C
+        // Usiamo la logica base:
+        const allShifts = ['A', 'B', 'C', 'D'];
+        const dayIdx = allShifts.indexOf(shifts.day);
+        const smontanteIdx = (dayIdx - 2 + 4) % 4;
 
         return {
-            day: shifts[dayIndex],
-            night: shifts[nightIndex],
-            smontante: shifts[smontanteIndex]
+            day: shifts.day,
+            night: shifts.night,
+            smontante: allShifts[smontanteIdx]
         };
     };
 
@@ -487,10 +504,12 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                 <th 
                                                     key={day.dayNum} 
                                                     className={`
-                                                        p-1 min-w-[35px] text-center border-b border-r border-slate-200 font-bold relative
+                                                        p-1 min-w-[35px] text-center border-r border-slate-200 font-bold relative
                                                         ${day.isWorking ? 'bg-orange-100 text-orange-800' : ''}
                                                         ${[0,6].includes(day.date.getDay()) ? 'text-red-500' : ''}
-                                                        ${isToday ? '!border-l-2 !border-r-2 !border-t-2 !border-red-600 bg-red-50/20' : ''}
+                                                        ${isToday 
+                                                            ? '!border-l-2 !border-r-2 !border-red-500 !border-b-0 !border-t-2 rounded-t-[3px] bg-red-50/10 z-20 shadow-[0_-5px_10px_-5px_rgba(220,38,38,0.2)]' 
+                                                            : 'border-b'}
                                                     `}
                                                 >
                                                     <div className="flex flex-col relative z-10">
@@ -513,8 +532,10 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                 <th 
                                                     key={`rc-${day.dayNum}`} 
                                                     className={`
-                                                        p-1 text-center border-b border-r border-slate-300 font-black text-purple-700 bg-purple-50
-                                                        ${isToday ? '!border-l-2 !border-r-2 !border-red-600 bg-red-50/20' : ''}
+                                                        p-1 text-center border-r border-slate-300 font-black text-purple-700 bg-purple-50
+                                                        ${isToday 
+                                                            ? '!border-l-2 !border-r-2 !border-red-500 !border-b-0 bg-red-50/10 z-20 shadow-[inset_0_0_10px_rgba(220,38,38,0.05)]' 
+                                                            : 'border-b'}
                                                     `}
                                                 >
                                                     {day.rcGroup ? `S-${day.rcGroup}` : '-'}
@@ -559,13 +580,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     <td 
                                                         key={`${person.id}-${day.dayNum}`} 
                                                         className={`
-                                                            text-center border-b border-r border-slate-200 transition-colors relative
+                                                            text-center border-r border-slate-200 transition-colors relative
                                                             ${day.isWorking ? 'bg-orange-50/30' : ''}
                                                             ${status ? 'bg-white' : 'hover:bg-slate-100'}
                                                             ${readOnly ? 'cursor-default' : 'cursor-pointer'}
                                                             ${isJumpDay && !status ? 'bg-slate-200/50' : ''}
-                                                            ${isToday ? '!border-l-2 !border-r-2 !border-red-600 bg-red-50/10' : ''}
-                                                            ${isToday && isLastRow ? '!border-b-2' : ''}
+                                                            ${isToday 
+                                                                ? `!border-l-2 !border-r-2 !border-red-500 bg-red-50/10 z-20 !border-b-0 shadow-[inset_0_0_10px_rgba(220,38,38,0.05)] ${isLastRow ? '!border-b-2 rounded-b-[3px] shadow-[0_5px_10px_-5px_rgba(220,38,38,0.2)]' : ''}` 
+                                                                : 'border-b'}
                                                         `}
                                                         onClick={() => handleOpenEdit(dateStr, tillId, record)}
                                                         title={`${day.dayNum}/${currentDate.getMonth()+1} - ${person.name}`}
