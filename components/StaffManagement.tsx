@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { StaffMember, Shift } from '../types';
-import { EditIcon, TrashIcon, PlusIcon, SaveIcon, CheckIcon, StaffIcon, UserPlusIcon } from './Icons';
+import { EditIcon, TrashIcon, PlusIcon, SaveIcon, UserPlusIcon } from './Icons';
 
 interface StaffManagementProps {
     staff: StaffMember[];
@@ -12,32 +12,58 @@ interface StaffManagementProps {
 
 // Configurazione Gradi VVF
 const VVF_GRADES = [
-    { id: 'VIG', label: 'Vigile del Fuoco', short: 'VIG', color: 'bg-red-600 border-red-800' },
-    { id: 'VE', label: 'Vigile Esperto', short: 'VE', color: 'bg-red-600 border-red-800' },
-    { id: 'VESC', label: 'Vigile Esperto Scatto', short: 'VESC', color: 'bg-red-600 border-red-800' },
-    { id: 'VC', label: 'Vigile Coord.', short: 'VC', color: 'bg-red-700 border-red-900' },
-    { id: 'VCSC', label: 'Vigile Coord. Scatto', short: 'VCSC', color: 'bg-red-700 border-red-900' },
-    { id: 'CS', label: 'Capo Squadra', short: 'CS', color: 'bg-amber-500 border-amber-700' },
-    { id: 'CQE', label: 'Capo Squadra Esp.', short: 'CQE', color: 'bg-amber-500 border-amber-700' },
-    { id: 'CR', label: 'Capo Reparto', short: 'CR', color: 'bg-slate-400 border-slate-600' },
-    { id: 'CRE', label: 'Capo Reparto Esp.', short: 'CRE', color: 'bg-slate-400 border-slate-600' },
+    { id: 'VIG', label: 'Vigile del Fuoco', short: 'VIG', type: 'chevron', count: 1 },
+    { id: 'VE', label: 'Vigile Esperto', short: 'VE', type: 'chevron', count: 2 },
+    { id: 'VESC', label: 'Vigile Esp. Scatto', short: 'VESC', type: 'chevron', count: 2 },
+    { id: 'VC', label: 'Vigile Coord.', short: 'VC', type: 'chevron', count: 3 },
+    { id: 'VCSC', label: 'Vigile Coord. Scatto', short: 'VCSC', type: 'chevron', count: 3 },
+    { id: 'CS', label: 'Capo Squadra', short: 'CS', type: 'bar', count: 1 },
+    { id: 'CQE', label: 'Capo Squadra Esp.', short: 'CQE', type: 'bar', count: 2 },
+    { id: 'CR', label: 'Capo Reparto', short: 'CR', type: 'bar', count: 3 },
+    { id: 'CRE', label: 'Capo Reparto Esp.', short: 'CRE', type: 'bar', count: 3 },
 ];
 
+// --- NUOVO COMPONENTE BADGE GRAFICO ---
 export const GradeBadge = ({ grade }: { grade?: string }) => {
     if (!grade) return null;
-    const conf = VVF_GRADES.find(g => g.id === grade || g.short === grade) || { short: grade, color: 'bg-slate-500 border-slate-700' };
+    const conf = VVF_GRADES.find(g => g.id === grade || g.short === grade);
+    
+    // Fallback per gradi sconosciuti (testo semplice)
+    if (!conf) {
+        return (
+            <div className="absolute -top-1 -right-1 z-10 flex items-center justify-center h-4 px-1 rounded text-[8px] font-black text-white bg-slate-500 border border-slate-600 uppercase">
+                {grade}
+            </div>
+        );
+    }
+
+    const isBar = conf.type === 'bar';
     
     return (
-        <div className={`
-            absolute -top-1 -right-1 z-10 
-            flex items-center justify-center
-            min-w-[24px] h-[16px] px-1
-            rounded text-[8px] font-black text-white
-            border-b-2 shadow-sm
-            uppercase tracking-tighter
-            ${conf.color}
-        `} style={{ fontSize: '0.55rem', lineHeight: 1 }}>
-            {conf.short}
+        <div 
+            className={`
+                absolute -top-1 -right-1 z-10 
+                flex flex-col items-center justify-center gap-[1px]
+                min-w-[18px] px-1 py-0.5 rounded-sm shadow-md
+                bg-[#722F37] /* Amaranto VVF */
+                ${isBar ? 'border-[1.5px] border-yellow-400' : 'border border-[#5a232b]'}
+            `}
+            title={conf.label}
+        >
+            {/* RENDER CHEVRONS (V rovesciate Argentate) */}
+            {!isBar && Array.from({ length: conf.count }).map((_, i) => (
+                <div key={i} className="w-full flex justify-center -mt-[2px] first:mt-0">
+                     {/* SVG Chevron Down Silver */}
+                     <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1L5 5L9 1" stroke="#E2E8F0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                </div>
+            ))}
+
+            {/* RENDER BARS (Barre Dorate) */}
+            {isBar && Array.from({ length: conf.count }).map((_, i) => (
+                <div key={i} className="w-full h-[3px] bg-yellow-400 rounded-full shadow-sm my-[0.5px]"></div>
+            ))}
         </div>
     );
 };
@@ -50,6 +76,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
     const [icon, setIcon] = useState('');
     const [photoUrl, setPhotoUrl] = useState('');
     const [isEditing, setIsEditing] = useState<string | null>(null);
+    const [isProcessingImg, setIsProcessingImg] = useState(false);
     
     // File Input Ref
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,14 +119,46 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
 
     const filteredStaff = staff.filter(m => filterShifts.has(m.shift));
 
+    // --- FUNZIONE COMPRESSIONE IMMAGINE ---
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setIsProcessingImg(true);
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setPhotoUrl(reader.result as string);
-                // Se carichi una foto, resetta l'icona emoji per evitare conflitti visivi (opzionale)
-                setIcon(''); 
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    // Ridimensiona a max 150x150 per avatar (leggerissimo)
+                    const MAX_WIDTH = 150;
+                    const MAX_HEIGHT = 150;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+                    
+                    // Comprime in JPEG a bassa qualità (0.7)
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                    setPhotoUrl(dataUrl);
+                    setIcon(''); // Resetta emoji se si carica foto
+                    setIsProcessingImg(false);
+                };
+                img.src = event.target?.result as string;
             };
             reader.readAsDataURL(file);
         }
@@ -128,7 +187,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             resetForm();
         } catch (error) { 
             console.error(error); 
-            alert("Errore nel salvataggio."); 
+            alert("Errore nel salvataggio. L'immagine potrebbe essere troppo grande, prova un'altra foto."); 
         }
     };
     
@@ -152,7 +211,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                     {/* AVATAR UPLOAD SECTION */}
                     <div className="col-span-1 md:col-span-3 flex flex-col items-center gap-3">
                         <div className="relative w-24 h-24 rounded-full border-4 border-slate-100 shadow-inner bg-slate-50 flex items-center justify-center overflow-hidden group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                            {photoUrl ? (
+                            {isProcessingImg ? (
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800"></div>
+                            ) : photoUrl ? (
                                 <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
                             ) : (
                                 <span className="text-4xl">{icon || '👤'}</span>
@@ -162,7 +223,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                             </div>
                             
                             {/* LIVE PREVIEW BADGE */}
-                            {grade && <GradeBadge grade={grade} />}
+                            {grade && <div className="scale-150 origin-top-right absolute top-2 right-2"><GradeBadge grade={grade} /></div>}
                         </div>
                         
                         <input 
@@ -191,7 +252,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                              <select value={grade} onChange={(e) => setGrade(e.target.value)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <option value="">-- Seleziona Grado --</option>
                                 {VVF_GRADES.map(g => (
-                                    <option key={g.id} value={g.id}>{g.label} ({g.short})</option>
+                                    <option key={g.id} value={g.id}>{g.label}</option>
                                 ))}
                              </select>
                         </div>
@@ -217,7 +278,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                         </div>
 
                         <div className="col-span-2 flex gap-3 mt-4">
-                            <button type="submit" className="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-95">
+                            <button type="submit" disabled={isProcessingImg} className="flex-1 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-400 text-white font-bold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-95">
                                {isEditing ? <SaveIcon className="h-5 w-5" /> : <PlusIcon className="h-5 w-5" />} 
                                {isEditing ? 'Aggiorna Scheda' : 'Salva Personale'}
                             </button>
