@@ -23,12 +23,12 @@ const VVF_GRADES = [
     { id: 'CRE', label: 'Capo Reparto Esp.', short: 'CRE', type: 'bar', count: 3 },
 ];
 
-// --- NUOVO COMPONENTE BADGE GRAFICO ---
+// --- NUOVO COMPONENTE BADGE GRAFICO (Schiacciato) ---
 export const GradeBadge = ({ grade }: { grade?: string }) => {
     if (!grade) return null;
     const conf = VVF_GRADES.find(g => g.id === grade || g.short === grade);
     
-    // Fallback per gradi sconosciuti (testo semplice)
+    // Fallback per gradi sconosciuti
     if (!conf) {
         return (
             <div className="absolute -top-1 -right-1 z-10 flex items-center justify-center h-4 px-1 rounded text-[8px] font-black text-white bg-slate-500 border border-slate-600 uppercase">
@@ -42,27 +42,27 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
     return (
         <div 
             className={`
-                absolute -top-1 -right-1 z-10 
+                absolute -top-1 -right-2 z-10 
                 flex flex-col items-center justify-center gap-[1px]
-                min-w-[18px] px-1 py-0.5 rounded-sm shadow-md
+                min-w-[24px] px-0.5 py-[1px] rounded-[3px] shadow-sm
                 bg-[#722F37] /* Amaranto VVF */
-                ${isBar ? 'border-[1.5px] border-yellow-400' : 'border border-[#5a232b]'}
+                ${isBar ? 'border-[1px] border-yellow-400' : 'border-[0.5px] border-[#5a232b]'}
             `}
             title={conf.label}
         >
-            {/* RENDER CHEVRONS (V rovesciate Argentate) */}
+            {/* RENDER CHEVRONS (V rovesciate Argentate - Più larghe e basse) */}
             {!isBar && Array.from({ length: conf.count }).map((_, i) => (
-                <div key={i} className="w-full flex justify-center -mt-[2px] first:mt-0">
-                     {/* SVG Chevron Down Silver */}
-                     <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M1 1L5 5L9 1" stroke="#E2E8F0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <div key={i} className="w-full flex justify-center -mt-[2.5px] first:mt-0">
+                     {/* SVG Chevron Down Silver (Flattened) */}
+                     <svg width="14" height="5" viewBox="0 0 14 5" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1 L7 4 L13 1" stroke="#E2E8F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                 </div>
             ))}
 
-            {/* RENDER BARS (Barre Dorate) */}
+            {/* RENDER BARS (Barre Dorate - Più sottili e larghe) */}
             {isBar && Array.from({ length: conf.count }).map((_, i) => (
-                <div key={i} className="w-full h-[3px] bg-yellow-400 rounded-full shadow-sm my-[0.5px]"></div>
+                <div key={i} className="w-[18px] h-[2px] bg-yellow-400 rounded-full shadow-sm my-[0.5px]"></div>
             ))}
         </div>
     );
