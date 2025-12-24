@@ -30,13 +30,13 @@ export const LightbulbIcon = (props: IconProps) => <EmojiIcon emoji="💡" {...p
 export const StarIcon = (props: IconProps) => <EmojiIcon emoji="⭐" {...props} />;
 export const LogoIcon = (props: IconProps) => <EmojiIcon emoji="☕" {...props} />;
 export const ChartBarIcon = (props: IconProps) => <EmojiIcon emoji="📈" {...props} />;
-export const LockIcon = (props: IconProps) => <EmojiIcon emoji="🔒" {...props} />;
+export const LockIcon = (props: IconProps) => <EmojiIcon emoji="🔐" {...props} />;
 export const LockOpenIcon = (props: IconProps) => <EmojiIcon emoji="🔓" {...props} />;
 export const CheckIcon = (props: IconProps) => <EmojiIcon emoji="✅" {...props} />;
 export const SettingsIcon = (props: IconProps) => <EmojiIcon emoji="⚙️" {...props} />;
 export const CashIcon = (props: IconProps) => <EmojiIcon emoji="💶" {...props} />;
-export const BanknoteIcon = (props: IconProps) => <EmojiIcon emoji="💰" {...props} />;
-export const ListIcon = (props: IconProps) => <EmojiIcon emoji="📝" {...props} />;
+export const BanknoteIcon = (props: IconProps) => <EmojiIcon emoji="💶" {...props} />;
+export const ListIcon = (props: IconProps) => <EmojiIcon emoji="🧾" {...props} />;
 export const BoxIcon = (props: IconProps) => <EmojiIcon emoji="📦" {...props} />;
 export const GoogleIcon = (props: IconProps) => <EmojiIcon emoji="🔑" {...props} />;
 export const UserPlusIcon = (props: IconProps) => <EmojiIcon emoji="👤➕" {...props} />;

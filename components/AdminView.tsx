@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus } from '../types';
 import { type User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -278,7 +278,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                 }
             `}
         >
-            <div className={`text-4xl transform transition-transform ${activeTab === tab ? 'scale-110 text-white' : 'text-slate-600'}`}>
+            <div className={`text-4xl transform transition-transform filter drop-shadow-sm ${activeTab === tab ? 'scale-110' : 'grayscale-0'}`}>
                 {icon}
             </div>
             <span className="text-center leading-tight uppercase tracking-tight">{label}</span>
@@ -319,7 +319,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="movements" label="Movimenti" icon={<ListIcon />} />
                         <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon />} />
                         <TabButton tab="stock" label="Stock" icon={<BoxIcon />} />
-                        <TabButton tab="products" label="Prodotti" icon={<StarIcon />} />
+                        <TabButton tab="products" label="Prodotti" icon={<LogoIcon />} />
                         <TabButton tab="attendance" label="Presenze" icon={<ClipboardIcon />} />
                         <TabButton tab="staff" label="Staff" icon={<StaffIcon />} />
                         <TabButton tab="admins" label="Admin" icon={<LockIcon />} />
