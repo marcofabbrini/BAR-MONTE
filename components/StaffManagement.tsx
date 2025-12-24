@@ -31,7 +31,7 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
     // Fallback per gradi sconosciuti
     if (!conf) {
         return (
-            <div className="absolute -top-2 -right-1 z-10 flex items-center justify-center h-3 px-1 rounded-[3px] text-[7px] font-black text-white bg-slate-500 border border-slate-600 uppercase">
+            <div className="absolute -top-2 -right-1 z-10 flex items-center justify-center h-[18px] min-w-[24px] px-1 rounded-[2px] text-[7px] font-black text-white bg-slate-500 border border-slate-600 uppercase">
                 {grade}
             </div>
         );
@@ -44,7 +44,7 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
             className={`
                 absolute -top-2 -right-2 z-10 
                 flex flex-col items-center justify-center gap-[1px]
-                min-w-[20px] px-0.5 py-[1px] rounded-[3px] shadow-sm
+                w-[24px] h-[18px] rounded-[2px] shadow-sm
                 bg-[#722F37] /* Amaranto VVF */
                 ${isBar ? 'border-[1px] border-yellow-400' : 'border-[0.5px] border-[#5a232b]'}
             `}
@@ -212,10 +212,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                 </div>
                 <button 
                     onClick={handleOpenAdd} 
-                    className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md transition-all active:scale-95"
+                    className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center justify-center shadow-md transition-all active:scale-95"
                 >
-                    <UserPlusIcon className="h-5 w-5" /> 
-                    <span className="hidden md:inline">Nuovo</span>
+                    <span className="text-xl leading-none">➕</span>
                 </button>
             </div>
 

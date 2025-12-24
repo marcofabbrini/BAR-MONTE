@@ -18,7 +18,7 @@ const EmojiIcon = ({ emoji, className, ...props }: { emoji: string } & IconProps
     </span>
 );
 
-export const BackArrowIcon = (props: IconProps) => <EmojiIcon emoji="🔙" {...props} />;
+export const BackArrowIcon = (props: IconProps) => <EmojiIcon emoji="⬅" {...props} />;
 export const EditIcon = (props: IconProps) => <EmojiIcon emoji="✏️" {...props} />;
 export const TrashIcon = (props: IconProps) => <EmojiIcon emoji="🗑️" {...props} />;
 export const PlusIcon = (props: IconProps) => <EmojiIcon emoji="➕" {...props} />;

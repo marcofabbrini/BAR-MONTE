@@ -266,10 +266,21 @@ const AdminView: React.FC<AdminViewProps> = ({
         }
     };
 
-    // AUMENTATE DIMENSIONI ICONE (h-10 w-10)
+    // PULSANTI GRIGLIA ADMIN
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
-        <button onClick={() => setActiveTab(tab)} className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all w-24 h-24 text-[10px] font-bold gap-2 ${activeTab === tab ? 'bg-red-500 text-white shadow-md scale-105' : 'bg-white text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-100'}`}>
-            <div className={`${activeTab === tab ? 'text-white' : 'text-current'} transform transition-transform scale-110`}>{icon}</div>
+        <button 
+            onClick={() => setActiveTab(tab)} 
+            className={`
+                flex flex-col items-center justify-center p-3 rounded-xl transition-all w-full h-24 sm:h-28 text-[10px] sm:text-xs font-bold gap-2 
+                ${activeTab === tab 
+                    ? 'bg-red-500 text-white shadow-lg scale-[1.02]' 
+                    : 'bg-white text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-100 hover:shadow-md'
+                }
+            `}
+        >
+            <div className={`text-4xl transform transition-transform ${activeTab === tab ? 'scale-110 text-white' : 'text-slate-600'}`}>
+                {icon}
+            </div>
             <span className="text-center leading-tight uppercase tracking-tight">{label}</span>
         </button>
     );
@@ -293,7 +304,9 @@ const AdminView: React.FC<AdminViewProps> = ({
             <header className="bg-white border-b border-slate-200 p-3 sticky top-0 z-50 mt-[env(safe-area-inset-top)]">
                 <div className="flex flex-col gap-3 max-w-7xl mx-auto w-full">
                     <div className="flex items-center justify-between w-full">
-                         <button onClick={onGoBack} className="flex items-center text-slate-500 hover:text-slate-800 font-bold gap-1 text-sm"><BackArrowIcon className="h-4 w-4" /> Esci</button>
+                         <button onClick={onGoBack} className="flex items-center text-slate-500 hover:text-slate-800 font-bold gap-1 text-sm">
+                            <BackArrowIcon className="h-5 w-5" /> Esci
+                         </button>
                         <div className="bg-slate-800 text-white px-4 py-1.5 rounded-full shadow-lg flex flex-col items-center">
                             <span className="text-[9px] uppercase text-slate-400 font-bold tracking-wider">Saldo Cassa</span>
                             <span className="text-lg font-black leading-none">€{(currentBalance || 0).toFixed(2)}</span>
@@ -301,18 +314,16 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <div className="text-right"><p className="text-[9px] text-slate-400 uppercase font-bold">{isSuperAdmin ? 'Super Admin' : 'Admin'}</p><button onClick={onLogout} className="text-[10px] text-red-500 font-bold hover:underline">LOGOUT</button></div>
                     </div>
                     
-                    <div className="flex flex-col gap-2 w-full overflow-x-auto pb-2">
-                        {/* RIGA 1: OPERATIVITÀ */}
-                        <div className="flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-3 min-w-max md:min-w-0">
-                            <TabButton tab="movements" label="Movimenti" icon={<ListIcon className="h-10 w-10" />} />
-                            <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon className="h-10 w-10" />} />
-                            <TabButton tab="stock" label="Stock" icon={<BoxIcon className="h-10 w-10" />} />
-                            <TabButton tab="products" label="Prodotti" icon={<StarIcon className="h-10 w-10" />} />
-                            <TabButton tab="admins" label="Admin" icon={<LockIcon className="h-10 w-10" />} />
-                            <TabButton tab="staff" label="Staff" icon={<StaffIcon className="h-10 w-10" />} />
-                            <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-10 w-10" />} />
-                            <TabButton tab="attendance" label="Presenze" icon={<ClipboardIcon className="h-10 w-10" />} />
-                        </div>
+                    {/* GRIGLIA NAVIGAZIONE */}
+                    <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-8 gap-2 w-full">
+                        <TabButton tab="movements" label="Movimenti" icon={<ListIcon />} />
+                        <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon />} />
+                        <TabButton tab="stock" label="Stock" icon={<BoxIcon />} />
+                        <TabButton tab="products" label="Prodotti" icon={<StarIcon />} />
+                        <TabButton tab="attendance" label="Presenze" icon={<ClipboardIcon />} />
+                        <TabButton tab="staff" label="Staff" icon={<StaffIcon />} />
+                        <TabButton tab="admins" label="Admin" icon={<LockIcon />} />
+                        <TabButton tab="settings" label="Config" icon={<SettingsIcon />} />
                     </div>
                 </div>
             </header>
