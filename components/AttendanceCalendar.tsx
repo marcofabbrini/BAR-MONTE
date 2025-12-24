@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings, AttendanceStatus } from '../types';
-import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon, GridIcon, SettingsIcon, PrinterIcon, WhatsAppIcon } from './Icons';
+import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon, GridIcon, SettingsIcon, PrinterIcon, WhatsAppIcon, EditIcon } from './Icons';
 import { GradeBadge } from './StaffManagement';
 import { VVF_GRADES } from '../constants';
 
@@ -10,7 +10,7 @@ interface AttendanceCalendarProps {
     staff: StaffMember[];
     tillColors: TillColors;
     onDeleteRecord?: (id: string) => Promise<void>;
-    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string, details?: Record<string, AttendanceStatus>) => Promise<void>;
+    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string, details?: Record<string, AttendanceStatus>, substitutionNames?: Record<string, string>) => Promise<void>;
     onReopenAttendance?: (id: string) => Promise<void>;
     isSuperAdmin?: boolean;
     shiftSettings?: ShiftSettings;
@@ -21,7 +21,10 @@ interface AttendanceCalendarProps {
 // Configurazione Stati Presenza
 const STATUS_CONFIG: Record<AttendanceStatus | 'absent', { label: string, short: string, color: string, textColor: string }> = {
     'present': { label: 'Presente', short: 'P', color: 'bg-green-100 border-green-300', textColor: 'text-green-800' },
-    'substitution': { label: 'Sostituzione', short: 'S', color: 'bg-blue-100 border-blue-300', textColor: 'text-blue-800' },
+    'sub1': { label: 'Sostituzione 1', short: 'S1', color: 'bg-blue-100 border-blue-300', textColor: 'text-blue-800' },
+    'sub2': { label: 'Sostituzione 2', short: 'S2', color: 'bg-blue-100 border-blue-300', textColor: 'text-blue-800' },
+    'sub3': { label: 'Sostituzione 3', short: 'S3', color: 'bg-blue-100 border-blue-300', textColor: 'text-blue-800' },
+    'substitution': { label: 'Sost. (Legacy)', short: 'S', color: 'bg-blue-50 border-blue-200', textColor: 'text-blue-600' }, // Kept for legacy
     'mission': { label: 'Missione', short: 'M', color: 'bg-purple-100 border-purple-300', textColor: 'text-purple-800' },
     'sick': { label: 'Malattia', short: 'X', color: 'bg-red-100 border-red-300', textColor: 'text-red-800' },
     'leave': { label: 'Ferie', short: 'F', color: 'bg-yellow-100 border-yellow-300', textColor: 'text-yellow-800' },
@@ -54,9 +57,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const now = new Date();
         const hour = now.getHours();
         const shifts = getShiftsForDateSync(now);
-        
-        // Logica: Se siamo tra le 08:00 e le 20:00 -> Mostra Giorno.
-        // Se siamo tra le 20:00 e le 08:00 -> Mostra Notte.
         if (hour >= 8 && hour < 20) {
             return shifts.day.toLowerCase() as Shift;
         } else {
@@ -71,6 +71,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     
     // Mappa locale per editing: { staffId: status }
     const [editingDetails, setEditingDetails] = useState<Record<string, AttendanceStatus | 'absent'>>({});
+    const [editingSubNames, setEditingSubNames] = useState<Record<string, string>>({});
     
     const [editingRecord, setEditingRecord] = useState<AttendanceRecord | undefined>(undefined);
 
@@ -144,8 +145,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         }
     };
 
+    // Define virtual substitution rows
+    const virtualSubRows = [
+        { id: 'sub_1', name: 'Sostituzione 1', isVirtual: true },
+        { id: 'sub_2', name: 'Sostituzione 2', isVirtual: true },
+        { id: 'sub_3', name: 'Sostituzione 3', isVirtual: true }
+    ];
+
     const handleOpenEdit = (dateStr: string, tillId: string, currentRecord?: AttendanceRecord) => {
-        // Allows editing unless explicitly explicitly forbidden, supporting "modified by everyone"
         if (readOnly) return; 
         
         setEditingDate(dateStr);
@@ -153,12 +160,16 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         setEditingRecord(currentRecord);
         
         const initialDetails: Record<string, AttendanceStatus | 'absent'> = {};
+        const initialSubNames: Record<string, string> = currentRecord?.substitutionNames || {};
         
         const shift = tillId.replace('T', '').toLowerCase();
         const shiftStaff = staff.filter(s => s.shift === shift);
+        
+        // Add virtual rows to processing list
+        const allRows = [...shiftStaff, ...virtualSubRows];
         const rcGroup = getRestingSubGroup(shift, new Date(dateStr));
 
-        shiftStaff.forEach(s => {
+        allRows.forEach(s => {
             if (currentRecord) {
                 if (currentRecord.attendanceDetails && currentRecord.attendanceDetails[s.id]) {
                     initialDetails[s.id] = currentRecord.attendanceDetails[s.id] as AttendanceStatus;
@@ -171,16 +182,23 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 if (s.name.toLowerCase().includes('cassa')) {
                     initialDetails[s.id] = 'present';
                 } else {
-                    if (s.rcSubGroup === rcGroup) {
-                        initialDetails[s.id] = 'rest';
-                    } else {
+                    // Virtual rows default to absent
+                    if ((s as any).isVirtual) {
                         initialDetails[s.id] = 'absent';
+                    } else {
+                        // Real staff logic
+                        if (s.rcSubGroup === rcGroup) {
+                            initialDetails[s.id] = 'rest';
+                        } else {
+                            initialDetails[s.id] = 'absent';
+                        }
                     }
                 }
             }
         });
         
         setEditingDetails(initialDetails);
+        setEditingSubNames(initialSubNames);
         setIsEditModalOpen(true);
     };
 
@@ -194,13 +212,16 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         }));
     };
 
+    const updateSubName = (id: string, name: string) => {
+        setEditingSubNames(prev => ({
+            ...prev,
+            [id]: name
+        }));
+    };
+
     const bulkSetStatus = (status: AttendanceStatus | 'absent') => {
         const newDetails = { ...editingDetails };
-        
-        // Iteriamo su TUTTO lo staff del turno corrente (definito in editingStaffList)
-        // per assicurarci che tutti vengano aggiornati
         editingStaffList.forEach(member => {
-            // Escludiamo sempre la "Cassa" dalle operazioni di massa
             if (!member.name.toLowerCase().includes('cassa')) {
                 newDetails[member.id] = status;
             }
@@ -215,18 +236,12 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const finalDetails: Record<string, AttendanceStatus> = {};
 
         Object.entries(editingDetails).forEach(([id, status]) => {
-            // FIX: Ora salviamo TUTTI gli stati in finalDetails, anche 'absent'.
-            // Questo forza la sovrascrittura nel DB di eventuali stati precedenti (es. 'present').
-            // Se non lo facessimo, il merge del DB manterrebbe il vecchio stato.
             finalDetails[id] = status as AttendanceStatus;
-
-            // Per la compatibilità con la lista "presentStaffIds", aggiungiamo solo se NON assente.
             if (status !== 'absent') {
                 presentIds.push(id);
             }
         });
 
-        // Pass 'undefined' if validating is false to keep it open (Draft)
         const user = editingRecord?.closedBy || 'Admin';
         const closingUser = shouldValidate ? user : (editingRecord?.closedBy ? editingRecord.closedBy : undefined);
 
@@ -235,20 +250,17 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             presentIds, 
             editingDate, 
             closingUser,
-            finalDetails
+            finalDetails,
+            editingSubNames
         );
         setIsEditModalOpen(false);
     };
 
-    // Helper to clear attendances for the current month/view
     const handleBulkDeleteMonth = async () => {
         if(!isSuperAdmin || !onDeleteRecord) return;
         if(!window.confirm(`Sei sicuro di voler ELIMINARE TUTTE le presenze del mese di ${monthNames[currentDate.getMonth()]} per il turno ${matrixShift.toUpperCase()}? Questa operazione è irreversibile.`)) return;
 
         const tillId = `T${matrixShift.toUpperCase()}`;
-        
-        // Use String Comparison for reliability over Date objects
-        // Format: YYYY-MM
         const targetMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
 
         const recordsToDelete = attendanceRecords.filter(r => {
@@ -265,7 +277,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         alert(`${count} record eliminati.`);
     };
 
-    // Helper to get sorting rank
     const getStaffRank = (gradeId?: string) => {
         if(!gradeId) return -1;
         const index = VVF_GRADES.findIndex(g => g.id === gradeId);
@@ -275,30 +286,46 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     const editingStaffList = useMemo(() => {
         if (!editingTillId) return [];
         const shift = editingTillId.replace('T', '').toLowerCase();
-        return staff.filter(s => s.shift === shift).sort((a,b) => {
+        
+        // 1. Regular Staff sorted
+        const regulars = staff.filter(s => s.shift === shift).sort((a,b) => {
              const aIsCassa = a.name.toLowerCase().includes('cassa');
              const bIsCassa = b.name.toLowerCase().includes('cassa');
              if (aIsCassa && !bIsCassa) return -1;
              if (!aIsCassa && bIsCassa) return 1;
              
-             // Sort by Rank DESC (assuming higher index in VVF_GRADES is higher rank)
              const rankA = getStaffRank(a.grade);
              const rankB = getStaffRank(b.grade);
              if (rankA !== rankB) return rankB - rankA;
 
              return a.name.localeCompare(b.name);
         });
+
+        // 2. Append Virtual Rows
+        return [...regulars, ...virtualSubRows.map(v => ({ 
+            id: v.id, 
+            name: v.name, 
+            shift: shift as Shift, 
+            grade: 'Guest', 
+            isVirtual: true 
+        }))];
     }, [staff, editingTillId]);
 
     const matrixData = useMemo(() => {
-        const shiftStaff = staff
+        const realStaff = staff
             .filter(s => s.shift === matrixShift && isRealPerson(s.name))
             .sort((a,b) => {
                 const rankA = getStaffRank(a.grade);
                 const rankB = getStaffRank(b.grade);
-                if (rankA !== rankB) return rankB - rankA; // Sort Descending Rank
+                if (rankA !== rankB) return rankB - rankA;
                 return a.name.localeCompare(b.name);
             });
+        
+        // Append 3 virtual rows to matrix
+        const fullRows = [
+            ...realStaff,
+            ...virtualSubRows.map(v => ({ id: v.id, name: v.name, shift: matrixShift, grade: 'Guest', isVirtual: true, rcSubGroup: undefined }))
+        ];
 
         const days = Array.from({ length: daysInMonth }, (_, i) => {
             const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i + 1);
@@ -315,7 +342,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 rcGroup
             };
         });
-        return { shiftStaff, days };
+        return { shiftStaff: fullRows, days };
     }, [staff, matrixShift, currentDate, daysInMonth, shiftSettings]);
 
     const getStatusForCell = (personId: string, record?: AttendanceRecord) => {
@@ -339,6 +366,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         let message = `*Report Presenze - Turno ${matrixShift.toUpperCase()} - ${monthStr} ${yearStr}*\n\n`;
         
         matrixData.shiftStaff.forEach(person => {
+            if ((person as any).isVirtual) return; // Skip virtual rows in simple summary
             let presentCount = 0;
             let leaveCount = 0;
             
@@ -348,7 +376,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 const record = attendanceRecords.find(r => r.date === dateStr && r.tillId === tillId);
                 const status = getStatusForCell(person.id, record);
                 
-                if (status === 'present' || status === 'substitution' || status === 'mission') presentCount++;
+                if (status === 'present' || status === 'sub1' || status === 'sub2' || status === 'sub3' || status === 'substitution' || status === 'mission') presentCount++;
                 if (status === 'leave' || status === 'sick') leaveCount++;
             });
             
@@ -373,7 +401,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                     </button>
                     <h1 className="text-xl font-bold text-slate-800 ml-4 hidden md:block">Gestione Presenze</h1>
                     
-                    {/* BULK DELETE BUTTON */}
                     {isSuperAdmin && (
                         <button 
                             onClick={handleBulkDeleteMonth}
@@ -389,7 +416,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             {/* EDIT MODAL */}
             {isEditModalOpen && (
                 <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 print:hidden">
-                    {/* ... (Modal content) ... */}
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
                         <div className="p-4 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
                             <div>
@@ -407,7 +433,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             </div>
                         )}
 
-                        {/* AZIONI DI MASSA */}
                         <div className="px-4 pt-3 flex gap-2">
                             <button onClick={() => bulkSetStatus('present')} className="flex-1 bg-green-100 text-green-700 text-xs font-bold py-2 rounded-lg hover:bg-green-200 border border-green-200 transition-colors">
                                 Tutti Presenti
@@ -422,53 +447,67 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                 {editingStaffList.map(member => {
                                     const currentStatus = editingDetails[member.id] || 'absent';
                                     const isCassa = member.name.toLowerCase().includes('cassa');
+                                    const isVirtual = (member as any).isVirtual;
                                     
                                     return (
                                         <div 
                                             key={member.id} 
                                             className={`
-                                                flex items-center justify-between p-3 rounded-lg border transition-all
+                                                flex flex-col p-2 rounded-lg border transition-all
                                                 ${currentStatus !== 'absent' ? 'bg-slate-50 border-slate-300' : 'bg-white border-slate-100'}
                                             `}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                {/* Edit Modal Avatar & Grade */}
-                                                <div className="relative">
-                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xl overflow-hidden border border-slate-200">
-                                                        {member.photoUrl ? <img src={member.photoUrl} className="w-full h-full object-cover" /> : (member.icon || '👤')}
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="relative">
+                                                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xl overflow-hidden border border-slate-200">
+                                                            {member.photoUrl ? <img src={member.photoUrl} className="w-full h-full object-cover" /> : (member.icon || '👤')}
+                                                        </div>
+                                                        {member.grade && !isVirtual && <div className="absolute -top-1 -right-1 scale-75"><GradeBadge grade={member.grade} /></div>}
                                                     </div>
-                                                    {/* Badge in ALTO a destra */}
-                                                    {member.grade && <div className="absolute -top-1 -right-1 scale-75"><GradeBadge grade={member.grade} /></div>}
+                                                    
+                                                    <div>
+                                                        <span className="text-sm font-bold text-slate-700 block">
+                                                            {member.name}
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-400 font-bold">
+                                                            {isVirtual ? 'Riga Aggiuntiva' : `${member.grade ? `${member.grade} - ` : ''}${member.shift.toUpperCase()}${member.rcSubGroup || ''}`}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                
-                                                <div>
-                                                    <span className="text-sm font-bold text-slate-700 block">
-                                                        {member.name}
-                                                    </span>
-                                                    <span className="text-[10px] text-slate-400 font-bold">
-                                                        {member.grade ? `${member.grade} - ` : ''}{member.shift.toUpperCase()}{member.rcSubGroup || ''}
-                                                    </span>
-                                                </div>
-                                            </div>
 
-                                            {isCassa ? (
-                                                <span className="text-xs font-bold text-slate-400 flex items-center gap-1 bg-slate-100 px-2 py-1 rounded">
-                                                    <LockIcon className="h-3 w-3"/> Presente
-                                                </span>
-                                            ) : (
-                                                <select 
-                                                    value={currentStatus}
-                                                    onChange={(e) => updateStaffStatus(member.id, e.target.value as AttendanceStatus | 'absent')}
-                                                    className={`
-                                                        border rounded-md px-2 py-1.5 text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-slate-300
-                                                        ${currentStatus !== 'absent' ? STATUS_CONFIG[currentStatus].textColor : 'text-slate-400'}
-                                                        ${currentStatus !== 'absent' ? 'bg-white shadow-sm' : 'bg-slate-50'}
-                                                    `}
-                                                >
-                                                    {Object.entries(STATUS_CONFIG).map(([key, conf]) => (
-                                                        <option key={key} value={key}>{conf.label}</option>
-                                                    ))}
-                                                </select>
+                                                {isCassa ? (
+                                                    <span className="text-xs font-bold text-slate-400 flex items-center gap-1 bg-slate-100 px-2 py-1 rounded">
+                                                        <LockIcon className="h-3 w-3"/> Presente
+                                                    </span>
+                                                ) : (
+                                                    <select 
+                                                        value={currentStatus}
+                                                        onChange={(e) => updateStaffStatus(member.id, e.target.value as AttendanceStatus | 'absent')}
+                                                        className={`
+                                                            border rounded-md px-2 py-1.5 text-xs font-bold uppercase outline-none focus:ring-2 focus:ring-slate-300
+                                                            ${currentStatus !== 'absent' ? STATUS_CONFIG[currentStatus].textColor : 'text-slate-400'}
+                                                            ${currentStatus !== 'absent' ? 'bg-white shadow-sm' : 'bg-slate-50'}
+                                                        `}
+                                                    >
+                                                        {Object.entries(STATUS_CONFIG).filter(([k]) => k !== 'substitution').map(([key, conf]) => (
+                                                            <option key={key} value={key}>{conf.label}</option>
+                                                        ))}
+                                                    </select>
+                                                )}
+                                            </div>
+                                            
+                                            {/* Input nome personalizzato per righe virtuali SE presenti */}
+                                            {isVirtual && currentStatus !== 'absent' && (
+                                                <div className="mt-2 pl-12 pr-1">
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Nome Sostituto..." 
+                                                        value={editingSubNames[member.id] || ''}
+                                                        onChange={(e) => updateSubName(member.id, e.target.value)}
+                                                        className="w-full text-xs border-b border-slate-300 bg-transparent focus:border-slate-500 outline-none py-1 placeholder-slate-400"
+                                                    />
+                                                </div>
                                             )}
                                         </div>
                                     )
@@ -536,7 +575,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             <div className="flex-grow overflow-auto bg-white relative print:w-full print:h-auto print:overflow-visible">
                 
                 <div className="flex flex-col h-full">
-                    {/* Selettore Turno per Matrice (Nascosto in stampa) */}
+                    {/* Selettore Turno */}
                     <div className="flex justify-center gap-4 p-4 bg-slate-50 border-b border-slate-200 sticky top-0 left-0 z-10 print:hidden">
                         <span className="text-xs font-bold text-slate-500 uppercase self-center">Seleziona Turno:</span>
                         {(['a', 'b', 'c', 'd'] as Shift[]).map(shift => {
@@ -561,9 +600,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                     <div className="flex-grow overflow-auto relative print:overflow-visible">
                         <table className="w-full text-xs border-collapse print:w-full">
                             <thead className="bg-slate-100 text-slate-600 sticky top-0 z-20 shadow-sm print:static">
-                                {/* RIGA 1: NUMERI GIORNO */}
                                 <tr>
-                                    {/* FIX STICKY Z-INDEX: Added z-40 to stay above the 'Today' column (z-20) */}
                                     <th className="p-3 text-left font-bold border-b border-r border-slate-200 sticky left-0 bg-slate-100 z-40 whitespace-nowrap w-auto print:static">
                                         Nominativo
                                     </th>
@@ -590,44 +627,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                         );
                                     })}
                                 </tr>
-                                {/* RIGA 2: RIPOSI COMPENSATIVI (Salto) */}
-                                <tr className="bg-slate-200 text-slate-600 text-[10px] print:bg-white">
-                                    {/* FIX STICKY Z-INDEX: Added z-40 to stay above Today column */}
-                                    <th className="p-2 text-right font-bold border-b border-r border-slate-300 sticky left-0 bg-slate-200 z-40 italic print:static print:bg-white">
-                                        Salto (Riposo Comp.):
-                                    </th>
-                                    {matrixData.days.map(day => {
-                                        const dayStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
-                                        const isToday = dayStr === todayStr;
-                                        // Mostra il salto SOLO se è un giorno di turno attivo (Giorno o Notte)
-                                        const isShiftActiveDay = day.shifts.day === matrixShift.toUpperCase() || day.shifts.night === matrixShift.toUpperCase();
-                                        
-                                        return (
-                                            <th 
-                                                key={`rc-${day.dayNum}`} 
-                                                className={`
-                                                    p-1 text-center border-r border-slate-300 font-black text-purple-700 bg-purple-50 print:bg-white
-                                                    ${isToday 
-                                                        ? '!border-l-2 !border-r-2 !border-red-500 !border-b-0 bg-red-50/10 z-20 shadow-[inset_0_0_10px_rgba(220,38,38,0.05)] print:border-slate-300 print:bg-white print:shadow-none' 
-                                                        : 'border-b'}
-                                                `}
-                                            >
-                                                {(day.rcGroup && isShiftActiveDay) ? `${matrixShift.toUpperCase()}${day.rcGroup}` : '-'}
-                                            </th>
-                                        );
-                                    })}
-                                </tr>
                             </thead>
                             <tbody>
-                                {matrixData.shiftStaff.length === 0 && (
-                                    <tr><td colSpan={daysInMonth + 1} className="p-8 text-center text-slate-400 italic">Nessun dipendente in questo turno.</td></tr>
-                                )}
-                                {matrixData.shiftStaff.map((person, personIndex) => (
+                                {matrixData.shiftStaff.map((person, personIndex) => {
+                                    const isVirtual = (person as any).isVirtual;
+                                    return (
                                     <tr key={person.id} className="hover:bg-slate-50 transition-colors group print:hover:bg-transparent">
-                                        {/* FIX STICKY Z-INDEX: Increased to z-30 to stay above Today column (z-20) */}
                                         <td className="p-3 border-b border-r border-slate-200 font-medium text-slate-800 sticky left-0 bg-white group-hover:bg-slate-50 z-30 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-auto print:static print:bg-white print:shadow-none">
                                             <div className="flex items-center gap-3">
-                                                {/* Avatar & Grade Container - INCREASED SIZE */}
                                                 <div className="relative w-12 h-12 flex-shrink-0">
                                                     <div className="w-full h-full rounded-full overflow-hidden bg-slate-100 flex items-center justify-center text-xs border border-slate-200 shadow-sm">
                                                         {person.photoUrl ? (
@@ -636,18 +643,18 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                             <span className="text-xl">{person.icon || '👤'}</span>
                                                         )}
                                                     </div>
-                                                    {/* Badge Grado con CSS per posizione corretta - OVERLAPPING LINE and AVATAR EDGE */}
-                                                    {/* MOVED TO TOP RIGHT AS REQUESTED */}
-                                                    <div className="absolute -top-1.5 -right-1.5 z-20 transform translate-x-1/4">
-                                                        <GradeBadge grade={person.grade} />
-                                                    </div>
+                                                    {person.grade && !isVirtual && (
+                                                        <div className="absolute -top-1.5 -right-1.5 z-20 transform translate-x-1/4">
+                                                            <GradeBadge grade={person.grade} />
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold text-sm leading-tight">{person.name}</span>
-                                                    <span className="text-[10px] text-slate-400 font-mono">
+                                                    <span className={`font-bold text-sm leading-tight ${isVirtual ? 'text-slate-500 italic' : ''}`}>{person.name}</span>
+                                                    {!isVirtual && <span className="text-[10px] text-slate-400 font-mono">
                                                         {person.shift.toUpperCase()}{person.rcSubGroup || ''}
-                                                    </span>
+                                                    </span>}
                                                 </div>
                                             </div>
                                         </td>
@@ -656,15 +663,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                             const dateStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
                                             
                                             const record = attendanceRecords.find(r => r.date === dateStr && r.tillId === tillId);
-                                            
                                             const status = getStatusForCell(person.id, record);
                                             const isToday = dateStr === todayStr;
                                             
-                                            // Logica Salto Turno Personale
-                                            const isJumpDay = day.rcGroup === person.rcSubGroup;
-                                            const isShiftActiveDay = day.shifts.day === matrixShift.toUpperCase() || day.shifts.night === matrixShift.toUpperCase();
+                                            // Virtual row custom name check
+                                            const customName = record?.substitutionNames?.[person.id];
                                             
-                                            // È l'ultima riga?
+                                            const isJumpDay = !isVirtual && day.rcGroup === person.rcSubGroup;
+                                            const isShiftActiveDay = day.shifts.day === matrixShift.toUpperCase() || day.shifts.night === matrixShift.toUpperCase();
                                             const isLastRow = personIndex === matrixData.shiftStaff.length - 1;
 
                                             return (
@@ -683,7 +689,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     onClick={() => handleOpenEdit(dateStr, tillId, record)}
                                                     title={`${day.dayNum}/${currentDate.getMonth()+1} - ${person.name}`}
                                                 >
-                                                    {/* Visualizza Salto (Es. B2) se è giorno di salto E non c'è status esplicito E siamo in un giorno lavorativo */}
                                                     {(isJumpDay && !status && isShiftActiveDay) ? (
                                                         <div className="absolute inset-0 flex items-center justify-center p-1 opacity-60">
                                                             <div className="w-full h-full flex items-center justify-center rounded font-bold text-[9px] bg-slate-300 text-slate-600 border border-slate-400">
@@ -694,12 +699,13 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                         <div className="absolute inset-0 flex items-center justify-center p-1">
                                                             <div 
                                                                 className={`
-                                                                    w-full h-full flex items-center justify-center rounded font-bold text-[10px] uppercase shadow-sm border
+                                                                    w-full h-full flex flex-col items-center justify-center rounded font-bold text-[10px] uppercase shadow-sm border overflow-hidden
                                                                     ${STATUS_CONFIG[status].color} ${STATUS_CONFIG[status].textColor}
                                                                     ${record?.closedAt ? 'ring-1 ring-black/10' : ''}
                                                                 `}
                                                             >
-                                                                {STATUS_CONFIG[status].short}
+                                                                <span>{STATUS_CONFIG[status].short}</span>
+                                                                {customName && <span className="text-[6px] leading-tight truncate w-full px-0.5 lowercase capitalize">{customName.split(' ')[0]}</span>}
                                                             </div>
                                                         </div>
                                                     )}
@@ -707,13 +713,13 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                             );
                                         })}
                                     </tr>
-                                ))}
+                                )})}
                             </tbody>
                         </table>
                     </div>
-                    {/* Footer Status Legend */}
+                    {/* Legend */}
                     <div className="p-2 text-[10px] text-slate-400 text-center bg-slate-50 border-t border-slate-200 flex justify-center gap-4 flex-wrap print:hidden">
-                        {Object.entries(STATUS_CONFIG).filter(([k]) => k !== 'absent').map(([key, conf]) => (
+                        {Object.entries(STATUS_CONFIG).filter(([k]) => k !== 'absent' && k !== 'substitution').map(([key, conf]) => (
                             <span key={key} className="flex items-center gap-1">
                                 <span className={`w-3 h-3 rounded border text-[8px] flex items-center justify-center ${conf.color} ${conf.textColor}`}>{conf.short}</span>
                                 <span>{conf.label}</span>

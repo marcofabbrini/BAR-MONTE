@@ -36,7 +36,7 @@ interface BarContextType {
     stockCorrection: (pid: string, stock: number) => Promise<void>;
     addAdmin: (email: string, by: string) => Promise<void>;
     removeAdmin: (id: string) => Promise<void>;
-    saveAttendance: (till: string, ids: string[], date?: string, closedBy?: string, details?: Record<string, AttendanceStatus>) => Promise<void>;
+    saveAttendance: (till: string, ids: string[], date?: string, closedBy?: string, details?: Record<string, AttendanceStatus>, substitutionNames?: Record<string, string>) => Promise<void>;
     reopenAttendance: (id: string) => Promise<void>;
     deleteAttendance: (id: string) => Promise<void>;
     updateTillColors: (c: TillColors) => Promise<void>;
@@ -150,7 +150,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const stockCorrection = (p: string, s: number) => BarService.stockCorrection(p, s);
     const addAdmin = (e: string, by: string) => BarService.addAdmin(e, by);
     const removeAdmin = (id: string) => BarService.removeAdmin(id);
-    const saveAttendance = (t: string, i: string[], d?: string, c?: string, det?: Record<string, AttendanceStatus>) => BarService.saveAttendance(t, i, d, c, det);
+    const saveAttendance = (t: string, i: string[], d?: string, c?: string, det?: Record<string, AttendanceStatus>, subNames?: Record<string, string>) => BarService.saveAttendance(t, i, d, c, det, subNames);
     const reopenAttendance = (id: string) => BarService.reopenAttendance(id);
     const deleteAttendance = (id: string) => BarService.deleteAttendance(id);
     const updateTillColors = (c: TillColors) => BarService.updateTillColors(c);

@@ -202,7 +202,14 @@ export const BarService = {
     removeAdmin: async (id: string) => { await deleteDoc(doc(db, 'admins', id)); },
 
     // Attendance
-    saveAttendance: async (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string, attendanceDetails?: Record<string, AttendanceStatus>) => {
+    saveAttendance: async (
+        tillId: string, 
+        presentStaffIds: string[], 
+        dateOverride?: string, 
+        closedBy?: string, 
+        attendanceDetails?: Record<string, AttendanceStatus>,
+        substitutionNames?: Record<string, string>
+    ) => {
         const dateToUse = dateOverride || new Date().toISOString().split('T')[0];
         const docId = `${dateToUse}_${tillId}`; 
         
@@ -215,6 +222,10 @@ export const BarService = {
 
         if (attendanceDetails) {
             dataToSave.attendanceDetails = attendanceDetails;
+        }
+
+        if (substitutionNames) {
+            dataToSave.substitutionNames = substitutionNames;
         }
 
         if (closedBy) {

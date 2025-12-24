@@ -147,9 +147,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                     // Se abbiamo i dettagli, controlliamo se lo status è "Pagante" (Presente o Sostituzione)
                     if (r.attendanceDetails && r.attendanceDetails[member.id]) {
                         const status = r.attendanceDetails[member.id];
-                        // Solo Presente (P) e Sostituzione (S) pagano l'acqua.
-                        // Ferie, Malattia, Riposo, Permesso, Missione NON pagano.
-                        return status === 'present' || status === 'substitution';
+                        // Presente (P), Sostituzione (S, S1, S2, S3) pagano l'acqua.
+                        return ['present', 'substitution', 'sub1', 'sub2', 'sub3'].includes(status);
                     }
 
                     // Fallback per record vecchi
@@ -374,8 +373,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                                 if (existingAttendanceRecord?.attendanceDetails) {
                                                     // Se esiste il record dettagliato, controlliamo lo status
                                                     const status = existingAttendanceRecord.attendanceDetails[staff.id];
-                                                    // VISIBILE SOLO SE: Presente (P) o Sostituzione (S)
-                                                    isVisiblyPresent = status === 'present' || status === 'substitution';
+                                                    // VISIBILE SOLO SE: Presente (P) o Sostituzione (S, S1, S2, S3)
+                                                    isVisiblyPresent = ['present', 'substitution', 'sub1', 'sub2', 'sub3'].includes(status);
                                                     
                                                     // Eccezione: Mostra sempre "Cassa" se salvata (fallback di sicurezza)
                                                     if (isCassa && existingAttendanceRecord.presentStaffIds.includes(staff.id)) {

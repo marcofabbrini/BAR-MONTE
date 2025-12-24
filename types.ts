@@ -153,7 +153,7 @@ export interface GeneralSettings {
     waterQuotaPrice: number;
 }
 
-export type AttendanceStatus = 'present' | 'substitution' | 'mission' | 'sick' | 'leave' | 'rest' | 'permit';
+export type AttendanceStatus = 'present' | 'sub1' | 'sub2' | 'sub3' | 'substitution' | 'mission' | 'sick' | 'leave' | 'rest' | 'permit';
 
 export interface AttendanceRecord {
     id: string;
@@ -162,6 +162,7 @@ export interface AttendanceRecord {
     timestamp: string;
     presentStaffIds: string[]; // Legacy & Quick Lookup
     attendanceDetails?: Record<string, AttendanceStatus>; // Mappa dettagliata ID -> Status
+    substitutionNames?: Record<string, string>; // Mappa ID -> Nome (per le righe personalizzabili sub_1, sub_2, sub_3)
     closedBy?: string; // Nome di chi ha chiuso il turno
     closedAt?: string; // Timestamp chiusura
 }

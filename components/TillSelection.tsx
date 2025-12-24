@@ -208,14 +208,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const hour = currentTime.getHours();
         const isNight = hour >= 20 || hour < 8;
 
-        // SE È NOTTE (es. A): Il turno precedente era il Giorno dello stesso gruppo A? NO.
-        // User dice: "Quando monta A alle 20, il turno smontante è B".
-        // A=0, B=1. Quindi se Current=0, Prev=1. Relazione: +1.
-        
-        // SE È GIORNO (es. C): Il turno precedente era la Notte (di ieri).
-        // User dice: "Quando monta C, smonta A".
-        // C=2, A=0. Quindi se Current=2, Prev=0. Relazione: -2.
-
         const prevIndex = isNight 
             ? (currentIndex + 1) % 4 
             : (currentIndex - 2 + 4) % 4;
@@ -401,8 +393,8 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     })}
                 </div>
 
-                {/* GESTIONE (PRIMA RIGA) - PRESENZE | REPORT | ADMIN */}
-                <div className="grid grid-cols-3 gap-3 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
+                {/* GESTIONE (GRID UNICA CON EXTRA HUB) */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
                     {/* Pulsante: Presenze */}
                     <button onClick={onSelectAttendance} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-indigo-500/10 hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] border border-slate-100 p-2 md:p-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24 md:h-24">
                         <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
@@ -426,34 +418,24 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                         <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Admin</span>
                     </button>
-                </div>
 
-                {/* SEPARATORE */}
-                <div className="w-full md:w-3/4 lg:w-2/3 px-8 my-4">
-                    <div className="h-px bg-slate-300/50 shadow-sm"></div>
-                </div>
-
-                {/* EXTRA (SECONDA RIGA) - EXTRA HUB (Turnario button removed as it moved to Admin) */}
-                <div className="grid grid-cols-1 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
-                    <button onClick={onSelectGames} className="relative bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-amber-500/10 hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
+                    {/* Pulsante: Extra Hub (Spostato qui) */}
+                    <button onClick={onSelectGames} className="relative bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-amber-500/10 hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] border border-slate-100 p-2 md:p-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24 md:h-24">
                         {tombolaNumberCount > 0 && (
-                            <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full shadow-md animate-bounce z-20 border-2 border-white">
+                            <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-bounce z-20 border-2 border-white">
                                 {tombolaNumberCount}
                             </div>
                         )}
-                        <div className="text-3xl md:text-4xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
                             🎮
                         </div>
-                        <div className="flex flex-col items-center md:items-start min-w-0">
-                            <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-amber-600 transition-colors">Extra Hub</span>
-                            <span className="hidden md:block text-[10px] text-slate-400 font-medium truncate w-full">Svago & Extra</span>
-                        </div>
+                        <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-amber-600 transition-colors">Extra Hub</span>
                     </button>
                 </div>
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.6 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.7 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );

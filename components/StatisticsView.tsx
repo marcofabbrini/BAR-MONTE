@@ -46,6 +46,59 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         setFilters(newFilters);
     };
 
+    // CALCOLO RIEPILOGO QUOTE ACQUA (FILTERED)
+    const waterSummary = useMemo(() => {
+        if (!attendanceRecords) return { totalValue: 0, totalCount: 0 };
+        const unitPrice = generalSettings?.waterQuotaPrice || 0;
+        let totalCount = 0;
+
+        attendanceRecords.forEach(record => {
+            const recDate = new Date(record.date).toISOString().split('T')[0];
+            const start = startDate ? new Date(startDate).toISOString().split('T')[0] : '0000-00-00';
+            const end = endDate ? new Date(endDate).toISOString().split('T')[0] : '9999-99-99';
+            
+            // Filtro Data
+            if (recDate < start || recDate > end) return;
+
+            // Filtro Turno
+            const shift = record.tillId.replace('T', '').toLowerCase();
+            if (selectedShift !== 'all' && shift !== selectedShift) return;
+
+            // Loop su tutto lo staff + eventuali righe virtuali salvate
+            // (Simuliamo iterando sulle keys di attendanceDetails se esistono, o su allStaff)
+            // Siccome attendanceDetails contiene tutto ciò che è stato salvato (inclusi sub_1 ecc), usiamo quello.
+            
+            const idsToCheck = record.attendanceDetails 
+                ? Object.keys(record.attendanceDetails) 
+                : record.presentStaffIds;
+
+            idsToCheck.forEach(id => {
+                // Filtro Staff
+                if (selectedStaffId !== 'all' && id !== selectedStaffId) return;
+                
+                // Cassa non paga
+                if (id.includes('Cassa') || id.includes('cassa')) return;
+
+                let isPaying = false;
+                if (record.attendanceDetails && record.attendanceDetails[id]) {
+                    const status = record.attendanceDetails[id];
+                    // Pay statuses: P, S, S1, S2, S3
+                    if (['present', 'substitution', 'sub1', 'sub2', 'sub3'].includes(status)) {
+                        isPaying = true;
+                    }
+                } else if (record.presentStaffIds.includes(id)) {
+                    isPaying = true; // Legacy fallback
+                }
+
+                if (isPaying) {
+                    totalCount++;
+                }
+            });
+        });
+
+        return { totalCount, totalValue: totalCount * unitPrice };
+    }, [attendanceRecords, generalSettings, startDate, endDate, selectedShift, selectedStaffId]);
+
     // 1. DATA FOR WATER QUOTA CHART
     const waterTrendData = useMemo(() => {
         const dailyData: Record<string, {A: number, B: number, C: number, D: number}> = {};
@@ -53,30 +106,27 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
 
         if (attendanceRecords) {
             attendanceRecords.forEach(record => {
-                // Apply global date filters first
                 const recDate = new Date(record.date).toISOString().split('T')[0];
                 const start = startDate ? new Date(startDate).toISOString().split('T')[0] : '0000-00-00';
                 const end = endDate ? new Date(endDate).toISOString().split('T')[0] : '9999-99-99';
                 if (recDate < start || recDate > end) return;
 
                 if (!dailyData[recDate]) dailyData[recDate] = { A: 0, B: 0, C: 0, D: 0 };
+                const shift = record.tillId.replace('T', '') as 'A'|'B'|'C'|'D';
 
-                allStaff.forEach(member => {
-                    if(member.name.toLowerCase().includes('cassa')) return;
-                    
-                    let isPresent = false;
-                    if (record.attendanceDetails && record.attendanceDetails[member.id]) {
-                        const status = record.attendanceDetails[member.id];
-                        if (status === 'present' || status === 'substitution') isPresent = true;
-                    } else if (record.presentStaffIds.includes(member.id)) {
-                        isPresent = true;
-                    }
-
-                    if (isPresent && member.shift) {
-                        const s = member.shift.toUpperCase() as 'A'|'B'|'C'|'D';
-                        dailyData[recDate][s] += price;
-                    }
-                });
+                // Check all entries in detail
+                if (record.attendanceDetails) {
+                    Object.values(record.attendanceDetails).forEach(status => {
+                        if (['present', 'substitution', 'sub1', 'sub2', 'sub3'].includes(status as string)) {
+                            dailyData[recDate][shift] += price;
+                        }
+                    });
+                } else {
+                    // Legacy
+                    record.presentStaffIds.forEach(id => {
+                        if(!id.toLowerCase().includes('cassa')) dailyData[recDate][shift] += price;
+                    });
+                }
             });
         }
 
@@ -92,9 +142,8 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             color: colors[shift as keyof typeof colors]
         }));
 
-        // Filter based on multi-selection
         return allDatasets.filter(ds => waterChartFilter.some(f => ds.label.includes(f)));
-    }, [attendanceRecords, allStaff, generalSettings, startDate, endDate, waterChartFilter]);
+    }, [attendanceRecords, generalSettings, startDate, endDate, waterChartFilter]);
 
 
     // 2. DATA FOR SHIFT REVENUE CHART
@@ -252,7 +301,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         );
     };
 
-    // Helper component for chart filters (Multi-Select)
     const ChartFilterButtons = ({ current, setFilter }: { current: string[], setFilter: (val: string) => void }) => (
         <div className="flex bg-slate-100 p-1 rounded-lg gap-1">
             <button
@@ -302,10 +350,31 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 </div>
             </div>
 
-            {/* TOP KPI & PIE CHART */}
+            {/* TOP KPI: WATER QUOTA SUMMARY */}
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-md p-4 text-white flex flex-col md:flex-row justify-between items-center relative overflow-hidden">
+                <div className="relative z-10">
+                    <h2 className="text-xs font-bold uppercase tracking-widest opacity-90 flex items-center gap-2 mb-1">
+                        <DropletIcon className="h-4 w-4"/> Riepilogo Acqua (Periodo Selezionato)
+                    </h2>
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-black">€{waterSummary.totalValue.toFixed(2)}</span>
+                        <span className="text-sm font-medium opacity-80">({waterSummary.totalCount} quote)</span>
+                    </div>
+                </div>
+                <div className="relative z-10 mt-2 md:mt-0 text-right">
+                    <p className="text-[10px] font-bold opacity-75 uppercase">Filtri Attivi</p>
+                    <p className="text-xs font-bold">{selectedShift === 'all' ? 'Tutti i Turni' : `Turno ${selectedShift.toUpperCase()}`}</p>
+                </div>
+                {/* Background Decor */}
+                <div className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4">
+                    <DropletIcon className="h-32 w-32" />
+                </div>
+            </div>
+
+            {/* CHARTS ROW 1 */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center">
-                    <h3 className="text-center font-bold text-slate-700 uppercase text-xs tracking-widest mb-2">Incassi per Turno (Periodo)</h3>
+                    <h3 className="text-center font-bold text-slate-700 uppercase text-xs tracking-widest mb-2">Incassi per Turno</h3>
                     {revenueByShift.length > 0 ? <PieChart2D data={revenueByShift} /> : <p className="text-center text-xs text-slate-400 py-4">Nessun dato</p>}
                 </div>
                 <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -421,3 +490,4 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
 const BanknoteIcon = (props: any) => <span {...props}>💶</span>;
 
 export default StatisticsView;
+    
