@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { Order, Product, StaffMember, Shift, GeneralSettings, TombolaConfig, AnalottoConfig } from '../types';
+import { Order, Product, StaffMember, Shift, GeneralSettings, TombolaConfig, AnalottoConfig, AttendanceRecord } from '../types';
 import BarChart from './BarChart';
 import LineChart from './LineChart';
 import { LogoIcon, DropletIcon, LayersIcon, ChartBarIcon, GamepadIcon } from './Icons';
@@ -14,17 +14,18 @@ interface StatisticsViewProps {
     generalSettings?: GeneralSettings;
     tombolaConfig?: TombolaConfig;
     analottoConfig?: AnalottoConfig;
+    attendanceRecords?: AttendanceRecord[];
 }
 
-const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProducts, allStaff, filters, onSetFilters, generalSettings, tombolaConfig, analottoConfig }) => {
+const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProducts, allStaff, filters, onSetFilters, generalSettings, tombolaConfig, analottoConfig, attendanceRecords }) => {
     const { startDate, endDate, selectedShift, selectedStaffId, selectedProductId } = filters;
     const { setStartDate, setEndDate, setSelectedShift, setSelectedStaffId, setSelectedProductId } = onSetFilters;
 
     const activeOrders = useMemo(() => filteredOrders.filter(o => !o.isDeleted), [filteredOrders]);
     const totalSales = useMemo(() => activeOrders.reduce((sum, order) => sum + order.total, 0), [activeOrders]);
 
-    // Calcolo Dettagliato Quote Acqua (Per Turno e Totale)
-    const waterStatsDetailed = useMemo(() => {
+    // --- NUOVA LOGICA CALCOLO ACQUA (Basata ESCLUSIVAMENTE sulle Presenze) ---
+    const waterStatsFromAttendance = useMemo(() => {
         const stats = {
             total: { count: 0, revenue: 0 },
             a: { count: 0, revenue: 0 },
@@ -32,34 +33,54 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             c: { count: 0, revenue: 0 },
             d: { count: 0, revenue: 0 },
         };
-        const waterPrice = generalSettings?.waterQuotaPrice || 0;
+        
+        const price = generalSettings?.waterQuotaPrice || 0;
+        
+        if (!attendanceRecords) return stats;
 
-        activeOrders.forEach(order => {
-            // Identifica il turno dell'operatore che ha fatto l'ordine
-            const staffMember = allStaff.find(s => s.id === order.staffId);
-            const shift = staffMember?.shift?.toLowerCase() as 'a' | 'b' | 'c' | 'd';
+        attendanceRecords.forEach(record => {
+            // Filtro Data
+            const recDate = new Date(record.date).toISOString().split('T')[0];
+            const start = startDate ? new Date(startDate).toISOString().split('T')[0] : '0000-00-00';
+            const end = endDate ? new Date(endDate).toISOString().split('T')[0] : '9999-99-99';
+            if (recDate < start || recDate > end) return;
 
-            order.items.forEach(item => {
-                if (item.product.name.toLowerCase().includes('acqua')) {
-                    const qty = item.quantity;
-                    // Se il prodotto ha un prezzo > 0 usa quello, altrimenti usa il prezzo quota settings
-                    const unitPrice = item.product.price > 0 ? item.product.price : waterPrice;
-                    const rev = qty * unitPrice;
+            // Determina il turno dal record (es. "TA" -> "a") o dallo staff
+            const recordShift = record.tillId.replace('T', '').toLowerCase() as 'a'|'b'|'c'|'d';
 
-                    // Aggiorna Totale
-                    stats.total.count += qty;
-                    stats.total.revenue += rev;
+            // Itera su tutti i membri dello staff per verificare la presenza in questo record
+            allStaff.forEach(member => {
+                // Salta utenti "Cassa"
+                if(member.name.toLowerCase().includes('cassa')) return;
 
-                    // Aggiorna Turno Specifico
-                    if (shift && stats[shift]) {
-                        stats[shift].count += qty;
-                        stats[shift].revenue += rev;
+                let isPresent = false;
+                
+                // Controlla dettagli se esistono
+                if (record.attendanceDetails && record.attendanceDetails[member.id]) {
+                    const status = record.attendanceDetails[member.id];
+                    // Paga solo se Presente o Sostituzione
+                    if (status === 'present' || status === 'substitution') isPresent = true;
+                } else if (record.presentStaffIds.includes(member.id)) {
+                    // Fallback legacy
+                    isPresent = true;
+                }
+
+                if (isPresent) {
+                    const memberShift = member.shift; // Turno di appartenenza del membro
+                    
+                    stats.total.count++;
+                    stats.total.revenue += price;
+
+                    if (stats[memberShift]) {
+                        stats[memberShift].count++;
+                        stats[memberShift].revenue += price;
                     }
                 }
             });
         });
+
         return stats;
-    }, [activeOrders, allStaff, generalSettings]);
+    }, [attendanceRecords, allStaff, generalSettings, startDate, endDate]);
 
     const currentJackpotTotal = useMemo(() => {
         const t = tombolaConfig?.jackpot || 0;
@@ -119,29 +140,38 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         ].filter(d => d.value > 0);
     }, [activeOrders, allStaff]);
 
-    // Trends
-    const getDailyTrend = (valueExtractor: (o: Order) => number) => {
-        const trend: { [key: string]: number } = {};
-        const sortedOrders = [...activeOrders].sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        sortedOrders.forEach(o => {
+    // --- MULTI-LINE TREND LOGIC ---
+    const multiLineShiftTrend = useMemo(() => {
+        const dailyTotals: Record<string, {A: number, B: number, C: number, D: number}> = {};
+        
+        // 1. Riempi date (sparse)
+        activeOrders.forEach(o => {
             const dateKey = new Date(o.timestamp).toISOString().split('T')[0];
-            trend[dateKey] = (trend[dateKey] || 0) + valueExtractor(o);
+            if (!dailyTotals[dateKey]) dailyTotals[dateKey] = { A: 0, B: 0, C: 0, D: 0 };
+            
+            const member = allStaff.find(s => s.id === o.staffId);
+            if (member && member.shift) {
+                const s = member.shift.toUpperCase() as 'A'|'B'|'C'|'D';
+                dailyTotals[dateKey][s] += o.total;
+            }
         });
-        return Object.entries(trend)
-            .sort((a, b) => a[0].localeCompare(b[0])) // Ensure Strict Date Sorting
-            .map(([date, value]) => ({ 
-                label: new Date(date).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
-                value 
-            }));
-    };
 
-    const salesTrend = useMemo(() => getDailyTrend(o => o.total), [activeOrders]);
-    const quantityTrend = useMemo(() => getDailyTrend(o => o.items.reduce((acc, i) => acc + i.quantity, 0)), [activeOrders]);
-    const waterTrend = useMemo(() => {
-        // Find all water product IDs
-        const waterIds = new Set(allProducts.filter(p => p.name.toLowerCase().includes('acqua')).map(p => p.id));
-        return getDailyTrend(o => o.items.filter(i => waterIds.has(i.product.id)).reduce((acc, i) => acc + i.quantity, 0));
-    }, [activeOrders, allProducts]);
+        // 2. Sort dates
+        const sortedDates = Object.keys(dailyTotals).sort();
+        
+        // 3. Create datasets
+        const datasetA = sortedDates.map(d => ({ label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), value: dailyTotals[d].A }));
+        const datasetB = sortedDates.map(d => ({ label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), value: dailyTotals[d].B }));
+        const datasetC = sortedDates.map(d => ({ label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), value: dailyTotals[d].C }));
+        const datasetD = sortedDates.map(d => ({ label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), value: dailyTotals[d].D }));
+
+        return [
+            { label: 'Turno A', data: datasetA, color: '#ef4444' },
+            { label: 'Turno B', data: datasetB, color: '#3b82f6' },
+            { label: 'Turno C', data: datasetC, color: '#22c55e' },
+            { label: 'Turno D', data: datasetD, color: '#eab308' },
+        ];
+    }, [activeOrders, allStaff]);
 
     const handlePrintPdf = () => window.print();
 
@@ -246,85 +276,78 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 </div>
             </div>
 
-            {/* WATER DETAILED SECTION */}
+            {/* WATER DETAILED SECTION (Corrected Logic) */}
             <div className="bg-blue-50/50 p-4 rounded-xl shadow-sm border border-blue-100">
-                <h3 className="text-sm font-bold text-blue-800 mb-4 flex items-center gap-2 border-b border-blue-200 pb-2">
-                    <DropletIcon className="h-4 w-4"/> Analisi Quote Acqua
-                </h3>
+                <div className="flex justify-between items-center border-b border-blue-200 pb-2 mb-4">
+                    <h3 className="text-sm font-bold text-blue-800 flex items-center gap-2">
+                        <DropletIcon className="h-4 w-4"/> Quote Acqua (da Registro Presenze)
+                    </h3>
+                    <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">
+                        Prezzo: €{(generalSettings?.waterQuotaPrice || 0).toFixed(2)}
+                    </span>
+                </div>
+                
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     {/* TOTAL */}
                     <div className="bg-white p-3 rounded-lg border border-blue-200 shadow-sm flex flex-col items-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">TOTALE</span>
-                        <span className="text-2xl font-black text-blue-600">{waterStatsDetailed.total.count}</span>
-                        <span className="text-xs font-bold text-slate-600">€{waterStatsDetailed.total.revenue.toFixed(2)}</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">TOTALE PRESENZE</span>
+                        <span className="text-2xl font-black text-blue-600">{waterStatsFromAttendance.total.count}</span>
+                        <span className="text-xs font-bold text-slate-600">€{waterStatsFromAttendance.total.revenue.toFixed(2)}</span>
                     </div>
                     {/* A */}
                     <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
                         <span className="text-[10px] font-bold text-red-400 uppercase">Turno A</span>
-                        <span className="text-xl font-black text-slate-700">{waterStatsDetailed.a.count}</span>
-                        <span className="text-[10px] text-slate-500">€{waterStatsDetailed.a.revenue.toFixed(2)}</span>
+                        <span className="text-xl font-black text-slate-700">{waterStatsFromAttendance.a.count}</span>
+                        <span className="text-[10px] text-slate-500">€{waterStatsFromAttendance.a.revenue.toFixed(2)}</span>
                     </div>
                     {/* B */}
                     <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
                         <span className="text-[10px] font-bold text-blue-400 uppercase">Turno B</span>
-                        <span className="text-xl font-black text-slate-700">{waterStatsDetailed.b.count}</span>
-                        <span className="text-[10px] text-slate-500">€{waterStatsDetailed.b.revenue.toFixed(2)}</span>
+                        <span className="text-xl font-black text-slate-700">{waterStatsFromAttendance.b.count}</span>
+                        <span className="text-[10px] text-slate-500">€{waterStatsFromAttendance.b.revenue.toFixed(2)}</span>
                     </div>
                     {/* C */}
                     <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
                         <span className="text-[10px] font-bold text-green-400 uppercase">Turno C</span>
-                        <span className="text-xl font-black text-slate-700">{waterStatsDetailed.c.count}</span>
-                        <span className="text-[10px] text-slate-500">€{waterStatsDetailed.c.revenue.toFixed(2)}</span>
+                        <span className="text-xl font-black text-slate-700">{waterStatsFromAttendance.c.count}</span>
+                        <span className="text-[10px] text-slate-500">€{waterStatsFromAttendance.c.revenue.toFixed(2)}</span>
                     </div>
                     {/* D */}
                     <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
                         <span className="text-[10px] font-bold text-yellow-500 uppercase">Turno D</span>
-                        <span className="text-xl font-black text-slate-700">{waterStatsDetailed.d.count}</span>
-                        <span className="text-[10px] text-slate-500">€{waterStatsDetailed.d.revenue.toFixed(2)}</span>
+                        <span className="text-xl font-black text-slate-700">{waterStatsFromAttendance.d.count}</span>
+                        <span className="text-[10px] text-slate-500">€{waterStatsFromAttendance.d.revenue.toFixed(2)}</span>
                     </div>
                 </div>
             </div>
 
-            {/* GRAFICI TREND COMPATTI */}
+            {/* GRAFICI TREND */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                 <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <ChartBarIcon className="h-4 w-4 text-orange-500"/> Andamento Incassi per Turno (€)
+                 </h3>
+                 <div className="h-[300px] w-full">
+                     {/* Passiamo i dataset multipli al LineChart aggiornato */}
+                     <LineChart datasets={multiLineShiftTrend} height={300} />
+                 </div>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                 <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-                     <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                        <ChartBarIcon className="h-4 w-4 text-orange-500"/> Trend Incassi (€)
-                     </h3>
-                     <div className="h-[200px] w-full"><LineChart data={salesTrend} height={200} color="#f97316" /></div>
-                </div>
-
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-                     <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                        <LayersIcon className="h-4 w-4 text-green-500"/> Trend Quantità (Pezzi)
-                     </h3>
-                     <div className="h-[200px] w-full"><LineChart data={quantityTrend} height={200} color="#22c55e" /></div>
-                </div>
-
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-                     <h3 className="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                        <DropletIcon className="h-4 w-4 text-blue-400"/> Trend Acqua (Quantità)
-                     </h3>
-                     <div className="h-[200px] w-full"><LineChart data={waterTrend} height={200} color="#3b82f6" /></div>
-                </div>
-
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
                     <h3 className="text-sm font-bold mb-2 text-slate-700 flex items-center gap-2">
                         <LayersIcon className="h-4 w-4 text-purple-500"/> Categorie
                     </h3>
                     <BarChart data={categoryVolumes.slice(0, 6)} format="integer" barColor="bg-purple-500" />
                 </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-                    <h3 className="text-sm font-bold mb-2 text-slate-700">Staff (€)</h3>
-                    <BarChart data={salesByStaff} format="currency" barColor="bg-blue-600" />
-                </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
                     <h3 className="text-sm font-bold mb-2 text-slate-700">Top Prodotti</h3>
                     <BarChart data={salesByProduct} format="integer" barColor="bg-orange-500" />
                 </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                <h3 className="text-sm font-bold mb-2 text-slate-700">Classifica Staff (€)</h3>
+                <BarChart data={salesByStaff} format="currency" barColor="bg-blue-600" />
             </div>
 
              <div className="text-center py-2 print:hidden">

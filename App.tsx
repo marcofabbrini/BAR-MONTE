@@ -116,7 +116,7 @@ const AppContent: React.FC = () => {
                 attendanceRecords={attendanceRecords}
                 generalSettings={generalSettings}
             />;
-            case 'reports': return <ReportsView onGoBack={() => setView('selection')} products={products} staff={staff} orders={orders} />;
+            case 'reports': return <ReportsView onGoBack={() => setView('selection')} products={products} staff={staff} orders={orders} generalSettings={generalSettings} attendanceRecords={attendanceRecords} />;
             case 'tombola': 
                 if (!tombolaConfig) return <div className="flex items-center justify-center min-h-dvh"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
                 return <TombolaView 
@@ -139,7 +139,6 @@ const AppContent: React.FC = () => {
                 tillColors={tillColors} 
                 isSuperAdmin={isSuperAdmin} 
                 shiftSettings={shiftSettings} 
-                // BUG FIX: Removed default user fallback. If 'c' is undefined, let it be undefined to keep status as Draft.
                 onSaveAttendance={(t, i, d, c, det) => saveAttendance(t, i, d, c, det)}
                 onReopenAttendance={isSuperAdmin ? reopenAttendance : undefined}
                 onDeleteRecord={isSuperAdmin ? deleteAttendance : undefined}

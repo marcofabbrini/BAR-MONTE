@@ -1,106 +1,99 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 
 interface ChartPoint { label: string; value: number; isForecast?: boolean; }
-interface LineChartProps { 
-    data: ChartPoint[]; 
-    height?: number; 
-    color?: string; // Hex color code preferred
+
+interface Dataset {
+    label: string;
+    data: ChartPoint[];
+    color: string;
 }
 
-const LineChart: React.FC<LineChartProps> = ({ data, height = 300, color = '#f97316' }) => {
+interface LineChartProps { 
+    data?: ChartPoint[]; // Backward compatibility
+    datasets?: Dataset[]; // New multi-line support
+    height?: number; 
+    color?: string;
+}
+
+const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, color = '#f97316' }) => {
     
-    const strokeColor = color;
+    // Normalize input: use datasets if provided, otherwise wrap single data
+    const normalizedDatasets = useMemo(() => {
+        if (datasets) return datasets;
+        if (data) return [{ label: 'Dati', data: data, color: color }];
+        return [];
+    }, [data, datasets, color]);
 
-    const processedData = useMemo(() => {
-        let chartData = [...data];
-        
-        // Fill empty if no data
-        if (chartData.length === 0) {
-            const today = new Date();
-            for(let i=6; i>=0; i--) {
-                const d = new Date(today);
-                d.setDate(d.getDate() - i);
-                chartData.push({ label: d.toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), value: 0 });
-            }
-        } 
-        
-        // Generate Simple Forecast (Linear Projection)
-        if (data.length >= 3) {
-            const lastValues = data.slice(-3).map(d => d.value);
-            const n = lastValues.length;
-            // Average slope of last 3 points
-            const slope = (lastValues[n-1] - lastValues[0]) / (n-1);
-            
-            const lastRealPoint = chartData[chartData.length - 1];
-            let lastValue = lastRealPoint.value;
+    // Calculate Global Max Value for Y-Axis scaling
+    const maxValue = useMemo(() => {
+        let max = 0;
+        normalizedDatasets.forEach(ds => {
+            ds.data.forEach(p => {
+                if (p.value > max) max = p.value;
+            });
+        });
+        return max || 10; // Avoid division by zero
+    }, [normalizedDatasets]);
 
-            for(let i=1; i<=2; i++) {
-                const nextVal = Math.max(0, lastValue + (slope * i));
-                chartData.push({
-                    label: `+${i}g`,
-                    value: nextVal,
-                    isForecast: true
-                });
-            }
-        }
-
-        return chartData;
-    }, [data]);
-
-    // Calculate scaling
-    const maxValue = Math.max(...processedData.map(d => d.value)) || 10;
     const paddingLeft = 40;
     const paddingBottom = 30;
     const paddingTop = 20;
     const paddingRight = 20;
     
-    // ViewBox dimensions
     const width = 800;
     const chartHeight = height - paddingTop - paddingBottom;
     const chartWidth = width - paddingLeft - paddingRight;
 
-    // Coordinate mapping functions
-    const getX = (index: number) => paddingLeft + (index / (processedData.length - 1)) * chartWidth;
-    // Ensure Y doesn't go below bottom line, using max value to scale
+    // Determine Labels (X-Axis) - Assume all datasets share roughly same timeframe or pick the first one
+    const labels = useMemo(() => {
+        if(normalizedDatasets.length === 0) return [];
+        // Use the dataset with most points to define X axis labels
+        const longest = normalizedDatasets.reduce((prev, current) => (prev.data.length > current.data.length) ? prev : current);
+        return longest.data.map(d => d.label);
+    }, [normalizedDatasets]);
+
+    const getX = (index: number, totalPoints: number) => paddingLeft + (index / (totalPoints - 1)) * chartWidth;
     const getY = (value: number) => height - paddingBottom - ((value / maxValue) * chartHeight);
 
-    const allPoints = processedData.map((d, i) => ({ 
-        x: getX(i), 
-        y: getY(d.value), 
-        isForecast: d.isForecast, 
-        val: d.value, 
-        label: d.label 
-    }));
-    
-    // Split points into Real vs Forecast for different styling
-    const firstForecastIndex = allPoints.findIndex(p => p.isForecast);
-    const realPoints = firstForecastIndex === -1 ? allPoints : allPoints.slice(0, firstForecastIndex + 1);
-    const forecastPoints = firstForecastIndex === -1 ? [] : allPoints.slice(firstForecastIndex - 1); // Start from last real point to connect
-
-    // Linear Path Generator (L command) - accurate representation
-    const generatePath = (points: {x:number, y:number}[]) => {
+    // SMOOTH CURVE FUNCTION (Catmull-Rom or Cubic Bezier)
+    const getSmoothPath = (points: {x:number, y:number}[]) => {
         if (points.length === 0) return '';
-        return points.reduce((acc, point, i) => i === 0
-            ? `M ${point.x},${point.y}`
-            : `${acc} L ${point.x},${point.y}`
-        , '');
-    }
+        if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
 
-    const realPath = generatePath(realPoints);
-    const forecastPath = generatePath(forecastPoints);
-    
-    // Fill Area Path (for gradient)
-    const fillPath = realPoints.length > 0 
-        ? `${realPath} L ${realPoints[realPoints.length - 1].x},${height - paddingBottom} L ${realPoints[0].x},${height - paddingBottom} Z` 
-        : '';
+        let d = `M ${points[0].x} ${points[0].y}`;
+
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = i > 0 ? points[i - 1] : points[0];
+            const p1 = points[i];
+            const p2 = points[i + 1];
+            const p3 = i !== points.length - 2 ? points[i + 2] : p2;
+
+            const cp1x = p1.x + (p2.x - p0.x) / 6;
+            const cp1y = p1.y + (p2.y - p0.y) / 6;
+
+            const cp2x = p2.x - (p3.x - p1.x) / 6;
+            const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+            d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+        }
+        return d;
+    };
+
+    // Animation Effect
+    const [drawProgress, setDrawProgress] = useState(0);
+    useEffect(() => {
+        setDrawProgress(0);
+        const anim = requestAnimationFrame(() => setDrawProgress(1));
+        return () => cancelAnimationFrame(anim);
+    }, [normalizedDatasets]); // Reset animation when data changes
 
     return (
         <div className="w-full relative overflow-hidden select-none" style={{ height: `${height}px` }}>
             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
                 
-                {/* Horizontal Grid Lines */}
-                {[0, 0.5, 1].map((p, i) => {
+                {/* Grid Lines */}
+                {[0, 0.25, 0.5, 0.75, 1].map((p, i) => {
                     const yVal = getY(maxValue * p);
                     return (
                         <g key={i}>
@@ -116,49 +109,74 @@ const LineChart: React.FC<LineChartProps> = ({ data, height = 300, color = '#f97
                 <line x1={paddingLeft} y1={paddingTop} x2={paddingLeft} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1" />
                 <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1" />
 
-                <defs>
-                    <linearGradient id={`chartGradient-${strokeColor.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={strokeColor} stopOpacity="0.2" />
-                        <stop offset="100%" stopColor={strokeColor} stopOpacity="0" />
-                    </linearGradient>
-                </defs>
+                {/* Datasets */}
+                {normalizedDatasets.map((ds, dsIndex) => {
+                    const points = ds.data.map((d, i) => ({ 
+                        x: getX(i, labels.length || ds.data.length), 
+                        y: getY(d.value), 
+                        val: d.value,
+                        label: d.label
+                    }));
+                    
+                    const pathD = getSmoothPath(points);
+                    
+                    // Simple path length animation
+                    const pathLength = 2000; 
 
-                {/* Filled Area */}
-                <path d={fillPath} fill={`url(#chartGradient-${strokeColor.replace('#', '')})`} stroke="none" />
+                    return (
+                        <g key={ds.label}>
+                            {/* The Line */}
+                            <path 
+                                d={pathD} 
+                                fill="none" 
+                                stroke={ds.color} 
+                                strokeWidth="3" 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round"
+                                strokeDasharray={pathLength}
+                                strokeDashoffset={pathLength * (1 - drawProgress)}
+                                style={{ transition: 'stroke-dashoffset 1.5s ease-out' }}
+                            />
 
-                {/* Real Data Line */}
-                <path d={realPath} fill="none" stroke={strokeColor} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                
-                {/* Forecast Line (Dashed) */}
-                <path d={forecastPath} fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6 4" />
-
-                {/* Data Points */}
-                {allPoints.map((p, i) => (
-                    <g key={i} className="group">
-                        <circle 
-                            cx={p.x} 
-                            cy={p.y} 
-                            r={p.isForecast ? "2.5" : "3.5"} 
-                            fill={p.isForecast ? "#cbd5e1" : "#fff"} 
-                            stroke={p.isForecast ? "none" : strokeColor} 
-                            strokeWidth="2" 
-                            className="transition-all duration-200 group-hover:r-5"
-                        />
-                        
-                        {/* Hover Value Label (or Always visible for sparse data) */}
-                        <g className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                            <rect x={p.x - 20} y={p.y - 25} width="40" height="18" rx="4" fill="#1e293b" />
-                            <text x={p.x} y={p.y - 13} textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">{p.val.toFixed(0)}</text>
+                            {/* Data Points (Dots) */}
+                            {points.map((p, i) => (
+                                <g key={i} className="group">
+                                    <circle 
+                                        cx={p.x} 
+                                        cy={p.y} 
+                                        r="4" 
+                                        fill="white" 
+                                        stroke={ds.color} 
+                                        strokeWidth="2" 
+                                        className="transition-all duration-200 group-hover:r-6 cursor-pointer"
+                                        style={{ opacity: drawProgress === 1 ? 1 : 0, transition: `opacity 0.3s ${i * 0.05}s` }}
+                                    />
+                                    
+                                    {/* Tooltip */}
+                                    <g className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                                        <rect x={p.x - 30} y={p.y - 35} width="60" height="24" rx="4" fill="rgba(0,0,0,0.8)" />
+                                        <text x={p.x} y={p.y - 19} textAnchor="middle" fill="white" fontSize="10" fontWeight="bold">
+                                            {ds.label}: {p.val.toFixed(0)}
+                                        </text>
+                                    </g>
+                                </g>
+                            ))}
                         </g>
+                    );
+                })}
 
-                        {/* X-Axis Labels (Skip some if too many) */}
-                        {(allPoints.length <= 10 || i % Math.ceil(allPoints.length / 8) === 0 || i === allPoints.length -1) && (
-                            <text x={p.x} y={height - 10} textAnchor="middle" className={`text-[9px] font-sans ${p.isForecast ? 'fill-slate-300 italic' : 'fill-slate-500 font-bold'}`}>
-                                {p.label}
-                            </text>
-                        )}
-                    </g>
-                ))}
+                {/* X-Axis Labels */}
+                {labels.map((label, i) => {
+                    // Show sparse labels if too many
+                    if (labels.length > 10 && i % Math.ceil(labels.length / 8) !== 0 && i !== labels.length - 1) return null;
+                    const x = getX(i, labels.length);
+                    return (
+                        <text key={i} x={x} y={height - 10} textAnchor="middle" className="text-[9px] fill-slate-500 font-sans font-medium">
+                            {label}
+                        </text>
+                    );
+                })}
+
             </svg>
         </div>
     );

@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Product, StaffMember, Order, Shift, GeneralSettings, TombolaConfig, AnalottoConfig } from '../types';
+import { Product, StaffMember, Order, Shift, GeneralSettings, TombolaConfig, AnalottoConfig, AttendanceRecord } from '../types';
 import StatisticsView from './StatisticsView';
 import InsightsView from './InsightsView';
 import { BackArrowIcon, StatsIcon, LightbulbIcon } from './Icons';
@@ -13,6 +13,7 @@ interface ReportsViewProps {
     generalSettings?: GeneralSettings;
     tombolaConfig?: TombolaConfig;
     analottoConfig?: AnalottoConfig;
+    attendanceRecords?: AttendanceRecord[];
 }
 
 type ReportTab = 'statistics' | 'insights';
@@ -24,7 +25,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({
     orders,
     generalSettings,
     tombolaConfig,
-    analottoConfig
+    analottoConfig,
+    attendanceRecords
 }) => {
     const [activeTab, setActiveTab] = useState<ReportTab>('statistics');
     
@@ -107,6 +109,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({
                             generalSettings={generalSettings}
                             tombolaConfig={tombolaConfig}
                             analottoConfig={analottoConfig}
+                            attendanceRecords={attendanceRecords}
                         />
                     )}
                     {activeTab === 'insights' && (
