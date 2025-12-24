@@ -232,8 +232,27 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const bulkSetStatus = (status: AttendanceStatus | 'absent') => {
         const newDetails = { ...editingDetails };
+        // Recalculate RC group for the date being edited to ensure accuracy
+        const shift = editingTillId.replace('T', '').toLowerCase();
+        const rcGroup = getRestingSubGroup(shift, new Date(editingDate));
+
         editingStaffList.forEach(member => {
-            if (!member.name.toLowerCase().includes('cassa')) {
+            if (member.name.toLowerCase().includes('cassa')) return;
+
+            const isVirtual = (member as any).isVirtual;
+
+            if (status === 'present') {
+                if (isVirtual) {
+                    // Substitutions should remain ABSENT by default when clicking "All Present"
+                    newDetails[member.id] = 'absent';
+                } else if (member.rcSubGroup === rcGroup) {
+                    // Staff on REST should remain on REST
+                    newDetails[member.id] = 'rest';
+                } else {
+                    newDetails[member.id] = 'present';
+                }
+            } else {
+                // If clearing (setting to absent), clear everyone
                 newDetails[member.id] = status;
             }
         });

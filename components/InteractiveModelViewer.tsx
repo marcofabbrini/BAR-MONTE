@@ -1,3 +1,4 @@
+
 import React, { useState, Suspense, useMemo } from 'react';
 import { Canvas, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stage, Html, useProgress } from '@react-three/drei';
@@ -17,6 +18,18 @@ declare global {
             meshStandardMaterial: any;
             meshBasicMaterial: any;
             sphereGeometry: any;
+        }
+    }
+    // Augment React.JSX namespace which is often used in newer TS/React versions
+    namespace React {
+        namespace JSX {
+            interface IntrinsicElements {
+                mesh: any;
+                group: any;
+                meshStandardMaterial: any;
+                meshBasicMaterial: any;
+                sphereGeometry: any;
+            }
         }
     }
 }

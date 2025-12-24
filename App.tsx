@@ -117,7 +117,7 @@ const AppContent: React.FC = () => {
                 allOrders={orders} 
                 onCompleteOrder={completeOrder} 
                 tillColors={tillColors} 
-                onSaveAttendance={(t, i, d, c, det) => saveAttendance(t, i, d, c, det)} 
+                onSaveAttendance={(t, i, d, c, det, sub) => saveAttendance(t, i, d, c, det, sub)} 
                 onPlaceAnalottoBet={handlePlaceAnalottoBet} 
                 tombolaConfig={tombolaConfig} 
                 tombolaTickets={tombolaTickets} 
@@ -148,7 +148,7 @@ const AppContent: React.FC = () => {
                 tillColors={tillColors} 
                 isSuperAdmin={isSuperAdmin} 
                 shiftSettings={shiftSettings} 
-                onSaveAttendance={(t, i, d, c, det) => saveAttendance(t, i, d, c, det)}
+                onSaveAttendance={(t, i, d, c, det, sub) => saveAttendance(t, i, d, c, det, sub)}
                 onReopenAttendance={isSuperAdmin ? reopenAttendance : undefined}
                 onDeleteRecord={isSuperAdmin ? deleteAttendance : undefined}
             />;
@@ -164,7 +164,7 @@ const AppContent: React.FC = () => {
                 tombolaConfig={tombolaConfig} onNavigateToTombola={() => setView('tombola')}
                 seasonalityConfig={seasonalityConfig} onUpdateSeasonality={updateSeasonality}
                 shiftSettings={shiftSettings} onUpdateShiftSettings={updateShiftSettings}
-                attendanceRecords={attendanceRecords} onDeleteAttendance={deleteAttendance} onSaveAttendance={(t, i, d, c, det) => saveAttendance(t, i, d, c, det)} onReopenAttendance={reopenAttendance}
+                attendanceRecords={attendanceRecords} onDeleteAttendance={deleteAttendance} onSaveAttendance={(t, i, d, c, det, sub) => saveAttendance(t, i, d, c, det, sub)} onReopenAttendance={reopenAttendance}
                 generalSettings={generalSettings} onUpdateGeneralSettings={updateGeneralSettings}
                 onSendNotification={(t,b,tg) => sendNotification(t, b, currentUser?.email || 'Sistema')}
             />;

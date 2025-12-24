@@ -18,7 +18,7 @@ interface TillViewProps {
     allOrders: Order[];
     onCompleteOrder: (newOrder: Omit<Order, 'id'>) => Promise<void>;
     tillColors?: TillColors;
-    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string, details?: Record<string, AttendanceStatus>) => Promise<void>;
+    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string, details?: Record<string, AttendanceStatus>, substitutionNames?: Record<string, string>) => Promise<void>;
     onPlaceAnalottoBet?: (bet: Omit<AnalottoBet, 'id' | 'timestamp'>) => Promise<void>;
     tombolaConfig?: TombolaConfig;
     tombolaTickets?: TombolaTicket[];

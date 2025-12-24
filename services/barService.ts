@@ -18,7 +18,8 @@ import {
     limit,
     deleteField,
     DocumentSnapshot,
-    QuerySnapshot
+    QuerySnapshot,
+    DocumentData
 } from 'firebase/firestore';
 import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus } from '../types';
 
@@ -26,31 +27,31 @@ export const BarService = {
     // --- LISTENERS ---
 
     subscribeToProducts: (onUpdate: (data: Product[]) => void) => {
-        return onSnapshot(collection(db, 'products'), (s) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as Product))));
+        return onSnapshot(collection(db, 'products'), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as Product))));
     },
 
     subscribeToStaff: (onUpdate: (data: StaffMember[]) => void) => {
-        return onSnapshot(collection(db, 'staff'), (s) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as StaffMember))));
+        return onSnapshot(collection(db, 'staff'), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as StaffMember))));
     },
 
     subscribeToOrders: (onUpdate: (data: Order[]) => void) => {
         // FIX IPHONE: Limite ridotto a 500 per stabilità massima della memoria
-        return onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc'), limit(500)), (s) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as Order))));
+        return onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc'), limit(500)), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as Order))));
     },
 
     subscribeToCashMovements: (onUpdate: (data: CashMovement[]) => void) => {
         // FIX IPHONE: Limite ridotto a 500 per evitare Quota Exceeded
-        return onSnapshot(query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc'), limit(500)), (s) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement))));
+        return onSnapshot(query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc'), limit(500)), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement))));
     },
 
     subscribeToAdmins: (onUpdate: (data: AdminUser[]) => void) => {
-        return onSnapshot(collection(db, 'admins'), (s) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser))));
+        return onSnapshot(collection(db, 'admins'), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser))));
     },
 
     subscribeToNotifications: (onUpdate: (data: AppNotification | null) => void) => {
         const sessionStart = new Date().toISOString();
         const q = query(collection(db, 'notifications'), where('timestamp', '>', sessionStart), orderBy('timestamp', 'desc'));
-        return onSnapshot(q, (snapshot) => {
+        return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === 'added') {
                     onUpdate(change.doc.data() as AppNotification);
@@ -97,7 +98,7 @@ export const BarService = {
     },
 
     subscribeToAttendance: (onUpdate: (data: AttendanceRecord[]) => void) => {
-        return onSnapshot(collection(db, 'shift_attendance'), (s) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as AttendanceRecord))));
+        return onSnapshot(collection(db, 'shift_attendance'), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as AttendanceRecord))));
     },
 
     // --- OPERATIONS ---
@@ -156,10 +157,11 @@ export const BarService = {
         const pRef = doc(db, 'products', productId);
         const pSnap = await getDoc(pRef);
         if(pSnap.exists()) {
-            await updateDoc(pRef, { stock: pSnap.data().stock + quantity, costPrice: cost });
+            const pData = pSnap.data() as Product;
+            await updateDoc(pRef, { stock: pData.stock + quantity, costPrice: cost });
             await addDoc(collection(db, 'cash_movements'), { 
                 amount: quantity * cost, 
-                reason: `Acquisto Stock: ${pSnap.data().name}`, 
+                reason: `Acquisto Stock: ${pData.name}`, 
                 timestamp: new Date().toISOString(), 
                 type: 'withdrawal', 
                 category: 'bar' 

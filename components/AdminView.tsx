@@ -56,7 +56,7 @@ interface AdminViewProps {
     
     attendanceRecords: AttendanceRecord[];
     onDeleteAttendance: (id: string) => Promise<void>;
-    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string, details?: Record<string, AttendanceStatus>) => Promise<void>;
+    onSaveAttendance?: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string, details?: Record<string, AttendanceStatus>, substitutionNames?: Record<string, string>) => Promise<void>;
     onReopenAttendance?: (id: string) => Promise<void>;
 
     generalSettings?: GeneralSettings;
