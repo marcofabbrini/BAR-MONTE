@@ -47,40 +47,33 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
 
     // CALCOLO SOTTOGRUPPO DI SALTO (1-8)
     const getRestingSubGroup = (shift: string, date: Date) => {
-        // Se non è configurato il salto, ritorna null
-        if (!shiftSettings?.rcAnchorDate) return null;
-        
-        const anchorDate = new Date(shiftSettings.rcAnchorDate);
-        anchorDate.setHours(12, 0, 0, 0);
-        
-        // Data corrente del calendario
+        // ANCORAGGIO FISSO: 12 Dicembre 2025 = Turno B, Salto 1
+        // Allineamento VVF 12-24 / 12-48
+        // 12 Dicembre: Giorno B (Gruppo 1 salta)
+        const anchorDate = new Date(2025, 11, 12, 12, 0, 0); // 12 Dicembre 2025
+        const anchorShiftStr = 'B';
+        const anchorSubGroup = 1;
+
         const effectiveDate = new Date(date);
         effectiveDate.setHours(12, 0, 0, 0);
 
-        // Calcolo Base Date: quando questo specifico turno 'shift' sarebbe stato Giorno rispetto all'ancora.
         const shifts = ['A', 'B', 'C', 'D'];
         const shiftIndex = shifts.indexOf(shift.toUpperCase());
-        const anchorShiftIndex = shifts.indexOf((shiftSettings.rcAnchorShift || 'A').toUpperCase());
+        const anchorShiftIndex = shifts.indexOf(anchorShiftStr); // 1 (B)
         
-        // Offset in giorni all'interno del ciclo di 4 giorni
-        // Con rotazione forward, la differenza di indice è diretta
-        const shiftOffset = (shiftIndex - anchorShiftIndex + 4) % 4;
+        // Calcolo Offset Turno (Rotazione A->B->C->D)
+        const shiftDayOffset = shiftIndex - anchorShiftIndex;
         
-        // Proiettiamo la data di ancoraggio per allinearla allo shift corrente
+        // Data in cui il turno richiesto era "Giorno" nel ciclo dell'ancora
         const baseDateForShift = new Date(anchorDate);
-        baseDateForShift.setDate(baseDateForShift.getDate() + shiftOffset);
+        baseDateForShift.setDate(baseDateForShift.getDate() + shiftDayOffset);
         
-        // Calcoliamo la differenza giorni tra la data efficace e la data base proiettata
+        // Giorni passati dalla data base
         const diffTime = effectiveDate.getTime() - baseDateForShift.getTime();
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         
-        // Ogni 4 giorni scatta una nuova rotazione (A, B, C, D sono un blocco, poi si ricomincia con indice +1)
         const cycles = Math.floor(diffDays / 4);
         
-        // Calcolo Gruppo (1-8)
-        const anchorSubGroup = shiftSettings.rcAnchorSubGroup || 1;
-        
-        // Modulo 8 gestendo numeri negativi
         let currentSubGroup = (anchorSubGroup + cycles) % 8;
         if (currentSubGroup <= 0) currentSubGroup += 8;
         
@@ -242,45 +235,47 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                 {/* Griglia Calendario */}
                 <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
                     <div className="grid grid-cols-7 bg-slate-100 border-b border-slate-200">
-                        {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map((d, i) => (
-                            <div key={i} className={`py-3 text-center text-[10px] md:text-xs font-black uppercase ${i===6 ? 'text-red-500' : 'text-slate-500'}`}>
-                                {d}
-                            </div>
+                        {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => (
+                            <div key={d} className="p-2 text-center text-xs font-bold text-slate-500 uppercase">{d}</div>
                         ))}
                     </div>
-
                     <div className="grid grid-cols-7 auto-rows-fr">
                         {Array.from({ length: startingBlankDays }).map((_, i) => (
-                            <div key={`blank-${i}`} className="bg-slate-50/50 border-b border-r border-slate-100 min-h-[80px] md:min-h-[100px]"></div>
+                            <div key={`blank-${i}`} className="p-2 border-b border-r border-slate-100 bg-slate-50/50"></div>
                         ))}
-
                         {Array.from({ length: daysInMonth }).map((_, i) => {
                             const dayNum = i + 1;
-                            const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
-                            const shifts = getShiftsForDate(date);
-                            // Use reliable date for today check
-                            const isToday = getNow().toDateString() === date.toDateString();
-                            
-                            const isFilterActive = highlightShift !== null;
-                            const isDayDimmed = isFilterActive && shifts.day !== highlightShift;
-                            const isNightDimmed = isFilterActive && shifts.night !== highlightShift;
+                            const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
+                            const isToday = dateObj.toDateString() === getNow().toDateString();
+                            const shifts = getShiftsForDate(dateObj);
+
+                            // Logica per Dimming (Opacità) se c'è un turno evidenziato
+                            // Se highlightShift è attivo:
+                            // - Mostra pieno se il turno è presente in Day o Night
+                            // - Dimma se non c'è
+                            const isDayDimmed = highlightShift && shifts.day !== highlightShift;
+                            const isNightDimmed = highlightShift && shifts.night !== highlightShift;
 
                             return (
                                 <div 
                                     key={dayNum} 
                                     className={`
-                                        relative border-b border-r border-slate-100 min-h-[100px] md:min-h-[120px] p-1 flex flex-col gap-1 transition-all duration-300
-                                        ${isToday ? 'bg-green-50 border-green-400 ring-1 ring-inset ring-green-500 shadow-md z-10' : 'bg-white hover:bg-slate-50'}
+                                        min-h-[100px] md:min-h-[140px] p-1 md:p-2 border-b border-r border-slate-200 flex flex-col gap-1 transition-colors
+                                        ${isToday ? 'bg-orange-50 ring-inset ring-2 ring-orange-400 z-10' : 'bg-white hover:bg-slate-50'}
                                     `}
                                 >
                                     <div className="flex justify-between items-start mb-1">
-                                        <span className={`text-xs md:text-sm font-bold ${isToday ? 'text-green-800' : 'text-slate-700'}`}>{dayNum}</span>
-                                        {isToday && <span className="text-[8px] md:text-[9px] font-black text-green-700 uppercase bg-green-200 px-1 rounded hidden md:inline">OGGI</span>}
+                                        <span className={`text-xs md:text-sm font-bold ${isToday ? 'text-orange-600' : 'text-slate-700'}`}>{dayNum}</span>
+                                        {isToday && <span className="text-[10px] text-orange-500 font-black animate-pulse">OGGI</span>}
                                     </div>
                                     
-                                    {renderShiftRow(shifts.day, 'day', isDayDimmed, date)}
-                                    {renderShiftRow(shifts.night, 'night', isNightDimmed, date)}
-                                    
+                                    <div className="flex flex-col gap-1 h-full justify-center">
+                                        {/* GIORNO (08:00 - 20:00) */}
+                                        {renderShiftRow(shifts.day, 'day', !!isDayDimmed, dateObj)}
+
+                                        {/* NOTTE (20:00 - 08:00) */}
+                                        {renderShiftRow(shifts.night, 'night', !!isNightDimmed, dateObj)}
+                                    </div>
                                 </div>
                             );
                         })}
@@ -288,9 +283,8 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
                 </div>
                 
                 <div className="mt-6 text-center text-xs text-slate-400">
-                    <p>Schema turni perpetuo VVF 12-24 12-48 • Rotazione Salto 1-8</p>
-                    {shiftSettings?.rcAnchorDate && <p className="mt-1 opacity-50">Calibrazione Salto: {new Date(shiftSettings.rcAnchorDate).toLocaleDateString()} = Turno {shiftSettings.rcAnchorShift} (Gruppo {shiftSettings.rcAnchorSubGroup})</p>}
-                    {!shiftSettings?.rcAnchorDate && <p className="mt-1 text-orange-400 font-bold">Nota: Salto turno non calibrato. Configuralo nel pannello Admin.</p>}
+                    <p>Legenda: ☀️ Turno Diurno (08:00-20:00) | 🌙 Turno Notturno (20:00-08:00)</p>
+                    <p className="mt-1">I numeri sotto i pallini indicano il Gruppo di Salto (Riposo Compensativo).</p>
                 </div>
             </main>
         </div>

@@ -103,9 +103,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     // Helper per calcolare chi è in salto (riposo compensativo) per un dato giorno e turno
     const getRestingSubGroup = (shift: string, date: Date) => {
-        // Fallback default se setting mancanti: 1 Gennaio 2025
-        const anchorDateStr = shiftSettings?.rcAnchorDate || '2025-01-01'; 
-        const anchorShiftStr = shiftSettings?.rcAnchorShift || 'A';
+        // Fallback default se setting mancanti: 12 Dicembre 2025 (Turno B, Gruppo 1)
+        const anchorDateStr = shiftSettings?.rcAnchorDate || '2025-12-12'; 
+        const anchorShiftStr = shiftSettings?.rcAnchorShift || 'B';
         const anchorSubGroup = shiftSettings?.rcAnchorSubGroup || 1;
 
         const anchorDate = new Date(anchorDateStr);
@@ -543,9 +543,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                             {matrixData.days.map(day => {
                                                 const tillId = `T${matrixShift.toUpperCase()}`;
                                                 const dateStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
-                                                // Used reliable date string for DB lookup too? 
-                                                // Ideally DB uses consistent YYYY-MM-DD.
-                                                // The `day.date` here comes from `matrixData` which iterates 1..31.
                                                 
                                                 const record = attendanceRecords.find(r => r.date === dateStr && r.tillId === tillId);
                                                 
@@ -626,19 +623,15 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                         {Array.from({ length: daysInMonth }).map((_, i) => {
                             const dayNum = i + 1;
                             const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
-                            // Ensure dateStr is local
                             const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
                             const shifts = getShiftsForDate(dateObj);
                             
-                            // Logica Giorno Corrente
                             const isToday = dateStr === todayStr;
 
-                            // Data precedente per Smontante (giorno prima)
                             const prevDate = new Date(dateObj);
                             prevDate.setDate(prevDate.getDate() - 1);
                             const prevDateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
                             
-                            // 3 SLOT CRONOLOGICI
                             const timeSlots = [
                                 { id: 'slot1', shift: shifts.smontante, label: getSlotLabel('smontante'), dateRef: prevDateStr },
                                 { id: 'slot2', shift: shifts.day, label: getSlotLabel('giorno'), dateRef: dateStr },

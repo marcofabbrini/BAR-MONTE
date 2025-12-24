@@ -334,7 +334,8 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                                         {previousShiftTill.shift.toUpperCase()}
                                                     </span>
                                                 </div>
-                                                <span className="text-sm md:text-lg font-sans font-extralight text-slate-700 tracking-widest tabular-nums">
+                                                {/* FONT RIDOTTO QUI */}
+                                                <span className="text-xs md:text-base font-sans font-extralight text-slate-700 tracking-widest tabular-nums">
                                                     {formatCountdown(graceTimeLeft)}
                                                 </span>
                                             </div>
@@ -378,7 +379,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         }
 
                         // Layout standard per altri turni (se visibili, es. admin)
-                        // ALTEZZA RIDOTTA: h-20 md:h-40 (era h-32 md:h-48)
                         return (
                             <button 
                                 key={till.id} 
