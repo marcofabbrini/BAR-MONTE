@@ -1,6 +1,7 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel, TombolaConfig, TombolaTicket, AttendanceRecord, GeneralSettings, AttendanceStatus } from '../types';
+import { VVF_GRADES } from '../constants';
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
@@ -59,13 +60,29 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         }
     }, [isShiftValidated, existingAttendanceRecord]);
 
-    // Ordinamento Staff: "Cassa" per primo, poi alfabetico
+    // Ordinamento Staff: "Cassa" -> Grado (Alto->Basso) -> Alfabetico
     const sortedStaffForShift = useMemo(() => {
         return [...staffForShift].sort((a, b) => {
+            // 1. Priorità Cassa
             const aIsCassa = a.name.toLowerCase().includes('cassa');
             const bIsCassa = b.name.toLowerCase().includes('cassa');
             if (aIsCassa && !bIsCassa) return -1;
             if (!aIsCassa && bIsCassa) return 1;
+
+            // 2. Priorità Grado (Indice più alto = Grado più alto)
+            const getRank = (gradeId?: string) => {
+                if (!gradeId) return -1;
+                return VVF_GRADES.findIndex(g => g.id === gradeId);
+            };
+            
+            const rankA = getRank(a.grade);
+            const rankB = getRank(b.grade);
+            
+            if (rankA !== rankB) {
+                return rankB - rankA; // Decrescente (CRE prima di VIG)
+            }
+
+            // 3. Alfabetico
             return a.name.localeCompare(b.name);
         });
     }, [staffForShift]);
