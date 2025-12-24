@@ -37,7 +37,7 @@ const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, onPlayAnal
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     
-                    {/* CARD TOMBOLA */}
+                    {/* CARD TOMBOLA - DISABILITATA TEMPORANEAMENTE
                     <div onClick={onPlayTombola} className="relative bg-white rounded-3xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-2 border-red-100 h-64 flex flex-col items-center justify-center">
                         <div className="absolute top-0 left-0 w-full h-2 bg-red-500"></div>
                         <div className="text-[70px] leading-none mb-2 filter drop-shadow-lg group-hover:rotate-12 transition-transform">
@@ -51,8 +51,9 @@ const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, onPlayAnal
                             <span className="text-lg font-black text-red-600">€{tombolaConfig?.jackpot.toFixed(2) || '0.00'}</span>
                         </div>
                     </div>
+                    */}
 
-                    {/* CARD ANALOTTO VVF */}
+                    {/* CARD ANALOTTO VVF - DISABILITATA TEMPORANEAMENTE
                     <div onClick={onPlayAnalotto} className="relative bg-white rounded-3xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-2 border-emerald-100 h-64 flex flex-col items-center justify-center">
                         <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500"></div>
                         <div className="text-[70px] leading-none mb-2 filter drop-shadow-lg group-hover:-rotate-12 transition-transform">
@@ -68,6 +69,7 @@ const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, onPlayAnal
                             <span className="text-lg font-black text-emerald-600">€{analottoConfig?.jackpot.toFixed(2) || '0.00'}</span>
                         </div>
                     </div>
+                    */}
 
                     {/* CARD DADI (CHI PAGA) */}
                     <div onClick={onPlayDice} className="relative bg-white rounded-3xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-2 border-blue-100 h-64 flex flex-col items-center justify-center">

@@ -194,7 +194,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
 
-    // ... (Logiche Analotto/Tombola invariate)
     const handleQuickAnalotto = async (amount: number) => {
         if (!selectedStaffId) {
             alert("Seleziona prima un utente per giocare.");
@@ -381,7 +380,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                                 return <ProductCard key={product.id} product={product} onAddToCart={addToOrder} inCart={inCart} />;
                                             })}
                                             
-                                            {/* ANALOTTO CARDS */}
+                                            {/* ANALOTTO CARDS - DISABILITATI TEMPORANEAMENTE
                                             {[1, 2, 5, 10].map(amt => (
                                                 <button 
                                                     key={`analotto-${amt}`}
@@ -398,8 +397,9 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                                     <span className="bg-emerald-600 text-white px-3 py-1 rounded-full font-black text-sm">€{amt}</span>
                                                 </button>
                                             ))}
+                                            */}
 
-                                            {/* TOMBOLA CARDS */}
+                                            {/* TOMBOLA CARDS - DISABILITATI TEMPORANEAMENTE
                                             {tombolaConfig?.status === 'pending' && (
                                                 <>
                                                     <button 
@@ -421,6 +421,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                                     </button>
                                                 </>
                                             )}
+                                            */}
                                         </div>
                                     </div>
                                 )}

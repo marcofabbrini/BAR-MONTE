@@ -266,11 +266,11 @@ const AdminView: React.FC<AdminViewProps> = ({
         }
     };
 
-    // AUMENTATE DIMENSIONI ICONE (h-8 w-8)
+    // AUMENTATE DIMENSIONI ICONE (h-10 w-10)
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
-        <button onClick={() => setActiveTab(tab)} className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all w-20 h-20 text-[10px] font-bold gap-1 ${activeTab === tab ? 'bg-red-500 text-white shadow-md scale-105' : 'bg-white text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-100'}`}>
-            <div className={`${activeTab === tab ? 'text-white' : 'text-current'} transform transition-transform`}>{icon}</div>
-            <span className="text-center leading-tight">{label}</span>
+        <button onClick={() => setActiveTab(tab)} className={`flex flex-col items-center justify-center p-2 rounded-xl transition-all w-24 h-24 text-[10px] font-bold gap-2 ${activeTab === tab ? 'bg-red-500 text-white shadow-md scale-105' : 'bg-white text-slate-500 hover:bg-red-50 hover:text-red-500 border border-slate-100'}`}>
+            <div className={`${activeTab === tab ? 'text-white' : 'text-current'} transform transition-transform scale-110`}>{icon}</div>
+            <span className="text-center leading-tight uppercase tracking-tight">{label}</span>
         </button>
     );
 
@@ -301,20 +301,17 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <div className="text-right"><p className="text-[9px] text-slate-400 uppercase font-bold">{isSuperAdmin ? 'Super Admin' : 'Admin'}</p><button onClick={onLogout} className="text-[10px] text-red-500 font-bold hover:underline">LOGOUT</button></div>
                     </div>
                     
-                    <div className="flex flex-col gap-2 w-full">
+                    <div className="flex flex-col gap-2 w-full overflow-x-auto pb-2">
                         {/* RIGA 1: OPERATIVITÀ */}
-                        <div className="flex flex-wrap justify-center gap-2 border-b border-slate-100 pb-2">
-                            <TabButton tab="movements" label="Movimenti" icon={<ListIcon className="h-8 w-8" />} />
-                            <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon className="h-8 w-8" />} />
-                            <TabButton tab="stock" label="Stock" icon={<BoxIcon className="h-8 w-8" />} />
-                            <TabButton tab="products" label="Prodotti" icon={<StarIcon className="h-8 w-8" />} />
-                        </div>
-                        {/* RIGA 2: GESTIONE */}
-                        <div className="flex flex-wrap justify-center gap-2">
-                            <TabButton tab="admins" label="Admin" icon={<LockIcon className="h-8 w-8" />} />
-                            <TabButton tab="staff" label="Staff" icon={<StaffIcon className="h-8 w-8" />} />
-                            <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-8 w-8" />} />
-                            <TabButton tab="attendance" label="Presenze" icon={<ClipboardIcon className="h-8 w-8" />} />
+                        <div className="flex flex-nowrap md:flex-wrap justify-start md:justify-center gap-3 min-w-max md:min-w-0">
+                            <TabButton tab="movements" label="Movimenti" icon={<ListIcon className="h-10 w-10" />} />
+                            <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon className="h-10 w-10" />} />
+                            <TabButton tab="stock" label="Stock" icon={<BoxIcon className="h-10 w-10" />} />
+                            <TabButton tab="products" label="Prodotti" icon={<StarIcon className="h-10 w-10" />} />
+                            <TabButton tab="admins" label="Admin" icon={<LockIcon className="h-10 w-10" />} />
+                            <TabButton tab="staff" label="Staff" icon={<StaffIcon className="h-10 w-10" />} />
+                            <TabButton tab="settings" label="Config" icon={<SettingsIcon className="h-10 w-10" />} />
+                            <TabButton tab="attendance" label="Presenze" icon={<ClipboardIcon className="h-10 w-10" />} />
                         </div>
                     </div>
                 </div>

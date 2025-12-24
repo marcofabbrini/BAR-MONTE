@@ -292,7 +292,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         return null; // Assente
     };
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Fix: Use local time construction for comparison to avoid UTC shifts
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     return (
         <div className="bg-white rounded-xl shadow-sm border border-slate-300 overflow-hidden h-full flex flex-col relative min-h-screen md:min-h-0">
@@ -479,7 +481,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                             Nominativo
                                         </th>
                                         {matrixData.days.map(day => {
-                                            const isToday = day.date.toISOString().split('T')[0] === todayStr;
+                                            const dayStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
+                                            const isToday = dayStr === todayStr;
                                             return (
                                                 <th 
                                                     key={day.dayNum} 
@@ -504,7 +507,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                             Salto (Riposo Comp.):
                                         </th>
                                         {matrixData.days.map(day => {
-                                            const isToday = day.date.toISOString().split('T')[0] === todayStr;
+                                            const dayStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
+                                            const isToday = dayStr === todayStr;
                                             return (
                                                 <th 
                                                     key={`rc-${day.dayNum}`} 
@@ -538,7 +542,11 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                             </td>
                                             {matrixData.days.map(day => {
                                                 const tillId = `T${matrixShift.toUpperCase()}`;
-                                                const dateStr = day.date.toISOString().split('T')[0];
+                                                const dateStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
+                                                // Used reliable date string for DB lookup too? 
+                                                // Ideally DB uses consistent YYYY-MM-DD.
+                                                // The `day.date` here comes from `matrixData` which iterates 1..31.
+                                                
                                                 const record = attendanceRecords.find(r => r.date === dateStr && r.tillId === tillId);
                                                 
                                                 const status = getStatusForCell(person.id, record);
@@ -618,17 +626,17 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                         {Array.from({ length: daysInMonth }).map((_, i) => {
                             const dayNum = i + 1;
                             const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
-                            const dateStr = dateObj.toISOString().split('T')[0];
+                            // Ensure dateStr is local
+                            const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
                             const shifts = getShiftsForDate(dateObj);
                             
                             // Logica Giorno Corrente
-                            const today = new Date();
-                            const isToday = today.toDateString() === dateObj.toDateString();
+                            const isToday = dateStr === todayStr;
 
                             // Data precedente per Smontante (giorno prima)
                             const prevDate = new Date(dateObj);
                             prevDate.setDate(prevDate.getDate() - 1);
-                            const prevDateStr = prevDate.toISOString().split('T')[0];
+                            const prevDateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
                             
                             // 3 SLOT CRONOLOGICI
                             const timeSlots = [
