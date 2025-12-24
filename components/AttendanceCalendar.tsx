@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings, AttendanceStatus } from '../types';
 import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon, GridIcon, SettingsIcon } from './Icons';
+import { GradeBadge } from './StaffManagement';
 
 interface AttendanceCalendarProps {
     attendanceRecords: AttendanceRecord[];
@@ -103,10 +104,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     // Manteniamo la funzione originale per compatibilità nel render, anche se la logica è duplicata in getShiftsForDateSync
     const getShiftsForDate = (date: Date) => {
         const shifts = getShiftsForDateSync(date);
-        
-        // Per calcolare smontante (turno notte di ieri), prendiamo l'indice della notte e andiamo indietro di 1 nel ciclo logico dei turni notturni... 
-        // Oppure semplicemente ricalcoliamo: Day A -> Night D -> Smontante C
-        // Usiamo la logica base:
         const allShifts = ['A', 'B', 'C', 'D'];
         const dayIdx = allShifts.indexOf(shifts.day);
         const smontanteIdx = (dayIdx - 2 + 4) % 4;
@@ -166,34 +163,25 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         setEditingTillId(tillId);
         setEditingRecord(currentRecord);
         
-        // Inizializza mappa stati
         const initialDetails: Record<string, AttendanceStatus | 'absent'> = {};
         
-        // Trova staff del turno
         const shift = tillId.replace('T', '').toLowerCase();
         const shiftStaff = staff.filter(s => s.shift === shift);
-
-        // Calcola il gruppo di riposo per questa data/turno
         const rcGroup = getRestingSubGroup(shift, new Date(dateStr));
 
         shiftStaff.forEach(s => {
             if (currentRecord) {
-                // Se c'è un record dettagliato, usa quello
                 if (currentRecord.attendanceDetails && currentRecord.attendanceDetails[s.id]) {
                     initialDetails[s.id] = currentRecord.attendanceDetails[s.id] as AttendanceStatus;
-                } 
-                // Fallback: se è in presentStaffIds ma non in details, è "present"
-                else if (currentRecord.presentStaffIds.includes(s.id)) {
+                } else if (currentRecord.presentStaffIds.includes(s.id)) {
                     initialDetails[s.id] = 'present';
                 } else {
                     initialDetails[s.id] = 'absent';
                 }
             } else {
-                // Nuovo record
                 if (s.name.toLowerCase().includes('cassa')) {
                     initialDetails[s.id] = 'present';
                 } else {
-                    // SE è il giorno di salto dell'utente, pre-imposta "Rest" invece di "Absent"
                     if (s.rcSubGroup === rcGroup) {
                         initialDetails[s.id] = 'rest';
                     } else {
@@ -209,7 +197,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const updateStaffStatus = (id: string, status: AttendanceStatus | 'absent') => {
         const member = staff.find(s => s.id === id);
-        if (member && member.name.toLowerCase().includes('cassa')) return; // Cassa sempre locked
+        if (member && member.name.toLowerCase().includes('cassa')) return;
 
         setEditingDetails(prev => ({
             ...prev,
@@ -220,20 +208,17 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     const saveEditing = async (shouldValidate: boolean = false) => {
         if (!onSaveAttendance) return;
         
-        // Converti la mappa locale nel formato per il DB
         const presentIds: string[] = [];
         const finalDetails: Record<string, AttendanceStatus> = {};
 
         Object.entries(editingDetails).forEach(([id, status]) => {
             if (status !== 'absent') {
-                presentIds.push(id); // Tutti quelli non assenti finiscono nell'array legacy per compatibilità
+                presentIds.push(id);
                 finalDetails[id] = status as AttendanceStatus;
             }
         });
 
         const user = editingRecord?.closedBy || 'Admin';
-        
-        // Se valida, passa il closedBy per chiudere il turno. Se solo salva, passa undefined (o mantieni quello esistente se c'era)
         const closingUser = shouldValidate ? user : (editingRecord?.closedBy ? editingRecord.closedBy : undefined);
 
         await onSaveAttendance(
@@ -266,9 +251,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         }
     };
 
-    // --- LOGICA MATRICE ---
     const matrixData = useMemo(() => {
-        // Staff ordinato per grado (se serve) o nome
         const shiftStaff = staff
             .filter(s => s.shift === matrixShift && isRealPerson(s.name))
             .sort((a,b) => a.name.localeCompare(b.name));
@@ -278,8 +261,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             const shifts = getShiftsForDate(date);
             const isWorking = shifts.day === matrixShift.toUpperCase() || shifts.night === matrixShift.toUpperCase();
             
-            // Calcolo Riposo Compensativo (Salto) per il turno corrente (matrixShift) in questa data
-            // Se matrixShift = 'A', calcoliamo qual è il sottogruppo di A che riposa oggi.
             const rcGroup = getRestingSubGroup(matrixShift, date);
 
             return {
@@ -291,25 +272,19 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             };
         });
         return { shiftStaff, days };
-    }, [staff, matrixShift, currentDate, daysInMonth, shiftSettings]); // shiftSettings added dep
+    }, [staff, matrixShift, currentDate, daysInMonth, shiftSettings]);
 
     const getStatusForCell = (personId: string, record?: AttendanceRecord) => {
         if (!record) return null;
-        
-        // 1. Cerca nel dettaglio specifico
         if (record.attendanceDetails && record.attendanceDetails[personId]) {
             return record.attendanceDetails[personId];
         }
-        
-        // 2. Fallback array legacy (Assume Presente)
         if (record.presentStaffIds.includes(personId)) {
             return 'present';
         }
-
-        return null; // Assente
+        return null;
     };
 
-    // Fix: Use local time construction for comparison to avoid UTC shifts
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
@@ -328,6 +303,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             {/* EDIT MODAL */}
             {isEditModalOpen && (
                 <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                    {/* ... (Modal content remains same) ... */}
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
                         <div className="p-4 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
                             <div>
@@ -396,7 +372,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             </div>
                         </div>
                         <div className="p-4 border-t border-slate-200 flex flex-col gap-2 bg-slate-50">
-                            {/* AZIONI SE TURNO CHIUSO */}
                             {editingRecord?.closedAt ? (
                                 <div className="flex justify-between w-full">
                                     {isSuperAdmin && onReopenAttendance && (
@@ -409,7 +384,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                     </button>
                                 </div>
                             ) : (
-                                /* AZIONI SE TURNO APERTO */
                                 <div className="flex gap-2 w-full">
                                     <button onClick={() => saveEditing(false)} className="flex-1 bg-slate-200 text-slate-700 px-4 py-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-300">
                                         Salva Bozze
@@ -494,7 +468,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                 <thead className="bg-slate-100 text-slate-600 sticky top-0 z-20 shadow-sm">
                                     {/* RIGA 1: NUMERI GIORNO */}
                                     <tr>
-                                        <th className="p-3 text-left font-bold border-b border-r border-slate-200 min-w-[200px] sticky left-0 bg-slate-100 z-30">
+                                        <th className="p-3 text-left font-bold border-b border-r border-slate-200 sticky left-0 bg-slate-100 z-30 whitespace-nowrap w-auto">
                                             Nominativo
                                         </th>
                                         {matrixData.days.map(day => {
@@ -528,6 +502,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                         {matrixData.days.map(day => {
                                             const dayStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
                                             const isToday = dayStr === todayStr;
+                                            // Mostra il salto SOLO se è un giorno di turno attivo (Giorno o Notte)
+                                            const isShiftActiveDay = day.shifts.day === matrixShift.toUpperCase() || day.shifts.night === matrixShift.toUpperCase();
+                                            
                                             return (
                                                 <th 
                                                     key={`rc-${day.dayNum}`} 
@@ -538,7 +515,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                             : 'border-b'}
                                                     `}
                                                 >
-                                                    {day.rcGroup ? `S-${day.rcGroup}` : '-'}
+                                                    {(day.rcGroup && isShiftActiveDay) ? `${matrixShift.toUpperCase()}${day.rcGroup}` : '-'}
                                                 </th>
                                             );
                                         })}
@@ -550,15 +527,28 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                     )}
                                     {matrixData.shiftStaff.map((person, personIndex) => (
                                         <tr key={person.id} className="hover:bg-slate-50 transition-colors group">
-                                            <td className="p-3 border-b border-r border-slate-200 font-medium text-slate-800 sticky left-0 bg-white group-hover:bg-slate-50 z-10 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold">
-                                                        {person.grade && <span className="text-[10px] text-slate-500 font-black mr-1 uppercase">{person.grade}</span>}
-                                                        {person.name}
-                                                    </span>
-                                                    <span className="text-[9px] text-slate-400 font-mono">
-                                                        {person.shift.toUpperCase()}{person.rcSubGroup || ''}
-                                                    </span>
+                                            <td className="p-3 border-b border-r border-slate-200 font-medium text-slate-800 sticky left-0 bg-white group-hover:bg-slate-50 z-10 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-auto">
+                                                <div className="flex items-center gap-3">
+                                                    {/* Avatar & Grade Container */}
+                                                    <div className="relative w-8 h-8 flex-shrink-0">
+                                                        <div className="w-full h-full rounded-full overflow-hidden bg-slate-100 flex items-center justify-center text-xs border border-slate-200 shadow-sm">
+                                                            {person.photoUrl ? (
+                                                                <img src={person.photoUrl} alt={person.name} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                person.icon || '👤'
+                                                            )}
+                                                        </div>
+                                                        <div className="absolute -top-2 -right-2 scale-75 origin-center z-10">
+                                                            <GradeBadge grade={person.grade} />
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-sm leading-tight">{person.name}</span>
+                                                        <span className="text-[10px] text-slate-400 font-mono">
+                                                            {person.shift.toUpperCase()}{person.rcSubGroup || ''}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </td>
                                             {matrixData.days.map(day => {
@@ -572,6 +562,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                 
                                                 // Logica Salto Turno Personale
                                                 const isJumpDay = day.rcGroup === person.rcSubGroup;
+                                                const isShiftActiveDay = day.shifts.day === matrixShift.toUpperCase() || day.shifts.night === matrixShift.toUpperCase();
                                                 
                                                 // È l'ultima riga?
                                                 const isLastRow = personIndex === matrixData.shiftStaff.length - 1;
@@ -592,11 +583,11 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                         onClick={() => handleOpenEdit(dateStr, tillId, record)}
                                                         title={`${day.dayNum}/${currentDate.getMonth()+1} - ${person.name}`}
                                                     >
-                                                        {/* Visualizza R se è giorno di salto E non c'è status esplicito, MA cliccabile per editing */}
-                                                        {(isJumpDay && !status) ? (
-                                                            <div className="absolute inset-0 flex items-center justify-center p-1 opacity-50">
-                                                                <div className="w-full h-full flex items-center justify-center rounded font-bold text-[10px] bg-slate-300 text-slate-600 border border-slate-400">
-                                                                    R
+                                                        {/* Visualizza Salto (Es. B2) se è giorno di salto E non c'è status esplicito E siamo in un giorno lavorativo */}
+                                                        {(isJumpDay && !status && isShiftActiveDay) ? (
+                                                            <div className="absolute inset-0 flex items-center justify-center p-1 opacity-60">
+                                                                <div className="w-full h-full flex items-center justify-center rounded font-bold text-[9px] bg-slate-300 text-slate-600 border border-slate-400">
+                                                                    {matrixShift.toUpperCase()}{person.rcSubGroup}
                                                                 </div>
                                                             </div>
                                                         ) : status && (
@@ -620,6 +611,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                 </tbody>
                             </table>
                         </div>
+                        {/* Footer Status Legend */}
                         <div className="p-2 text-[10px] text-slate-400 text-center bg-slate-50 border-t border-slate-200 flex justify-center gap-4 flex-wrap">
                             {Object.entries(STATUS_CONFIG).filter(([k]) => k !== 'absent').map(([key, conf]) => (
                                 <span key={key} className="flex items-center gap-1">
@@ -631,7 +623,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                     </div>
                 )}
 
-                {/* 2. CALENDAR VIEW (VECCHIO TURNARIO) */}
+                {/* 2. CALENDAR VIEW (VECCHIO TURNARIO) ... */}
                 {viewMode === 'calendar' && (
                     <div className="grid grid-cols-7 border-l border-t border-slate-300">
                         {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => (
