@@ -189,7 +189,12 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
 
     const handleStaffSelection = (id: string) => {
         // Double check just in case, though UI hides non-present
-        if (!presentStaffIds.includes(id)) return;
+        if (!presentStaffIds.includes(id) && !selectedStaffId) {
+             // Allow selection if explicitly visible (handled in render) but fallback logic might prevent it
+             // Actually, presentStaffIds includes everyone in the record, even absent ones in old logic?
+             // No, presentStaffIds only has check-ins.
+             // But we are now using status.
+        }
         setIsAnimatingSelection(true);
         setTimeout(() => {
             setSelectedStaffId(id);
@@ -345,11 +350,24 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                         <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Chi sei?</h3>
                                         <div className={`grid grid-cols-4 sm:grid-cols-6 gap-4 p-4 rounded-xl ${!selectedStaffId ? 'animate-red-pulse' : ''}`}>
                                             {sortedStaffForShift.map(staff => {
-                                                // FILTER: Show ONLY staff present in the validated record
-                                                const isPresent = presentStaffIds.includes(staff.id);
-                                                if (!isPresent) return null;
-
                                                 const isCassa = staff.name.toLowerCase().includes('cassa');
+                                                
+                                                // --- VISIBILITY LOGIC ---
+                                                let isVisiblyPresent = false;
+                                                if (existingAttendanceRecord?.attendanceDetails && existingAttendanceRecord.attendanceDetails[staff.id]) {
+                                                    // Se esiste il dettaglio, mostra SOLO se status = present o substitution
+                                                    const status = existingAttendanceRecord.attendanceDetails[staff.id];
+                                                    isVisiblyPresent = status === 'present' || status === 'substitution';
+                                                } else {
+                                                    // Fallback per vecchi record o se non ci sono dettagli
+                                                    isVisiblyPresent = presentStaffIds.includes(staff.id);
+                                                }
+
+                                                // La cassa generica è sempre visibile se è stata salvata (di solito lo è)
+                                                // Ma per sicurezza, rispettiamo il record. 
+                                                // Se qualcuno ha messo "assente" alla cassa (improbabile), non la mostriamo.
+                                                
+                                                if (!isVisiblyPresent) return null;
                                                 
                                                 return (
                                                     <button 
