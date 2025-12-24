@@ -52,21 +52,8 @@ const GamesHub: React.FC<GamesHubProps> = ({ onGoBack, onPlayTombola, onPlayAnal
                         </div>
                     </div>
 
-                    {/* CARD 3D VIEWER */}
-                    {onOpen3DViewer && (
-                        <div onClick={onOpen3DViewer} className="relative bg-white rounded-3xl shadow-xl overflow-hidden cursor-pointer transform hover:scale-105 transition-all duration-300 group border-2 border-slate-200 h-64 flex flex-col items-center justify-center">
-                            <div className="absolute top-0 left-0 w-full h-2 bg-slate-600"></div>
-                            <div className="text-[70px] leading-none mb-2 filter drop-shadow-lg group-hover:rotate-6 transition-transform">
-                                🧊
-                            </div>
-                            <h3 className="text-2xl font-black text-slate-800 uppercase tracking-wider mb-1">3D Viewer</h3>
-                            <p className="text-slate-400 text-xs font-bold mb-4 uppercase tracking-widest">Visualizzatore STL/OBJ</p>
-                            
-                            <div className="bg-slate-100 px-4 py-2 rounded-full border border-slate-300 text-slate-600 font-bold text-xs uppercase">
-                                Apri
-                            </div>
-                        </div>
-                    )}
+                    {/* ALTRI GIOCHI O SPAZIO LIBERO */}
+                    {/* Il Visualizzatore 3D è stato rimosso come richiesto */}
 
                 </div>
             </div>

@@ -5,7 +5,7 @@ import { VVF_GRADES } from '../constants';
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
-import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon, TicketIcon, LockIcon, EyeIcon, ClipboardIcon } from './Icons';
+import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon, TicketIcon, LockIcon, EyeIcon, ClipboardIcon, DropletIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 import { GradeBadge } from './StaffManagement';
 
@@ -126,11 +126,14 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
     const cartItemCount = useMemo(() => currentOrder.reduce((sum, item) => sum + item.quantity, 0), [currentOrder]);
 
     // Calcolo Quote Acqua (Mese Corrente) per la visualizzazione nella tabellina
-    const waterQuotas = useMemo(() => {
-        if (!attendanceRecords) return [];
+    const waterData = useMemo(() => {
+        if (!attendanceRecords) return { quotas: [], totalCount: 0, totalValue: 0 };
         const now = getNow();
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
+        const unitPrice = generalSettings?.waterQuotaPrice || 0;
+
+        let totalCount = 0;
 
         const quotas = staffForShift
             .filter(s => !s.name.toLowerCase().includes('cassa'))
@@ -152,11 +155,14 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                     // Fallback per record vecchi
                     return r.presentStaffIds.includes(member.id);
                 }).length;
-                return { name: member.name, count, id: member.id };
+                
+                totalCount += count;
+                return { name: member.name, count, id: member.id, value: count * unitPrice };
             })
             .sort((a,b) => b.count - a.count);
-        return quotas;
-    }, [attendanceRecords, staffForShift, getNow]);
+            
+        return { quotas, totalCount, totalValue: totalCount * unitPrice };
+    }, [attendanceRecords, staffForShift, getNow, generalSettings]);
 
     const addToOrder = useCallback((product: Product) => {
         if (product.stock <= 0) return;
@@ -443,36 +449,44 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                         {activeTab === 'history' && (
                             <div className="max-w-3xl mx-auto bg-white/90 backdrop-blur rounded-2xl p-4 shadow-sm border border-slate-100">
                                 {/* ... History content ... */}
-                                {!selectedStaffId && waterQuotas.length > 0 && (
-                                    <div className="mb-6 bg-blue-50 rounded-xl border border-blue-100 p-4 relative overflow-hidden">
+                                {!selectedStaffId && waterData.quotas.length > 0 && (
+                                    <div className="mb-6 bg-blue-50/50 rounded-2xl border border-blue-200/60 p-5 relative overflow-hidden shadow-sm">
                                         <div className="relative z-10">
-                                            <div className="flex justify-between items-center mb-3">
-                                                <h4 className="text-xs font-black text-blue-800 uppercase tracking-wider flex items-center gap-2">
-                                                    <span className="text-lg">💧</span> Quote Acqua (Mese Corrente)
-                                                </h4>
-                                                {generalSettings?.waterQuotaPrice ? (
-                                                    <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-bold">
-                                                        Prezzo: €{generalSettings.waterQuotaPrice.toFixed(2)}/quota
-                                                    </span>
-                                                ) : null}
+                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 border-b border-blue-200 pb-2">
+                                                <div>
+                                                    <h4 className="text-sm font-black text-blue-900 uppercase tracking-wider flex items-center gap-2">
+                                                        <DropletIcon className="h-5 w-5 text-blue-500" /> 
+                                                        Riepilogo Acqua
+                                                    </h4>
+                                                    <p className="text-[10px] text-blue-600 font-bold mt-1 uppercase">
+                                                        {new Date().toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
+                                                    </p>
+                                                </div>
+                                                <div className="flex flex-col items-end mt-2 md:mt-0">
+                                                    <span className="text-[9px] text-blue-500 font-bold uppercase">Totale Turno</span>
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="text-2xl font-black text-blue-800">€{waterData.totalValue.toFixed(2)}</span>
+                                                        <span className="text-xs text-blue-600 font-bold">({waterData.totalCount} quote)</span>
+                                                    </div>
+                                                </div>
                                             </div>
+                                            
                                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                                {waterQuotas.map(user => {
-                                                    const cost = user.count * (generalSettings?.waterQuotaPrice || 0);
+                                                {waterData.quotas.map(user => {
                                                     return (
-                                                        <div key={user.id} className="bg-white/80 backdrop-blur-sm p-2 rounded-lg border border-blue-100 flex flex-col shadow-sm">
-                                                            <div className="flex justify-between items-center mb-1">
-                                                                <span className="text-xs font-bold text-slate-700">{user.name}</span>
-                                                                <div className="flex items-center gap-1 bg-blue-100 px-2 py-0.5 rounded-full">
-                                                                    <span className="text-xs font-black text-blue-700">{user.count}</span>
-                                                                </div>
+                                                        <div key={user.id} className="bg-white p-3 rounded-xl border border-blue-100 flex flex-col shadow-sm relative overflow-hidden group">
+                                                            <div className="absolute top-0 right-0 w-8 h-8 bg-blue-50 rounded-bl-xl flex items-center justify-center">
+                                                                <span className="text-xs font-black text-blue-500">{user.count}</span>
                                                             </div>
-                                                            {cost > 0 && (
-                                                                <div className="text-right border-t border-slate-100 pt-1">
-                                                                    <span className="text-[10px] font-bold text-slate-400">Tot: </span>
-                                                                    <span className="text-xs font-black text-blue-600">€{cost.toFixed(2)}</span>
-                                                                </div>
-                                                            )}
+                                                            <span className="text-xs font-bold text-slate-700 truncate pr-6">{user.name}</span>
+                                                            <div className="mt-2 flex justify-between items-end">
+                                                                <span className="text-[9px] text-slate-400 font-bold uppercase">
+                                                                    Presenze
+                                                                </span>
+                                                                <span className="text-sm font-black text-blue-700">
+                                                                    €{user.value.toFixed(2)}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     );
                                                 })}
