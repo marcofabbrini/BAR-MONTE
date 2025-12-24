@@ -10,22 +10,22 @@ interface Dataset {
 }
 
 interface LineChartProps { 
-    data?: ChartPoint[]; // Backward compatibility
-    datasets?: Dataset[]; // New multi-line support
+    data?: ChartPoint[]; 
+    datasets?: Dataset[]; 
     height?: number; 
     color?: string;
+    yAxisLabel?: string; // Nuova prop
+    xAxisLabel?: string; // Nuova prop
 }
 
-const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, color = '#f97316' }) => {
+const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, color = '#f97316', yAxisLabel, xAxisLabel }) => {
     
-    // Normalize input: use datasets if provided, otherwise wrap single data
     const normalizedDatasets = useMemo(() => {
         if (datasets) return datasets;
         if (data) return [{ label: 'Dati', data: data, color: color }];
         return [];
     }, [data, datasets, color]);
 
-    // Calculate Global Max Value for Y-Axis scaling
     const maxValue = useMemo(() => {
         let max = 0;
         normalizedDatasets.forEach(ds => {
@@ -33,11 +33,11 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
                 if (p.value > max) max = p.value;
             });
         });
-        return max || 10; // Avoid division by zero
+        return max || 10;
     }, [normalizedDatasets]);
 
-    const paddingLeft = 40;
-    const paddingBottom = 30;
+    const paddingLeft = 50; // Increased for Y label
+    const paddingBottom = 40; // Increased for X label
     const paddingTop = 20;
     const paddingRight = 20;
     
@@ -45,10 +45,8 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
     const chartHeight = height - paddingTop - paddingBottom;
     const chartWidth = width - paddingLeft - paddingRight;
 
-    // Determine Labels (X-Axis) - Assume all datasets share roughly same timeframe or pick the first one
     const labels = useMemo(() => {
         if(normalizedDatasets.length === 0) return [];
-        // Use the dataset with most points to define X axis labels
         const longest = normalizedDatasets.reduce((prev, current) => (prev.data.length > current.data.length) ? prev : current);
         return longest.data.map(d => d.label);
     }, [normalizedDatasets]);
@@ -56,7 +54,6 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
     const getX = (index: number, totalPoints: number) => paddingLeft + (index / (totalPoints - 1)) * chartWidth;
     const getY = (value: number) => height - paddingBottom - ((value / maxValue) * chartHeight);
 
-    // SMOOTH CURVE FUNCTION (Catmull-Rom or Cubic Bezier)
     const getSmoothPath = (points: {x:number, y:number}[]) => {
         if (points.length === 0) return '';
         if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
@@ -80,18 +77,28 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
         return d;
     };
 
-    // Animation Effect
     const [drawProgress, setDrawProgress] = useState(0);
     useEffect(() => {
         setDrawProgress(0);
         const anim = requestAnimationFrame(() => setDrawProgress(1));
         return () => cancelAnimationFrame(anim);
-    }, [normalizedDatasets]); // Reset animation when data changes
+    }, [normalizedDatasets]);
 
     return (
         <div className="w-full relative overflow-hidden select-none" style={{ height: `${height}px` }}>
             <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full">
                 
+                {/* NEON GLOW FILTER */}
+                <defs>
+                    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
+                        <feMerge>
+                            <feMergeNode in="coloredBlur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+                </defs>
+
                 {/* Grid Lines */}
                 {[0, 0.25, 0.5, 0.75, 1].map((p, i) => {
                     const yVal = getY(maxValue * p);
@@ -109,6 +116,29 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
                 <line x1={paddingLeft} y1={paddingTop} x2={paddingLeft} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1" />
                 <line x1={paddingLeft} y1={height - paddingBottom} x2={width - paddingRight} y2={height - paddingBottom} stroke="#cbd5e1" strokeWidth="1" />
 
+                {/* Axis Labels */}
+                {yAxisLabel && (
+                    <text 
+                        x={15} 
+                        y={height / 2} 
+                        transform={`rotate(-90, 15, ${height/2})`} 
+                        textAnchor="middle" 
+                        className="text-[10px] fill-slate-400 font-bold uppercase tracking-wider"
+                    >
+                        {yAxisLabel}
+                    </text>
+                )}
+                {xAxisLabel && (
+                    <text 
+                        x={width / 2} 
+                        y={height - 5} 
+                        textAnchor="middle" 
+                        className="text-[10px] fill-slate-400 font-bold uppercase tracking-wider"
+                    >
+                        {xAxisLabel}
+                    </text>
+                )}
+
                 {/* Datasets */}
                 {normalizedDatasets.map((ds, dsIndex) => {
                     const points = ds.data.map((d, i) => ({ 
@@ -119,13 +149,11 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
                     }));
                     
                     const pathD = getSmoothPath(points);
-                    
-                    // Simple path length animation
                     const pathLength = 2000; 
 
                     return (
                         <g key={ds.label}>
-                            {/* The Line */}
+                            {/* The Line with Glow */}
                             <path 
                                 d={pathD} 
                                 fill="none" 
@@ -136,6 +164,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
                                 strokeDasharray={pathLength}
                                 strokeDashoffset={pathLength * (1 - drawProgress)}
                                 style={{ transition: 'stroke-dashoffset 1.5s ease-out' }}
+                                filter="url(#glow)" 
                             />
 
                             {/* Data Points (Dots) */}
@@ -167,11 +196,10 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
 
                 {/* X-Axis Labels */}
                 {labels.map((label, i) => {
-                    // Show sparse labels if too many
                     if (labels.length > 10 && i % Math.ceil(labels.length / 8) !== 0 && i !== labels.length - 1) return null;
                     const x = getX(i, labels.length);
                     return (
-                        <text key={i} x={x} y={height - 10} textAnchor="middle" className="text-[9px] fill-slate-500 font-sans font-medium">
+                        <text key={i} x={x} y={height - 20} textAnchor="middle" className="text-[9px] fill-slate-500 font-sans font-medium">
                             {label}
                         </text>
                     );

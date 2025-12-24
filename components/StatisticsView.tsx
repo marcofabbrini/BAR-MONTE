@@ -1,9 +1,9 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Order, Product, StaffMember, Shift, GeneralSettings, TombolaConfig, AnalottoConfig, AttendanceRecord } from '../types';
 import BarChart from './BarChart';
 import LineChart from './LineChart';
-import { LogoIcon, DropletIcon, LayersIcon, ChartBarIcon, GamepadIcon } from './Icons';
+import { LogoIcon, DropletIcon, LayersIcon, ChartBarIcon, GamepadIcon, FilterIcon } from './Icons';
 
 interface StatisticsViewProps {
     filteredOrders: Order[];
@@ -21,66 +21,120 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     const { startDate, endDate, selectedShift, selectedStaffId, selectedProductId } = filters;
     const { setStartDate, setEndDate, setSelectedShift, setSelectedStaffId, setSelectedProductId } = onSetFilters;
 
+    // LOCAL STATES FOR CHART FILTERS
+    const [waterChartFilter, setWaterChartFilter] = useState<'all' | 'A' | 'B' | 'C' | 'D'>('all');
+    const [shiftRevenueFilter, setShiftRevenueFilter] = useState<'all' | 'A' | 'B' | 'C' | 'D'>('all');
+
     const activeOrders = useMemo(() => filteredOrders.filter(o => !o.isDeleted), [filteredOrders]);
     const totalSales = useMemo(() => activeOrders.reduce((sum, order) => sum + order.total, 0), [activeOrders]);
 
-    // --- NUOVA LOGICA CALCOLO ACQUA (Basata ESCLUSIVAMENTE sulle Presenze) ---
-    const waterStatsFromAttendance = useMemo(() => {
-        const stats = {
-            total: { count: 0, revenue: 0 },
-            a: { count: 0, revenue: 0 },
-            b: { count: 0, revenue: 0 },
-            c: { count: 0, revenue: 0 },
-            d: { count: 0, revenue: 0 },
-        };
-        
+    // 1. DATA FOR WATER QUOTA CHART
+    const waterTrendData = useMemo(() => {
+        const dailyData: Record<string, {A: number, B: number, C: number, D: number}> = {};
         const price = generalSettings?.waterQuotaPrice || 0;
-        
-        if (!attendanceRecords) return stats;
 
-        attendanceRecords.forEach(record => {
-            // Filtro Data
-            const recDate = new Date(record.date).toISOString().split('T')[0];
-            const start = startDate ? new Date(startDate).toISOString().split('T')[0] : '0000-00-00';
-            const end = endDate ? new Date(endDate).toISOString().split('T')[0] : '9999-99-99';
-            if (recDate < start || recDate > end) return;
+        if (attendanceRecords) {
+            attendanceRecords.forEach(record => {
+                // Apply global date filters first
+                const recDate = new Date(record.date).toISOString().split('T')[0];
+                const start = startDate ? new Date(startDate).toISOString().split('T')[0] : '0000-00-00';
+                const end = endDate ? new Date(endDate).toISOString().split('T')[0] : '9999-99-99';
+                if (recDate < start || recDate > end) return;
 
-            // Determina il turno dal record (es. "TA" -> "a") o dallo staff
-            const recordShift = record.tillId.replace('T', '').toLowerCase() as 'a'|'b'|'c'|'d';
+                if (!dailyData[recDate]) dailyData[recDate] = { A: 0, B: 0, C: 0, D: 0 };
 
-            // Itera su tutti i membri dello staff per verificare la presenza in questo record
-            allStaff.forEach(member => {
-                // Salta utenti "Cassa"
-                if(member.name.toLowerCase().includes('cassa')) return;
-
-                let isPresent = false;
-                
-                // Controlla dettagli se esistono
-                if (record.attendanceDetails && record.attendanceDetails[member.id]) {
-                    const status = record.attendanceDetails[member.id];
-                    // Paga solo se Presente o Sostituzione
-                    if (status === 'present' || status === 'substitution') isPresent = true;
-                } else if (record.presentStaffIds.includes(member.id)) {
-                    // Fallback legacy
-                    isPresent = true;
-                }
-
-                if (isPresent) {
-                    const memberShift = member.shift; // Turno di appartenenza del membro
+                allStaff.forEach(member => {
+                    if(member.name.toLowerCase().includes('cassa')) return;
                     
-                    stats.total.count++;
-                    stats.total.revenue += price;
-
-                    if (stats[memberShift]) {
-                        stats[memberShift].count++;
-                        stats[memberShift].revenue += price;
+                    let isPresent = false;
+                    if (record.attendanceDetails && record.attendanceDetails[member.id]) {
+                        const status = record.attendanceDetails[member.id];
+                        if (status === 'present' || status === 'substitution') isPresent = true;
+                    } else if (record.presentStaffIds.includes(member.id)) {
+                        isPresent = true;
                     }
-                }
+
+                    if (isPresent && member.shift) {
+                        const s = member.shift.toUpperCase() as 'A'|'B'|'C'|'D';
+                        dailyData[recDate][s] += price;
+                    }
+                });
             });
+        }
+
+        const sortedDates = Object.keys(dailyData).sort();
+        const colors = { A: '#ef4444', B: '#3b82f6', C: '#22c55e', D: '#eab308' };
+
+        const allDatasets = ['A', 'B', 'C', 'D'].map(shift => ({
+            label: `Turno ${shift}`,
+            data: sortedDates.map(d => ({ 
+                label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
+                value: dailyData[d][shift as 'A'|'B'|'C'|'D'] 
+            })),
+            color: colors[shift as keyof typeof colors]
+        }));
+
+        if (waterChartFilter !== 'all') {
+            return allDatasets.filter(ds => ds.label.includes(waterChartFilter));
+        }
+        return allDatasets;
+    }, [attendanceRecords, allStaff, generalSettings, startDate, endDate, waterChartFilter]);
+
+
+    // 2. DATA FOR SHIFT REVENUE CHART
+    const shiftRevenueData = useMemo(() => {
+        const dailyTotals: Record<string, {A: number, B: number, C: number, D: number}> = {};
+        
+        activeOrders.forEach(o => {
+            const dateKey = new Date(o.timestamp).toISOString().split('T')[0];
+            if (!dailyTotals[dateKey]) dailyTotals[dateKey] = { A: 0, B: 0, C: 0, D: 0 };
+            
+            const member = allStaff.find(s => s.id === o.staffId);
+            if (member && member.shift) {
+                const s = member.shift.toUpperCase() as 'A'|'B'|'C'|'D';
+                dailyTotals[dateKey][s] += o.total;
+            }
         });
 
-        return stats;
-    }, [attendanceRecords, allStaff, generalSettings, startDate, endDate]);
+        const sortedDates = Object.keys(dailyTotals).sort();
+        const colors = { A: '#ef4444', B: '#3b82f6', C: '#22c55e', D: '#eab308' };
+
+        const allDatasets = ['A', 'B', 'C', 'D'].map(shift => ({
+            label: `Turno ${shift}`,
+            data: sortedDates.map(d => ({ 
+                label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
+                value: dailyTotals[d][shift as 'A'|'B'|'C'|'D'] 
+            })),
+            color: colors[shift as keyof typeof colors]
+        }));
+
+        if (shiftRevenueFilter !== 'all') {
+            return allDatasets.filter(ds => ds.label.includes(shiftRevenueFilter));
+        }
+        return allDatasets;
+    }, [activeOrders, allStaff, shiftRevenueFilter]);
+
+
+    // 3. DATA FOR TOTAL REVENUE CHART
+    const totalRevenueTrend = useMemo(() => {
+        const dailyTotals: Record<string, number> = {};
+        activeOrders.forEach(o => {
+            const dateKey = new Date(o.timestamp).toISOString().split('T')[0];
+            dailyTotals[dateKey] = (dailyTotals[dateKey] || 0) + o.total;
+        });
+
+        const sortedDates = Object.keys(dailyTotals).sort();
+        
+        return [{
+            label: 'Incasso Totale',
+            data: sortedDates.map(d => ({
+                label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}),
+                value: dailyTotals[d]
+            })),
+            color: '#f59e0b' // Amber/Gold
+        }];
+    }, [activeOrders]);
+
 
     const currentJackpotTotal = useMemo(() => {
         const t = tombolaConfig?.jackpot || 0;
@@ -120,7 +174,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         return Object.entries(catVols).map(([name, value]) => ({ name, value, icon: '' })).sort((a,b) => b.value - a.value);
     }, [activeOrders]);
 
-    // Data for Pie Chart (Revenue by Shift)
     const revenueByShift = useMemo(() => {
         const data = { A: 0, B: 0, C: 0, D: 0 };
         activeOrders.forEach(o => {
@@ -140,39 +193,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         ].filter(d => d.value > 0);
     }, [activeOrders, allStaff]);
 
-    // --- MULTI-LINE TREND LOGIC ---
-    const multiLineShiftTrend = useMemo(() => {
-        const dailyTotals: Record<string, {A: number, B: number, C: number, D: number}> = {};
-        
-        // 1. Riempi date (sparse)
-        activeOrders.forEach(o => {
-            const dateKey = new Date(o.timestamp).toISOString().split('T')[0];
-            if (!dailyTotals[dateKey]) dailyTotals[dateKey] = { A: 0, B: 0, C: 0, D: 0 };
-            
-            const member = allStaff.find(s => s.id === o.staffId);
-            if (member && member.shift) {
-                const s = member.shift.toUpperCase() as 'A'|'B'|'C'|'D';
-                dailyTotals[dateKey][s] += o.total;
-            }
-        });
-
-        // 2. Sort dates
-        const sortedDates = Object.keys(dailyTotals).sort();
-        
-        // 3. Create datasets
-        const datasetA = sortedDates.map(d => ({ label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), value: dailyTotals[d].A }));
-        const datasetB = sortedDates.map(d => ({ label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), value: dailyTotals[d].B }));
-        const datasetC = sortedDates.map(d => ({ label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), value: dailyTotals[d].C }));
-        const datasetD = sortedDates.map(d => ({ label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), value: dailyTotals[d].D }));
-
-        return [
-            { label: 'Turno A', data: datasetA, color: '#ef4444' },
-            { label: 'Turno B', data: datasetB, color: '#3b82f6' },
-            { label: 'Turno C', data: datasetC, color: '#22c55e' },
-            { label: 'Turno D', data: datasetD, color: '#eab308' },
-        ];
-    }, [activeOrders, allStaff]);
-
     const handlePrintPdf = () => window.print();
 
     const setDateRange = (range: 'today' | 'week' | 'month' | 'all') => {
@@ -187,7 +207,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         if(range !== 'all') setEndDate(end);
     };
 
-    // Standard 2D Pie Chart
     const PieChart2D = ({ data }: { data: { label: string, value: number, color: string }[] }) => {
         const total = data.reduce((acc, d) => acc + d.value, 0);
         let currentAngle = 0;
@@ -206,8 +225,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                         background: `conic-gradient(${gradientString})`
                     }}
                 ></div>
-                
-                {/* Legend */}
                 <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-1">
                     {data.map(d => (
                         <div key={d.label} className="flex items-center gap-1.5 text-[10px]">
@@ -221,6 +238,21 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         );
     };
 
+    // Helper component for chart filters
+    const ChartFilterButtons = ({ current, setFilter }: { current: string, setFilter: (v: any) => void }) => (
+        <div className="flex bg-slate-100 p-1 rounded-lg gap-1">
+            {['all', 'A', 'B', 'C', 'D'].map(v => (
+                <button
+                    key={v}
+                    onClick={() => setFilter(v)}
+                    className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${current === v ? 'bg-white shadow text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                    {v === 'all' ? 'Tutti' : v}
+                </button>
+            ))}
+        </div>
+    );
+
     return (
         <div className="max-w-7xl mx-auto space-y-6">
             <div className="hidden print:block mb-4 text-center border-b pb-2">
@@ -231,7 +263,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             {/* FILTRI COMPATTI */}
             <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 print:hidden">
                 <div className="flex justify-between items-center mb-2">
-                     <h2 className="text-lg font-bold text-slate-800">Filtri</h2>
+                     <h2 className="text-lg font-bold text-slate-800">Filtri Globali</h2>
                      <div className="flex gap-1">
                         {['today','week','month','all'].map((r: any) => (
                             <button key={r} onClick={() => setDateRange(r)} className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded text-[10px] font-bold uppercase">{r}</button>
@@ -247,96 +279,95 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 </div>
             </div>
 
-            {/* TOP ROW: GRAPH AND KPIS SIDE-BY-SIDE */}
+            {/* TOP KPI & PIE CHART */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                
-                {/* 1. PIE CHART (Left Side) */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center">
-                    <h3 className="text-center font-bold text-slate-700 uppercase text-xs tracking-widest mb-2">Incassi per Turno</h3>
+                    <h3 className="text-center font-bold text-slate-700 uppercase text-xs tracking-widest mb-2">Incassi per Turno (Periodo)</h3>
                     {revenueByShift.length > 0 ? <PieChart2D data={revenueByShift} /> : <p className="text-center text-xs text-slate-400 py-4">Nessun dato</p>}
                 </div>
-
-                {/* 2. KPI CARDS (Right Side - Spanning 2 cols) */}
                 <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="bg-white border-l-4 border-orange-500 p-4 rounded-xl shadow-sm flex flex-col justify-center">
-                        <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1">
-                            <ChartBarIcon className="h-3 w-3"/> Incasso Bar
-                        </h2>
+                        <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1"><ChartBarIcon className="h-3 w-3"/> Incasso Bar</h2>
                         <h2 className="text-3xl font-black text-slate-800">€{totalSales.toFixed(2)}</h2>
                         <p className="text-xs text-slate-400">Totale vendite periodo</p>
                     </div>
-
                     <div className="bg-white border-l-4 border-purple-500 p-4 rounded-xl shadow-sm flex flex-col justify-center">
-                        <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1">
-                            <GamepadIcon className="h-3 w-3"/> Montepremi Attivi
-                        </h2>
+                        <h2 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1"><GamepadIcon className="h-3 w-3"/> Montepremi Attivi</h2>
                         <h2 className="text-3xl font-black text-slate-800">€{currentJackpotTotal.toFixed(2)}</h2>
                         <p className="text-xs text-slate-400">Tombola + Analotto</p>
                     </div>
                 </div>
             </div>
 
-            {/* WATER DETAILED SECTION (Corrected Logic) */}
-            <div className="bg-blue-50/50 p-4 rounded-xl shadow-sm border border-blue-100">
-                <div className="flex justify-between items-center border-b border-blue-200 pb-2 mb-4">
-                    <h3 className="text-sm font-bold text-blue-800 flex items-center gap-2">
-                        <DropletIcon className="h-4 w-4"/> Quote Acqua (da Registro Presenze)
-                    </h3>
-                    <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">
-                        Prezzo: €{(generalSettings?.waterQuotaPrice || 0).toFixed(2)}
-                    </span>
+            {/* --- GRAFICI DETTAGLIATI --- */}
+
+            {/* 1. ANDAMENTO QUOTE ACQUA */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                    <div className="flex items-center gap-2">
+                        <DropletIcon className="h-6 w-6 text-blue-500"/>
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Trend Quote Acqua</h3>
+                            <p className="text-[10px] text-slate-400">Valore economico presenze</p>
+                        </div>
+                    </div>
+                    <ChartFilterButtons current={waterChartFilter} setFilter={setWaterChartFilter} />
                 </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    {/* TOTAL */}
-                    <div className="bg-white p-3 rounded-lg border border-blue-200 shadow-sm flex flex-col items-center">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase">TOTALE PRESENZE</span>
-                        <span className="text-2xl font-black text-blue-600">{waterStatsFromAttendance.total.count}</span>
-                        <span className="text-xs font-bold text-slate-600">€{waterStatsFromAttendance.total.revenue.toFixed(2)}</span>
-                    </div>
-                    {/* A */}
-                    <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
-                        <span className="text-[10px] font-bold text-red-400 uppercase">Turno A</span>
-                        <span className="text-xl font-black text-slate-700">{waterStatsFromAttendance.a.count}</span>
-                        <span className="text-[10px] text-slate-500">€{waterStatsFromAttendance.a.revenue.toFixed(2)}</span>
-                    </div>
-                    {/* B */}
-                    <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
-                        <span className="text-[10px] font-bold text-blue-400 uppercase">Turno B</span>
-                        <span className="text-xl font-black text-slate-700">{waterStatsFromAttendance.b.count}</span>
-                        <span className="text-[10px] text-slate-500">€{waterStatsFromAttendance.b.revenue.toFixed(2)}</span>
-                    </div>
-                    {/* C */}
-                    <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
-                        <span className="text-[10px] font-bold text-green-400 uppercase">Turno C</span>
-                        <span className="text-xl font-black text-slate-700">{waterStatsFromAttendance.c.count}</span>
-                        <span className="text-[10px] text-slate-500">€{waterStatsFromAttendance.c.revenue.toFixed(2)}</span>
-                    </div>
-                    {/* D */}
-                    <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center">
-                        <span className="text-[10px] font-bold text-yellow-500 uppercase">Turno D</span>
-                        <span className="text-xl font-black text-slate-700">{waterStatsFromAttendance.d.count}</span>
-                        <span className="text-[10px] text-slate-500">€{waterStatsFromAttendance.d.revenue.toFixed(2)}</span>
-                    </div>
+                <div className="h-[300px] w-full">
+                    <LineChart 
+                        datasets={waterTrendData} 
+                        height={300} 
+                        yAxisLabel="Valore Quote (€)" 
+                        xAxisLabel="Giorno"
+                    />
                 </div>
             </div>
 
-            {/* GRAFICI TREND */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-                 <h3 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-                    <ChartBarIcon className="h-4 w-4 text-orange-500"/> Andamento Incassi per Turno (€)
-                 </h3>
-                 <div className="h-[300px] w-full">
-                     {/* Passiamo i dataset multipli al LineChart aggiornato */}
-                     <LineChart datasets={multiLineShiftTrend} height={300} />
-                 </div>
+            {/* 2. ANDAMENTO INCASSI PER TURNO */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                    <div className="flex items-center gap-2">
+                        <ChartBarIcon className="h-6 w-6 text-orange-500"/>
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Trend Incassi Turni</h3>
+                            <p className="text-[10px] text-slate-400">Andamento vendite per squadra</p>
+                        </div>
+                    </div>
+                    <ChartFilterButtons current={shiftRevenueFilter} setFilter={setShiftRevenueFilter} />
+                </div>
+                <div className="h-[300px] w-full">
+                    <LineChart 
+                        datasets={shiftRevenueData} 
+                        height={300}
+                        yAxisLabel="Incasso (€)"
+                        xAxisLabel="Giorno"
+                    />
+                </div>
             </div>
 
+            {/* 3. ANDAMENTO INCASSO COMPLESSIVO */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div className="flex items-center gap-2 mb-6">
+                    <BanknoteIcon className="h-6 w-6 text-yellow-500"/>
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Trend Incasso Complessivo</h3>
+                        <p className="text-[10px] text-slate-400">Totale entrate bar giornaliere</p>
+                    </div>
+                </div>
+                <div className="h-[300px] w-full">
+                    <LineChart 
+                        datasets={totalRevenueTrend} 
+                        height={300}
+                        yAxisLabel="Totale (€)"
+                        xAxisLabel="Giorno"
+                    />
+                </div>
+            </div>
+
+            {/* BOTTOM CHARTS */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
-                    <h3 className="text-sm font-bold mb-2 text-slate-700 flex items-center gap-2">
-                        <LayersIcon className="h-4 w-4 text-purple-500"/> Categorie
-                    </h3>
+                    <h3 className="text-sm font-bold mb-2 text-slate-700 flex items-center gap-2"><LayersIcon className="h-4 w-4 text-purple-500"/> Categorie</h3>
                     <BarChart data={categoryVolumes.slice(0, 6)} format="integer" barColor="bg-purple-500" />
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
@@ -351,11 +382,13 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             </div>
 
              <div className="text-center py-2 print:hidden">
-                <button onClick={handlePrintPdf} className="bg-slate-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-700 text-xs shadow-md">
-                    Stampa PDF
-                </button>
+                <button onClick={handlePrintPdf} className="bg-slate-800 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-700 text-xs shadow-md">Stampa PDF</button>
             </div>
         </div>
     );
 };
+
+// Missing BanknoteIcon import fix
+const BanknoteIcon = (props: any) => <span {...props}>💶</span>;
+
 export default StatisticsView;
