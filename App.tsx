@@ -141,6 +141,7 @@ const AppContent: React.FC = () => {
                 shiftSettings={shiftSettings} 
                 onSaveAttendance={(t, i, d, c, det) => saveAttendance(t, i, d, c || (currentUser?.email || 'Utente'), det)}
                 onReopenAttendance={isSuperAdmin ? reopenAttendance : undefined}
+                onDeleteRecord={isSuperAdmin ? deleteAttendance : undefined} // Added onDeleteRecord prop
             />;
             case 'admin': return <AdminView 
                 onGoBack={() => setView('selection')} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements}

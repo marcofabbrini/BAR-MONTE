@@ -196,8 +196,11 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const bulkSetStatus = (status: AttendanceStatus | 'absent') => {
         const newDetails = { ...editingDetails };
-        // Aggiorna tutti tranne la cassa (che deve rimanere presente)
+        
+        // Iteriamo su TUTTO lo staff del turno corrente (definito in editingStaffList)
+        // per assicurarci che tutti vengano aggiornati
         editingStaffList.forEach(member => {
+            // Escludiamo sempre la "Cassa" dalle operazioni di massa
             if (!member.name.toLowerCase().includes('cassa')) {
                 newDetails[member.id] = status;
             }
@@ -237,9 +240,13 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         if(!window.confirm(`Sei sicuro di voler ELIMINARE TUTTE le presenze del mese di ${monthNames[currentDate.getMonth()]} per il turno ${matrixShift.toUpperCase()}? Questa operazione è irreversibile.`)) return;
 
         const tillId = `T${matrixShift.toUpperCase()}`;
+        
+        // Use String Comparison for reliability over Date objects
+        // Format: YYYY-MM
+        const targetMonthStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+
         const recordsToDelete = attendanceRecords.filter(r => {
-            const d = new Date(r.date);
-            return d.getMonth() === currentDate.getMonth() && d.getFullYear() === currentDate.getFullYear() && r.tillId === tillId;
+            return r.date.startsWith(targetMonthStr) && r.tillId === tillId;
         });
 
         if(recordsToDelete.length === 0) return alert("Nessun record trovato per questo mese/turno.");

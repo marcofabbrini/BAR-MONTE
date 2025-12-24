@@ -348,12 +348,12 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                                     >
                                                         <div 
                                                             className={`
-                                                                relative w-16 h-16 rounded-full shadow-md border-2 flex items-center justify-center text-2xl transition-all overflow-visible
+                                                                relative w-16 h-16 rounded-full shadow-md border-2 flex items-center justify-center text-2xl transition-all overflow-visible flex-shrink-0
                                                                 border-slate-100 group-hover:border-primary bg-white
                                                             `}
                                                             style={isCassa ? { backgroundColor: themeColor, borderColor: themeColor } : { }}
                                                         >
-                                                            <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white">
+                                                            <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center bg-white aspect-square">
                                                                 {staff.photoUrl ? (
                                                                     <img src={staff.photoUrl} alt={staff.name} className="w-full h-full object-cover" />
                                                                 ) : (
@@ -379,49 +379,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                                 const inCart = currentOrder.some(i => i.product.id === product.id);
                                                 return <ProductCard key={product.id} product={product} onAddToCart={addToOrder} inCart={inCart} />;
                                             })}
-                                            
-                                            {/* ANALOTTO CARDS - DISABILITATI TEMPORANEAMENTE
-                                            {[1, 2, 5, 10].map(amt => (
-                                                <button 
-                                                    key={`analotto-${amt}`}
-                                                    onClick={() => handleQuickAnalotto(amt)}
-                                                    className="bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col items-center justify-center p-2 shadow-sm hover:shadow-md hover:bg-emerald-100 transition-all h-36 relative group"
-                                                >
-                                                    <div className="absolute top-0 right-2">
-                                                        <div className="bg-red-500 w-3 h-4 rounded-b-md shadow-sm flex items-center justify-center">
-                                                            <div className="text-[8px] text-white">★</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-4xl mb-2 filter drop-shadow-sm group-hover:scale-110 transition-transform">🍀</div>
-                                                    <h3 className="font-black text-emerald-800 text-xs uppercase mb-1">Analotto</h3>
-                                                    <span className="bg-emerald-600 text-white px-3 py-1 rounded-full font-black text-sm">€{amt}</span>
-                                                </button>
-                                            ))}
-                                            */}
-
-                                            {/* TOMBOLA CARDS - DISABILITATI TEMPORANEAMENTE
-                                            {tombolaConfig?.status === 'pending' && (
-                                                <>
-                                                    <button 
-                                                        onClick={() => handleQuickTombola(1)}
-                                                        className="bg-red-50 border border-red-200 rounded-2xl flex flex-col items-center justify-center p-2 shadow-sm hover:shadow-md hover:bg-red-100 transition-all h-36 relative group"
-                                                    >
-                                                        <div className="text-4xl mb-2 filter drop-shadow-sm group-hover:scale-110 transition-transform">🎟️</div>
-                                                        <h3 className="font-black text-red-800 text-xs uppercase mb-1">1 Cartella</h3>
-                                                        <span className="bg-red-600 text-white px-3 py-1 rounded-full font-black text-sm">€{tombolaConfig.ticketPriceSingle}</span>
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleQuickTombola(6)}
-                                                        className="bg-red-50 border border-red-200 rounded-2xl flex flex-col items-center justify-center p-2 shadow-sm hover:shadow-md hover:bg-red-100 transition-all h-36 relative group"
-                                                    >
-                                                        <div className="absolute top-0 left-0 bg-yellow-400 text-red-900 text-[9px] font-bold px-2 py-0.5 rounded-br-lg z-10">OFFERTA</div>
-                                                        <div className="text-4xl mb-2 filter drop-shadow-sm group-hover:scale-110 transition-transform">🎟️x6</div>
-                                                        <h3 className="font-black text-red-800 text-xs uppercase mb-1">6 Cartelle</h3>
-                                                        <span className="bg-red-600 text-white px-3 py-1 rounded-full font-black text-sm">€{tombolaConfig.ticketPriceBundle}</span>
-                                                    </button>
-                                                </>
-                                            )}
-                                            */}
                                         </div>
                                     </div>
                                 )}
