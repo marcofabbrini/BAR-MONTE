@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { StaffMember, Shift, ShiftSettings } from '../types';
+import { StaffMember, Shift, ShiftSettings, AttendanceRecord } from '../types';
 import { BackArrowIcon, WalletIcon, CheckIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 
@@ -8,19 +8,21 @@ interface DiceGameProps {
     onGoBack: () => void;
     staff: StaffMember[];
     shiftSettings?: ShiftSettings;
+    attendanceRecords?: AttendanceRecord[];
 }
 
 interface PlayerResult {
     id: string;
     name: string;
     icon: string;
+    photoUrl?: string; // Support for photos
     dice1: number;
     dice2: number;
     total: number;
     isRolling: boolean;
 }
 
-const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) => {
+const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings, attendanceRecords }) => {
     const { getNow } = useBar();
     const [participants, setParticipants] = useState<PlayerResult[]>([]);
     const [gameStatus, setGameStatus] = useState<'idle' | 'rolling' | 'finished'>('idle');
@@ -58,18 +60,39 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
         return shifts[shiftIndex] as Shift;
     }, [getNow]);
 
-    // Inizializza partecipanti in base al turno ATTIVO
+    // Inizializza partecipanti in base al turno ATTIVO e alle PRESENZE
     useEffect(() => {
+        const todayStr = getNow().toISOString().split('T')[0];
+        const tillId = `T${activeShift.toUpperCase()}`;
+        
+        // Trova il record presenze di oggi per il turno attivo
+        const todayRecord = attendanceRecords?.find(r => r.date === todayStr && r.tillId === tillId);
+
         // Filtra solo staff del turno attivo ED escludi utenti con nome "Cassa"
-        const filtered = staff.filter(s => 
+        let filtered = staff.filter(s => 
             s.shift === activeShift && 
             !s.name.toLowerCase().includes('cassa')
         );
+        
+        // SE ESISTE IL RECORD: Filtra ulteriormente per mostrare solo i PRESENTI
+        if (todayRecord) {
+            filtered = filtered.filter(s => {
+                // Controllo status dettagliato (prioritario)
+                if (todayRecord.attendanceDetails && todayRecord.attendanceDetails[s.id]) {
+                    const status = todayRecord.attendanceDetails[s.id];
+                    // Mostra solo chi è fisicamente presente (Presente, Sostituzione, Missione)
+                    return status === 'present' || status === 'substitution' || status === 'mission';
+                }
+                // Fallback (Legacy): controlla lista ID
+                return todayRecord.presentStaffIds.includes(s.id);
+            });
+        }
         
         setParticipants(filtered.map(s => ({
             id: s.id,
             name: s.name,
             icon: s.icon || '👤',
+            photoUrl: s.photoUrl,
             dice1: 1,
             dice2: 1,
             total: 0,
@@ -77,7 +100,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
         })));
         setGameStatus('idle');
         setLoserScore(null);
-    }, [activeShift, staff]);
+    }, [activeShift, staff, attendanceRecords, getNow]);
 
     const handleRoll = () => {
         if (participants.length < 2) return alert("Servono almeno 2 partecipanti!");
@@ -127,6 +150,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                     id: s.id,
                     name: s.name,
                     icon: s.icon || '👤',
+                    photoUrl: s.photoUrl,
                     dice1: 1,
                     dice2: 1,
                     total: 0,
@@ -148,12 +172,10 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
             4: 'rotateX(90deg)'
         };
 
-        // Genera una durata casuale basata sul seed o random per diversificare la rotazione
         const randomDuration = useMemo(() => {
-            return `${0.3 + Math.random() * 0.5}s`; // Durata tra 0.3s e 0.8s
+            return `${0.3 + Math.random() * 0.5}s`;
         }, [rolling, seed]);
 
-        // Stile base per i punti (più leggeri e meno marcati)
         const dotStyle = "absolute bg-slate-400 w-2 h-2 md:w-2.5 md:h-2.5 rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]";
 
         return (
@@ -163,52 +185,18 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                          transform: rolling ? undefined : rotationMap[val],
                          animationDuration: rolling ? randomDuration : undefined
                      }}>
-                    
-                    {/* FACCIA 1 (FRONT) */}
-                    <div className="cube-face cube-face-front">
-                        <div className={`${dotStyle} top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2`}></div>
-                    </div>
-                    {/* FACCIA 2 (RIGHT) */}
-                    <div className="cube-face cube-face-right">
-                        <div className={`${dotStyle} top-1.5 left-1.5`}></div>
-                        <div className={`${dotStyle} bottom-1.5 right-1.5`}></div>
-                    </div>
-                    {/* FACCIA 3 (LEFT) */}
-                    <div className="cube-face cube-face-left">
-                        <div className={`${dotStyle} top-1.5 left-1.5`}></div>
-                        <div className={`${dotStyle} top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2`}></div>
-                        <div className={`${dotStyle} bottom-1.5 right-1.5`}></div>
-                    </div>
-                    {/* FACCIA 4 (BOTTOM) */}
-                    <div className="cube-face cube-face-bottom">
-                        <div className={`${dotStyle} top-1.5 left-1.5`}></div>
-                        <div className={`${dotStyle} top-1.5 right-1.5`}></div>
-                        <div className={`${dotStyle} bottom-1.5 left-1.5`}></div>
-                        <div className={`${dotStyle} bottom-1.5 right-1.5`}></div>
-                    </div>
-                    {/* FACCIA 5 (TOP) */}
-                    <div className="cube-face cube-face-top">
-                        <div className={`${dotStyle} top-1.5 left-1.5`}></div>
-                        <div className={`${dotStyle} top-1.5 right-1.5`}></div>
-                        <div className={`${dotStyle} top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2`}></div>
-                        <div className={`${dotStyle} bottom-1.5 left-1.5`}></div>
-                        <div className={`${dotStyle} bottom-1.5 right-1.5`}></div>
-                    </div>
-                    {/* FACCIA 6 (BACK) */}
-                    <div className="cube-face cube-face-back">
-                        <div className={`${dotStyle} top-1.5 left-1.5`}></div>
-                        <div className={`${dotStyle} top-1.5 right-1.5`}></div>
-                        <div className={`${dotStyle} top-1/2 left-1.5 transform -translate-y-1/2`}></div>
-                        <div className={`${dotStyle} top-1/2 right-1.5 transform -translate-y-1/2`}></div>
-                        <div className={`${dotStyle} bottom-1.5 left-1.5`}></div>
-                        <div className={`${dotStyle} bottom-1.5 right-1.5`}></div>
-                    </div>
+                    <div className="cube-face cube-face-front"><div className={`${dotStyle} top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2`}></div></div>
+                    <div className="cube-face cube-face-right"><div className={`${dotStyle} top-1.5 left-1.5`}></div><div className={`${dotStyle} bottom-1.5 right-1.5`}></div></div>
+                    <div className="cube-face cube-face-left"><div className={`${dotStyle} top-1.5 left-1.5`}></div><div className={`${dotStyle} top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2`}></div><div className={`${dotStyle} bottom-1.5 right-1.5`}></div></div>
+                    <div className="cube-face cube-face-bottom"><div className={`${dotStyle} top-1.5 left-1.5`}></div><div className={`${dotStyle} top-1.5 right-1.5`}></div><div className={`${dotStyle} bottom-1.5 left-1.5`}></div><div className={`${dotStyle} bottom-1.5 right-1.5`}></div></div>
+                    <div className="cube-face cube-face-top"><div className={`${dotStyle} top-1.5 left-1.5`}></div><div className={`${dotStyle} top-1.5 right-1.5`}></div><div className={`${dotStyle} top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2`}></div><div className={`${dotStyle} bottom-1.5 left-1.5`}></div><div className={`${dotStyle} bottom-1.5 right-1.5`}></div></div>
+                    <div className="cube-face cube-face-back"><div className={`${dotStyle} top-1.5 left-1.5`}></div><div className={`${dotStyle} top-1.5 right-1.5`}></div><div className={`${dotStyle} top-1/2 left-1.5 transform -translate-y-1/2`}></div><div className={`${dotStyle} top-1/2 right-1.5 transform -translate-y-1/2`}></div><div className={`${dotStyle} bottom-1.5 left-1.5`}></div><div className={`${dotStyle} bottom-1.5 right-1.5`}></div></div>
                 </div>
             </div>
         );
     };
 
-    // Filtra lista staff globale per mostrare solo il turno corrente
+    // Filtra lista staff globale per mostrare solo il turno corrente (Per la selezione manuale)
     const currentShiftStaffList = useMemo(() => {
         return staff.filter(s => s.shift === activeShift && !s.name.toLowerCase().includes('cassa'));
     }, [staff, activeShift]);
@@ -246,7 +234,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                                     key={s.id} 
                                     onClick={() => toggleParticipant(s.id)}
                                     className={`
-                                        relative flex flex-col items-center justify-center p-2 rounded-lg border min-w-[70px] transition-all
+                                        relative flex flex-col items-center justify-center p-1 rounded-lg border min-w-[70px] transition-all
                                         ${isSelected 
                                             ? 'bg-blue-50 border-blue-500 shadow-sm scale-95' 
                                             : 'bg-slate-50 border-slate-200 opacity-60 hover:opacity-100'
@@ -258,7 +246,14 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                                             <CheckIcon className="h-2 w-2" />
                                         </div>
                                     )}
-                                    <div className="text-xl mb-1">{s.icon || '👤'}</div>
+                                    {/* AVATAR CIRCOLARE IDENTICO A TABELLA PRESENZE */}
+                                    <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center text-lg border border-slate-200 shadow-sm mb-1">
+                                        {s.photoUrl ? (
+                                            <img src={s.photoUrl} alt={s.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="">{s.icon || '👤'}</span>
+                                        )}
+                                    </div>
                                     <span className={`text-[9px] font-bold truncate w-full text-center leading-none ${isSelected ? 'text-blue-900' : 'text-slate-500'}`}>
                                         {s.name.split(' ')[0]}
                                     </span>
@@ -281,7 +276,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                 <div className="space-y-2 pb-4">
                     {participants.length === 0 && (
                         <div className="text-center py-10 text-slate-400 italic text-sm">
-                            Nessun partecipante selezionato.
+                            Nessun partecipante selezionato. (Verifica presenze)
                         </div>
                     )}
 
@@ -291,12 +286,19 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings }) =
                             <div 
                                 key={player.id} 
                                 className={`
-                                    relative flex items-center justify-between p-2 rounded-lg border transition-all duration-300 h-14
+                                    relative flex items-center justify-between p-2 rounded-lg border transition-all duration-300 h-16
                                     ${isLoser ? 'bg-red-50 border-red-500 shadow-md z-10' : 'bg-white border-slate-100 shadow-sm'}
                                 `}
                             >
-                                <div className="flex items-center gap-2">
-                                    <div className="text-2xl">{player.icon}</div>
+                                <div className="flex items-center gap-3">
+                                    {/* AVATAR CIRCOLARE */}
+                                    <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center text-xl border border-slate-200 shadow-sm">
+                                        {player.photoUrl ? (
+                                            <img src={player.photoUrl} alt={player.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span>{player.icon}</span>
+                                        )}
+                                    </div>
                                     <div>
                                         <div className="font-bold text-slate-800 text-sm">{player.name}</div>
                                         {isLoser && <div className="text-[8px] font-black text-red-600 uppercase bg-red-100 px-1 py-px rounded inline-block animate-pulse">Paga!</div>}
