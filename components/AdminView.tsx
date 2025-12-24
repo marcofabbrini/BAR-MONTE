@@ -8,7 +8,7 @@ import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
 import CashManagement from './CashManagement';
 import GamesHub from './GamesHub';
-import AttendanceCalendar from './AttendanceCalendar';
+import ShiftCalendar from './ShiftCalendar'; // Changed from AttendanceCalendar
 
 interface AdminViewProps {
     onGoBack: () => void;
@@ -65,7 +65,7 @@ interface AdminViewProps {
     onSendNotification?: (title: string, body: string, target?: string) => Promise<void>;
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'attendance';
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar'; // Renamed attendance to calendar
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
@@ -305,7 +305,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon />} />
                         <TabButton tab="stock" label="Stock" icon={<BoxIcon />} />
                         <TabButton tab="products" label="Prodotti" icon={<LogoIcon />} />
-                        <TabButton tab="attendance" label="Presenze" icon={<ClipboardIcon />} />
+                        <TabButton tab="calendar" label="Turnario" icon={<CalendarIcon />} /> {/* Changed from attendance/presenze to calendar/turnario */}
                         <TabButton tab="staff" label="Staff" icon={<StaffIcon />} />
                         <TabButton tab="admins" label="Admin" icon={<LockIcon />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon />} />
@@ -368,7 +368,8 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
-                {activeTab === 'attendance' && <AttendanceCalendar attendanceRecords={attendanceRecords} staff={staff} tillColors={tillColors} onDeleteRecord={onDeleteAttendance} onSaveAttendance={(t, i, d, c, det) => onSaveAttendance && onSaveAttendance(t, i, d, currentUser?.email || 'Admin', det)} isSuperAdmin={true} onReopenAttendance={onReopenAttendance} />}
+                {/* Changed to ShiftCalendar for Turnario */}
+                {activeTab === 'calendar' && <ShiftCalendar onGoBack={() => {}} tillColors={tillColors} shiftSettings={shiftSettings} />} 
                 
                 {activeTab === 'settings' && (
                     <div className="space-y-4 max-w-4xl mx-auto">

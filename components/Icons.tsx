@@ -68,3 +68,4 @@ export const EyeIcon = (props: IconProps) => <EmojiIcon emoji="👁️" {...prop
 export const BellIcon = (props: IconProps) => <EmojiIcon emoji="🔔" {...props} />;
 export const MegaphoneIcon = (props: IconProps) => <EmojiIcon emoji="📢" {...props} />;
 export const PaletteIcon = (props: IconProps) => <EmojiIcon emoji="🎨" {...props} />;
+export const WhatsAppIcon = (props: IconProps) => <EmojiIcon emoji="💬" {...props} />;

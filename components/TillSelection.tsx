@@ -433,8 +433,8 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     <div className="h-px bg-slate-300/50 shadow-sm"></div>
                 </div>
 
-                {/* EXTRA (SECONDA RIGA) - EXTRA HUB & TURNARIO */}
-                <div className="grid grid-cols-2 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
+                {/* EXTRA (SECONDA RIGA) - EXTRA HUB (Turnario button removed as it moved to Admin) */}
+                <div className="grid grid-cols-1 gap-4 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
                     <button onClick={onSelectGames} className="relative bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-amber-500/10 hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
                         {tombolaNumberCount > 0 && (
                             <div className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full shadow-md animate-bounce z-20 border-2 border-white">
@@ -447,16 +447,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         <div className="flex flex-col items-center md:items-start min-w-0">
                             <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-amber-600 transition-colors">Extra Hub</span>
                             <span className="hidden md:block text-[10px] text-slate-400 font-medium truncate w-full">Svago & Extra</span>
-                        </div>
-                    </button>
-
-                    <button onClick={onSelectCalendar} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-sky-500/10 hover:shadow-[0_0_15px_rgba(14,165,233,0.5)] border border-slate-100 p-4 flex flex-col md:flex-row items-center justify-center md:justify-start gap-2 md:gap-4 transition-all duration-300 group h-24 md:h-24">
-                        <div className="text-3xl md:text-4xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
-                            📅
-                        </div>
-                        <div className="flex flex-col items-center md:items-start min-w-0">
-                            <span className="block font-bold text-slate-700 text-xs md:text-sm uppercase tracking-wider group-hover:text-sky-600 transition-colors">Turnario</span>
-                            <span className="hidden md:block text-[10px] text-slate-400 font-medium truncate w-full">Calendario VVF</span>
                         </div>
                     </button>
                 </div>

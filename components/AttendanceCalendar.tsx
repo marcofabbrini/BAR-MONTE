@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings, AttendanceStatus } from '../types';
-import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon, GridIcon, SettingsIcon } from './Icons';
+import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon, GridIcon, SettingsIcon, PrinterIcon, WhatsAppIcon } from './Icons';
 import { GradeBadge } from './StaffManagement';
 
 interface AttendanceCalendarProps {
@@ -48,9 +48,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         return { day: shifts[dayIndex], night: shifts[nightIndex] };
     };
 
-    // 3 MODALITÀ: 'matrix' (Nuova Tabella), 'calendar' (Vecchio Turnario), 'services' (Disattivato)
-    const [viewMode, setViewMode] = useState<'matrix' | 'calendar' | 'services'>('matrix');
-    
     // Inizializza il turno visualizzato in base all'ora corrente
     const [matrixShift, setMatrixShift] = useState<Shift>(() => {
         const now = new Date();
@@ -101,7 +98,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const isRealPerson = (name: string) => !name.toLowerCase().includes('cassa');
 
-    // Manteniamo la funzione originale per compatibilità nel render, anche se la logica è duplicata in getShiftsForDateSync
     const getShiftsForDate = (date: Date) => {
         const shifts = getShiftsForDateSync(date);
         const allShifts = ['A', 'B', 'C', 'D'];
@@ -115,8 +111,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         };
     };
 
-    // Helper per calcolare chi è in salto (riposo compensativo) per un dato giorno e turno
-    // LOGICA HARDCODED VVF: 11 Dicembre 2025 = Turno A, Salto 1
     const getRestingSubGroup = (shift: string, date: Date) => {
         const anchorDate = new Date(2025, 11, 11, 12, 0, 0); // 11 Dicembre 2025
         const anchorShiftStr = 'A';
@@ -129,17 +123,10 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const shiftIndex = shifts.indexOf(shift.toUpperCase());
         const anchorShiftIndex = shifts.indexOf(anchorShiftStr); // 0 (A)
         
-        // Calcolo Offset Turno (Rotazione A->B->C->D)
-        // Se cerco B (1) rispetto ad A (0), sono +1 giorno avanti nel ciclo naturale.
         const shiftDayOffset = shiftIndex - anchorShiftIndex;
-        
-        // Calcola differenza giorni totali dall'ancora
         const diffTime = effectiveDate.getTime() - anchorDate.getTime();
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-        
-        // Sottrai l'offset del turno per allineare il ciclo temporale al turno specifico
         const adjustedDays = diffDays - shiftDayOffset;
-        
         const cycles = Math.floor(adjustedDays / 4);
         
         let currentSubGroup = (anchorSubGroup + cycles) % 8;
@@ -242,14 +229,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         });
     }, [staff, editingTillId]);
 
-    const getSlotLabel = (type: 'smontante' | 'giorno' | 'notte') => {
-        switch(type) {
-            case 'smontante': return { full: 'Smontante', short: 'S' };
-            case 'giorno': return { full: 'Giorno', short: 'G' };
-            case 'notte': return { full: 'Notte', short: 'N' };
-        }
-    };
-
     const matrixData = useMemo(() => {
         const shiftStaff = staff
             .filter(s => s.shift === matrixShift && isRealPerson(s.name))
@@ -284,14 +263,45 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         return null;
     };
 
+    const handlePrint = () => {
+        window.print();
+    };
+
+    const handleWhatsAppShare = () => {
+        const monthStr = monthNames[currentDate.getMonth()];
+        const yearStr = currentDate.getFullYear();
+        let message = `*Report Presenze - Turno ${matrixShift.toUpperCase()} - ${monthStr} ${yearStr}*\n\n`;
+        
+        matrixData.shiftStaff.forEach(person => {
+            let presentCount = 0;
+            let leaveCount = 0;
+            
+            matrixData.days.forEach(day => {
+                const tillId = `T${matrixShift.toUpperCase()}`;
+                const dateStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
+                const record = attendanceRecords.find(r => r.date === dateStr && r.tillId === tillId);
+                const status = getStatusForCell(person.id, record);
+                
+                if (status === 'present' || status === 'substitution' || status === 'mission') presentCount++;
+                if (status === 'leave' || status === 'sick') leaveCount++;
+            });
+            
+            message += `👤 *${person.name}*: ${presentCount} Presenze\n`;
+        });
+        
+        message += `\nGenerato da Bar VVF Montepulciano`;
+        const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    };
+
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-300 overflow-hidden h-full flex flex-col relative min-h-screen md:min-h-0">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-300 overflow-hidden h-full flex flex-col relative min-h-screen md:min-h-0 print:border-none print:shadow-none">
             
             {onGoBack && (
-                <div className="p-4 border-b border-slate-200 bg-white sticky top-0 z-30 flex items-center gap-2 shadow-sm">
+                <div className="p-4 border-b border-slate-200 bg-white sticky top-0 z-30 flex items-center gap-2 shadow-sm print:hidden">
                     <button onClick={onGoBack} className="flex items-center gap-1 font-bold text-slate-500 hover:text-slate-800">
                         <BackArrowIcon className="h-5 w-5" /> Indietro
                     </button>
@@ -301,7 +311,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
             {/* EDIT MODAL */}
             {isEditModalOpen && (
-                <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 print:hidden">
                     {/* ... (Modal content remains same) ... */}
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up flex flex-col max-h-[90vh]">
                         <div className="p-4 bg-slate-100 border-b border-slate-200 flex justify-between items-center">
@@ -397,31 +407,24 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 </div>
             )}
 
-            {/* TOP BAR: MESE E VIEW SWITCHER */}
-            <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center bg-slate-50 gap-4 sticky top-[60px] md:top-0 z-20 shadow-sm">
+            {/* TOP BAR: MESE E CONTROLLI */}
+            <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center bg-slate-50 gap-4 sticky top-[60px] md:top-0 z-20 shadow-sm print:hidden">
                 
-                {/* 3 PULSANTI DI SELEZIONE VIEW */}
-                <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                {/* AZIONI RAPIDE */}
+                <div className="flex gap-2 w-full md:w-auto">
                     <button 
-                        onClick={() => setViewMode('matrix')}
-                        className={`flex-1 md:flex-none px-4 py-3 rounded-xl text-xs font-bold flex flex-col md:flex-row items-center justify-center gap-2 transition-all ${viewMode === 'matrix' ? 'bg-slate-800 text-white shadow-lg scale-105' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                        onClick={handlePrint}
+                        className="bg-slate-800 text-white px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-slate-700 shadow-sm"
+                        title="Stampa Report Mese"
                     >
-                        <GridIcon className="h-5 w-5" /> 
-                        <span>Tabella Presenze</span>
+                        <PrinterIcon className="h-4 w-4" /> <span className="hidden md:inline">Stampa</span>
                     </button>
                     <button 
-                        onClick={() => setViewMode('calendar')}
-                        className={`flex-1 md:flex-none px-4 py-3 rounded-xl text-xs font-bold flex flex-col md:flex-row items-center justify-center gap-2 transition-all ${viewMode === 'calendar' ? 'bg-slate-800 text-white shadow-lg scale-105' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                        onClick={handleWhatsAppShare}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-green-700 shadow-sm"
+                        title="Condividi su WhatsApp"
                     >
-                        <CalendarIcon className="h-5 w-5" /> 
-                        <span>Turnario</span>
-                    </button>
-                    <button 
-                        disabled
-                        className="flex-1 md:flex-none px-4 py-3 rounded-xl text-xs font-bold flex flex-col md:flex-row items-center justify-center gap-2 bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
-                    >
-                        <SettingsIcon className="h-5 w-5" /> 
-                        <span>Servizi</span>
+                        <WhatsAppIcon className="h-4 w-4" /> <span className="hidden md:inline">Condividi</span>
                     </button>
                 </div>
 
@@ -435,308 +438,190 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 </div>
             </div>
 
-            <div className="flex-grow overflow-auto bg-white relative">
+            <div className="flex-grow overflow-auto bg-white relative print:w-full print:h-auto print:overflow-visible">
                 
-                {/* 1. MATRIX VIEW (NUOVA) */}
-                {viewMode === 'matrix' && (
-                    <div className="flex flex-col h-full">
-                        {/* Selettore Turno per Matrice */}
-                        <div className="flex justify-center gap-4 p-4 bg-slate-50 border-b border-slate-200 sticky top-0 left-0 z-10">
-                            <span className="text-xs font-bold text-slate-500 uppercase self-center">Seleziona Turno:</span>
-                            {(['a', 'b', 'c', 'd'] as Shift[]).map(shift => {
-                                const tillId = `T${shift.toUpperCase()}`;
-                                const color = getShiftColor(tillId);
-                                return (
-                                    <button 
-                                        key={shift}
-                                        onClick={() => setMatrixShift(shift)}
-                                        className={`
-                                            w-10 h-10 rounded-full font-black text-sm shadow-sm transition-all border-2
-                                            ${matrixShift === shift ? 'scale-110 ring-2 ring-offset-2 ring-slate-300' : 'opacity-60 hover:opacity-100'}
-                                        `}
-                                        style={{ backgroundColor: color, color: 'white', borderColor: matrixShift === shift ? 'white' : 'transparent' }}
-                                    >
-                                        {shift.toUpperCase()}
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        <div className="flex-grow overflow-auto relative">
-                            <table className="w-full text-xs border-collapse">
-                                <thead className="bg-slate-100 text-slate-600 sticky top-0 z-20 shadow-sm">
-                                    {/* RIGA 1: NUMERI GIORNO */}
-                                    <tr>
-                                        <th className="p-3 text-left font-bold border-b border-r border-slate-200 sticky left-0 bg-slate-100 z-30 whitespace-nowrap w-auto">
-                                            Nominativo
-                                        </th>
-                                        {matrixData.days.map(day => {
-                                            const dayStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
-                                            const isToday = dayStr === todayStr;
-                                            return (
-                                                <th 
-                                                    key={day.dayNum} 
-                                                    className={`
-                                                        p-1 min-w-[35px] text-center border-r border-slate-200 font-bold relative
-                                                        ${day.isWorking ? 'bg-orange-100 text-orange-800' : ''}
-                                                        ${[0,6].includes(day.date.getDay()) ? 'text-red-500' : ''}
-                                                        ${isToday 
-                                                            ? '!border-l-2 !border-r-2 !border-red-500 !border-b-0 !border-t-2 rounded-t-[3px] bg-red-50/10 z-20 shadow-[0_-5px_10px_-5px_rgba(220,38,38,0.2)]' 
-                                                            : 'border-b'}
-                                                    `}
-                                                >
-                                                    <div className="flex flex-col relative z-10">
-                                                        <span>{day.dayNum}</span>
-                                                        <span className="text-[9px] opacity-70 font-normal">{['D','L','M','M','G','V','S'][day.date.getDay()]}</span>
-                                                    </div>
-                                                </th>
-                                            );
-                                        })}
-                                    </tr>
-                                    {/* RIGA 2: RIPOSI COMPENSATIVI (Salto) */}
-                                    <tr className="bg-slate-200 text-slate-600 text-[10px]">
-                                        <th className="p-2 text-right font-bold border-b border-r border-slate-300 sticky left-0 bg-slate-200 z-30 italic">
-                                            Salto (Riposo Comp.):
-                                        </th>
-                                        {matrixData.days.map(day => {
-                                            const dayStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
-                                            const isToday = dayStr === todayStr;
-                                            // Mostra il salto SOLO se è un giorno di turno attivo (Giorno o Notte)
-                                            const isShiftActiveDay = day.shifts.day === matrixShift.toUpperCase() || day.shifts.night === matrixShift.toUpperCase();
-                                            
-                                            return (
-                                                <th 
-                                                    key={`rc-${day.dayNum}`} 
-                                                    className={`
-                                                        p-1 text-center border-r border-slate-300 font-black text-purple-700 bg-purple-50
-                                                        ${isToday 
-                                                            ? '!border-l-2 !border-r-2 !border-red-500 !border-b-0 bg-red-50/10 z-20 shadow-[inset_0_0_10px_rgba(220,38,38,0.05)]' 
-                                                            : 'border-b'}
-                                                    `}
-                                                >
-                                                    {(day.rcGroup && isShiftActiveDay) ? `${matrixShift.toUpperCase()}${day.rcGroup}` : '-'}
-                                                </th>
-                                            );
-                                        })}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {matrixData.shiftStaff.length === 0 && (
-                                        <tr><td colSpan={daysInMonth + 1} className="p-8 text-center text-slate-400 italic">Nessun dipendente in questo turno.</td></tr>
-                                    )}
-                                    {matrixData.shiftStaff.map((person, personIndex) => (
-                                        <tr key={person.id} className="hover:bg-slate-50 transition-colors group">
-                                            <td className="p-3 border-b border-r border-slate-200 font-medium text-slate-800 sticky left-0 bg-white group-hover:bg-slate-50 z-10 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-auto">
-                                                <div className="flex items-center gap-3">
-                                                    {/* Avatar & Grade Container */}
-                                                    <div className="relative w-8 h-8 flex-shrink-0">
-                                                        <div className="w-full h-full rounded-full overflow-hidden bg-slate-100 flex items-center justify-center text-xs border border-slate-200 shadow-sm">
-                                                            {person.photoUrl ? (
-                                                                <img src={person.photoUrl} alt={person.name} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                person.icon || '👤'
-                                                            )}
-                                                        </div>
-                                                        {/* Badge Grado con CSS per posizione corretta */}
-                                                        <div className="absolute -top-[6px] -right-[6px] scale-[0.8] origin-center z-10">
-                                                            <GradeBadge grade={person.grade} />
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <div className="flex flex-col">
-                                                        <span className="font-bold text-sm leading-tight">{person.name}</span>
-                                                        <span className="text-[10px] text-slate-400 font-mono">
-                                                            {person.shift.toUpperCase()}{person.rcSubGroup || ''}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            {matrixData.days.map(day => {
-                                                const tillId = `T${matrixShift.toUpperCase()}`;
-                                                const dateStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
-                                                
-                                                const record = attendanceRecords.find(r => r.date === dateStr && r.tillId === tillId);
-                                                
-                                                const status = getStatusForCell(person.id, record);
-                                                const isToday = dateStr === todayStr;
-                                                
-                                                // Logica Salto Turno Personale
-                                                const isJumpDay = day.rcGroup === person.rcSubGroup;
-                                                const isShiftActiveDay = day.shifts.day === matrixShift.toUpperCase() || day.shifts.night === matrixShift.toUpperCase();
-                                                
-                                                // È l'ultima riga?
-                                                const isLastRow = personIndex === matrixData.shiftStaff.length - 1;
-
-                                                return (
-                                                    <td 
-                                                        key={`${person.id}-${day.dayNum}`} 
-                                                        className={`
-                                                            text-center border-r border-slate-200 transition-colors relative
-                                                            ${day.isWorking ? 'bg-orange-50/30' : ''}
-                                                            ${status ? 'bg-white' : 'hover:bg-slate-100'}
-                                                            ${readOnly ? 'cursor-default' : 'cursor-pointer'}
-                                                            ${isJumpDay && !status ? 'bg-slate-200/50' : ''}
-                                                            ${isToday 
-                                                                ? `!border-l-2 !border-r-2 !border-red-500 bg-red-50/10 z-20 !border-b-0 shadow-[inset_0_0_10px_rgba(220,38,38,0.05)] ${isLastRow ? '!border-b-2 rounded-b-[3px] shadow-[0_5px_10px_-5px_rgba(220,38,38,0.2)]' : ''}` 
-                                                                : 'border-b'}
-                                                        `}
-                                                        onClick={() => handleOpenEdit(dateStr, tillId, record)}
-                                                        title={`${day.dayNum}/${currentDate.getMonth()+1} - ${person.name}`}
-                                                    >
-                                                        {/* Visualizza Salto (Es. B2) se è giorno di salto E non c'è status esplicito E siamo in un giorno lavorativo */}
-                                                        {(isJumpDay && !status && isShiftActiveDay) ? (
-                                                            <div className="absolute inset-0 flex items-center justify-center p-1 opacity-60">
-                                                                <div className="w-full h-full flex items-center justify-center rounded font-bold text-[9px] bg-slate-300 text-slate-600 border border-slate-400">
-                                                                    {matrixShift.toUpperCase()}{person.rcSubGroup}
-                                                                </div>
-                                                            </div>
-                                                        ) : status && (
-                                                            <div className="absolute inset-0 flex items-center justify-center p-1">
-                                                                <div 
-                                                                    className={`
-                                                                        w-full h-full flex items-center justify-center rounded font-bold text-[10px] uppercase shadow-sm border
-                                                                        ${STATUS_CONFIG[status].color} ${STATUS_CONFIG[status].textColor}
-                                                                        ${record?.closedAt ? 'ring-1 ring-black/10' : ''}
-                                                                    `}
-                                                                >
-                                                                    {STATUS_CONFIG[status].short}
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        {/* Footer Status Legend */}
-                        <div className="p-2 text-[10px] text-slate-400 text-center bg-slate-50 border-t border-slate-200 flex justify-center gap-4 flex-wrap">
-                            {Object.entries(STATUS_CONFIG).filter(([k]) => k !== 'absent').map(([key, conf]) => (
-                                <span key={key} className="flex items-center gap-1">
-                                    <span className={`w-3 h-3 rounded border text-[8px] flex items-center justify-center ${conf.color} ${conf.textColor}`}>{conf.short}</span>
-                                    <span>{conf.label}</span>
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* 2. CALENDAR VIEW (VECCHIO TURNARIO) ... */}
-                {viewMode === 'calendar' && (
-                    <div className="grid grid-cols-7 border-l border-t border-slate-300">
-                        {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => (
-                            <div key={d} className="p-2 text-center text-xs font-bold bg-slate-100 border-r border-b border-slate-300 text-slate-500 uppercase">{d}</div>
-                        ))}
-
-                        {Array.from({ length: startingBlankDays }).map((_, i) => (
-                            <div key={`blank-${i}`} className="min-h-[80px] bg-slate-50/30 border-r border-b border-slate-300"></div>
-                        ))}
-
-                        {Array.from({ length: daysInMonth }).map((_, i) => {
-                            const dayNum = i + 1;
-                            const dateObj = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum);
-                            const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-                            const shifts = getShiftsForDate(dateObj);
-                            
-                            const isToday = dateStr === todayStr;
-
-                            const prevDate = new Date(dateObj);
-                            prevDate.setDate(prevDate.getDate() - 1);
-                            const prevDateStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}-${String(prevDate.getDate()).padStart(2, '0')}`;
-                            
-                            const timeSlots = [
-                                { id: 'slot1', shift: shifts.smontante, label: getSlotLabel('smontante'), dateRef: prevDateStr },
-                                { id: 'slot2', shift: shifts.day, label: getSlotLabel('giorno'), dateRef: dateStr },
-                                { id: 'slot3', shift: shifts.night, label: getSlotLabel('notte'), dateRef: dateStr }
-                            ];
-
+                <div className="flex flex-col h-full">
+                    {/* Selettore Turno per Matrice (Nascosto in stampa) */}
+                    <div className="flex justify-center gap-4 p-4 bg-slate-50 border-b border-slate-200 sticky top-0 left-0 z-10 print:hidden">
+                        <span className="text-xs font-bold text-slate-500 uppercase self-center">Seleziona Turno:</span>
+                        {(['a', 'b', 'c', 'd'] as Shift[]).map(shift => {
+                            const tillId = `T${shift.toUpperCase()}`;
+                            const color = getShiftColor(tillId);
                             return (
-                                <div 
-                                    key={dayNum} 
+                                <button 
+                                    key={shift}
+                                    onClick={() => setMatrixShift(shift)}
                                     className={`
-                                        min-h-[100px] md:min-h-[160px] p-1 md:p-2 border-r border-b border-slate-300 flex flex-col gap-1 
-                                        ${isToday ? 'border-2 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.5)] bg-white z-10' : 'bg-white'}
+                                        w-10 h-10 rounded-full font-black text-sm shadow-sm transition-all border-2
+                                        ${matrixShift === shift ? 'scale-110 ring-2 ring-offset-2 ring-slate-300' : 'opacity-60 hover:opacity-100'}
                                     `}
+                                    style={{ backgroundColor: color, color: 'white', borderColor: matrixShift === shift ? 'white' : 'transparent' }}
                                 >
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className={`
-                                            text-xs md:text-sm font-bold px-1
-                                            ${isToday ? 'text-red-600 font-black text-lg' : 'text-slate-700'}
-                                        `}>
-                                            {dayNum}
-                                        </span>
-                                        <span className="hidden md:inline text-[10px] text-slate-400 font-normal ml-1">({shifts.day}/{shifts.night})</span>
-                                    </div>
-                                    
-                                    {/* DESKTOP VIEW: Stacked rows */}
-                                    <div className="flex flex-col gap-1.5 h-full justify-evenly">
-                                        {timeSlots.map((slot, idx) => {
-                                            const tillId = `T${slot.shift}`;
-                                            const color = getShiftColor(tillId);
-                                            const record = attendanceRecords.find(r => r.date === slot.dateRef && r.tillId === tillId);
-                                            
-                                            let realPeopleCount = 0;
-                                            if (record) {
-                                                // Conteggio semplificato: chiunque NON sia assente e NON sia cassa
-                                                realPeopleCount = record.presentStaffIds
-                                                    .filter(id => {
-                                                        const member = staff.find(s => s.id === id);
-                                                        return member && isRealPerson(member.name);
-                                                    }).length;
-                                            }
-
-                                            // In readOnly mode (es. utente normale), mostra solo se c'è un record o se è admin
-                                            if (!record && !isSuperAdmin && readOnly) return null;
-
-                                            return (
-                                                <div 
-                                                    key={`${dayNum}-${idx}`} 
-                                                    onClick={() => handleOpenEdit(slot.dateRef, tillId, record)}
-                                                    className={`
-                                                        group relative flex items-center justify-between border rounded p-1 transition-all h-8
-                                                        ${record ? 'bg-slate-50 hover:bg-white hover:shadow-md' : 'bg-transparent border-dashed border-slate-200 opacity-40 hover:opacity-100'}
-                                                        ${readOnly ? 'cursor-default pointer-events-none' : 'cursor-pointer'}
-                                                        ${record?.closedAt ? 'border-solid border-slate-300' : ''}
-                                                    `}
-                                                >
-                                                    <div className="flex items-center gap-1 md:gap-2 w-full">
-                                                        <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase w-3 md:w-auto md:min-w-[60px] text-center md:text-left">
-                                                            <span className="md:hidden">{slot.label.short}</span>
-                                                            <span className="hidden md:inline">{slot.label.full}</span>
-                                                        </span>
-                                                        
-                                                        <div 
-                                                            className="w-5 h-5 rounded-full shadow-sm flex items-center justify-center text-[10px] text-white font-normal shrink-0 leading-none pt-[1px]" 
-                                                            style={{ backgroundColor: color }}
-                                                        >
-                                                            {slot.shift}
-                                                        </div>
-                                                        
-                                                        <span className="text-xs font-bold text-slate-700 flex-grow text-right pr-1 leading-none flex items-center justify-end gap-1">
-                                                            {record && record.closedAt && <LockIcon className="h-2 w-2 text-slate-400"/>}
-                                                            {record ? realPeopleCount : (readOnly ? '-' : '+')}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
+                                    {shift.toUpperCase()}
+                                </button>
                             );
                         })}
                     </div>
-                )}
 
-                {/* 3. SERVICES VIEW (PLACEHOLDER) */}
-                {viewMode === 'services' && (
-                    <div className="flex flex-col items-center justify-center h-full text-slate-400 p-10">
-                        <SettingsIcon className="h-16 w-16 mb-4 opacity-50" />
-                        <h3 className="text-xl font-bold">Sezione in Arrivo</h3>
-                        <p>La gestione servizi sarà disponibile presto.</p>
+                    <div className="flex-grow overflow-auto relative print:overflow-visible">
+                        <table className="w-full text-xs border-collapse print:w-full">
+                            <thead className="bg-slate-100 text-slate-600 sticky top-0 z-20 shadow-sm print:static">
+                                {/* RIGA 1: NUMERI GIORNO */}
+                                <tr>
+                                    <th className="p-3 text-left font-bold border-b border-r border-slate-200 sticky left-0 bg-slate-100 z-30 whitespace-nowrap w-auto print:static">
+                                        Nominativo
+                                    </th>
+                                    {matrixData.days.map(day => {
+                                        const dayStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
+                                        const isToday = dayStr === todayStr;
+                                        return (
+                                            <th 
+                                                key={day.dayNum} 
+                                                className={`
+                                                    p-1 min-w-[35px] text-center border-r border-slate-200 font-bold relative
+                                                    ${day.isWorking ? 'bg-orange-100 text-orange-800' : ''}
+                                                    ${[0,6].includes(day.date.getDay()) ? 'text-red-500' : ''}
+                                                    ${isToday 
+                                                        ? '!border-l-2 !border-r-2 !border-red-500 !border-b-0 !border-t-2 rounded-t-[3px] bg-red-50/10 z-20 shadow-[0_-5px_10px_-5px_rgba(220,38,38,0.2)] print:border-slate-200 print:bg-transparent print:shadow-none' 
+                                                        : 'border-b'}
+                                                `}
+                                            >
+                                                <div className="flex flex-col relative z-10">
+                                                    <span>{day.dayNum}</span>
+                                                    <span className="text-[9px] opacity-70 font-normal">{['D','L','M','M','G','V','S'][day.date.getDay()]}</span>
+                                                </div>
+                                            </th>
+                                        );
+                                    })}
+                                </tr>
+                                {/* RIGA 2: RIPOSI COMPENSATIVI (Salto) */}
+                                <tr className="bg-slate-200 text-slate-600 text-[10px] print:bg-white">
+                                    <th className="p-2 text-right font-bold border-b border-r border-slate-300 sticky left-0 bg-slate-200 z-30 italic print:static print:bg-white">
+                                        Salto (Riposo Comp.):
+                                    </th>
+                                    {matrixData.days.map(day => {
+                                        const dayStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
+                                        const isToday = dayStr === todayStr;
+                                        // Mostra il salto SOLO se è un giorno di turno attivo (Giorno o Notte)
+                                        const isShiftActiveDay = day.shifts.day === matrixShift.toUpperCase() || day.shifts.night === matrixShift.toUpperCase();
+                                        
+                                        return (
+                                            <th 
+                                                key={`rc-${day.dayNum}`} 
+                                                className={`
+                                                    p-1 text-center border-r border-slate-300 font-black text-purple-700 bg-purple-50 print:bg-white
+                                                    ${isToday 
+                                                        ? '!border-l-2 !border-r-2 !border-red-500 !border-b-0 bg-red-50/10 z-20 shadow-[inset_0_0_10px_rgba(220,38,38,0.05)] print:border-slate-300 print:bg-white print:shadow-none' 
+                                                        : 'border-b'}
+                                                `}
+                                            >
+                                                {(day.rcGroup && isShiftActiveDay) ? `${matrixShift.toUpperCase()}${day.rcGroup}` : '-'}
+                                            </th>
+                                        );
+                                    })}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {matrixData.shiftStaff.length === 0 && (
+                                    <tr><td colSpan={daysInMonth + 1} className="p-8 text-center text-slate-400 italic">Nessun dipendente in questo turno.</td></tr>
+                                )}
+                                {matrixData.shiftStaff.map((person, personIndex) => (
+                                    <tr key={person.id} className="hover:bg-slate-50 transition-colors group print:hover:bg-transparent">
+                                        <td className="p-3 border-b border-r border-slate-200 font-medium text-slate-800 sticky left-0 bg-white group-hover:bg-slate-50 z-10 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-auto print:static print:bg-white print:shadow-none">
+                                            <div className="flex items-center gap-3">
+                                                {/* Avatar & Grade Container - INCREASED SIZE */}
+                                                <div className="relative w-12 h-12 flex-shrink-0">
+                                                    <div className="w-full h-full rounded-full overflow-hidden bg-slate-100 flex items-center justify-center text-xs border border-slate-200 shadow-sm">
+                                                        {person.photoUrl ? (
+                                                            <img src={person.photoUrl} alt={person.name} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <span className="text-xl">{person.icon || '👤'}</span>
+                                                        )}
+                                                    </div>
+                                                    {/* Badge Grado con CSS per posizione corretta - MORE OVERLAP */}
+                                                    <div className="absolute -top-3 -right-3 scale-[0.9] origin-center z-20">
+                                                        <GradeBadge grade={person.grade} />
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-sm leading-tight">{person.name}</span>
+                                                    <span className="text-[10px] text-slate-400 font-mono">
+                                                        {person.shift.toUpperCase()}{person.rcSubGroup || ''}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        {matrixData.days.map(day => {
+                                            const tillId = `T${matrixShift.toUpperCase()}`;
+                                            const dateStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
+                                            
+                                            const record = attendanceRecords.find(r => r.date === dateStr && r.tillId === tillId);
+                                            
+                                            const status = getStatusForCell(person.id, record);
+                                            const isToday = dateStr === todayStr;
+                                            
+                                            // Logica Salto Turno Personale
+                                            const isJumpDay = day.rcGroup === person.rcSubGroup;
+                                            const isShiftActiveDay = day.shifts.day === matrixShift.toUpperCase() || day.shifts.night === matrixShift.toUpperCase();
+                                            
+                                            // È l'ultima riga?
+                                            const isLastRow = personIndex === matrixData.shiftStaff.length - 1;
+
+                                            return (
+                                                <td 
+                                                    key={`${person.id}-${day.dayNum}`} 
+                                                    className={`
+                                                        text-center border-r border-slate-200 transition-colors relative
+                                                        ${day.isWorking ? 'bg-orange-50/30' : ''}
+                                                        ${status ? 'bg-white' : 'hover:bg-slate-100'}
+                                                        ${readOnly ? 'cursor-default' : 'cursor-pointer'}
+                                                        ${isJumpDay && !status ? 'bg-slate-200/50' : ''}
+                                                        ${isToday 
+                                                            ? `!border-l-2 !border-r-2 !border-red-500 bg-red-50/10 z-20 !border-b-0 shadow-[inset_0_0_10px_rgba(220,38,38,0.05)] ${isLastRow ? '!border-b-2 rounded-b-[3px] shadow-[0_5px_10px_-5px_rgba(220,38,38,0.2)]' : ''} print:border-slate-200 print:bg-transparent print:shadow-none` 
+                                                            : 'border-b'}
+                                                    `}
+                                                    onClick={() => handleOpenEdit(dateStr, tillId, record)}
+                                                    title={`${day.dayNum}/${currentDate.getMonth()+1} - ${person.name}`}
+                                                >
+                                                    {/* Visualizza Salto (Es. B2) se è giorno di salto E non c'è status esplicito E siamo in un giorno lavorativo */}
+                                                    {(isJumpDay && !status && isShiftActiveDay) ? (
+                                                        <div className="absolute inset-0 flex items-center justify-center p-1 opacity-60">
+                                                            <div className="w-full h-full flex items-center justify-center rounded font-bold text-[9px] bg-slate-300 text-slate-600 border border-slate-400">
+                                                                {matrixShift.toUpperCase()}{person.rcSubGroup}
+                                                            </div>
+                                                        </div>
+                                                    ) : status && (
+                                                        <div className="absolute inset-0 flex items-center justify-center p-1">
+                                                            <div 
+                                                                className={`
+                                                                    w-full h-full flex items-center justify-center rounded font-bold text-[10px] uppercase shadow-sm border
+                                                                    ${STATUS_CONFIG[status].color} ${STATUS_CONFIG[status].textColor}
+                                                                    ${record?.closedAt ? 'ring-1 ring-black/10' : ''}
+                                                                `}
+                                                            >
+                                                                {STATUS_CONFIG[status].short}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            );
+                                        })}
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
-                )}
+                    {/* Footer Status Legend */}
+                    <div className="p-2 text-[10px] text-slate-400 text-center bg-slate-50 border-t border-slate-200 flex justify-center gap-4 flex-wrap print:hidden">
+                        {Object.entries(STATUS_CONFIG).filter(([k]) => k !== 'absent').map(([key, conf]) => (
+                            <span key={key} className="flex items-center gap-1">
+                                <span className={`w-3 h-3 rounded border text-[8px] flex items-center justify-center ${conf.color} ${conf.textColor}`}>{conf.short}</span>
+                                <span>{conf.label}</span>
+                            </span>
+                        ))}
+                    </div>
+                </div>
             </div>
         </div>
     );
