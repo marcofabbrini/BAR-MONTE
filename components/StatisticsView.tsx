@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import { Order, Product, StaffMember, Shift, GeneralSettings, TombolaConfig, AnalottoConfig, AttendanceRecord } from '../types';
 import BarChart from './BarChart';
 import LineChart from './LineChart';
-import { LogoIcon, DropletIcon, LayersIcon, ChartBarIcon, GamepadIcon, FilterIcon } from './Icons';
+import { LogoIcon, DropletIcon, LayersIcon, ChartBarIcon, GamepadIcon, FilterIcon, BanknoteIcon } from './Icons';
 
 interface StatisticsViewProps {
     filteredOrders: Order[];
@@ -83,7 +83,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 if (record.attendanceDetails && record.attendanceDetails[id]) {
                     const status = record.attendanceDetails[id];
                     // Pay statuses: P, S, S1, S2, S3
-                    if (['present', 'substitution', 'sub1', 'sub2', 'sub3'].includes(status)) {
+                    if (['present', 'substitution', 'sub1', 'sub2', 'sub3'].includes(status as string)) {
                         isPaying = true;
                     }
                 } else if (record.presentStaffIds.includes(id)) {
@@ -485,9 +485,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         </div>
     );
 };
-
-// Missing BanknoteIcon import fix
-const BanknoteIcon = (props: any) => <span {...props}>💶</span>;
 
 export default StatisticsView;
     

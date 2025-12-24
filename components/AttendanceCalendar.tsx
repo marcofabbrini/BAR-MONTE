@@ -165,8 +165,19 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const shift = tillId.replace('T', '').toLowerCase();
         const shiftStaff = staff.filter(s => s.shift === shift);
         
-        // Add virtual rows to processing list
-        const allRows = [...shiftStaff, ...virtualSubRows];
+        // Add virtual rows to processing list with proper typing
+        const virtualStaff = virtualSubRows.map(v => ({
+            id: v.id,
+            name: v.name,
+            shift: shift as Shift,
+            isVirtual: true,
+            grade: undefined,
+            rcSubGroup: undefined,
+            icon: undefined,
+            photoUrl: undefined
+        }));
+
+        const allRows = [...shiftStaff, ...virtualStaff];
         const rcGroup = getRestingSubGroup(shift, new Date(dateStr));
 
         allRows.forEach(s => {
@@ -301,13 +312,16 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
              return a.name.localeCompare(b.name);
         });
 
-        // 2. Append Virtual Rows
+        // 2. Append Virtual Rows with required properties
         return [...regulars, ...virtualSubRows.map(v => ({ 
             id: v.id, 
             name: v.name, 
             shift: shift as Shift, 
             grade: 'Guest', 
-            isVirtual: true 
+            isVirtual: true,
+            rcSubGroup: undefined,
+            icon: undefined,
+            photoUrl: undefined
         }))];
     }, [staff, editingTillId]);
 
@@ -321,10 +335,19 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 return a.name.localeCompare(b.name);
             });
         
-        // Append 3 virtual rows to matrix
+        // Append 3 virtual rows to matrix with required properties
         const fullRows = [
             ...realStaff,
-            ...virtualSubRows.map(v => ({ id: v.id, name: v.name, shift: matrixShift, grade: 'Guest', isVirtual: true, rcSubGroup: undefined }))
+            ...virtualSubRows.map(v => ({ 
+                id: v.id, 
+                name: v.name, 
+                shift: matrixShift, 
+                grade: 'Guest', 
+                isVirtual: true, 
+                rcSubGroup: undefined,
+                icon: undefined,
+                photoUrl: undefined
+            }))
         ];
 
         const days = Array.from({ length: daysInMonth }, (_, i) => {
