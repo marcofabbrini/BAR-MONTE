@@ -31,7 +31,7 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
     // Fallback per gradi sconosciuti
     if (!conf) {
         return (
-            <div className="absolute -top-2 -right-1 z-10 flex items-center justify-center h-[18px] min-w-[24px] px-1 rounded-[2px] text-[7px] font-black text-white bg-slate-500 border border-slate-600 uppercase">
+            <div className="absolute -top-[6px] -right-[6px] z-10 flex items-center justify-center h-[18px] min-w-[24px] px-1 rounded-[2px] text-[7px] font-black text-white bg-slate-500 border border-slate-600 uppercase">
                 {grade}
             </div>
         );
@@ -42,27 +42,27 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
     return (
         <div 
             className={`
-                absolute -top-2 -right-2 z-10 
+                absolute -top-[6px] -right-[6px] z-10 
                 flex flex-col items-center justify-center gap-[1px]
-                w-[24px] h-[18px] rounded-[2px] shadow-sm
+                w-[26px] h-[18px] rounded-[3px] shadow-sm
                 bg-[#722F37] /* Amaranto VVF */
                 ${isBar ? 'border-[1px] border-yellow-400' : 'border-[0.5px] border-[#5a232b]'}
             `}
             title={conf.label}
         >
-            {/* RENDER CHEVRONS (V rovesciate Argentate - Strette e Basse) */}
+            {/* RENDER CHEVRONS (V rovesciate Argentate - Allungate) */}
             {!isBar && Array.from({ length: conf.count }).map((_, i) => (
                 <div key={i} className="w-full flex justify-center -mt-[2px] first:mt-0">
-                     {/* SVG Chevron Down Silver (Flattened & Narrower) */}
-                     <svg width="12" height="4" viewBox="0 0 12 4" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M1 1 L6 3 L11 1" stroke="#E2E8F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                     {/* SVG Chevron Down Silver (Elongated) */}
+                     <svg width="20" height="5" viewBox="0 0 20 5" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M2 1 L10 4 L18 1" stroke="#E2E8F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                 </div>
             ))}
 
-            {/* RENDER BARS (Barre Dorate - Più strette) */}
+            {/* RENDER BARS (Barre Dorate) */}
             {isBar && Array.from({ length: conf.count }).map((_, i) => (
-                <div key={i} className="w-[14px] h-[2px] bg-yellow-400 rounded-sm shadow-sm my-[0.5px]"></div>
+                <div key={i} className="w-[16px] h-[2px] bg-yellow-400 rounded-sm shadow-sm my-[0.5px]"></div>
             ))}
         </div>
     );
@@ -248,8 +248,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                             <span className="text-white text-xs font-bold">Carica</span>
                                         </div>
                                         
-                                        {/* LIVE PREVIEW BADGE */}
-                                        {grade && <div className="scale-150 origin-top-right absolute top-3 right-3"><GradeBadge grade={grade} /></div>}
+                                        {/* LIVE PREVIEW BADGE - Adjusted Position */}
+                                        {grade && <div className="scale-150 origin-center absolute top-[-4px] right-[-4px] z-20"><GradeBadge grade={grade} /></div>}
                                     </div>
                                     
                                     <input 
@@ -344,7 +344,11 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                     )}
                                 </div>
                                 {/* Badge Grado */}
-                                {member.grade && <GradeBadge grade={member.grade} />}
+                                {member.grade && (
+                                    <div className="origin-center scale-90 absolute top-[-6px] right-[-6px]">
+                                        <GradeBadge grade={member.grade} />
+                                    </div>
+                                )}
                             </div>
 
                             <div className="flex-grow min-w-0">

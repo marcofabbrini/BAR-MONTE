@@ -116,32 +116,31 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     };
 
     // Helper per calcolare chi è in salto (riposo compensativo) per un dato giorno e turno
+    // LOGICA HARDCODED VVF: 11 Dicembre 2025 = Turno A, Salto 1
     const getRestingSubGroup = (shift: string, date: Date) => {
-        // Fallback default se setting mancanti: 12 Dicembre 2025 (Turno B, Gruppo 1)
-        const anchorDateStr = shiftSettings?.rcAnchorDate || '2025-12-12'; 
-        const anchorShiftStr = shiftSettings?.rcAnchorShift || 'B';
-        const anchorSubGroup = shiftSettings?.rcAnchorSubGroup || 1;
+        const anchorDate = new Date(2025, 11, 11, 12, 0, 0); // 11 Dicembre 2025
+        const anchorShiftStr = 'A';
+        const anchorSubGroup = 1;
 
-        const anchorDate = new Date(anchorDateStr);
-        anchorDate.setHours(12, 0, 0, 0);
-        
         const effectiveDate = new Date(date);
         effectiveDate.setHours(12, 0, 0, 0);
 
         const shifts = ['A', 'B', 'C', 'D'];
         const shiftIndex = shifts.indexOf(shift.toUpperCase());
-        const anchorShiftIndex = shifts.indexOf(anchorShiftStr.toUpperCase());
+        const anchorShiftIndex = shifts.indexOf(anchorShiftStr); // 0 (A)
         
-        // Offset
-        const shiftOffset = (shiftIndex - anchorShiftIndex + 4) % 4;
+        // Calcolo Offset Turno (Rotazione A->B->C->D)
+        // Se cerco B (1) rispetto ad A (0), sono +1 giorno avanti nel ciclo naturale.
+        const shiftDayOffset = shiftIndex - anchorShiftIndex;
         
-        const baseDateForShift = new Date(anchorDate);
-        baseDateForShift.setDate(baseDateForShift.getDate() + shiftOffset);
-        
-        const diffTime = effectiveDate.getTime() - baseDateForShift.getTime();
+        // Calcola differenza giorni totali dall'ancora
+        const diffTime = effectiveDate.getTime() - anchorDate.getTime();
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         
-        const cycles = Math.floor(diffDays / 4);
+        // Sottrai l'offset del turno per allineare il ciclo temporale al turno specifico
+        const adjustedDays = diffDays - shiftDayOffset;
+        
+        const cycles = Math.floor(adjustedDays / 4);
         
         let currentSubGroup = (anchorSubGroup + cycles) % 8;
         if (currentSubGroup <= 0) currentSubGroup += 8;
@@ -538,7 +537,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                                 person.icon || '👤'
                                                             )}
                                                         </div>
-                                                        <div className="absolute -top-2 -right-2 scale-75 origin-center z-10">
+                                                        {/* Badge Grado con CSS per posizione corretta */}
+                                                        <div className="absolute -top-[6px] -right-[6px] scale-[0.8] origin-center z-10">
                                                             <GradeBadge grade={person.grade} />
                                                         </div>
                                                     </div>

@@ -104,11 +104,6 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [seasonOpacity, setSeasonOpacity] = useState(seasonalityConfig?.opacity || 0.5);
     const [seasonBg, setSeasonBg] = useState(seasonalityConfig?.backgroundColor || '#f8fafc');
 
-    // RC Calibration State
-    const [rcDate, setRcDate] = useState(shiftSettings.rcAnchorDate || '');
-    const [rcShift, setRcShift] = useState<Shift>(shiftSettings.rcAnchorShift || 'a');
-    const [rcSubGroup, setRcSubGroup] = useState<number>(shiftSettings.rcAnchorSubGroup || 1);
-
     // General Settings State
     const [waterPrice, setWaterPrice] = useState(generalSettings?.waterQuotaPrice || 0);
 
@@ -226,16 +221,6 @@ const AdminView: React.FC<AdminViewProps> = ({
             backgroundColor: seasonBg
         });
         alert("Stagionalità salvata con successo!");
-    };
-
-    const handleSaveRcCalibration = async () => {
-        await onUpdateShiftSettings({
-            ...shiftSettings,
-            rcAnchorDate: rcDate,
-            rcAnchorShift: rcShift,
-            rcAnchorSubGroup: rcSubGroup
-        });
-        alert("Riposo Compensativo (Salto) salvato!");
     };
 
     const handleSaveGeneral = async () => {
@@ -466,38 +451,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             )}
                         </div>
 
-                        {/* 3. CALIBRAZIONE TURNI (SALTO) */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                            <button onClick={() => toggleSection('shift')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
-                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
-                                    <CalendarIcon className="h-5 w-5 text-blue-500" /> Calibrazione Turni & Salto
-                                </h2>
-                                <span>{expandedSection === 'shift' ? '−' : '+'}</span>
-                            </button>
-                            {expandedSection === 'shift' && (
-                                <div className="p-6 animate-fade-in border-t border-slate-100 space-y-4">
-                                    <p className="text-xs text-slate-500 italic bg-blue-50 p-3 rounded">
-                                        Configura un punto di ancoraggio noto per calcolare correttamente il "Salto" (Riposo Compensativo) a rotazione di 8 gruppi.
-                                    </p>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Data Nota</label><input type="date" value={rcDate} onChange={e => setRcDate(e.target.value)} className="w-full border p-2 rounded" /></div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 block mb-1">Turno in quella data</label>
-                                            <select value={rcShift} onChange={e => setRcShift(e.target.value as any)} className="w-full border p-2 rounded uppercase font-bold">
-                                                <option value="a">A</option><option value="b">B</option><option value="c">C</option><option value="d">D</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 block mb-1">Gruppo che SALTA (1-8)</label>
-                                            <input type="number" min="1" max="8" value={rcSubGroup} onChange={e => setRcSubGroup(parseInt(e.target.value))} className="w-full border p-2 rounded" />
-                                        </div>
-                                    </div>
-                                    <button onClick={handleSaveRcCalibration} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm w-full md:w-auto">Salva Calibrazione</button>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 4. CONFIGURAZIONE GENERALE */}
+                        {/* 3. CONFIGURAZIONE GENERALE */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('general')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
@@ -531,7 +485,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             )}
                         </div>
 
-                        {/* 5. NOTIFICHE */}
+                        {/* 4. NOTIFICHE */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('notifications')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">

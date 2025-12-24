@@ -46,12 +46,10 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
     };
 
     // CALCOLO SOTTOGRUPPO DI SALTO (1-8)
+    // LOGICA HARDCODED VVF: 11 Dicembre 2025 = Turno A, Salto 1
     const getRestingSubGroup = (shift: string, date: Date) => {
-        // ANCORAGGIO FISSO: 12 Dicembre 2025 = Turno B, Salto 1
-        // Allineamento VVF 12-24 / 12-48
-        // 12 Dicembre: Giorno B (Gruppo 1 salta)
-        const anchorDate = new Date(2025, 11, 12, 12, 0, 0); // 12 Dicembre 2025
-        const anchorShiftStr = 'B';
+        const anchorDate = new Date(2025, 11, 11, 12, 0, 0); // 11 Dicembre 2025
+        const anchorShiftStr = 'A';
         const anchorSubGroup = 1;
 
         const effectiveDate = new Date(date);
@@ -59,7 +57,7 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
 
         const shifts = ['A', 'B', 'C', 'D'];
         const shiftIndex = shifts.indexOf(shift.toUpperCase());
-        const anchorShiftIndex = shifts.indexOf(anchorShiftStr); // 1 (B)
+        const anchorShiftIndex = shifts.indexOf(anchorShiftStr); // 0 (A)
         
         // Calcolo Offset Turno (Rotazione A->B->C->D)
         const shiftDayOffset = shiftIndex - anchorShiftIndex;
@@ -72,7 +70,8 @@ const ShiftCalendar: React.FC<ShiftCalendarProps> = ({ onGoBack, tillColors, shi
         const diffTime = effectiveDate.getTime() - baseDateForShift.getTime();
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
         
-        const cycles = Math.floor(diffDays / 4);
+        const adjustedDays = diffDays - shiftDayOffset; // Ricalcolo basato sulla differenza effettiva
+        const cycles = Math.floor(adjustedDays / 4);
         
         let currentSubGroup = (anchorSubGroup + cycles) % 8;
         if (currentSubGroup <= 0) currentSubGroup += 8;
