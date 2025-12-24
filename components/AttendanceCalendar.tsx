@@ -145,7 +145,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     };
 
     const handleOpenEdit = (dateStr: string, tillId: string, currentRecord?: AttendanceRecord) => {
-        if (readOnly) return;
+        // Allows editing unless explicitly explicitly forbidden, supporting "modified by everyone"
+        if (readOnly) return; 
+        
         setEditingDate(dateStr);
         setEditingTillId(tillId);
         setEditingRecord(currentRecord);
@@ -190,6 +192,17 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             ...prev,
             [id]: status
         }));
+    };
+
+    const bulkSetStatus = (status: AttendanceStatus | 'absent') => {
+        const newDetails = { ...editingDetails };
+        // Aggiorna tutti tranne la cassa (che deve rimanere presente)
+        editingStaffList.forEach(member => {
+            if (!member.name.toLowerCase().includes('cassa')) {
+                newDetails[member.id] = status;
+            }
+        });
+        setEditingDetails(newDetails);
     };
 
     const saveEditing = async (shouldValidate: boolean = false) => {
@@ -381,6 +394,16 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             </div>
                         )}
 
+                        {/* AZIONI DI MASSA */}
+                        <div className="px-4 pt-3 flex gap-2">
+                            <button onClick={() => bulkSetStatus('present')} className="flex-1 bg-green-100 text-green-700 text-xs font-bold py-2 rounded-lg hover:bg-green-200 border border-green-200 transition-colors">
+                                Tutti Presenti
+                            </button>
+                            <button onClick={() => bulkSetStatus('absent')} className="flex-1 bg-slate-100 text-slate-700 text-xs font-bold py-2 rounded-lg hover:bg-slate-200 border border-slate-200 transition-colors">
+                                Tutti Assenti
+                            </button>
+                        </div>
+
                         <div className="p-4 overflow-y-auto flex-grow">
                             <div className="space-y-2">
                                 {editingStaffList.map(member => {
@@ -401,7 +424,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-xl overflow-hidden border border-slate-200">
                                                         {member.photoUrl ? <img src={member.photoUrl} className="w-full h-full object-cover" /> : (member.icon || '👤')}
                                                     </div>
-                                                    {member.grade && <div className="absolute -bottom-1 -right-1 scale-75"><GradeBadge grade={member.grade} /></div>}
+                                                    {/* Badge in ALTO a destra */}
+                                                    {member.grade && <div className="absolute -top-1 -right-1 scale-75"><GradeBadge grade={member.grade} /></div>}
                                                 </div>
                                                 
                                                 <div>
@@ -597,7 +621,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                         )}
                                                     </div>
                                                     {/* Badge Grado con CSS per posizione corretta - OVERLAPPING LINE and AVATAR EDGE */}
-                                                    <div className="absolute -bottom-1.5 -right-1.5 z-20 transform translate-x-1/4">
+                                                    {/* MOVED TO TOP RIGHT AS REQUESTED */}
+                                                    <div className="absolute -top-1.5 -right-1.5 z-20 transform translate-x-1/4">
                                                         <GradeBadge grade={person.grade} />
                                                     </div>
                                                 </div>
