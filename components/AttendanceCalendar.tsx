@@ -221,6 +221,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             }
         });
 
+        // Pass 'undefined' if validating is false to keep it open (Draft)
         const user = editingRecord?.closedBy || 'Admin';
         const closingUser = shouldValidate ? user : (editingRecord?.closedBy ? editingRecord.closedBy : undefined);
 
@@ -557,7 +558,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             <thead className="bg-slate-100 text-slate-600 sticky top-0 z-20 shadow-sm print:static">
                                 {/* RIGA 1: NUMERI GIORNO */}
                                 <tr>
-                                    <th className="p-3 text-left font-bold border-b border-r border-slate-200 sticky left-0 bg-slate-100 z-30 whitespace-nowrap w-auto print:static">
+                                    {/* FIX STICKY Z-INDEX: Added z-40 to stay above the 'Today' column (z-20) */}
+                                    <th className="p-3 text-left font-bold border-b border-r border-slate-200 sticky left-0 bg-slate-100 z-40 whitespace-nowrap w-auto print:static">
                                         Nominativo
                                     </th>
                                     {matrixData.days.map(day => {
@@ -571,7 +573,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     ${day.isWorking ? 'bg-orange-100 text-orange-800' : ''}
                                                     ${[0,6].includes(day.date.getDay()) ? 'text-red-500' : ''}
                                                     ${isToday 
-                                                        ? '!border-l-2 !border-r-2 !border-red-500 !border-b-0 !border-t-2 rounded-t-[3px] bg-red-50/10 z-20 shadow-[0_-5px_10px_-5px_rgba(220,38,38,0.2)] print:border-slate-200 print:bg-transparent print:shadow-none' 
+                                                        ? '!border-l-2 !border-r-2 !border-red-500 !border-b-0 !border-t-2 rounded-t-2xl bg-red-50/10 z-20 shadow-[0_-5px_10px_-5px_rgba(220,38,38,0.2)] print:border-slate-200 print:bg-transparent print:shadow-none' 
                                                         : 'border-b'}
                                                 `}
                                             >
@@ -585,7 +587,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                 </tr>
                                 {/* RIGA 2: RIPOSI COMPENSATIVI (Salto) */}
                                 <tr className="bg-slate-200 text-slate-600 text-[10px] print:bg-white">
-                                    <th className="p-2 text-right font-bold border-b border-r border-slate-300 sticky left-0 bg-slate-200 z-30 italic print:static print:bg-white">
+                                    {/* FIX STICKY Z-INDEX: Added z-40 to stay above Today column */}
+                                    <th className="p-2 text-right font-bold border-b border-r border-slate-300 sticky left-0 bg-slate-200 z-40 italic print:static print:bg-white">
                                         Salto (Riposo Comp.):
                                     </th>
                                     {matrixData.days.map(day => {
@@ -616,7 +619,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                 )}
                                 {matrixData.shiftStaff.map((person, personIndex) => (
                                     <tr key={person.id} className="hover:bg-slate-50 transition-colors group print:hover:bg-transparent">
-                                        <td className="p-3 border-b border-r border-slate-200 font-medium text-slate-800 sticky left-0 bg-white group-hover:bg-slate-50 z-10 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-auto print:static print:bg-white print:shadow-none">
+                                        {/* FIX STICKY Z-INDEX: Increased to z-30 to stay above Today column (z-20) */}
+                                        <td className="p-3 border-b border-r border-slate-200 font-medium text-slate-800 sticky left-0 bg-white group-hover:bg-slate-50 z-30 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] w-auto print:static print:bg-white print:shadow-none">
                                             <div className="flex items-center gap-3">
                                                 {/* Avatar & Grade Container - INCREASED SIZE */}
                                                 <div className="relative w-12 h-12 flex-shrink-0">
@@ -668,7 +672,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                         ${readOnly ? 'cursor-default' : 'cursor-pointer'}
                                                         ${isJumpDay && !status ? 'bg-slate-200/50' : ''}
                                                         ${isToday 
-                                                            ? `!border-l-2 !border-r-2 !border-red-500 bg-red-50/10 z-20 !border-b-0 shadow-[inset_0_0_10px_rgba(220,38,38,0.05)] ${isLastRow ? '!border-b-2 rounded-b-[3px] shadow-[0_5px_10px_-5px_rgba(220,38,38,0.2)]' : ''} print:border-slate-200 print:bg-transparent print:shadow-none` 
+                                                            ? `!border-l-2 !border-r-2 !border-red-500 bg-red-50/10 z-20 !border-b-0 shadow-[inset_0_0_10px_rgba(220,38,38,0.05)] ${isLastRow ? '!border-b-2 rounded-b-2xl shadow-[0_5px_10px_-5px_rgba(220,38,38,0.2)]' : ''} print:border-slate-200 print:bg-transparent print:shadow-none` 
                                                             : 'border-b'}
                                                     `}
                                                     onClick={() => handleOpenEdit(dateStr, tillId, record)}

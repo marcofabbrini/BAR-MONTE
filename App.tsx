@@ -139,9 +139,10 @@ const AppContent: React.FC = () => {
                 tillColors={tillColors} 
                 isSuperAdmin={isSuperAdmin} 
                 shiftSettings={shiftSettings} 
-                onSaveAttendance={(t, i, d, c, det) => saveAttendance(t, i, d, c || (currentUser?.email || 'Utente'), det)}
+                // BUG FIX: Removed default user fallback. If 'c' is undefined, let it be undefined to keep status as Draft.
+                onSaveAttendance={(t, i, d, c, det) => saveAttendance(t, i, d, c, det)}
                 onReopenAttendance={isSuperAdmin ? reopenAttendance : undefined}
-                onDeleteRecord={isSuperAdmin ? deleteAttendance : undefined} // Added onDeleteRecord prop
+                onDeleteRecord={isSuperAdmin ? deleteAttendance : undefined}
             />;
             case 'admin': return <AdminView 
                 onGoBack={() => setView('selection')} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements}
