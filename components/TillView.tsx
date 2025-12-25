@@ -38,11 +38,23 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
     // PRESENZE STATE
     const [presentStaffIds, setPresentStaffIds] = useState<string[]>([]);
     
-    // Calcolo stato chiusura turno con data affidabile
-    const today = getNow().toISOString().split('T')[0];
+    // --- CALCOLO DATA OPERATIVA PER LE PRESENZE ---
+    // Se siamo tra le 00:00 e le 08:00 (Turno Smontante), la presenza valida è quella registrata il GIORNO PRIMA (la sera del montante).
+    // Altrimenti (dalle 08:00 alle 23:59), la presenza è quella di OGGI.
+    const operativeDateStr = useMemo(() => {
+        const now = getNow();
+        const currentHour = now.getHours();
+        
+        const operativeDate = new Date(now);
+        if (currentHour < 8) {
+            operativeDate.setDate(operativeDate.getDate() - 1);
+        }
+        return operativeDate.toISOString().split('T')[0];
+    }, [getNow]);
+
     const existingAttendanceRecord = useMemo(() => 
-        attendanceRecords?.find(r => r.date === today && r.tillId === till.id),
-    [attendanceRecords, today, till.id]);
+        attendanceRecords?.find(r => r.date === operativeDateStr && r.tillId === till.id),
+    [attendanceRecords, operativeDateStr, till.id]);
     
     // STRICT MODE: Turno deve essere CHIUSO (validato) per operare
     const isShiftValidated = !!existingAttendanceRecord?.closedAt;
@@ -282,7 +294,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                         </div>
                         <h2 className="text-2xl font-black text-slate-800 uppercase mb-2">Presenze Mancanti</h2>
                         <p className="text-slate-600 mb-8">
-                            Prima di aprire la cassa, devi inserire e <b>VALIDARE</b> le presenze del turno odierno ({new Date(today).toLocaleDateString()}).
+                            Prima di aprire la cassa, devi inserire e <b>VALIDARE</b> le presenze del turno di riferimento ({new Date(operativeDateStr).toLocaleDateString()}).
                         </p>
                         
                         <div className="flex flex-col gap-3">
