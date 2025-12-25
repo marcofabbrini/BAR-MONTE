@@ -104,7 +104,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const shifts = getShiftsForDateSync(date);
         const allShifts = ['A', 'B', 'C', 'D'];
         const dayIdx = allShifts.indexOf(shifts.day);
-        const smontanteIdx = (dayIdx - 2 + 4) % 4;
+        const smontanteIdx = (dayIdx - 2 + 4) % 4; // Notte precedente = Smontante oggi
 
         return {
             day: shifts.day,
@@ -374,6 +374,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             const shifts = getShiftsForDate(date);
             const isWorking = shifts.day === matrixShift.toUpperCase() || shifts.night === matrixShift.toUpperCase();
             
+            // Verifica se oggi è il giorno "smontante" per il turno selezionato
+            const isSmontante = shifts.smontante === matrixShift.toUpperCase();
+            
             const rcGroup = getRestingSubGroup(matrixShift, date);
 
             return {
@@ -381,6 +384,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 dayNum: i + 1,
                 shifts,
                 isWorking,
+                isSmontante,
                 rcGroup
             };
         });
@@ -413,6 +417,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             let leaveCount = 0;
             
             matrixData.days.forEach(day => {
+                // SKIP SMONTANTE DAYS from count
+                if (day.isSmontante) return;
+
                 const tillId = `T${matrixShift.toUpperCase()}`;
                 const dateStr = `${day.date.getFullYear()}-${String(day.date.getMonth() + 1).padStart(2, '0')}-${String(day.date.getDate()).padStart(2, '0')}`;
                 const record = attendanceRecords.find(r => r.date === dateStr && r.tillId === tillId);
@@ -715,15 +722,19 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                             const isShiftActiveDay = day.shifts.day === matrixShift.toUpperCase() || day.shifts.night === matrixShift.toUpperCase();
                                             const isLastRow = personIndex === matrixData.shiftStaff.length - 1;
 
+                                            // FORZA VISUALIZZAZIONE VUOTA SE È IL GIORNO SMONTANTE
+                                            // (I dati esistono, ma non vengono mostrati per evitare doppi conteggi visivi)
+                                            const effectiveStatus = day.isSmontante ? null : status;
+
                                             return (
                                                 <td 
                                                     key={`${person.id}-${day.dayNum}`} 
                                                     className={`
                                                         text-center border-r border-slate-200 transition-colors relative
                                                         ${day.isWorking ? 'bg-orange-50/30' : ''}
-                                                        ${status ? 'bg-white' : 'hover:bg-slate-100'}
+                                                        ${effectiveStatus ? 'bg-white' : 'hover:bg-slate-100'}
                                                         ${readOnly ? 'cursor-default' : 'cursor-pointer'}
-                                                        ${isJumpDay && !status ? 'bg-slate-200/50' : ''}
+                                                        ${isJumpDay && !effectiveStatus ? 'bg-slate-200/50' : ''}
                                                         ${isToday 
                                                             ? `!border-l-2 !border-r-2 !border-red-500 bg-red-50/10 z-20 !border-b-0 shadow-[inset_0_0_10px_rgba(220,38,38,0.05)] ${isLastRow ? '!border-b-2 rounded-b-2xl shadow-[0_5px_10px_-5px_rgba(220,38,38,0.2)]' : ''} print:border-slate-200 print:bg-transparent print:shadow-none` 
                                                             : 'border-b'}
@@ -731,22 +742,22 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                                     onClick={() => handleOpenEdit(dateStr, tillId, record)}
                                                     title={`${day.dayNum}/${currentDate.getMonth()+1} - ${person.name}`}
                                                 >
-                                                    {(isJumpDay && !status && isShiftActiveDay) ? (
+                                                    {(isJumpDay && !effectiveStatus && isShiftActiveDay) ? (
                                                         <div className="absolute inset-0 flex items-center justify-center p-1 opacity-60">
                                                             <div className="w-full h-full flex items-center justify-center rounded font-bold text-[9px] bg-slate-300 text-slate-600 border border-slate-400">
                                                                 {matrixShift.toUpperCase()}{person.rcSubGroup}
                                                             </div>
                                                         </div>
-                                                    ) : status && (
+                                                    ) : effectiveStatus && (
                                                         <div className="absolute inset-0 flex items-center justify-center p-1">
                                                             <div 
                                                                 className={`
                                                                     w-full h-full flex flex-col items-center justify-center rounded font-bold text-[10px] uppercase shadow-sm border overflow-hidden
-                                                                    ${STATUS_CONFIG[status].color} ${STATUS_CONFIG[status].textColor}
+                                                                    ${STATUS_CONFIG[effectiveStatus].color} ${STATUS_CONFIG[effectiveStatus].textColor}
                                                                     ${record?.closedAt ? 'ring-1 ring-black/10' : ''}
                                                                 `}
                                                             >
-                                                                <span>{STATUS_CONFIG[status].short}</span>
+                                                                <span>{STATUS_CONFIG[effectiveStatus].short}</span>
                                                                 {customName && <span className="text-[6px] leading-tight truncate w-full px-0.5 lowercase capitalize">{customName.split(' ')[0]}</span>}
                                                             </div>
                                                         </div>
@@ -775,3 +786,4 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 };
 
 export default AttendanceCalendar;
+    
