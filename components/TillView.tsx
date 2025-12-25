@@ -39,18 +39,17 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
     const [presentStaffIds, setPresentStaffIds] = useState<string[]>([]);
     
     // --- CALCOLO DATA OPERATIVA PER LE PRESENZE ---
-    // Logica Aggiornata:
-    // 1. Identifichiamo qual è il turno "Notte" che copre la notte tra Ieri e Oggi.
-    //    (Basato sull'ancora 20 Dic 2025 = B di Giorno, Rotazione A->B->C->D).
-    // 2. Se la cassa attuale corrisponde a quel turno Notte, E siamo tra le 00:00 e le 11:00 (8:00 fine turno + 3h tolleranza),
-    //    allora la data di riferimento è IERI.
-    // 3. In tutti gli altri casi (Turno Giorno, o Turno Notte dopo le 20:00), la data è OGGI.
+    // Logica Aggiornata per SMONTANTE:
+    // 1. Calcoliamo il turno di GIORNO effettivo di OGGI (08:00 - 20:00).
+    // 2. Il turno SMONTANTE (che ha fatto la notte ieri 20:00 -> oggi 08:00) è 2 posizioni indietro nel ciclo A->B->C->D.
+    //    Esempio: Se oggi è 25/12 (Turno C di Giorno), allora il turno Smontante stamattina è A.
+    // 3. Se sto aprendo la cassa del turno Smontante E sono prima delle 11:00, la data è IERI.
     const operativeDateStr = useMemo(() => {
         const now = getNow();
         const currentHour = now.getHours();
         
         // Calcolo turno Giorno di OGGI per riferimento
-        const anchorDate = new Date(2025, 11, 20, 12, 0, 0); // 20 Dic 2025
+        const anchorDate = new Date(2025, 11, 20, 12, 0, 0); // 20 Dic 2025 = B
         const anchorShift = 'b';
         
         const todayNoTime = new Date(now);
@@ -62,18 +61,21 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift);
         
+        // Indice del turno che fa GIORNO oggi
         let dayShiftIndex = (anchorIndex + diffDays) % 4;
         if (dayShiftIndex < 0) dayShiftIndex += 4;
         
-        // Il turno Notte "di oggi" (quello che smonta stamattina) è il precedente al turno Giorno
-        let nightShiftIndex = (dayShiftIndex - 1 + 4) % 4;
-        const nightShiftCode = shifts[nightShiftIndex]; // 'a', 'b', 'c', o 'd'
+        // Indice del turno SMONTANTE (quello che ha finito la notte stamattina alle 8)
+        // Se la rotazione è Giorno A -> Notte A -> Giorno B -> Notte B...
+        // Allora la notte di ieri (che smonta oggi) corrisponde a (GiornoOggi - 2).
+        let smontanteShiftIndex = (dayShiftIndex - 2 + 4) % 4;
+        const smontanteShiftCode = shifts[smontanteShiftIndex]; // 'a', 'b', 'c', o 'd'
 
-        const isNightShiftTill = till.shift.toLowerCase() === nightShiftCode;
+        const isSmontanteTill = till.shift.toLowerCase() === smontanteShiftCode;
 
         // Estensione validità: Dalle 00:00 alle 11:00 (8:00 fine turno + 3h tolleranza)
-        // Se sto guardando la cassa della Notte in questa fascia oraria, mi riferisco a IERI.
-        if (isNightShiftTill && currentHour < 11) {
+        // Se sto guardando la cassa del turno Smontante, mi riferisco a IERI.
+        if (isSmontanteTill && currentHour < 11) {
              const yesterday = new Date(now);
              yesterday.setDate(yesterday.getDate() - 1);
              return yesterday.toISOString().split('T')[0];
