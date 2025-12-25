@@ -39,18 +39,49 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
     const [presentStaffIds, setPresentStaffIds] = useState<string[]>([]);
     
     // --- CALCOLO DATA OPERATIVA PER LE PRESENZE ---
-    // Se siamo tra le 00:00 e le 08:00 (Turno Smontante), la presenza valida è quella registrata il GIORNO PRIMA (la sera del montante).
-    // Altrimenti (dalle 08:00 alle 23:59), la presenza è quella di OGGI.
+    // Logica Aggiornata:
+    // 1. Identifichiamo qual è il turno "Notte" che copre la notte tra Ieri e Oggi.
+    //    (Basato sull'ancora 20 Dic 2025 = B di Giorno, Rotazione A->B->C->D).
+    // 2. Se la cassa attuale corrisponde a quel turno Notte, E siamo tra le 00:00 e le 11:00 (8:00 fine turno + 3h tolleranza),
+    //    allora la data di riferimento è IERI.
+    // 3. In tutti gli altri casi (Turno Giorno, o Turno Notte dopo le 20:00), la data è OGGI.
     const operativeDateStr = useMemo(() => {
         const now = getNow();
         const currentHour = now.getHours();
         
-        const operativeDate = new Date(now);
-        if (currentHour < 8) {
-            operativeDate.setDate(operativeDate.getDate() - 1);
+        // Calcolo turno Giorno di OGGI per riferimento
+        const anchorDate = new Date(2025, 11, 20, 12, 0, 0); // 20 Dic 2025
+        const anchorShift = 'b';
+        
+        const todayNoTime = new Date(now);
+        todayNoTime.setHours(12, 0, 0, 0);
+        
+        const diffTime = todayNoTime.getTime() - anchorDate.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        
+        const shifts = ['a', 'b', 'c', 'd'];
+        const anchorIndex = shifts.indexOf(anchorShift);
+        
+        let dayShiftIndex = (anchorIndex + diffDays) % 4;
+        if (dayShiftIndex < 0) dayShiftIndex += 4;
+        
+        // Il turno Notte "di oggi" (quello che smonta stamattina) è il precedente al turno Giorno
+        let nightShiftIndex = (dayShiftIndex - 1 + 4) % 4;
+        const nightShiftCode = shifts[nightShiftIndex]; // 'a', 'b', 'c', o 'd'
+
+        const isNightShiftTill = till.shift.toLowerCase() === nightShiftCode;
+
+        // Estensione validità: Dalle 00:00 alle 11:00 (8:00 fine turno + 3h tolleranza)
+        // Se sto guardando la cassa della Notte in questa fascia oraria, mi riferisco a IERI.
+        if (isNightShiftTill && currentHour < 11) {
+             const yesterday = new Date(now);
+             yesterday.setDate(yesterday.getDate() - 1);
+             return yesterday.toISOString().split('T')[0];
         }
-        return operativeDate.toISOString().split('T')[0];
-    }, [getNow]);
+
+        // Altrimenti OGGI
+        return now.toISOString().split('T')[0];
+    }, [getNow, till.shift]);
 
     const existingAttendanceRecord = useMemo(() => 
         attendanceRecords?.find(r => r.date === operativeDateStr && r.tillId === till.id),
