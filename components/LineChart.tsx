@@ -52,7 +52,12 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
         return longest.data.map(d => d.label);
     }, [normalizedDatasets]);
 
-    const getX = (index: number, totalPoints: number) => paddingLeft + (index / (totalPoints - 1)) * chartWidth;
+    // Safety fix: If only 1 point, center it. If 0 points, doesn't matter (loop won't run).
+    const getX = (index: number, totalPoints: number) => {
+        if (totalPoints <= 1) return paddingLeft + chartWidth / 2;
+        return paddingLeft + (index / (totalPoints - 1)) * chartWidth;
+    };
+    
     const getY = (value: number) => height - paddingBottom - ((value / maxValue) * chartHeight);
 
     const getSmoothPath = (points: {x:number, y:number}[]) => {
@@ -143,7 +148,7 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
                 {/* Datasets */}
                 {normalizedDatasets.map((ds, dsIndex) => {
                     const points = ds.data.map((d, i) => ({ 
-                        x: getX(i, labels.length || ds.data.length), 
+                        x: getX(i, ds.data.length), 
                         y: getY(d.value), 
                         val: d.value,
                         label: d.label
@@ -155,40 +160,42 @@ const LineChart: React.FC<LineChartProps> = ({ data, datasets, height = 300, col
                     return (
                         <g key={ds.label}>
                             {/* The Line with Glow */}
-                            <path 
-                                d={pathD} 
-                                fill="none" 
-                                stroke={ds.color} 
-                                strokeWidth="3" 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round"
-                                strokeDasharray={pathLength}
-                                strokeDashoffset={pathLength * (1 - drawProgress)}
-                                style={{ transition: 'stroke-dashoffset 1.5s ease-out' }}
-                                filter="url(#glow)" 
-                            />
+                            {points.length > 1 && (
+                                <path 
+                                    d={pathD} 
+                                    fill="none" 
+                                    stroke={ds.color} 
+                                    strokeWidth="3" 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round"
+                                    strokeDasharray={pathLength}
+                                    strokeDashoffset={pathLength * (1 - drawProgress)}
+                                    style={{ transition: 'stroke-dashoffset 1.5s ease-out' }}
+                                    filter="url(#glow)" 
+                                />
+                            )}
 
-                            {/* Data Points (Invisible but Interactable) */}
+                            {/* Data Points (Invisible but Interactable) - Render also single points */}
                             {points.map((p, i) => (
                                 <g key={i} className="group">
-                                    {/* Cerchio invisibile (opacity 0) ma presente per il tooltip */}
+                                    {/* Visible Dot if single point or hover */}
                                     <circle 
                                         cx={p.x} 
                                         cy={p.y} 
-                                        r="6" 
-                                        fill="transparent" 
+                                        r={points.length === 1 ? "4" : "6"} 
+                                        fill={points.length === 1 ? ds.color : "transparent"} 
                                         stroke="none" 
                                         className="cursor-pointer"
                                     />
                                     
                                     {/* Tooltip on Hover */}
                                     <g className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-                                        <rect x={p.x - 30} y={p.y - 45} width="60" height="35" rx="4" fill="rgba(255,255,255,0.95)" stroke="#e2e8f0" strokeWidth="1" className="shadow-lg" />
-                                        <text x={p.x} y={p.y - 30} textAnchor="middle" fill="#1e293b" fontSize="10" fontWeight="bold">
-                                            {ds.label}
+                                        <rect x={p.x - 40} y={p.y - 50} width="80" height="40" rx="4" fill="rgba(255,255,255,0.95)" stroke="#e2e8f0" strokeWidth="1" className="shadow-lg" />
+                                        <text x={p.x} y={p.y - 35} textAnchor="middle" fill="#64748b" fontSize="9" fontWeight="bold">
+                                            {p.label}
                                         </text>
-                                        <text x={p.x} y={p.y - 18} textAnchor="middle" fill={ds.color} fontSize="11" fontWeight="black">
-                                            {p.val.toFixed(0)}
+                                        <text x={p.x} y={p.y - 20} textAnchor="middle" fill={ds.color} fontSize="12" fontWeight="black">
+                                            €{p.val.toFixed(2)}
                                         </text>
                                     </g>
                                 </g>

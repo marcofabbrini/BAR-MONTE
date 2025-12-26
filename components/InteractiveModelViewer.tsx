@@ -9,31 +9,6 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { BackArrowIcon } from './Icons';
 import * as THREE from 'three';
 
-// Fix for TypeScript errors regarding Three.js elements in JSX
-declare global {
-    namespace JSX {
-        interface IntrinsicElements {
-            mesh: any;
-            group: any;
-            meshStandardMaterial: any;
-            meshBasicMaterial: any;
-            sphereGeometry: any;
-        }
-    }
-    // Augment React.JSX namespace which is often used in newer TS/React versions
-    namespace React {
-        namespace JSX {
-            interface IntrinsicElements {
-                mesh: any;
-                group: any;
-                meshStandardMaterial: any;
-                meshBasicMaterial: any;
-                sphereGeometry: any;
-            }
-        }
-    }
-}
-
 // --- TIPI ---
 interface Zone {
     id: string;

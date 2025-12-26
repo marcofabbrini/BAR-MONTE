@@ -138,7 +138,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             data: sortedDates.map(d => ({ 
                 label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
                 value: dailyData[d][shift as 'A'|'B'|'C'|'D'] 
-            })),
+            })).filter(p => p.value > 0), // Filter out zero values
             color: colors[shift as keyof typeof colors]
         }));
 
@@ -169,7 +169,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             data: sortedDates.map(d => ({ 
                 label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
                 value: dailyTotals[d][shift as 'A'|'B'|'C'|'D'] 
-            })),
+            })).filter(p => p.value > 0), // Filter out zero values to show only active days
             color: colors[shift as keyof typeof colors]
         }));
 
@@ -193,7 +193,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             data: sortedDates.map(d => ({
                 label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}),
                 value: dailyTotals[d]
-            })),
+            })).filter(p => p.value > 0), // Filter out zero values
             color: '#f59e0b' // Amber/Gold
         }];
     }, [activeOrders]);
@@ -400,7 +400,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                         <DropletIcon className="h-6 w-6 text-blue-500"/>
                         <div>
                             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Trend Quote Acqua</h3>
-                            <p className="text-[10px] text-slate-400">Valore economico presenze</p>
+                            <p className="text-[10px] text-slate-400">Valore economico presenze (solo giorni attivi)</p>
                         </div>
                     </div>
                     <ChartFilterButtons 
@@ -425,7 +425,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                         <ChartBarIcon className="h-6 w-6 text-orange-500"/>
                         <div>
                             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Trend Incassi Turni</h3>
-                            <p className="text-[10px] text-slate-400">Andamento vendite per squadra</p>
+                            <p className="text-[10px] text-slate-400">Andamento vendite per squadra (solo giorni attivi)</p>
                         </div>
                     </div>
                     <ChartFilterButtons 
@@ -449,7 +449,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                     <BanknoteIcon className="h-6 w-6 text-yellow-500"/>
                     <div>
                         <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Trend Incasso Complessivo</h3>
-                        <p className="text-[10px] text-slate-400">Totale entrate bar giornaliere</p>
+                        <p className="text-[10px] text-slate-400">Totale entrate bar (giorni attivi)</p>
                     </div>
                 </div>
                 <div className="h-[300px] w-full">
@@ -487,4 +487,3 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
 };
 
 export default StatisticsView;
-    
