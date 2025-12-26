@@ -50,6 +50,7 @@ export const CalendarIcon = (props: IconProps) => <EmojiIcon emoji="📅" {...pr
 export const GamepadIcon = (props: IconProps) => <EmojiIcon emoji="🎮" {...props} />;
 export const UsersIcon = (props: IconProps) => <EmojiIcon emoji="👥" {...props} />;
 export const TruckIcon = (props: IconProps) => <EmojiIcon emoji="🚒" {...props} />;
+export const CarIcon = (props: IconProps) => <EmojiIcon emoji="🚗" {...props} />;
 export const DropletIcon = (props: IconProps) => <EmojiIcon emoji="💧" {...props} />;
 export const LayersIcon = (props: IconProps) => <EmojiIcon emoji="📚" {...props} />;
 export const CloverIcon = (props: IconProps) => <EmojiIcon emoji="🍀" {...props} />;

@@ -440,8 +440,8 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         onClick={onSelectFleet}
                         className="w-full bg-red-600 hover:bg-red-700 text-white rounded-2xl shadow-lg hover:shadow-red-500/30 p-4 flex items-center justify-center gap-4 transition-all duration-300 group transform active:scale-95"
                     >
-                        <span className="text-3xl group-hover:scale-110 transition-transform drop-shadow-md">🚒</span>
-                        <span className="font-black text-sm md:text-lg uppercase tracking-widest text-shadow-sm">Prenotazione Automezzi</span>
+                        <span className="text-3xl group-hover:scale-110 transition-transform drop-shadow-md">🚗</span>
+                        <span className="font-black text-sm md:text-lg uppercase tracking-widest text-shadow-sm">Automezzi</span>
                     </button>
                 </div>
             </div>

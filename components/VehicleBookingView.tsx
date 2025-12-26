@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Vehicle, VehicleBooking, StaffMember, Shift } from '../types';
-import { BackArrowIcon, TruckIcon, CalendarIcon, CheckIcon, TrashIcon, FilterIcon, SortIcon, PrinterIcon } from './Icons';
+import { BackArrowIcon, CalendarIcon, CheckIcon, TrashIcon, FilterIcon, SortIcon, PrinterIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 
 interface VehicleBookingViewProps {
@@ -177,8 +177,8 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                 </button>
                 
                 <h1 className="text-xl md:text-3xl font-black uppercase tracking-widest flex items-center gap-3 drop-shadow-md transform translate-y-0.5">
-                    <span className="text-3xl md:text-5xl filter drop-shadow-sm">🚒</span> 
-                    <span>Autoparco</span>
+                    <span className="text-3xl md:text-5xl filter drop-shadow-sm">🚗</span> 
+                    <span>Automezzi</span>
                 </h1>
                 
                 <div className="w-12 md:w-24"></div> 
