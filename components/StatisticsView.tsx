@@ -22,7 +22,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     const { setStartDate, setEndDate, setSelectedShift, setSelectedStaffId, setSelectedProductId } = onSetFilters;
 
     // LOCAL STATES FOR CHART FILTERS (Multi-select)
-    // Removed waterChartFilter state
     const [shiftRevenueFilter, setShiftRevenueFilter] = useState<string[]>(['A', 'B', 'C', 'D']);
 
     const activeOrders = useMemo(() => filteredOrders.filter(o => !o.isDeleted), [filteredOrders]);
@@ -44,6 +43,16 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         
         if (newFilters.length === 0) newFilters = ['A', 'B', 'C', 'D']; // Fallback a tutti se vuoto
         setFilters(newFilters);
+    };
+
+    // Helper per calcolare la Data Operativa (Turno Notturno accorpato al giorno di inizio)
+    // Se un ordine è fatto tra le 00:00 e le 08:00, conta come il giorno prima.
+    const getOperationalDate = (timestamp: string) => {
+        const d = new Date(timestamp);
+        if (d.getHours() < 8) {
+            d.setDate(d.getDate() - 1);
+        }
+        return d.toISOString().split('T')[0];
     };
 
     // CALCOLO RIEPILOGO QUOTE ACQUA (FILTERED) - Mantenuto solo per il box KPI in alto
@@ -95,14 +104,14 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         return { totalCount, totalValue: totalCount * unitPrice };
     }, [attendanceRecords, generalSettings, startDate, endDate, selectedShift, selectedStaffId]);
 
-    // REMOVED: waterTrendData calculation
-
     // 1. DATA FOR SHIFT REVENUE CHART (Renamed logic order)
     const shiftRevenueData = useMemo(() => {
         const dailyTotals: Record<string, {A: number, B: number, C: number, D: number}> = {};
         
         activeOrders.forEach(o => {
-            const dateKey = new Date(o.timestamp).toISOString().split('T')[0];
+            // USIAMO LA DATA OPERATIVA (Accorpa turno notturno)
+            const dateKey = getOperationalDate(o.timestamp);
+            
             if (!dailyTotals[dateKey]) dailyTotals[dateKey] = { A: 0, B: 0, C: 0, D: 0 };
             
             const member = allStaff.find(s => s.id === o.staffId);
@@ -120,7 +129,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             data: sortedDates.map(d => ({ 
                 label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
                 value: dailyTotals[d][shift as 'A'|'B'|'C'|'D'] 
-            })).filter(p => p.value > 0.01), // STRICT FILTER: Rimuove i punti a zero (riposi)
+            })).filter(p => p.value > 0.01), // STRICT FILTER: Rimuove i punti a zero
             color: colors[shift as keyof typeof colors]
         }));
 
@@ -133,7 +142,8 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     const totalRevenueTrend = useMemo(() => {
         const dailyTotals: Record<string, number> = {};
         activeOrders.forEach(o => {
-            const dateKey = new Date(o.timestamp).toISOString().split('T')[0];
+            // USIAMO LA DATA OPERATIVA (Accorpa turno notturno)
+            const dateKey = getOperationalDate(o.timestamp);
             dailyTotals[dateKey] = (dailyTotals[dateKey] || 0) + o.total;
         });
 
@@ -144,7 +154,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             data: sortedDates.map(d => ({
                 label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}),
                 value: dailyTotals[d]
-            })).filter(p => p.value > 0.01), // STRICT FILTER: Rimuove i punti a zero (riposi/chiusura)
+            })).filter(p => p.value > 0.01), // STRICT FILTER: Rimuove i punti a zero
             color: '#f59e0b' // Amber/Gold
         }];
     }, [activeOrders]);
@@ -351,7 +361,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                         <ChartBarIcon className="h-6 w-6 text-orange-500"/>
                         <div>
                             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Trend Incassi Turni</h3>
-                            <p className="text-[10px] text-slate-400">Andamento vendite per squadra (giorni di riposo nascosti)</p>
+                            <p className="text-[10px] text-slate-400">Andamento vendite per squadra (giorni di riposo nascosti, turni notturni accorpati)</p>
                         </div>
                     </div>
                     <ChartFilterButtons 
@@ -375,7 +385,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                     <BanknoteIcon className="h-6 w-6 text-yellow-500"/>
                     <div>
                         <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Trend Incasso Complessivo</h3>
-                        <p className="text-[10px] text-slate-400">Totale entrate bar (giorni attivi)</p>
+                        <p className="text-[10px] text-slate-400">Totale entrate bar (giorni attivi, turni notturni accorpati)</p>
                     </div>
                 </div>
                 <div className="h-[300px] w-full">
