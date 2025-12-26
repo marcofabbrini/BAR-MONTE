@@ -1,7 +1,7 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig } from '../types';
-import { BellIcon } from './Icons';
+import { BellIcon, TruckIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 
 interface TillSelectionProps {
@@ -12,6 +12,7 @@ interface TillSelectionProps {
     onSelectGames: () => void;
     onSelectCalendar: () => void;
     onSelectAttendance: () => void;
+    onSelectFleet: () => void; // New Prop
     tillColors: TillColors;
     seasonalityConfig?: SeasonalityConfig;
     shiftSettings?: ShiftSettings;
@@ -26,7 +27,7 @@ interface WeatherData {
     weathercode: number;
 }
 
-const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification }) => {
+const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification }) => {
     
     // Context for Reliable Time
     const { getNow } = useBar();
@@ -430,6 +431,17 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             🎮
                         </div>
                         <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-amber-600 transition-colors">Extra Hub</span>
+                    </button>
+                </div>
+
+                {/* NEW VEHICLE RESERVATION BUTTON - SEPARATED */}
+                <div className="w-full md:w-3/4 lg:w-2/3 px-4 mt-6 pt-6 border-t border-slate-200">
+                    <button 
+                        onClick={onSelectFleet}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white rounded-2xl shadow-lg hover:shadow-red-500/30 p-4 flex items-center justify-center gap-4 transition-all duration-300 group transform active:scale-95"
+                    >
+                        <span className="text-3xl group-hover:scale-110 transition-transform drop-shadow-md">🚒</span>
+                        <span className="font-black text-sm md:text-lg uppercase tracking-widest text-shadow-sm">Prenotazione Automezzi</span>
                     </button>
                 </div>
             </div>

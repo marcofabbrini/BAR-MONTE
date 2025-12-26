@@ -14,13 +14,14 @@ import DiceGame from './components/DiceGame';
 import ShiftCalendar from './components/ShiftCalendar';
 import AttendanceCalendar from './components/AttendanceCalendar';
 import InteractiveModelViewer from './components/InteractiveModelViewer';
+import VehicleBookingView from './components/VehicleBookingView';
 import { TILLS } from './constants';
 import { BellIcon } from './components/Icons';
 import { AnalottoProvider, useAnalotto } from './contexts/AnalottoContext';
 import { TombolaProvider, useTombola } from './contexts/TombolaContext';
 import { BarProvider, useBar } from './contexts/BarContext';
 
-type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice' | 'attendance_view' | '3d_viewer';
+type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice' | 'attendance_view' | '3d_viewer' | 'vehicle_booking';
 
 const AppContent: React.FC = () => {
     const [view, setView] = useState<View>('selection');
@@ -35,7 +36,8 @@ const AppContent: React.FC = () => {
         products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
         addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
         addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
-        addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete
+        addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
+        vehicles, vehicleBookings, addBooking, deleteBooking
     } = useBar();
 
     const { 
@@ -152,6 +154,15 @@ const AppContent: React.FC = () => {
                 onReopenAttendance={isSuperAdmin ? reopenAttendance : undefined}
                 onDeleteRecord={isSuperAdmin ? deleteAttendance : undefined}
             />;
+            case 'vehicle_booking': return <VehicleBookingView 
+                onGoBack={() => setView('selection')}
+                vehicles={vehicles}
+                bookings={vehicleBookings}
+                staff={staff}
+                onAddBooking={addBooking}
+                onDeleteBooking={deleteBooking}
+                isSuperAdmin={isSuperAdmin}
+            />;
             case 'admin': return <AdminView 
                 onGoBack={() => setView('selection')} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements}
                 onUpdateTillColors={updateTillColors} onDeleteOrders={(ids, em) => deleteOrders(ids, em)} onPermanentDeleteOrder={permanentDeleteOrder} onUpdateOrder={updateOrder}
@@ -168,7 +179,23 @@ const AppContent: React.FC = () => {
                 generalSettings={generalSettings} onUpdateGeneralSettings={updateGeneralSettings}
                 onSendNotification={(t,b,tg) => sendNotification(t, b, currentUser?.email || 'Sistema')}
             />;
-            case 'selection': default: return <TillSelection tills={TILLS} onSelectTill={(id) => { setSelectedTillId(id); setView('till'); }} onSelectReports={() => setView('reports')} onSelectAdmin={() => setView('admin')} onSelectGames={() => setView('games')} onSelectCalendar={() => setView('calendar')} onSelectAttendance={() => setView('attendance_view')} tillColors={tillColors} seasonalityConfig={seasonalityConfig} shiftSettings={shiftSettings} tombolaConfig={tombolaConfig} isSuperAdmin={isSuperAdmin} notificationPermission={notificationPermission} onRequestNotification={requestNotificationPermission} />;
+            case 'selection': default: return <TillSelection 
+                tills={TILLS} 
+                onSelectTill={(id) => { setSelectedTillId(id); setView('till'); }} 
+                onSelectReports={() => setView('reports')} 
+                onSelectAdmin={() => setView('admin')} 
+                onSelectGames={() => setView('games')} 
+                onSelectCalendar={() => setView('calendar')} 
+                onSelectAttendance={() => setView('attendance_view')} 
+                onSelectFleet={() => setView('vehicle_booking')}
+                tillColors={tillColors} 
+                seasonalityConfig={seasonalityConfig} 
+                shiftSettings={shiftSettings} 
+                tombolaConfig={tombolaConfig} 
+                isSuperAdmin={isSuperAdmin} 
+                notificationPermission={notificationPermission} 
+                onRequestNotification={requestNotificationPermission} 
+            />;
         }
     };
 

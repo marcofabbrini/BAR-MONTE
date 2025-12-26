@@ -1,7 +1,8 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking } from '../types';
 import { BarService } from '../services/barService';
+import { VehicleService } from '../services/vehicleService';
 
 interface BarContextType {
     products: Product[];
@@ -14,6 +15,11 @@ interface BarContextType {
     shiftSettings: ShiftSettings;
     generalSettings: GeneralSettings;
     attendanceRecords: AttendanceRecord[];
+    
+    // Vehicles
+    vehicles: Vehicle[];
+    vehicleBookings: VehicleBooking[];
+
     activeToast: AppNotification | null;
     isLoading: boolean;
     setActiveToast: (n: AppNotification | null) => void;
@@ -46,6 +52,13 @@ interface BarContextType {
     sendNotification: (title: string, body: string, sender: string) => Promise<void>;
     massDelete: (d: string, t: 'orders'|'movements') => Promise<void>;
     
+    // Vehicle Actions
+    addVehicle: (v: Omit<Vehicle, 'id'>) => Promise<void>;
+    updateVehicle: (v: Vehicle) => Promise<void>;
+    deleteVehicle: (id: string) => Promise<void>;
+    addBooking: (b: Omit<VehicleBooking, 'id' | 'timestamp'>) => Promise<void>;
+    deleteBooking: (id: string) => Promise<void>;
+
     // Time Sync
     getNow: () => Date;
 }
@@ -63,6 +76,9 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [shiftSettings, setShiftSettings] = useState<ShiftSettings>({ anchorDate: '', anchorShift: 'b' });
     const [generalSettings, setGeneralSettings] = useState<GeneralSettings>({ waterQuotaPrice: 0 });
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [vehicleBookings, setVehicleBookings] = useState<VehicleBooking[]>([]);
+
     const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     
@@ -110,6 +126,8 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             BarService.subscribeToShiftSettings(setShiftSettings),
             BarService.subscribeToGeneralSettings(setGeneralSettings),
             BarService.subscribeToAttendance(setAttendanceRecords),
+            VehicleService.subscribeToVehicles(setVehicles),
+            VehicleService.subscribeToBookings(setVehicleBookings),
             BarService.subscribeToNotifications((n) => {
                 if (n) {
                     setActiveToast(n);
@@ -160,12 +178,21 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const sendNotification = (t: string, b: string, s: string) => BarService.sendNotification(t, b, s);
     const massDelete = (d: string, t: 'orders'|'movements') => BarService.massDelete(d, t);
 
+    // Vehicle Functions
+    const addVehicle = (v: Omit<Vehicle, 'id'>) => VehicleService.addVehicle(v);
+    const updateVehicle = (v: Vehicle) => VehicleService.updateVehicle(v);
+    const deleteVehicle = (id: string) => VehicleService.deleteVehicle(id);
+    const addBooking = (b: Omit<VehicleBooking, 'id' | 'timestamp'>) => VehicleService.addBooking(b);
+    const deleteBooking = (id: string) => VehicleService.deleteBooking(id);
+
     return (
         <BarContext.Provider value={{
             products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
+            vehicles, vehicleBookings,
             addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
             addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
             addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
+            addVehicle, updateVehicle, deleteVehicle, addBooking, deleteBooking,
             getNow
         }}>
             {children}

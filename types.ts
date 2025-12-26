@@ -129,6 +129,37 @@ export interface AnalottoExtraction {
 }
 // ====================
 
+// === GESTIONE AUTOPARCO ===
+export interface Vehicle {
+    id: string;
+    plate: string;
+    model: string;
+    fuelType: 'diesel' | 'benzina' | 'elettrica' | 'ibrida';
+    photoUrl?: string;
+}
+
+export interface VehicleBooking {
+    id: string;
+    vehicleId: string;
+    vehicleName: string; // Denormalized for easier display
+    startDate: string; // ISO String
+    endDate: string;   // ISO String
+    
+    // Requester Info
+    requesterType: 'internal' | 'external';
+    internalStaffId?: string;
+    requesterName: string; // Nome completo per visualizzazione rapida
+    
+    // External specifics
+    externalGrade?: string;
+    externalLocation?: string;
+
+    serviceType: 'Sostituzione personale' | 'Missione' | 'Servizio Comando' | 'Altro';
+    destination: string;
+    timestamp: string; // Booking creation time
+}
+// ==========================
+
 export interface SeasonalityConfig {
     startDate: string;
     endDate: string;
