@@ -67,11 +67,32 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
 
         const startDateTime = new Date(`${startDate}T${startTime}`).toISOString();
         const endDateTime = new Date(`${endDate}T${endTime}`).toISOString();
+        
+        const startTs = new Date(startDateTime).getTime();
+        const endTs = new Date(endDateTime).getTime();
 
-        if (endDateTime <= startDateTime) {
+        if (endTs <= startTs) {
             alert("La data di ritorno deve essere successiva alla partenza.");
             return;
         }
+
+        // --- VERIFICA SOVRAPPOSIZIONE (CONFLICT CHECK) ---
+        const hasOverlap = bookings.some(booking => {
+            if (booking.vehicleId !== selectedVehicle) return false; // Controllo solo lo stesso veicolo
+
+            const bStart = new Date(booking.startDate).getTime();
+            const bEnd = new Date(booking.endDate).getTime();
+
+            // Logica di sovrapposizione:
+            // (StartA < EndB) && (EndA > StartB)
+            return startTs < bEnd && endTs > bStart;
+        });
+
+        if (hasOverlap) {
+            alert("⚠️ Il mezzo selezionato è GIÀ IMPEGNATO in questo intervallo di tempo. Controlla il prospetto e scegli un altro orario o un altro mezzo.");
+            return;
+        }
+        // --------------------------------------------------
 
         let requesterName = '';
         if (isExternal) {
@@ -237,7 +258,11 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                                 className="w-full border rounded-lg p-3 text-sm bg-white font-medium focus:ring-2 focus:ring-red-200 outline-none"
                                             >
                                                 <option value="">-- Seleziona Personale ({filteredStaff.length}) --</option>
-                                                {filteredStaff.map(s => <option key={s.id} value={s.id}>{s.name} ({s.shift.toUpperCase()})</option>)}
+                                                {filteredStaff.map(s => (
+                                                    <option key={s.id} value={s.id}>
+                                                        {s.name}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
                                     ) : (
