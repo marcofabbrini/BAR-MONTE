@@ -22,7 +22,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     const { setStartDate, setEndDate, setSelectedShift, setSelectedStaffId, setSelectedProductId } = onSetFilters;
 
     // LOCAL STATES FOR CHART FILTERS (Multi-select)
-    const [waterChartFilter, setWaterChartFilter] = useState<string[]>(['A', 'B', 'C', 'D']);
+    // Removed waterChartFilter state
     const [shiftRevenueFilter, setShiftRevenueFilter] = useState<string[]>(['A', 'B', 'C', 'D']);
 
     const activeOrders = useMemo(() => filteredOrders.filter(o => !o.isDeleted), [filteredOrders]);
@@ -46,7 +46,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         setFilters(newFilters);
     };
 
-    // CALCOLO RIEPILOGO QUOTE ACQUA (FILTERED)
+    // CALCOLO RIEPILOGO QUOTE ACQUA (FILTERED) - Mantenuto solo per il box KPI in alto
     const waterSummary = useMemo(() => {
         if (!attendanceRecords) return { totalValue: 0, totalCount: 0 };
         const unitPrice = generalSettings?.waterQuotaPrice || 0;
@@ -64,10 +64,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             const shift = record.tillId.replace('T', '').toLowerCase();
             if (selectedShift !== 'all' && shift !== selectedShift) return;
 
-            // Loop su tutto lo staff + eventuali righe virtuali salvate
-            // (Simuliamo iterando sulle keys di attendanceDetails se esistono, o su allStaff)
-            // Siccome attendanceDetails contiene tutto ciò che è stato salvato (inclusi sub_1 ecc), usiamo quello.
-            
             const idsToCheck = record.attendanceDetails 
                 ? Object.keys(record.attendanceDetails) 
                 : record.presentStaffIds;
@@ -99,54 +95,9 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
         return { totalCount, totalValue: totalCount * unitPrice };
     }, [attendanceRecords, generalSettings, startDate, endDate, selectedShift, selectedStaffId]);
 
-    // 1. DATA FOR WATER QUOTA CHART
-    const waterTrendData = useMemo(() => {
-        const dailyData: Record<string, {A: number, B: number, C: number, D: number}> = {};
-        const price = generalSettings?.waterQuotaPrice || 0;
+    // REMOVED: waterTrendData calculation
 
-        if (attendanceRecords) {
-            attendanceRecords.forEach(record => {
-                const recDate = new Date(record.date).toISOString().split('T')[0];
-                const start = startDate ? new Date(startDate).toISOString().split('T')[0] : '0000-00-00';
-                const end = endDate ? new Date(endDate).toISOString().split('T')[0] : '9999-99-99';
-                if (recDate < start || recDate > end) return;
-
-                if (!dailyData[recDate]) dailyData[recDate] = { A: 0, B: 0, C: 0, D: 0 };
-                const shift = record.tillId.replace('T', '') as 'A'|'B'|'C'|'D';
-
-                // Check all entries in detail
-                if (record.attendanceDetails) {
-                    Object.values(record.attendanceDetails).forEach(status => {
-                        if (['present', 'substitution', 'sub1', 'sub2', 'sub3'].includes(status as string)) {
-                            dailyData[recDate][shift] += price;
-                        }
-                    });
-                } else {
-                    // Legacy
-                    record.presentStaffIds.forEach(id => {
-                        if(!id.toLowerCase().includes('cassa')) dailyData[recDate][shift] += price;
-                    });
-                }
-            });
-        }
-
-        const sortedDates = Object.keys(dailyData).sort();
-        const colors = { A: '#ef4444', B: '#3b82f6', C: '#22c55e', D: '#eab308' };
-
-        const allDatasets = ['A', 'B', 'C', 'D'].map(shift => ({
-            label: `Turno ${shift}`,
-            data: sortedDates.map(d => ({ 
-                label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
-                value: dailyData[d][shift as 'A'|'B'|'C'|'D'] 
-            })).filter(p => p.value > 0), // Filter out zero values
-            color: colors[shift as keyof typeof colors]
-        }));
-
-        return allDatasets.filter(ds => waterChartFilter.some(f => ds.label.includes(f)));
-    }, [attendanceRecords, generalSettings, startDate, endDate, waterChartFilter]);
-
-
-    // 2. DATA FOR SHIFT REVENUE CHART
+    // 1. DATA FOR SHIFT REVENUE CHART (Renamed logic order)
     const shiftRevenueData = useMemo(() => {
         const dailyTotals: Record<string, {A: number, B: number, C: number, D: number}> = {};
         
@@ -169,7 +120,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             data: sortedDates.map(d => ({ 
                 label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}), 
                 value: dailyTotals[d][shift as 'A'|'B'|'C'|'D'] 
-            })).filter(p => p.value > 0), // Filter out zero values to show only active days
+            })).filter(p => p.value > 0.01), // STRICT FILTER: Rimuove i punti a zero (riposi)
             color: colors[shift as keyof typeof colors]
         }));
 
@@ -178,7 +129,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
     }, [activeOrders, allStaff, shiftRevenueFilter]);
 
 
-    // 3. DATA FOR TOTAL REVENUE CHART
+    // 2. DATA FOR TOTAL REVENUE CHART
     const totalRevenueTrend = useMemo(() => {
         const dailyTotals: Record<string, number> = {};
         activeOrders.forEach(o => {
@@ -193,7 +144,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
             data: sortedDates.map(d => ({
                 label: new Date(d).toLocaleDateString('it-IT', {day:'2-digit', month:'2-digit'}),
                 value: dailyTotals[d]
-            })).filter(p => p.value > 0), // Filter out zero values
+            })).filter(p => p.value > 0.01), // STRICT FILTER: Rimuove i punti a zero (riposi/chiusura)
             color: '#f59e0b' // Amber/Gold
         }];
     }, [activeOrders]);
@@ -350,7 +301,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 </div>
             </div>
 
-            {/* TOP KPI: WATER QUOTA SUMMARY */}
+            {/* TOP KPI: WATER QUOTA SUMMARY (Informazione mantenuta, ma grafico rimosso) */}
             <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-md p-4 text-white flex flex-col md:flex-row justify-between items-center relative overflow-hidden">
                 <div className="relative z-10">
                     <h2 className="text-xs font-bold uppercase tracking-widest opacity-90 flex items-center gap-2 mb-1">
@@ -393,39 +344,14 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
 
             {/* --- GRAFICI DETTAGLIATI --- */}
 
-            {/* 1. ANDAMENTO QUOTE ACQUA */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                    <div className="flex items-center gap-2">
-                        <DropletIcon className="h-6 w-6 text-blue-500"/>
-                        <div>
-                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Trend Quote Acqua</h3>
-                            <p className="text-[10px] text-slate-400">Valore economico presenze (solo giorni attivi)</p>
-                        </div>
-                    </div>
-                    <ChartFilterButtons 
-                        current={waterChartFilter} 
-                        setFilter={(v) => toggleChartFilter(waterChartFilter, setWaterChartFilter, v)} 
-                    />
-                </div>
-                <div className="h-[300px] w-full">
-                    <LineChart 
-                        datasets={waterTrendData} 
-                        height={300} 
-                        yAxisLabel="Valore Quote (€)" 
-                        xAxisLabel="Giorno"
-                    />
-                </div>
-            </div>
-
-            {/* 2. ANDAMENTO INCASSI PER TURNO */}
+            {/* 1. ANDAMENTO INCASSI PER TURNO */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                     <div className="flex items-center gap-2">
                         <ChartBarIcon className="h-6 w-6 text-orange-500"/>
                         <div>
                             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">Trend Incassi Turni</h3>
-                            <p className="text-[10px] text-slate-400">Andamento vendite per squadra (solo giorni attivi)</p>
+                            <p className="text-[10px] text-slate-400">Andamento vendite per squadra (giorni di riposo nascosti)</p>
                         </div>
                     </div>
                     <ChartFilterButtons 
@@ -443,7 +369,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 </div>
             </div>
 
-            {/* 3. ANDAMENTO INCASSO COMPLESSIVO */}
+            {/* 2. ANDAMENTO INCASSO COMPLESSIVO */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                 <div className="flex items-center gap-2 mb-6">
                     <BanknoteIcon className="h-6 w-6 text-yellow-500"/>
