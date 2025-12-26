@@ -276,7 +276,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
                 <div className="text-center mb-8 md:mb-10">
                     <h1 className="flex flex-col items-center leading-none">
-                        <span className="text-3xl md:text-5xl lg:text-6xl font-black text-slate-800 tracking-tighter mb-2 drop-shadow-sm transition-all">BAR VVF</span>
+                        <span className="text-3xl md:text-5xl lg:text-6xl font-black text-slate-800 tracking-tighter mb-2 drop-shadow-sm transition-all">DISTACCAMENTO VVF</span>
                         <span className="text-xl md:text-3xl lg:text-4xl font-extrabold text-primary tracking-tight drop-shadow-sm transition-all">Montepulciano</span>
                     </h1>
                     
@@ -336,34 +336,42 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                         </button>
                                     )}
 
-                                    {/* PULSANTE TURNO ATTIVO */}
+                                    {/* PULSANTE TURNO ATTIVO (STILE COFFEE GLOW) */}
                                     <button 
                                         onClick={() => onSelectTill(till.id)} 
                                         className={`
                                             flex-grow relative bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-2 
-                                            border border-slate-100 flex flex-col items-center justify-center
-                                            transition-all duration-500 ease-out hover:shadow-2xl shadow-xl border-primary/20
+                                            border-2 border-amber-100 flex flex-col items-center justify-center
+                                            transition-all duration-500 ease-out hover:shadow-[0_0_25px_rgba(180,83,9,0.3)] shadow-xl
+                                            group overflow-hidden
                                         `}
                                     >
-                                        <span className="absolute top-4 right-4 bg-green-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full animate-pulse shadow-sm">
+                                        {/* Background Emoji Effect - COFFEE */}
+                                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                                            ☕
+                                        </div>
+
+                                        <span className="absolute top-4 right-4 bg-green-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full animate-pulse shadow-sm z-10">
                                             IN SERVIZIO
                                         </span>
                                         
-                                        <div 
-                                            className="rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110 w-20 h-20 md:w-32 md:h-32"
-                                            style={{ backgroundColor: bgColor }}
-                                        >
-                                            <span className="font-black text-white select-none text-4xl md:text-6xl">
-                                                {till.shift.toUpperCase()}
+                                        <div className="relative z-10 flex flex-col items-center">
+                                            <div 
+                                                className="rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110 w-20 h-20 md:w-32 md:h-32"
+                                                style={{ backgroundColor: bgColor }}
+                                            >
+                                                <span className="font-black text-white select-none text-4xl md:text-6xl">
+                                                    {till.shift.toUpperCase()}
+                                                </span>
+                                            </div>
+                                            <span className="font-bold text-slate-700 leading-tight bg-slate-50/80 px-3 py-1 rounded-lg text-xl md:text-2xl backdrop-blur-sm">
+                                                {till.name}
                                             </span>
                                         </div>
-                                        <span className="font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg text-xl md:text-2xl">
-                                            {till.name}
-                                        </span>
 
                                         {/* ACTIVE SHIFT COUNTDOWN */}
                                         {activeShiftTimeLeft > 0 && (
-                                            <span className="absolute bottom-3 right-4 text-[9px] md:text-[10px] font-sans font-extralight text-slate-600 tabular-nums opacity-90">
+                                            <span className="absolute bottom-3 right-4 text-[9px] md:text-[10px] font-sans font-extralight text-slate-600 tabular-nums opacity-90 z-10">
                                                 -{formatCountdown(activeShiftTimeLeft)}
                                             </span>
                                         )}
@@ -477,7 +485,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v3.9 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v4.0 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );

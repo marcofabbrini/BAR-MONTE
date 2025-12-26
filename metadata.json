@@ -1,5 +1,5 @@
 {
-  "name": "Distaccamento VVF Montepulciano",
+  "name": "BAR Montepulciano",
   "description": "Un'interfaccia web per la gestione di un bar con quattro casse. Permette di prendere ordini, calcolare i totali e salvare lo storico delle transazioni localmente nel browser per ogni cassa.",
   "requestFramePermissions": []
 }

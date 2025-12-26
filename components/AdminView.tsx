@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle } from '../types';
+import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef } from '../types';
 import { type User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -10,6 +10,7 @@ import CashManagement from './CashManagement';
 import GamesHub from './GamesHub';
 import ShiftCalendar from './ShiftCalendar';
 import VehicleManagement from './VehicleManagement';
+import LaundryManagement from './LaundryManagement';
 import { useBar } from '../contexts/BarContext';
 
 interface AdminViewProps {
@@ -67,7 +68,7 @@ interface AdminViewProps {
     onSendNotification?: (title: string, body: string, target?: string) => Promise<void>;
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet'; 
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet' | 'laundry'; 
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
@@ -84,8 +85,9 @@ const AdminView: React.FC<AdminViewProps> = ({
     generalSettings, onUpdateGeneralSettings,
     onSendNotification
 }) => {
-    // Access Vehicle context methods
+    // Access Context methods
     const { vehicles, addVehicle, updateVehicle, deleteVehicle } = useBar();
+    const { laundryItems, addLaundryItem, updateLaundryItem, deleteLaundryItem } = useBar();
 
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -305,7 +307,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                     </div>
                     
                     {/* GRIGLIA NAVIGAZIONE AGGIORNATA */}
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-9 gap-2 w-full overflow-x-auto">
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-10 gap-2 w-full overflow-x-auto">
                         <TabButton tab="movements" label="Movimenti" icon={<ListIcon />} />
                         <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon />} />
                         <TabButton tab="stock" label="Stock" icon={<BoxIcon />} />
@@ -314,6 +316,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="staff" label="Staff" icon={<StaffIcon />} />
                         <TabButton tab="admins" label="Admin" icon={<LockIcon />} />
                         <TabButton tab="fleet" label="Automezzi" icon={<CarIcon />} />
+                        <TabButton tab="laundry" label="Lavanderia" icon={<ShirtIcon />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon />} />
                     </div>
                 </div>
@@ -376,6 +379,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
                 {activeTab === 'calendar' && <ShiftCalendar onGoBack={() => {}} tillColors={tillColors} shiftSettings={shiftSettings} />} 
                 {activeTab === 'fleet' && <VehicleManagement vehicles={vehicles} onAddVehicle={addVehicle} onUpdateVehicle={updateVehicle} onDeleteVehicle={deleteVehicle} />}
+                {activeTab === 'laundry' && <LaundryManagement items={laundryItems} onAddItem={addLaundryItem} onUpdateItem={updateLaundryItem} onDeleteItem={deleteLaundryItem} />}
                 
                 {activeTab === 'settings' && (
                     <div className="space-y-4 max-w-4xl mx-auto">

@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef } from '../types';
 import { BarService } from '../services/barService';
 import { VehicleService } from '../services/vehicleService';
 
@@ -19,6 +19,9 @@ interface BarContextType {
     // Vehicles
     vehicles: Vehicle[];
     vehicleBookings: VehicleBooking[];
+
+    // Laundry
+    laundryItems: LaundryItemDef[];
 
     activeToast: AppNotification | null;
     isLoading: boolean;
@@ -59,6 +62,11 @@ interface BarContextType {
     addBooking: (b: Omit<VehicleBooking, 'id' | 'timestamp'>) => Promise<void>;
     deleteBooking: (id: string) => Promise<void>;
 
+    // Laundry Actions
+    addLaundryItem: (i: Omit<LaundryItemDef, 'id'>) => Promise<void>;
+    updateLaundryItem: (i: LaundryItemDef) => Promise<void>;
+    deleteLaundryItem: (id: string) => Promise<void>;
+
     // Time Sync
     getNow: () => Date;
 }
@@ -78,6 +86,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [vehicleBookings, setVehicleBookings] = useState<VehicleBooking[]>([]);
+    const [laundryItems, setLaundryItems] = useState<LaundryItemDef[]>([]);
 
     const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -126,6 +135,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             BarService.subscribeToShiftSettings(setShiftSettings),
             BarService.subscribeToGeneralSettings(setGeneralSettings),
             BarService.subscribeToAttendance(setAttendanceRecords),
+            BarService.subscribeToLaundryItems(setLaundryItems),
             VehicleService.subscribeToVehicles(setVehicles),
             VehicleService.subscribeToBookings(setVehicleBookings),
             BarService.subscribeToNotifications((n) => {
@@ -185,14 +195,20 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const addBooking = (b: Omit<VehicleBooking, 'id' | 'timestamp'>) => VehicleService.addBooking(b);
     const deleteBooking = (id: string) => VehicleService.deleteBooking(id);
 
+    // Laundry Functions
+    const addLaundryItem = (i: Omit<LaundryItemDef, 'id'>) => BarService.addLaundryItem(i);
+    const updateLaundryItem = (i: LaundryItemDef) => BarService.updateLaundryItem(i);
+    const deleteLaundryItem = (id: string) => BarService.deleteLaundryItem(id);
+
     return (
         <BarContext.Provider value={{
             products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
-            vehicles, vehicleBookings,
+            vehicles, vehicleBookings, laundryItems,
             addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
             addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
             addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
             addVehicle, updateVehicle, deleteVehicle, addBooking, deleteBooking,
+            addLaundryItem, updateLaundryItem, deleteLaundryItem,
             getNow
         }}>
             {children}

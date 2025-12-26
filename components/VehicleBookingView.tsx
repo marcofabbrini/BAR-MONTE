@@ -45,7 +45,7 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
         return [...bookings].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
     }, [bookings]);
 
-    // Filtered Staff List (Exclude 'Cassa' and filter by Shift)
+    // Filtered Staff List (Exclude 'Cassa' and filter by Shift, Sort by Rank)
     const filteredStaff = useMemo(() => {
         return staff.filter(s => {
             // Escludi utenti "Cassa"
@@ -55,7 +55,19 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
             if (staffShiftFilter !== 'all' && s.shift !== staffShiftFilter) return false;
             
             return true;
-        }).sort((a, b) => a.name.localeCompare(b.name));
+        }).sort((a, b) => {
+            // Sort by Rank High -> Low
+            const getRankIndex = (gId?: string) => VVF_GRADES.findIndex(g => g.id === gId);
+            const rankA = getRankIndex(a.grade);
+            const rankB = getRankIndex(b.grade);
+            
+            if (rankA !== rankB) {
+                // Higher index = higher rank in VVF_GRADES array order (VIG..CRE)
+                return rankB - rankA;
+            }
+            // Fallback alphabetical
+            return a.name.localeCompare(b.name);
+        });
     }, [staff, staffShiftFilter]);
 
     const handleSubmit = async (e: React.FormEvent) => {

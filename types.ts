@@ -160,6 +160,14 @@ export interface VehicleBooking {
 }
 // ==========================
 
+// === GESTIONE LAVANDERIA ===
+export interface LaundryItemDef {
+    id: string;
+    name: string;
+    order?: number; // Per ordinamento visuale
+}
+// ==========================
+
 export interface SeasonalityConfig {
     startDate: string;
     endDate: string;

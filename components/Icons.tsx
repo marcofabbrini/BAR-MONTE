@@ -32,7 +32,25 @@ export const LogoIcon = (props: IconProps) => <EmojiIcon emoji="☕" {...props} 
 export const ChartBarIcon = (props: IconProps) => <EmojiIcon emoji="📈" {...props} />;
 export const LockIcon = (props: IconProps) => <EmojiIcon emoji="🔐" {...props} />;
 export const LockOpenIcon = (props: IconProps) => <EmojiIcon emoji="🔓" {...props} />;
-export const CheckIcon = (props: IconProps) => <EmojiIcon emoji="✅" {...props} />;
+
+// NEW SVG CHECK ICON
+// Fix: Use SVGProps instead of IconProps to avoid HTMLSpanElement vs SVGSVGElement conflict
+export const CheckIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="3" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className} 
+        {...props}
+    >
+        <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+);
+
 export const SettingsIcon = (props: IconProps) => <EmojiIcon emoji="⚙️" {...props} />;
 export const CashIcon = (props: IconProps) => <EmojiIcon emoji="💶" {...props} />;
 export const BanknoteIcon = (props: IconProps) => <EmojiIcon emoji="💶" {...props} />;

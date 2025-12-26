@@ -3,19 +3,22 @@ import React, { useState, useMemo } from 'react';
 import { StaffMember, Shift } from '../types';
 import { BackArrowIcon, CheckIcon, FilterIcon, ShirtIcon, PrinterIcon, TrashIcon } from './Icons';
 import { GradeBadge } from './StaffManagement';
+import { useBar } from '../contexts/BarContext';
+import { VVF_GRADES } from '../constants';
 
 interface LaundryViewProps {
     onGoBack: () => void;
     staff: StaffMember[];
 }
 
-interface LaundryItem {
+interface LaundryItemState {
     id: string;
     name: string;
     quantity: number;
 }
 
-const DEFAULT_ITEMS = [
+// Fallback items if none are configured in DB
+const DEFAULT_ITEMS_FALLBACK = [
     "Giacca Intervento",
     "Sovrapantalone Intervento",
     "Guanti",
@@ -32,23 +35,52 @@ const DEFAULT_ITEMS = [
 ];
 
 const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
+    const { laundryItems } = useBar();
+
+    // Initialize items state based on context or fallback
+    const initialItems = useMemo(() => {
+        if (laundryItems.length > 0) {
+            return laundryItems.map(item => ({ id: item.id, name: item.name, quantity: 0 }));
+        }
+        return DEFAULT_ITEMS_FALLBACK.map((name, index) => ({ id: `default-${index}`, name, quantity: 0 }));
+    }, [laundryItems]);
+
     // Form State
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [selectedStaffId, setSelectedStaffId] = useState('');
     const [staffShiftFilter, setStaffShiftFilter] = useState<Shift | 'all'>('all');
     
     // Items State
-    const [items, setItems] = useState<LaundryItem[]>(
-        DEFAULT_ITEMS.map((name, index) => ({ id: `item-${index}`, name, quantity: 0 }))
-    );
+    const [items, setItems] = useState<LaundryItemState[]>(initialItems);
 
-    // Filtered Staff List
+    // Update state when context items change (only if quantities are 0 to avoid resetting user input)
+    // React.useEffect(() => {
+    //     if (items.every(i => i.quantity === 0) && laundryItems.length > 0) {
+    //         setItems(laundryItems.map(item => ({ id: item.id, name: item.name, quantity: 0 })));
+    //     }
+    // }, [laundryItems]);
+
+    // Filtered Staff List with Rank Sorting
     const filteredStaff = useMemo(() => {
         return staff.filter(s => {
             if (s.name.toLowerCase().includes('cassa')) return false;
             if (staffShiftFilter !== 'all' && s.shift !== staffShiftFilter) return false;
             return true;
-        }).sort((a, b) => a.name.localeCompare(b.name));
+        }).sort((a, b) => {
+            // Sort by Rank High -> Low
+            const getRankIndex = (gId?: string) => VVF_GRADES.findIndex(g => g.id === gId);
+            const rankA = getRankIndex(a.grade);
+            const rankB = getRankIndex(b.grade);
+            
+            if (rankA !== rankB) {
+                // Higher index in VVF_GRADES means higher rank usually? 
+                // Let's check VVF_GRADES definition. VIG is 0, CRE is last. 
+                // So higher index = higher rank. We want descending.
+                return rankB - rankA;
+            }
+            // Fallback alphabetical
+            return a.name.localeCompare(b.name);
+        });
     }, [staff, staffShiftFilter]);
 
     const selectedStaffMember = useMemo(() => staff.find(s => s.id === selectedStaffId), [staff, selectedStaffId]);
@@ -76,7 +108,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
 
     const handleReset = () => {
         if(confirm("Vuoi cancellare tutto?")) {
-            setItems(DEFAULT_ITEMS.map((name, index) => ({ id: `item-${index}`, name, quantity: 0 })));
+            setItems(items.map(i => ({ ...i, quantity: 0 })));
             setSelectedStaffId('');
         }
     };
