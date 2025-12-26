@@ -434,14 +434,21 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     </button>
                 </div>
 
-                {/* NEW VEHICLE RESERVATION BUTTON - SEPARATED */}
+                {/* NEW VEHICLE RESERVATION BUTTON - ENHANCED */}
                 <div className="w-full md:w-3/4 lg:w-2/3 px-4 mt-6 pt-6 border-t border-slate-200">
                     <button 
                         onClick={onSelectFleet}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white rounded-2xl shadow-lg hover:shadow-red-500/30 p-4 flex items-center justify-center gap-4 transition-all duration-300 group transform active:scale-95"
+                        className="w-full bg-red-600 hover:bg-red-700 text-white rounded-2xl shadow-lg hover:shadow-red-500/30 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95"
                     >
-                        <span className="text-3xl group-hover:scale-110 transition-transform drop-shadow-md">🚗</span>
-                        <span className="font-black text-sm md:text-lg uppercase tracking-widest text-shadow-sm">Automezzi</span>
+                        {/* Background Emoji Effect */}
+                        <div className="absolute -bottom-6 -right-6 text-9xl opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-transform group-hover:scale-110 group-hover:rotate-0">
+                            🚗
+                        </div>
+
+                        <div className="relative z-10 flex items-center justify-center gap-4">
+                            <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-md">🚗</span>
+                            <span className="font-black text-sm md:text-lg uppercase tracking-widest text-shadow-sm">Automezzi</span>
+                        </div>
                     </button>
                 </div>
             </div>

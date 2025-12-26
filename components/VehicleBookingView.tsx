@@ -186,6 +186,16 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
 
             <main className="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col gap-6 print:p-0 print:max-w-none">
                 
+                {/* TITOLO STAMPA (VISIBILE SOLO IN STAMPA) */}
+                <div className="hidden print:block mb-6 border-b-2 border-black pb-4 text-center">
+                    <h1 className="text-xl font-black uppercase">
+                        Prospetto prenotazioni mezzi distaccamento VVF Montepulciano
+                    </h1>
+                    <p className="text-sm mt-1 font-bold">
+                        aggiornato al {new Date().toLocaleDateString('it-IT')}
+                    </p>
+                </div>
+
                 {/* SEZIONE FORM COLLASSABILE (NASCOSTA IN STAMPA) */}
                 <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden transition-all duration-300 print:hidden">
                     <button 
@@ -384,7 +394,7 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                                     {booking.requesterName}
                                                 </td>
                                                 <td className="p-4 print:border-b print:border-slate-300">
-                                                    <span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold border border-slate-200 print:border-black print:bg-transparent">
+                                                    <span className="font-bold text-slate-700">
                                                         {booking.vehicleName}
                                                     </span>
                                                 </td>
