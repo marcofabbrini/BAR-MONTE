@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Vehicle, VehicleBooking, StaffMember, Shift } from '../types';
-import { BackArrowIcon, TruckIcon, CalendarIcon, CheckIcon, TrashIcon, FilterIcon, SortIcon } from './Icons';
+import { BackArrowIcon, TruckIcon, CalendarIcon, CheckIcon, TrashIcon, FilterIcon, SortIcon, PrinterIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 
 interface VehicleBookingViewProps {
@@ -160,10 +160,14 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
         }
     };
 
+    const handlePrint = () => {
+        window.print();
+    };
+
     return (
         <div className="flex flex-col min-h-screen bg-slate-50">
-            {/* HEADER MIGLIORATO */}
-            <header className="bg-red-700 text-white px-4 py-4 md:px-6 md:py-5 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)]">
+            {/* HEADER MIGLIORATO (NASCOSTO IN STAMPA) */}
+            <header className="bg-red-700 text-white px-4 py-4 md:px-6 md:py-5 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)] print:hidden">
                 <button 
                     onClick={onGoBack} 
                     className="flex items-center gap-2 font-bold text-white/90 hover:text-white bg-red-800/40 px-4 py-2 rounded-full hover:bg-red-800/60 transition-colors backdrop-blur-sm"
@@ -180,10 +184,10 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                 <div className="w-12 md:w-24"></div> 
             </header>
 
-            <main className="flex-grow p-4 md:p-8 max-w-6xl mx-auto w-full flex flex-col gap-6">
+            <main className="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col gap-6 print:p-0 print:max-w-none">
                 
-                {/* SEZIONE FORM COLLASSABILE */}
-                <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden transition-all duration-300">
+                {/* SEZIONE FORM COLLASSABILE (NASCOSTA IN STAMPA) */}
+                <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden transition-all duration-300 print:hidden">
                     <button 
                         onClick={() => setIsFormOpen(!isFormOpen)}
                         className={`w-full p-4 flex justify-between items-center transition-colors ${isFormOpen ? 'bg-slate-100 border-b border-slate-200' : 'bg-white hover:bg-slate-50'}`}
@@ -321,63 +325,91 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                     )}
                 </div>
 
-                {/* SEZIONE LISTA PRENOTAZIONI (SEMPRE VISIBILE) */}
+                {/* SEZIONE TABELLA PRENOTAZIONI */}
                 <div className="space-y-4">
-                    <h2 className="text-lg font-bold text-slate-800 uppercase border-b-2 border-red-500 pb-2 flex items-center gap-2">
-                        <span>📅</span> Prospetto Prenotazioni
-                    </h2>
+                    <div className="flex justify-between items-center border-b-2 border-red-500 pb-2 print:border-none">
+                        <h2 className="text-lg font-bold text-slate-800 uppercase flex items-center gap-2">
+                            <span>📅</span> Prospetto Prenotazioni
+                        </h2>
+                        <button 
+                            onClick={handlePrint}
+                            className="bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-slate-700 transition-colors shadow-sm print:hidden"
+                        >
+                            <PrinterIcon className="h-4 w-4" /> Stampa Prospetto
+                        </button>
+                    </div>
                     
                     {sortedBookings.length === 0 ? (
-                        <div className="text-center py-12 bg-slate-100 rounded-xl border border-dashed border-slate-300">
+                        <div className="text-center py-12 bg-slate-100 rounded-xl border border-dashed border-slate-300 print:bg-white print:border-slate-200">
                             <p className="text-slate-400 italic">Nessuna prenotazione futura in programma.</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {sortedBookings.map(booking => {
-                                const startDate = new Date(booking.startDate);
-                                const endDate = new Date(booking.endDate);
-                                const isPast = new Date() > endDate;
+                        <div className="overflow-x-auto rounded-xl shadow-sm border border-slate-200 bg-white print:shadow-none print:border-black print:rounded-none">
+                            <table className="w-full text-left text-sm print:text-xs">
+                                <thead className="bg-slate-100 text-slate-700 uppercase font-bold text-xs print:bg-slate-200 print:text-black">
+                                    <tr>
+                                        <th className="p-4 whitespace-nowrap border-b border-slate-200 print:border-black">Partenza</th>
+                                        <th className="p-4 whitespace-nowrap border-b border-slate-200 print:border-black">Ritorno</th>
+                                        <th className="p-4 border-b border-slate-200 print:border-black">Richiedente</th>
+                                        <th className="p-4 border-b border-slate-200 print:border-black">Automezzo</th>
+                                        <th className="p-4 border-b border-slate-200 print:border-black">Tipo Servizio</th>
+                                        <th className="p-4 border-b border-slate-200 print:border-black">Destinazione</th>
+                                        <th className="p-4 text-center border-b border-slate-200 print:hidden w-16">Azioni</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 print:divide-black">
+                                    {sortedBookings.map((booking, index) => {
+                                        const startDate = new Date(booking.startDate);
+                                        const endDate = new Date(booking.endDate);
+                                        const isPast = new Date() > endDate;
 
-                                return (
-                                    <div key={booking.id} className={`bg-white p-5 rounded-xl border-l-[6px] shadow-sm flex flex-col gap-3 relative transition-shadow hover:shadow-md ${isPast ? 'border-slate-300 opacity-60' : 'border-red-500'}`}>
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <h3 className="font-bold text-slate-800 text-base">{booking.requesterName}</h3>
-                                                <p className="text-xs text-slate-500 font-bold uppercase mt-0.5 tracking-wide">{booking.serviceType}</p>
-                                            </div>
-                                            <div className="bg-slate-100 px-3 py-1 rounded text-xs font-bold text-slate-700 border border-slate-200 text-right">
-                                                {booking.vehicleName}
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="bg-slate-50 rounded-lg p-3 border border-slate-100 flex items-center justify-between text-sm text-slate-600">
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] uppercase font-bold text-slate-400">Partenza</span>
-                                                <span className="font-mono font-bold">{startDate.toLocaleDateString()} {startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                            </div>
-                                            <div className="text-slate-300">➜</div>
-                                            <div className="flex flex-col text-right">
-                                                <span className="text-[10px] uppercase font-bold text-slate-400">Ritorno</span>
-                                                <span className="font-mono font-bold">{endDate.toLocaleDateString()} {endDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                                            <span className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded border border-orange-100">📍 {booking.destination}</span>
-                                        </div>
-
-                                        {(isSuperAdmin || !isPast) && (
-                                            <button 
-                                                onClick={() => handleDelete(booking.id)}
-                                                className="absolute top-2 right-2 p-2 text-slate-300 hover:text-red-500 transition-colors hover:bg-red-50 rounded-full"
-                                                title="Elimina Prenotazione"
+                                        return (
+                                            <tr 
+                                                key={booking.id} 
+                                                className={`
+                                                    hover:bg-slate-50 transition-colors
+                                                    ${isPast ? 'bg-slate-50/50 text-slate-400 print:text-slate-500' : 'text-slate-800'}
+                                                    ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30 print:bg-transparent'}
+                                                `}
                                             >
-                                                <TrashIcon className="h-4 w-4" />
-                                            </button>
-                                        )}
-                                    </div>
-                                );
-                            })}
+                                                <td className="p-4 whitespace-nowrap font-mono print:border-b print:border-slate-300">
+                                                    <div className="font-bold">{startDate.toLocaleDateString()}</div>
+                                                    <div className="text-xs opacity-75">{startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                                </td>
+                                                <td className="p-4 whitespace-nowrap font-mono print:border-b print:border-slate-300">
+                                                    <div className="font-bold">{endDate.toLocaleDateString()}</div>
+                                                    <div className="text-xs opacity-75">{endDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                                                </td>
+                                                <td className="p-4 font-bold print:border-b print:border-slate-300">
+                                                    {booking.requesterName}
+                                                </td>
+                                                <td className="p-4 print:border-b print:border-slate-300">
+                                                    <span className="bg-slate-100 px-2 py-1 rounded text-xs font-bold border border-slate-200 print:border-black print:bg-transparent">
+                                                        {booking.vehicleName}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 print:border-b print:border-slate-300">
+                                                    {booking.serviceType}
+                                                </td>
+                                                <td className="p-4 print:border-b print:border-slate-300">
+                                                    {booking.destination}
+                                                </td>
+                                                <td className="p-4 text-center print:hidden">
+                                                    {(isSuperAdmin || !isPast) && (
+                                                        <button 
+                                                            onClick={() => handleDelete(booking.id)}
+                                                            className="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors"
+                                                            title="Elimina"
+                                                        >
+                                                            <TrashIcon className="h-4 w-4" />
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </div>
