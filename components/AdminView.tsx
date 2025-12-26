@@ -84,7 +84,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     generalSettings, onUpdateGeneralSettings,
     onSendNotification
 }) => {
-    // Access Vehicle context methods directly since they weren't passed as props originally, or assume they are available in context
+    // Access Vehicle context methods
     const { vehicles, addVehicle, updateVehicle, deleteVehicle } = useBar();
 
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
@@ -304,14 +304,15 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <div className="text-right"><p className="text-[9px] text-slate-400 uppercase font-bold">{isSuperAdmin ? 'Super Admin' : 'Admin'}</p><button onClick={onLogout} className="text-[10px] text-red-500 font-bold hover:underline">LOGOUT</button></div>
                     </div>
                     
-                    {/* GRIGLIA NAVIGAZIONE */}
-                    <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-8 gap-2 w-full">
+                    {/* GRIGLIA NAVIGAZIONE AGGIORNATA */}
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-9 gap-2 w-full overflow-x-auto">
                         <TabButton tab="movements" label="Movimenti" icon={<ListIcon />} />
                         <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon />} />
                         <TabButton tab="stock" label="Stock" icon={<BoxIcon />} />
                         <TabButton tab="products" label="Prodotti" icon={<LogoIcon />} />
                         <TabButton tab="calendar" label="Turnario" icon={<CalendarIcon />} />
                         <TabButton tab="staff" label="Staff" icon={<StaffIcon />} />
+                        <TabButton tab="admins" label="Admin" icon={<LockIcon />} />
                         <TabButton tab="fleet" label="Autoparco" icon={<TruckIcon />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon />} />
                     </div>
@@ -401,7 +402,29 @@ const AdminView: React.FC<AdminViewProps> = ({
                             )}
                         </div>
 
-                        {/* ... Other Settings ... */}
+                        {/* 2. STAGIONALITÀ & EFFETTI (RIPRISTINATO) */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('seasonality')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <SparklesIcon className="h-5 w-5 text-yellow-500" /> Stagionalità & Effetti
+                                </h2>
+                                <span>{expandedSection === 'seasonality' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'seasonality' && (
+                                <div className="p-6 bg-slate-50 animate-fade-in border-t border-slate-100">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Inizio</label><input type="date" value={seasonStart} onChange={e => setSeasonStart(e.target.value)} className="w-full border p-2 rounded" /></div>
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Fine</label><input type="date" value={seasonEnd} onChange={e => setSeasonEnd(e.target.value)} className="w-full border p-2 rounded" /></div>
+                                        <div className="md:col-span-2"><label className="text-xs font-bold text-slate-500 block mb-1">Preset</label><select value={seasonPreset} onChange={e => setSeasonPreset(e.target.value as any)} className="w-full border p-2 rounded"><option value="custom">Personalizzato</option><option value="christmas">Natale</option><option value="easter">Pasqua</option><option value="summer">Estate</option><option value="halloween">Halloween</option></select></div>
+                                        <div className="md:col-span-2"><label className="text-xs font-bold text-slate-500 block mb-1">Emoji (separate da virgola)</label><input type="text" value={seasonEmojis} onChange={e => setSeasonEmojis(e.target.value)} className="w-full border p-2 rounded" /></div>
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Animazione</label><select value={seasonAnim} onChange={e => setSeasonAnim(e.target.value as any)} className="w-full border p-2 rounded"><option value="none">Nessuna</option><option value="snow">Neve (Giù)</option><option value="rain">Pioggia (Veloce)</option><option value="float">Fluttuante (Su)</option></select></div>
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Colore Sfondo</label><input type="color" value={seasonBg} onChange={e => setSeasonBg(e.target.value)} className="w-full h-10 p-1 rounded border cursor-pointer" /></div>
+                                    </div>
+                                    <button onClick={handleSaveSeasonality} className="bg-yellow-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-yellow-600 shadow-sm text-sm">Salva Stagionalità</button>
+                                </div>
+                            )}
+                        </div>
+
                         {/* 3. CONFIGURAZIONE GENERALE */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('general')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
@@ -458,6 +481,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                     </div>
                 )}
                 
+                {/* ADMINS MANAGEMENT (RIPRISTINATO) */}
                 {activeTab === 'admins' && (
                      <div className="max-w-2xl mx-auto space-y-6">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
