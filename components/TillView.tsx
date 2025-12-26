@@ -170,12 +170,15 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
     const cartTotal = useMemo(() => currentOrder.reduce((sum, item) => sum + item.product.price * item.quantity, 0), [currentOrder]);
     const cartItemCount = useMemo(() => currentOrder.reduce((sum, item) => sum + item.quantity, 0), [currentOrder]);
 
-    // Calcolo Quote Acqua (Mese Corrente) per la visualizzazione nella tabellina
+    // Calcolo Quote Acqua (Mese di Riferimento della Data Operativa)
     const waterData = useMemo(() => {
         if (!attendanceRecords) return { quotas: [], totalCount: 0, totalValue: 0 };
-        const now = getNow();
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
+        
+        // FIX: Usa la data operativa (operativeDateStr) come riferimento per il mese, non la data odierna.
+        // Se sto guardando lo smontante del 31 Gennaio il 1 Febbraio, voglio vedere i dati di Gennaio.
+        const refDate = new Date(operativeDateStr);
+        const currentMonth = refDate.getMonth();
+        const currentYear = refDate.getFullYear();
         const unitPrice = generalSettings?.waterQuotaPrice || 0;
 
         let totalCount = 0;
@@ -206,7 +209,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
             .sort((a,b) => b.count - a.count);
             
         return { quotas, totalCount, totalValue: totalCount * unitPrice };
-    }, [attendanceRecords, staffForShift, getNow, generalSettings]);
+    }, [attendanceRecords, staffForShift, operativeDateStr, generalSettings]);
 
     const addToOrder = useCallback((product: Product) => {
         if (product.stock <= 0) return;
@@ -503,7 +506,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                                         Riepilogo Acqua
                                                     </h4>
                                                     <p className="text-[10px] text-blue-600 font-bold mt-1 uppercase">
-                                                        {new Date().toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
+                                                        {new Date(operativeDateStr).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
                                                     </p>
                                                 </div>
                                                 <div className="flex flex-col items-end mt-2 md:mt-0">
