@@ -166,6 +166,17 @@ export interface LaundryItemDef {
     name: string;
     order?: number; // Per ordinamento visuale
 }
+
+export interface LaundryEntry {
+    id: string;
+    date: string; // Data consegna YYYY-MM-DD
+    staffId: string;
+    staffName: string;
+    shift: string;
+    items: { name: string; quantity: number }[];
+    totalItems: number;
+    timestamp: string; // Data creazione record ISO
+}
 // ==========================
 
 export interface SeasonalityConfig {

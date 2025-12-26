@@ -21,7 +21,7 @@ import {
     QuerySnapshot,
     DocumentData
 } from 'firebase/firestore';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, LaundryItemDef } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, LaundryItemDef, LaundryEntry } from '../types';
 
 export const BarService = {
     // --- LISTENERS ---
@@ -63,6 +63,12 @@ export const BarService = {
     subscribeToLaundryItems: (onUpdate: (data: LaundryItemDef[]) => void) => {
         const q = query(collection(db, 'laundry_items'), orderBy('name', 'asc'));
         return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as LaundryItemDef))));
+    },
+
+    subscribeToLaundryEntries: (onUpdate: (data: LaundryEntry[]) => void) => {
+        // Ultimi 100 inserimenti
+        const q = query(collection(db, 'laundry_entries'), orderBy('timestamp', 'desc'), limit(100));
+        return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as LaundryEntry))));
     },
 
     // --- SETTINGS LISTENERS ---
@@ -183,10 +189,14 @@ export const BarService = {
     updateStaff: async (staff: any) => { const { id, ...data } = staff; await updateDoc(doc(db, 'staff', id), data); },
     deleteStaff: async (id: string) => { await deleteDoc(doc(db, 'staff', id)); },
 
-    // Laundry Items
+    // Laundry Items Configuration
     addLaundryItem: async (data: Omit<LaundryItemDef, 'id'>) => { await addDoc(collection(db, 'laundry_items'), data); },
     updateLaundryItem: async (item: LaundryItemDef) => { const { id, ...data } = item; await updateDoc(doc(db, 'laundry_items', id), data); },
     deleteLaundryItem: async (id: string) => { await deleteDoc(doc(db, 'laundry_items', id)); },
+
+    // Laundry Entries (History)
+    addLaundryEntry: async (entry: Omit<LaundryEntry, 'id'>) => { await addDoc(collection(db, 'laundry_entries'), entry); },
+    deleteLaundryEntry: async (id: string) => { await deleteDoc(doc(db, 'laundry_entries', id)); },
 
     // Cash
     addCashMovement: async (data: any) => { await addDoc(collection(db, 'cash_movements'), data); },

@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef, LaundryEntry } from '../types';
 import { BarService } from '../services/barService';
 import { VehicleService } from '../services/vehicleService';
 
@@ -22,6 +22,7 @@ interface BarContextType {
 
     // Laundry
     laundryItems: LaundryItemDef[];
+    laundryEntries: LaundryEntry[];
 
     activeToast: AppNotification | null;
     isLoading: boolean;
@@ -66,6 +67,8 @@ interface BarContextType {
     addLaundryItem: (i: Omit<LaundryItemDef, 'id'>) => Promise<void>;
     updateLaundryItem: (i: LaundryItemDef) => Promise<void>;
     deleteLaundryItem: (id: string) => Promise<void>;
+    addLaundryEntry: (e: Omit<LaundryEntry, 'id'>) => Promise<void>;
+    deleteLaundryEntry: (id: string) => Promise<void>;
 
     // Time Sync
     getNow: () => Date;
@@ -87,6 +90,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [vehicleBookings, setVehicleBookings] = useState<VehicleBooking[]>([]);
     const [laundryItems, setLaundryItems] = useState<LaundryItemDef[]>([]);
+    const [laundryEntries, setLaundryEntries] = useState<LaundryEntry[]>([]);
 
     const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -136,6 +140,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             BarService.subscribeToGeneralSettings(setGeneralSettings),
             BarService.subscribeToAttendance(setAttendanceRecords),
             BarService.subscribeToLaundryItems(setLaundryItems),
+            BarService.subscribeToLaundryEntries(setLaundryEntries),
             VehicleService.subscribeToVehicles(setVehicles),
             VehicleService.subscribeToBookings(setVehicleBookings),
             BarService.subscribeToNotifications((n) => {
@@ -199,16 +204,18 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const addLaundryItem = (i: Omit<LaundryItemDef, 'id'>) => BarService.addLaundryItem(i);
     const updateLaundryItem = (i: LaundryItemDef) => BarService.updateLaundryItem(i);
     const deleteLaundryItem = (id: string) => BarService.deleteLaundryItem(id);
+    const addLaundryEntry = (e: Omit<LaundryEntry, 'id'>) => BarService.addLaundryEntry(e);
+    const deleteLaundryEntry = (id: string) => BarService.deleteLaundryEntry(id);
 
     return (
         <BarContext.Provider value={{
             products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
-            vehicles, vehicleBookings, laundryItems,
+            vehicles, vehicleBookings, laundryItems, laundryEntries,
             addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
             addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
             addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
             addVehicle, updateVehicle, deleteVehicle, addBooking, deleteBooking,
-            addLaundryItem, updateLaundryItem, deleteLaundryItem,
+            addLaundryItem, updateLaundryItem, deleteLaundryItem, addLaundryEntry, deleteLaundryEntry,
             getNow
         }}>
             {children}

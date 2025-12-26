@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import { StaffMember, Shift } from '../types';
-import { BackArrowIcon, CheckIcon, FilterIcon, ShirtIcon, PrinterIcon, TrashIcon } from './Icons';
+import { StaffMember, Shift, LaundryEntry } from '../types';
+import { BackArrowIcon, CheckIcon, FilterIcon, ShirtIcon, PrinterIcon, TrashIcon, SortIcon, ListIcon } from './Icons';
 import { GradeBadge } from './StaffManagement';
 import { useBar } from '../contexts/BarContext';
 import { VVF_GRADES } from '../constants';
@@ -35,7 +35,11 @@ const DEFAULT_ITEMS_FALLBACK = [
 ];
 
 const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
-    const { laundryItems } = useBar();
+    const { laundryItems, laundryEntries, addLaundryEntry, deleteLaundryEntry } = useBar();
+
+    // UI State for Sections
+    const [isInputOpen, setIsInputOpen] = useState(false); // Default CLOSED per request
+    const [isHistoryOpen, setIsHistoryOpen] = useState(true); // Default OPEN
 
     // Initialize items state based on context or fallback
     const initialItems = useMemo(() => {
@@ -53,13 +57,6 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
     // Items State
     const [items, setItems] = useState<LaundryItemState[]>(initialItems);
 
-    // Update state when context items change (only if quantities are 0 to avoid resetting user input)
-    // React.useEffect(() => {
-    //     if (items.every(i => i.quantity === 0) && laundryItems.length > 0) {
-    //         setItems(laundryItems.map(item => ({ id: item.id, name: item.name, quantity: 0 })));
-    //     }
-    // }, [laundryItems]);
-
     // Filtered Staff List with Rank Sorting
     const filteredStaff = useMemo(() => {
         return staff.filter(s => {
@@ -73,9 +70,6 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
             const rankB = getRankIndex(b.grade);
             
             if (rankA !== rankB) {
-                // Higher index in VVF_GRADES means higher rank usually? 
-                // Let's check VVF_GRADES definition. VIG is 0, CRE is last. 
-                // So higher index = higher rank. We want descending.
                 return rankB - rankA;
             }
             // Fallback alphabetical
@@ -94,7 +88,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
         }));
     };
 
-    const handlePrint = () => {
+    const handleSaveAndPrint = async () => {
         if (!selectedStaffId) {
             alert("Seleziona chi sta consegnando la lavanderia.");
             return;
@@ -103,13 +97,44 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
             alert("Inserisci almeno un capo.");
             return;
         }
-        window.print();
+
+        if (window.confirm("Confermi la consegna? Verrà salvata nello storico e si aprirà la stampa.")) {
+            // Prepare Data
+            const staffMember = staff.find(s => s.id === selectedStaffId);
+            const activeItems = items.filter(i => i.quantity > 0).map(i => ({ name: i.name, quantity: i.quantity }));
+            const total = activeItems.reduce((acc, i) => acc + i.quantity, 0);
+
+            try {
+                // Save to DB
+                await addLaundryEntry({
+                    date: date,
+                    staffId: selectedStaffId,
+                    staffName: staffMember?.name || 'Sconosciuto',
+                    shift: staffMember?.shift || '?',
+                    items: activeItems,
+                    totalItems: total,
+                    timestamp: new Date().toISOString()
+                });
+
+                // Trigger Print
+                setTimeout(() => window.print(), 500);
+            } catch (e) {
+                console.error(e);
+                alert("Errore salvataggio consegna.");
+            }
+        }
     };
 
     const handleReset = () => {
-        if(confirm("Vuoi cancellare tutto?")) {
+        if(confirm("Vuoi cancellare tutto il modulo?")) {
             setItems(items.map(i => ({ ...i, quantity: 0 })));
             setSelectedStaffId('');
+        }
+    };
+
+    const handleDeleteEntry = async (id: string) => {
+        if(window.confirm("Vuoi eliminare questa consegna dallo storico?")) {
+            await deleteLaundryEntry(id);
         }
     };
 
@@ -153,150 +178,223 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
                     )}
                 </div>
 
-                {/* SELEZIONE DATA E PERSONALE (Hidden in Print if confirmed) */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 print:hidden">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Data */}
-                        <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Data Consegna</label>
-                            <input 
-                                type="date" 
-                                value={date} 
-                                onChange={e => setDate(e.target.value)} 
-                                className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-200 outline-none font-bold text-slate-700" 
-                            />
-                        </div>
-
-                        {/* Filtro Turno */}
-                        <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1 flex items-center gap-1">
-                                <FilterIcon className="h-3 w-3"/> Filtra Personale
-                            </label>
-                            <div className="flex gap-2">
-                                {['all', 'a', 'b', 'c', 'd'].map(shift => (
-                                    <button
-                                        key={shift}
-                                        onClick={() => setStaffShiftFilter(shift as Shift | 'all')}
-                                        className={`
-                                            flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all border
-                                            ${staffShiftFilter === shift 
-                                                ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
-                                                : 'bg-white text-slate-500 border-slate-200 hover:bg-blue-50'}
-                                        `}
-                                    >
-                                        {shift === 'all' ? 'Tutti' : shift}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Griglia Personale */}
-                    <div className="mt-4">
-                        <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Seleziona Consegnatario *</label>
-                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 max-h-60 overflow-y-auto p-1 border rounded-xl bg-slate-50">
-                            {filteredStaff.map(s => {
-                                const isSelected = selectedStaffId === s.id;
-                                return (
-                                    <div 
-                                        key={s.id}
-                                        onClick={() => setSelectedStaffId(s.id)}
-                                        className={`
-                                            relative flex flex-col items-center p-2 rounded-xl border-2 cursor-pointer transition-all group
-                                            ${isSelected 
-                                                ? 'bg-blue-50 border-blue-500 shadow-md transform scale-105' 
-                                                : 'bg-white border-slate-200 hover:border-blue-300'
-                                            }
-                                        `}
-                                    >
-                                        {isSelected && (
-                                            <div className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full p-0.5 shadow-sm z-10">
-                                                <CheckIcon className="h-2 w-2" />
-                                            </div>
-                                        )}
-                                        
-                                        <div className="relative">
-                                            <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center text-lg">
-                                                {s.photoUrl ? (
-                                                    <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} />
-                                                ) : (
-                                                    <span>{s.icon || '👤'}</span>
-                                                )}
-                                            </div>
-                                            {s.grade && (
-                                                <div className="absolute -bottom-1 -right-1 scale-75">
-                                                    <GradeBadge grade={s.grade} />
-                                                </div>
-                                            )}
-                                        </div>
-                                        
-                                        <span className={`text-[9px] font-bold text-center mt-1 truncate w-full ${isSelected ? 'text-blue-700' : 'text-slate-600'}`}>
-                                            {s.name.split(' ')[0]}
-                                        </span>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    </div>
-                </div>
-
-                {/* LISTA CAPI (Input Interface) */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 print:hidden">
-                    <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
-                        <h2 className="font-bold text-slate-800 uppercase flex items-center gap-2">
-                            <ShirtIcon className="h-5 w-5 text-blue-500"/> Elenco Capi
+                {/* --- SEZIONE 1: NUOVA CONSEGNA (COLLAPSIBLE) --- */}
+                <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden transition-all duration-300 print:hidden">
+                    <button 
+                        onClick={() => setIsInputOpen(!isInputOpen)}
+                        className={`w-full p-4 flex justify-between items-center transition-colors ${isInputOpen ? 'bg-slate-100 border-b border-slate-200' : 'bg-white hover:bg-slate-50'}`}
+                    >
+                        <h2 className="font-bold text-slate-800 uppercase flex items-center gap-2 text-lg">
+                            <ShirtIcon className="h-6 w-6 text-blue-600" /> Nuova Consegna
                         </h2>
-                        {totalItems > 0 && (
-                            <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
-                                Totale: {totalItems} pezzi
-                            </span>
-                        )}
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {items.map(item => (
-                            <div key={item.id} className="flex justify-between items-center p-3 rounded-lg border border-slate-100 bg-slate-50 hover:border-blue-200 transition-colors">
-                                <span className="font-bold text-sm text-slate-700">{item.name}</span>
-                                <div className="flex items-center gap-3 bg-white rounded-lg shadow-sm border border-slate-200 p-1">
+                        <div className={`transform transition-transform duration-300 ${isInputOpen ? 'rotate-180' : 'rotate-0'}`}>
+                            <SortIcon className="h-5 w-5 text-slate-400" />
+                        </div>
+                    </button>
+
+                    {isInputOpen && (
+                        <div className="animate-slide-up">
+                            {/* SELEZIONE DATA E PERSONALE */}
+                            <div className="p-6 border-b border-slate-100">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Data Consegna</label>
+                                        <input 
+                                            type="date" 
+                                            value={date} 
+                                            onChange={e => setDate(e.target.value)} 
+                                            className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-200 outline-none font-bold text-slate-700" 
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase block mb-1 flex items-center gap-1">
+                                            <FilterIcon className="h-3 w-3"/> Filtra Personale
+                                        </label>
+                                        <div className="flex gap-2">
+                                            {['all', 'a', 'b', 'c', 'd'].map(shift => (
+                                                <button
+                                                    key={shift}
+                                                    onClick={() => setStaffShiftFilter(shift as Shift | 'all')}
+                                                    className={`
+                                                        flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all border
+                                                        ${staffShiftFilter === shift 
+                                                            ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
+                                                            : 'bg-white text-slate-500 border-slate-200 hover:bg-blue-50'}
+                                                    `}
+                                                >
+                                                    {shift === 'all' ? 'Tutti' : shift}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4">
+                                    <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Seleziona Consegnatario *</label>
+                                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 max-h-60 overflow-y-auto p-1 border rounded-xl bg-slate-50">
+                                        {filteredStaff.map(s => {
+                                            const isSelected = selectedStaffId === s.id;
+                                            return (
+                                                <div 
+                                                    key={s.id}
+                                                    onClick={() => setSelectedStaffId(s.id)}
+                                                    className={`
+                                                        relative flex flex-col items-center p-2 rounded-xl border-2 cursor-pointer transition-all group
+                                                        ${isSelected 
+                                                            ? 'bg-blue-50 border-blue-500 shadow-md transform scale-105' 
+                                                            : 'bg-white border-slate-200 hover:border-blue-300'
+                                                        }
+                                                    `}
+                                                >
+                                                    {isSelected && (
+                                                        <div className="absolute -top-1 -right-1 bg-blue-500 text-white rounded-full p-0.5 shadow-sm z-10">
+                                                            <CheckIcon className="h-2 w-2" />
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <div className="relative">
+                                                        <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center text-lg">
+                                                            {s.photoUrl ? (
+                                                                <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} />
+                                                            ) : (
+                                                                <span>{s.icon || '👤'}</span>
+                                                            )}
+                                                        </div>
+                                                        {s.grade && (
+                                                            <div className="absolute -bottom-1 -right-1 scale-75">
+                                                                <GradeBadge grade={s.grade} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    
+                                                    <span className={`text-[9px] font-bold text-center mt-1 truncate w-full ${isSelected ? 'text-blue-700' : 'text-slate-600'}`}>
+                                                        {s.name.split(' ')[0]}
+                                                    </span>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* LISTA CAPI (Input Interface) */}
+                            <div className="p-6">
+                                <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                                    <h2 className="font-bold text-slate-800 uppercase flex items-center gap-2">
+                                        <ListIcon className="h-5 w-5 text-blue-500"/> Elenco Capi
+                                    </h2>
+                                    {totalItems > 0 && (
+                                        <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
+                                            Totale: {totalItems} pezzi
+                                        </span>
+                                    )}
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {items.map(item => (
+                                        <div key={item.id} className="flex justify-between items-center p-3 rounded-lg border border-slate-100 bg-slate-50 hover:border-blue-200 transition-colors">
+                                            <span className="font-bold text-sm text-slate-700">{item.name}</span>
+                                            <div className="flex items-center gap-3 bg-white rounded-lg shadow-sm border border-slate-200 p-1">
+                                                <button 
+                                                    onClick={() => handleQuantityChange(item.id, -1)}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors font-bold text-lg disabled:opacity-30"
+                                                    disabled={item.quantity === 0}
+                                                >
+                                                    -
+                                                </button>
+                                                <span className={`w-6 text-center font-bold text-lg ${item.quantity > 0 ? 'text-blue-600' : 'text-slate-300'}`}>
+                                                    {item.quantity}
+                                                </span>
+                                                <button 
+                                                    onClick={() => handleQuantityChange(item.id, 1)}
+                                                    className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors font-bold text-lg"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="mt-8 flex gap-3">
                                     <button 
-                                        onClick={() => handleQuantityChange(item.id, -1)}
-                                        className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors font-bold text-lg disabled:opacity-30"
-                                        disabled={item.quantity === 0}
+                                        onClick={handleReset}
+                                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
                                     >
-                                        -
+                                        <TrashIcon className="h-5 w-5" /> Reset
                                     </button>
-                                    <span className={`w-6 text-center font-bold text-lg ${item.quantity > 0 ? 'text-blue-600' : 'text-slate-300'}`}>
-                                        {item.quantity}
-                                    </span>
                                     <button 
-                                        onClick={() => handleQuantityChange(item.id, 1)}
-                                        className="w-8 h-8 flex items-center justify-center rounded-md text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors font-bold text-lg"
+                                        onClick={handleSaveAndPrint}
+                                        className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        disabled={!selectedStaffId || totalItems === 0}
                                     >
-                                        +
+                                        <PrinterIcon className="h-5 w-5" /> Conferma & Stampa
                                     </button>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-
-                    <div className="mt-8 flex gap-3">
-                        <button 
-                            onClick={handleReset}
-                            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
-                        >
-                            <TrashIcon className="h-5 w-5" /> Reset
-                        </button>
-                        <button 
-                            onClick={handlePrint}
-                            className="flex-[2] bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled={!selectedStaffId || totalItems === 0}
-                        >
-                            <PrinterIcon className="h-5 w-5" /> Stampa Distinta
-                        </button>
-                    </div>
+                        </div>
+                    )}
                 </div>
 
-                {/* PRINT VIEW (Table Only) */}
+                {/* --- SEZIONE 2: STORICO CONSEGNE (COLLAPSIBLE) --- */}
+                <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden transition-all duration-300 print:hidden">
+                    <button 
+                        onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                        className={`w-full p-4 flex justify-between items-center transition-colors ${isHistoryOpen ? 'bg-slate-100 border-b border-slate-200' : 'bg-white hover:bg-slate-50'}`}
+                    >
+                        <h2 className="font-bold text-slate-800 uppercase flex items-center gap-2 text-lg">
+                            <ListIcon className="h-6 w-6 text-slate-500" /> Storico Consegne
+                        </h2>
+                        <div className={`transform transition-transform duration-300 ${isHistoryOpen ? 'rotate-180' : 'rotate-0'}`}>
+                            <SortIcon className="h-5 w-5 text-slate-400" />
+                        </div>
+                    </button>
+
+                    {isHistoryOpen && (
+                        <div className="p-4 animate-slide-up">
+                            {laundryEntries.length === 0 ? (
+                                <p className="text-center text-slate-400 italic py-8">Nessuna consegna registrata.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {laundryEntries.map(entry => (
+                                        <div key={entry.id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:shadow-sm transition-shadow">
+                                            <div className="flex items-center gap-4">
+                                                <div className="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center text-blue-600 border border-blue-200">
+                                                    <ShirtIcon className="h-6 w-6" />
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-slate-800">{entry.staffName}</h3>
+                                                    <p className="text-xs text-slate-500 font-medium">
+                                                        Data: {new Date(entry.date).toLocaleDateString('it-IT')} • Turno {entry.shift.toUpperCase()}
+                                                    </p>
+                                                    <p className="text-xs text-slate-400 mt-1">
+                                                        {entry.items.map(i => `${i.quantity}x ${i.name}`).join(', ')}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                                                <span className="bg-white px-3 py-1 rounded-lg border border-slate-200 text-sm font-bold text-slate-600 shadow-sm">
+                                                    {entry.totalItems} Capi
+                                                </span>
+                                                <button 
+                                                    onClick={() => handleDeleteEntry(entry.id)}
+                                                    className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Elimina"
+                                                >
+                                                    <TrashIcon className="h-5 w-5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* PRINT VIEW (Table Only) - Hidden in normal view */}
                 <div className="hidden print:block">
                     <table className="w-full border-collapse text-left">
                         <thead>
