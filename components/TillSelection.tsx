@@ -298,6 +298,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     </div>
                 </div>
 
+                {/* --- 1. SEZIONE CASSE (TOP) --- */}
                 <div className="grid grid-cols-3 md:grid-cols-3 gap-4 w-full md:w-3/4 lg:w-2/3 mb-6 px-4 transition-all">
                     {visibleTills.map((till) => {
                         const bgColor = tillColors[till.id] || '#f97316';
@@ -328,7 +329,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                                         {previousShiftTill.shift.toUpperCase()}
                                                     </span>
                                                 </div>
-                                                {/* FONT RIDOTTO QUI */}
                                                 <span className="text-xs md:text-base font-sans font-extralight text-slate-700 tracking-widest tabular-nums">
                                                     {formatCountdown(graceTimeLeft)}
                                                 </span>
@@ -364,8 +364,8 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                                     {till.shift.toUpperCase()}
                                                 </span>
                                             </div>
-                                            <span className="font-bold text-slate-700 leading-tight bg-slate-50/80 px-3 py-1 rounded-lg text-xl md:text-2xl backdrop-blur-sm">
-                                                {till.name}
+                                            <span className="font-bold text-slate-700 leading-tight bg-slate-50/80 px-3 py-1 rounded-lg text-xl md:text-2xl backdrop-blur-sm uppercase">
+                                                CASSA BAR {till.shift.toUpperCase()}
                                             </span>
                                         </div>
 
@@ -395,65 +395,25 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                         {till.shift.toUpperCase()}
                                     </span>
                                 </div>
-                                <span className="font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg hidden md:block text-xs md:text-lg">
-                                    {till.name}
+                                <span className="font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg hidden md:block text-xs md:text-lg uppercase">
+                                    CASSA BAR {till.shift.toUpperCase()}
                                 </span>
                             </button>
                         );
                     })}
                 </div>
 
-                {/* GESTIONE (GRID UNICA CON EXTRA HUB) */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full md:w-3/4 lg:w-2/3 px-4 transition-all">
-                    {/* Pulsante: Presenze */}
-                    <button onClick={onSelectAttendance} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-indigo-500/10 hover:shadow-[0_0_15px_rgba(99,102,241,0.5)] border border-slate-100 p-2 md:p-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24 md:h-24">
-                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
-                            📋
-                        </div>
-                        <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-indigo-600 transition-colors">Presenze</span>
-                    </button>
-
-                    {/* Pulsante: Report */}
-                    <button onClick={onSelectReports} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-violet-500/10 hover:shadow-[0_0_15px_rgba(139,92,246,0.5)] border border-slate-100 p-2 md:p-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24 md:h-24">
-                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
-                            📊
-                        </div>
-                        <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-violet-600 transition-colors">Report</span>
-                    </button>
+                {/* --- 2. SEZIONE CENTRALE: STACK VERTICALE (VEICOLI, LAVANDERIA, EXTRA HUB) --- */}
+                <div className="w-full md:w-3/4 lg:w-2/3 px-4 flex flex-col gap-4 mb-4">
                     
-                    {/* Pulsante: Admin */}
-                    <button onClick={onSelectAdmin} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/10 hover:shadow-[0_0_15px_rgba(100,116,139,0.5)] border border-slate-100 p-2 md:p-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24 md:h-24">
-                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
-                            🔐
-                        </div>
-                        <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Admin</span>
-                    </button>
-
-                    {/* Pulsante: Extra Hub (Spostato qui) */}
-                    <button onClick={onSelectGames} className="relative bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-amber-500/10 hover:shadow-[0_0_15px_rgba(245,158,11,0.5)] border border-slate-100 p-2 md:p-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24 md:h-24">
-                        {tombolaNumberCount > 0 && (
-                            <div className="absolute -top-1 -right-1 bg-red-600 text-white text-[9px] font-black w-5 h-5 flex items-center justify-center rounded-full shadow-md animate-bounce z-20 border-2 border-white">
-                                {tombolaNumberCount}
-                            </div>
-                        )}
-                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
-                            🎮
-                        </div>
-                        <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-amber-600 transition-colors">Extra Hub</span>
-                    </button>
-                </div>
-
-                <div className="w-full md:w-3/4 lg:w-2/3 px-4 mt-6 pt-6 border-t border-slate-200 flex flex-col gap-4">
-                    {/* NEW VEHICLE RESERVATION BUTTON - ENHANCED (WHITE + GLOW) */}
+                    {/* AUTOMEZZI (ROSSO) */}
                     <button 
                         onClick={onSelectFleet}
                         className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.2)] hover:shadow-[0_0_25px_rgba(220,38,38,0.4)] border-2 border-red-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
                     >
-                        {/* Background Emoji Effect */}
                         <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🚗
                         </div>
-
                         <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
                             <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🚗</span>
                             <div className="flex flex-col items-center md:items-start">
@@ -463,16 +423,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                     </button>
 
-                    {/* LAUNDRY BUTTON (BLUE GLOW + BUBBLES EMOJI) */}
+                    {/* LAVANDERIA (BLU) */}
                     <button 
                         onClick={onSelectLaundry}
                         className="w-full bg-white hover:bg-blue-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border-2 border-blue-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
                     >
-                        {/* Background Emoji Effect - BUBBLES */}
                         <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🫧
                         </div>
-
                         <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
                             <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🫧</span>
                             <div className="flex flex-col items-center md:items-start">
@@ -481,7 +439,57 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             </div>
                         </div>
                     </button>
+
+                    {/* EXTRA HUB (VERDE) - Spostato qui con stessa dimensione */}
+                    <button 
+                        onClick={onSelectGames}
+                        className="w-full bg-white hover:bg-green-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] border-2 border-green-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
+                    >
+                        {tombolaNumberCount > 0 && (
+                            <div className="absolute top-4 right-4 bg-red-600 text-white text-xs font-black w-6 h-6 flex items-center justify-center rounded-full shadow-md animate-bounce z-20 border-2 border-white">
+                                {tombolaNumberCount}
+                            </div>
+                        )}
+                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                            🎮
+                        </div>
+                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
+                            <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🎮</span>
+                            <div className="flex flex-col items-center md:items-start">
+                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-green-600 transition-colors">Extra Hub</span>
+                                <span className="text-[10px] md:text-xs font-bold text-green-500 uppercase tracking-wider">Giochi & Intrattenimento</span>
+                            </div>
+                        </div>
+                    </button>
                 </div>
+
+                {/* --- 3. SEZIONE BASSA: GRIGLIA FUNZIONALE (PRESENZE, REPORT, ADMIN) --- */}
+                <div className="grid grid-cols-3 gap-3 w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
+                    {/* Pulsante: Presenze (Glow Nero/Slate) */}
+                    <button onClick={onSelectAttendance} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
+                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                            📋
+                        </div>
+                        <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Presenze</span>
+                    </button>
+
+                    {/* Pulsante: Report (Glow Nero/Slate) */}
+                    <button onClick={onSelectReports} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
+                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                            📊
+                        </div>
+                        <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Report</span>
+                    </button>
+                    
+                    {/* Pulsante: Admin (Glow Nero/Slate) */}
+                    <button onClick={onSelectAdmin} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
+                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                            🔐
+                        </div>
+                        <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Admin</span>
+                    </button>
+                </div>
+
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
