@@ -351,7 +351,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                             ☕
                                         </div>
 
-                                        <span className="absolute top-4 right-4 bg-green-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full animate-pulse shadow-sm z-10">
+                                        <span className="absolute top-2 right-2 md:top-3 md:right-3 bg-green-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full animate-pulse shadow-sm z-10">
                                             IN SERVIZIO
                                         </span>
                                         
@@ -365,7 +365,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                                 </span>
                                             </div>
                                             <span className="font-bold text-slate-700 leading-tight bg-slate-50/80 px-3 py-1 rounded-lg text-xl md:text-2xl backdrop-blur-sm uppercase">
-                                                CASSA BAR T{till.shift.toUpperCase()}
+                                                CASSA BAR TURNO {till.shift.toUpperCase()}
                                             </span>
                                         </div>
 
@@ -396,7 +396,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                     </span>
                                 </div>
                                 <span className="font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg hidden md:block text-xs md:text-lg uppercase">
-                                    CASSA BAR T{till.shift.toUpperCase()}
+                                    CASSA BAR TURNO {till.shift.toUpperCase()}
                                 </span>
                             </button>
                         );
@@ -418,7 +418,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             <span className="text-5xl md:text-7xl filter drop-shadow-sm">🚒</span>
                             <div className="flex flex-col items-center md:items-start">
                                 <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-orange-600">Mezzi Operativi</span>
-                                <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Gestione Interventi (Presto Disponibile)</span>
+                                <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Gestione Caricamenti (Presto Disponibile)</span>
                             </div>
                         </div>
                     </button>
@@ -440,7 +440,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🎮</span>
                             <div className="flex flex-col items-center md:items-start">
                                 <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-green-600 transition-colors">Extra Hub</span>
-                                <span className="text-[10px] md:text-xs font-bold text-green-500 uppercase tracking-wider">Giochi & Intrattenimento</span>
+                                <span className="text-[10px] md:text-xs font-bold text-green-500 uppercase tracking-wider">Intrattenimento</span>
                             </div>
                         </div>
                     </button>
