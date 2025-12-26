@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import { Vehicle, VehicleBooking, StaffMember } from '../types';
-import { BackArrowIcon, TruckIcon, CalendarIcon, CheckIcon, TrashIcon } from './Icons';
+import { Vehicle, VehicleBooking, StaffMember, Shift } from '../types';
+import { BackArrowIcon, TruckIcon, CalendarIcon, CheckIcon, TrashIcon, FilterIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 
 interface VehicleBookingViewProps {
@@ -34,12 +34,28 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
     const [extSurname, setExtSurname] = useState('');
     const [extLocation, setExtLocation] = useState('');
 
+    // Filter State for Staff Dropdown
+    const [staffShiftFilter, setStaffShiftFilter] = useState<Shift | 'all'>('all');
+
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Sorted bookings by date
     const sortedBookings = useMemo(() => {
         return [...bookings].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
     }, [bookings]);
+
+    // Filtered Staff List (Exclude 'Cassa' and filter by Shift)
+    const filteredStaff = useMemo(() => {
+        return staff.filter(s => {
+            // Escludi utenti "Cassa"
+            if (s.name.toLowerCase().includes('cassa')) return false;
+            
+            // Filtra per turno se selezionato
+            if (staffShiftFilter !== 'all' && s.shift !== staffShiftFilter) return false;
+            
+            return true;
+        }).sort((a, b) => a.name.localeCompare(b.name));
+    }, [staff, staffShiftFilter]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -64,7 +80,7 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                 return;
             }
             const gradeLabel = VVF_GRADES.find(g => g.id === extGrade)?.label || extGrade;
-            requesterName = `${gradeLabel} ${extName} ${extSurname} (${extLocation})`;
+            requesterName = `${gradeLabel || ''} ${extName} ${extSurname} (${extLocation})`.trim();
         } else {
             if (!internalStaffId) {
                 alert("Seleziona il personale interno.");
@@ -79,19 +95,27 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
 
         setIsSubmitting(true);
         try {
-            await onAddBooking({
+            // Costruzione Payload pulito per evitare errori su undefined
+            const payload: Omit<VehicleBooking, 'id' | 'timestamp'> = {
                 vehicleId: selectedVehicle,
                 vehicleName,
                 startDate: startDateTime,
                 endDate: endDateTime,
                 requesterType: isExternal ? 'external' : 'internal',
-                internalStaffId: isExternal ? undefined : internalStaffId,
                 requesterName,
-                externalGrade: isExternal ? extGrade : undefined,
-                externalLocation: isExternal ? extLocation : undefined,
                 serviceType: serviceType as any,
                 destination
-            });
+            };
+
+            // Aggiungi campi opzionali solo se necessari
+            if (!isExternal) {
+                payload.internalStaffId = internalStaffId;
+            } else {
+                payload.externalGrade = extGrade || '';
+                payload.externalLocation = extLocation;
+            }
+
+            await onAddBooking(payload);
             
             // Reset Form
             setDestination('');
@@ -99,9 +123,9 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
             setExtName('');
             setExtSurname('');
             alert("Prenotazione confermata!");
-        } catch (error) {
-            console.error(error);
-            alert("Errore durante la prenotazione.");
+        } catch (error: any) {
+            console.error("Booking Error:", error);
+            alert("Errore durante la prenotazione: " + (error.message || "Riprova."));
         } finally {
             setIsSubmitting(false);
         }
@@ -115,14 +139,21 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50">
-            <header className="bg-red-700 text-white p-4 shadow-md sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)]">
-                <button onClick={onGoBack} className="flex items-center gap-1 font-bold text-white/90 hover:text-white">
-                    <BackArrowIcon className="h-5 w-5" /> Indietro
+            <header className="bg-red-700 text-white px-6 py-5 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)]">
+                <button 
+                    onClick={onGoBack} 
+                    className="flex items-center gap-2 font-bold text-white/90 hover:text-white bg-red-800/30 px-4 py-2 rounded-full hover:bg-red-800/50 transition-colors"
+                >
+                    <BackArrowIcon className="h-5 w-5" /> 
+                    <span className="text-sm">Indietro</span>
                 </button>
-                <h1 className="text-xl font-black uppercase tracking-wider flex items-center gap-2">
-                    <TruckIcon className="h-6 w-6" /> Prenotazione Automezzi
+                
+                <h1 className="text-2xl md:text-3xl font-black uppercase tracking-widest flex items-center gap-3 drop-shadow-md">
+                    <span className="text-4xl filter drop-shadow-sm">🚒</span> 
+                    <span>Autoparco</span>
                 </h1>
-                <div className="w-10"></div>
+                
+                <div className="w-24"></div> {/* Spacer to center title */}
             </header>
 
             <main className="flex-grow p-4 md:p-8 max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -155,23 +186,43 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                             <div className="flex gap-4 mb-3">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input type="radio" checked={!isExternal} onChange={() => setIsExternal(false)} className="text-red-600 focus:ring-red-500" />
-                                    <span className="text-sm font-bold text-slate-700">Personale Distaccamento</span>
+                                    <span className="text-sm font-bold text-slate-700">Interno (Distaccamento)</span>
                                 </label>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input type="radio" checked={isExternal} onChange={() => setIsExternal(true)} className="text-red-600 focus:ring-red-500" />
-                                    <span className="text-sm font-bold text-slate-700">Altra Sede</span>
+                                    <span className="text-sm font-bold text-slate-700">Esterno</span>
                                 </label>
                             </div>
 
                             {!isExternal ? (
-                                <div>
+                                <div className="space-y-2">
+                                    {/* FILTRI TURNO */}
+                                    <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase mr-1"><FilterIcon className="h-3 w-3 inline"/></span>
+                                        {['all', 'a', 'b', 'c', 'd'].map(shift => (
+                                            <button
+                                                key={shift}
+                                                type="button"
+                                                onClick={() => setStaffShiftFilter(shift as Shift | 'all')}
+                                                className={`
+                                                    px-2 py-1 rounded text-[10px] font-bold uppercase transition-colors border
+                                                    ${staffShiftFilter === shift 
+                                                        ? 'bg-slate-700 text-white border-slate-700' 
+                                                        : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'}
+                                                `}
+                                            >
+                                                {shift === 'all' ? 'Tutti' : shift}
+                                            </button>
+                                        ))}
+                                    </div>
+
                                     <select 
                                         value={internalStaffId} 
                                         onChange={e => setInternalStaffId(e.target.value)} 
                                         className="w-full border rounded p-2 text-sm bg-white"
                                     >
-                                        <option value="">-- Seleziona Personale --</option>
-                                        {staff.map(s => <option key={s.id} value={s.id}>{s.name} ({s.grade || 'VVF'})</option>)}
+                                        <option value="">-- Seleziona Personale ({filteredStaff.length}) --</option>
+                                        {filteredStaff.map(s => <option key={s.id} value={s.id}>{s.name} ({s.shift.toUpperCase()})</option>)}
                                     </select>
                                 </div>
                             ) : (
