@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { Vehicle, VehicleBooking, StaffMember, Shift } from '../types';
-import { BackArrowIcon, CalendarIcon, CheckIcon, TrashIcon, FilterIcon, SortIcon, PrinterIcon } from './Icons';
+import { BackArrowIcon, CalendarIcon, CheckIcon, TrashIcon, FilterIcon, SortIcon, PrinterIcon, TruckIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
+import { GradeBadge } from './StaffManagement';
 
 interface VehicleBookingViewProps {
     onGoBack: () => void;
@@ -144,6 +145,7 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
             setInternalStaffId('');
             setExtName('');
             setExtSurname('');
+            setSelectedVehicle(''); // Reset anche veicolo per nuova scelta
             setIsFormOpen(false); // Chiudi il form dopo successo
             alert("Prenotazione confermata!");
         } catch (error: any) {
@@ -212,27 +214,73 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                     
                     {isFormOpen && (
                         <div className="animate-slide-up">
-                            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                                {/* Date e Orari */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <form onSubmit={handleSubmit} className="p-6 space-y-8">
+                                
+                                {/* 1. SELEZIONE VEICOLO (GRIGLIA VISUALE) */}
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase block mb-3 flex items-center gap-2">
+                                        <TruckIcon className="h-4 w-4"/> Seleziona Veicolo *
+                                    </label>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                        {vehicles.map(v => {
+                                            const isSelected = selectedVehicle === v.id;
+                                            return (
+                                                <div 
+                                                    key={v.id}
+                                                    onClick={() => setSelectedVehicle(v.id)}
+                                                    className={`
+                                                        relative p-2 rounded-xl border-2 cursor-pointer transition-all duration-200 flex flex-col items-center gap-2 text-center group
+                                                        ${isSelected 
+                                                            ? 'border-red-500 bg-red-50 shadow-md scale-[1.02]' 
+                                                            : 'border-slate-200 bg-white hover:border-red-300 hover:shadow-sm'
+                                                        }
+                                                    `}
+                                                >
+                                                    {isSelected && (
+                                                        <div className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm z-10">
+                                                            <CheckIcon className="h-3 w-3" />
+                                                        </div>
+                                                    )}
+                                                    <div className="w-16 h-16 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200 flex items-center justify-center">
+                                                        {v.photoUrl ? (
+                                                            <img src={v.photoUrl} className="w-full h-full object-cover" alt={v.model} />
+                                                        ) : (
+                                                            <span className="text-2xl">🚗</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="w-full">
+                                                        <div className="font-bold text-slate-800 text-xs truncate leading-tight">{v.model}</div>
+                                                        <div className={`text-[10px] font-mono font-bold mt-1 px-1 rounded inline-block ${isSelected ? 'bg-white text-red-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {v.plate}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    {!selectedVehicle && <p className="text-[10px] text-red-400 mt-1 italic">* Seleziona un mezzo per procedere</p>}
+                                </div>
+
+                                {/* 2. DATE E ORARI */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <div>
                                         <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Partenza *</label>
                                         <div className="flex gap-2">
-                                            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full border rounded p-2 text-sm" required />
-                                            <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-24 border rounded p-2 text-sm" required />
+                                            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-red-200 outline-none" required />
+                                            <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-24 border rounded p-2 text-sm focus:ring-2 focus:ring-red-200 outline-none" required />
                                         </div>
                                     </div>
-                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <div>
                                         <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Ritorno *</label>
                                         <div className="flex gap-2">
-                                            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full border rounded p-2 text-sm" required />
-                                            <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-24 border rounded p-2 text-sm" required />
+                                            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full border rounded p-2 text-sm focus:ring-2 focus:ring-red-200 outline-none" required />
+                                            <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-24 border rounded p-2 text-sm focus:ring-2 focus:ring-red-200 outline-none" required />
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Richiedente */}
-                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                {/* 3. RICHIEDENTE (GRIGLIA PERSONALE) */}
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                                     <div className="flex gap-6 mb-4 border-b border-slate-200 pb-2">
                                         <label className="flex items-center gap-2 cursor-pointer group">
                                             <input type="radio" checked={!isExternal} onChange={() => setIsExternal(false)} className="text-red-600 focus:ring-red-500" />
@@ -246,80 +294,102 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
 
                                     {!isExternal ? (
                                         <div className="space-y-3">
-                                            {/* FILTRI TURNO */}
-                                            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                                <span className="text-[10px] font-bold text-slate-400 uppercase mr-1 flex items-center gap-1"><FilterIcon className="h-3 w-3"/> Filtra:</span>
-                                                {['all', 'a', 'b', 'c', 'd'].map(shift => (
+                                            {/* FILTRI TURNO (Pulsanti) */}
+                                            <div className="flex flex-wrap gap-2 mb-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setStaffShiftFilter('all')}
+                                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all border ${staffShiftFilter === 'all' ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200'}`}
+                                                >
+                                                    Tutti
+                                                </button>
+                                                {['a', 'b', 'c', 'd'].map(shift => (
                                                     <button
                                                         key={shift}
                                                         type="button"
-                                                        onClick={() => setStaffShiftFilter(shift as Shift | 'all')}
-                                                        className={`
-                                                            px-3 py-1.5 rounded-md text-[10px] font-bold uppercase transition-all border
-                                                            ${staffShiftFilter === shift 
-                                                                ? 'bg-slate-700 text-white border-slate-700 shadow-sm' 
-                                                                : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-100'}
-                                                        `}
+                                                        onClick={() => setStaffShiftFilter(shift as Shift)}
+                                                        className={`px-3 py-1 rounded-full text-xs font-bold transition-all border uppercase ${staffShiftFilter === shift ? 'bg-red-600 text-white border-red-600 shadow-md' : 'bg-white text-slate-500 border-slate-200 hover:bg-red-50'}`}
                                                     >
-                                                        {shift === 'all' ? 'Tutti' : shift}
+                                                        Turno {shift}
                                                     </button>
                                                 ))}
                                             </div>
 
-                                            <select 
-                                                value={internalStaffId} 
-                                                onChange={e => setInternalStaffId(e.target.value)} 
-                                                className="w-full border rounded-lg p-3 text-sm bg-white font-medium focus:ring-2 focus:ring-red-200 outline-none"
-                                            >
-                                                <option value="">-- Seleziona Personale ({filteredStaff.length}) --</option>
-                                                {filteredStaff.map(s => (
-                                                    <option key={s.id} value={s.id}>
-                                                        {s.name}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            {/* GRIGLIA PERSONALE */}
+                                            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3 max-h-60 overflow-y-auto pr-1">
+                                                {filteredStaff.map(s => {
+                                                    const isSelected = internalStaffId === s.id;
+                                                    return (
+                                                        <div 
+                                                            key={s.id}
+                                                            onClick={() => setInternalStaffId(s.id)}
+                                                            className={`
+                                                                relative flex flex-col items-center p-2 rounded-xl border-2 cursor-pointer transition-all group
+                                                                ${isSelected 
+                                                                    ? 'bg-red-50 border-red-500 shadow-md' 
+                                                                    : 'bg-white border-slate-200 hover:border-red-300'
+                                                                }
+                                                            `}
+                                                        >
+                                                            {isSelected && (
+                                                                <div className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm z-10">
+                                                                    <CheckIcon className="h-2 w-2" />
+                                                                </div>
+                                                            )}
+                                                            
+                                                            <div className="relative">
+                                                                <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center text-lg">
+                                                                    {s.photoUrl ? (
+                                                                        <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} />
+                                                                    ) : (
+                                                                        <span>{s.icon || '👤'}</span>
+                                                                    )}
+                                                                </div>
+                                                                {/* Badge Grado */}
+                                                                {s.grade && (
+                                                                    <div className="absolute -bottom-1 -right-1 scale-75">
+                                                                        <GradeBadge grade={s.grade} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            
+                                                            <span className={`text-[10px] font-bold text-center mt-1 truncate w-full ${isSelected ? 'text-red-700' : 'text-slate-600'}`}>
+                                                                {s.name.split(' ')[0]}
+                                                            </span>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="space-y-3 animate-fade-in">
-                                            <select value={extGrade} onChange={e => setExtGrade(e.target.value)} className="w-full border rounded-lg p-2 text-sm bg-white">
+                                            <select value={extGrade} onChange={e => setExtGrade(e.target.value)} className="w-full border rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-red-200 outline-none">
                                                 <option value="">-- Seleziona Grado --</option>
                                                 {VVF_GRADES.map(g => <option key={g.id} value={g.id}>{g.label}</option>)}
                                             </select>
                                             <div className="grid grid-cols-2 gap-3">
-                                                <input type="text" placeholder="Nome" value={extName} onChange={e => setExtName(e.target.value)} className="border rounded-lg p-2 text-sm" />
-                                                <input type="text" placeholder="Cognome" value={extSurname} onChange={e => setExtSurname(e.target.value)} className="border rounded-lg p-2 text-sm" />
+                                                <input type="text" placeholder="Nome" value={extName} onChange={e => setExtName(e.target.value)} className="border rounded-lg p-2 text-sm focus:ring-2 focus:ring-red-200 outline-none" />
+                                                <input type="text" placeholder="Cognome" value={extSurname} onChange={e => setExtSurname(e.target.value)} className="border rounded-lg p-2 text-sm focus:ring-2 focus:ring-red-200 outline-none" />
                                             </div>
-                                            <input type="text" placeholder="Sede di Servizio (es. Comando Siena)" value={extLocation} onChange={e => setExtLocation(e.target.value)} className="w-full border rounded-lg p-2 text-sm" />
+                                            <input type="text" placeholder="Sede di Servizio (es. Comando Siena)" value={extLocation} onChange={e => setExtLocation(e.target.value)} className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-red-200 outline-none" />
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Veicolo e Servizio */}
-                                <div className="space-y-4">
+                                {/* 4. DETTAGLI VIAGGIO */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Veicolo *</label>
-                                        <select value={selectedVehicle} onChange={e => setSelectedVehicle(e.target.value)} className="w-full border rounded-lg p-3 text-sm bg-white font-bold" required>
-                                            <option value="">-- Seleziona Mezzo --</option>
-                                            {vehicles.map(v => (
-                                                <option key={v.id} value={v.id}>{v.model} - {v.plate} ({v.fuelType})</option>
-                                            ))}
+                                        <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Tipo Servizio</label>
+                                        <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="w-full border rounded-lg p-3 text-sm bg-white focus:ring-2 focus:ring-red-200 outline-none">
+                                            <option value="Servizio Comando">Servizio Comando</option>
+                                            <option value="Missione">Missione</option>
+                                            <option value="Sostituzione personale">Sostituzione Personale</option>
+                                            <option value="Altro">Altro</option>
                                         </select>
                                     </div>
-                                    
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Tipo Servizio</label>
-                                            <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="w-full border rounded-lg p-3 text-sm bg-white">
-                                                <option value="Servizio Comando">Servizio Comando</option>
-                                                <option value="Missione">Missione</option>
-                                                <option value="Sostituzione personale">Sostituzione Personale</option>
-                                                <option value="Altro">Altro</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Destinazione *</label>
-                                            <input type="text" value={destination} onChange={e => setDestination(e.target.value)} className="w-full border rounded-lg p-3 text-sm" placeholder="Es. Siena, Roma..." required />
-                                        </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Destinazione *</label>
+                                        <input type="text" value={destination} onChange={e => setDestination(e.target.value)} className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-red-200 outline-none" placeholder="Es. Siena, Roma..." required />
                                     </div>
                                 </div>
 
