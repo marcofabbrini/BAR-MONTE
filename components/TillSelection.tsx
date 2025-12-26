@@ -434,20 +434,23 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     </button>
                 </div>
 
-                {/* NEW VEHICLE RESERVATION BUTTON - ENHANCED */}
+                {/* NEW VEHICLE RESERVATION BUTTON - ENHANCED (WHITE + GLOW) */}
                 <div className="w-full md:w-3/4 lg:w-2/3 px-4 mt-6 pt-6 border-t border-slate-200">
                     <button 
                         onClick={onSelectFleet}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white rounded-2xl shadow-lg hover:shadow-red-500/30 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95"
+                        className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.2)] hover:shadow-[0_0_25px_rgba(220,38,38,0.4)] border-2 border-red-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
                     >
                         {/* Background Emoji Effect */}
-                        <div className="absolute -bottom-6 -right-6 text-9xl opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-transform group-hover:scale-110 group-hover:rotate-0">
+                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🚗
                         </div>
 
-                        <div className="relative z-10 flex items-center justify-center gap-4">
-                            <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-md">🚗</span>
-                            <span className="font-black text-sm md:text-lg uppercase tracking-widest text-shadow-sm">Automezzi</span>
+                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
+                            <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🚗</span>
+                            <div className="flex flex-col items-center md:items-start">
+                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-red-600 transition-colors">Automezzi</span>
+                                <span className="text-[10px] md:text-xs font-bold text-red-400 uppercase tracking-wider">Prenotazioni & Gestione</span>
+                            </div>
                         </div>
                     </button>
                 </div>
