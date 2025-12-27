@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { StaffMember, Shift, InterventionTypology, DutyOfficer } from '../types';
 import { useBar } from '../contexts/BarContext';
@@ -15,7 +14,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
     const { interventions, interventionTypologies, dutyOfficers, addIntervention, deleteIntervention, getNow } = useBar();
 
     const [isWizardOpen, setIsWizardOpen] = useState(false);
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useState<number>(1);
 
     // Form Data
     const [date, setDate] = useState(getNow().toISOString().split('T')[0]);
@@ -110,10 +109,10 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         if (step === 2) {
             if (!typology || !street || !municipality) return alert("Compila tipologia e indirizzo.");
         }
-        setStep(prev => prev + 1);
+        setStep((prev: number) => prev + 1);
     };
 
-    const prevStep = () => setStep(prev => prev - 1);
+    const prevStep = () => setStep((prev: number) => prev - 1);
 
     const handleSubmit = async () => {
         if (!teamLeaderId) return alert("Seleziona il Capo Partenza.");
@@ -252,14 +251,16 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
 
     // PIE CHART COMPONENT (Local)
     const SimplePieChart = () => {
-        const total = Object.values(stats.shiftCounts).reduce((a: number, b: number) => a + b, 0);
+        const counts = stats.shiftCounts as Record<string, number>;
+        const total = Object.values(counts).reduce((a, b) => a + Number(b), 0);
         if (total === 0) return <div className="text-center text-xs text-slate-400 py-8">Nessun dato</div>;
 
         const colors: Record<string, string> = { a: '#ef4444', b: '#3b82f6', c: '#22c55e', d: '#eab308' };
         let currentAngle = 0;
         
-        const gradient = Object.entries(stats.shiftCounts).map(([shift, count]) => {
-            const percentage = ((count as number) / total) * 100;
+        const gradient = Object.entries(counts).map(([shift, count]) => {
+            const val = Number(count);
+            const percentage = (val / total) * 100;
             const endAngle = currentAngle + percentage;
             const str = `${colors[shift]} ${currentAngle}% ${endAngle}%`;
             currentAngle = endAngle;

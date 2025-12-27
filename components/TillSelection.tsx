@@ -407,30 +407,38 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 {/* --- 2. SEZIONE CENTRALE: STACK VERTICALE (MEZZI OP, EXTRA HUB, PRENOTAZIONE, LAVANDERIA, INTERVENTI) --- */}
                 <div className="w-full md:w-3/4 lg:w-2/3 px-4 flex flex-col gap-4 mb-4">
                     
-                    {/* 0. INTERVENTI (ARANCIONE - SUPER ADMIN ONLY) */}
-                    {isSuperAdmin && (
-                        <button 
-                            onClick={onSelectInterventions}
-                            className="w-full bg-white hover:bg-orange-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.3)] hover:shadow-[0_0_25px_rgba(249,115,22,0.5)] border-2 border-orange-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
-                        >
-                            <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
-                                🔥
+                    {/* 0. INTERVENTI (ARANCIONE - VISIBILE A TUTTI) */}
+                    <button 
+                        onClick={onSelectInterventions}
+                        className="w-full bg-white hover:bg-orange-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.3)] hover:shadow-[0_0_25px_rgba(249,115,22,0.5)] border-2 border-orange-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
+                    >
+                        {/* BADGE IN COSTRUZIONE */}
+                        <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[9px] md:text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl shadow-sm z-20 flex items-center gap-1 animate-pulse">
+                            <span>🚧</span> In Costruzione
+                        </div>
+
+                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                            🔥
+                        </div>
+                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
+                            <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🔥</span>
+                            <div className="flex flex-col items-center md:items-start">
+                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-orange-600 transition-colors">INTERVENTI</span>
+                                <span className="text-[10px] md:text-xs font-bold text-orange-500 uppercase tracking-wider">Registro Interventi</span>
                             </div>
-                            <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
-                                <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🔥</span>
-                                <div className="flex flex-col items-center md:items-start">
-                                    <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-orange-600 transition-colors">INTERVENTI</span>
-                                    <span className="text-[10px] md:text-xs font-bold text-orange-500 uppercase tracking-wider">Registro Interventi</span>
-                                </div>
-                            </div>
-                        </button>
-                    )}
+                        </div>
+                    </button>
 
                     {/* 1. MEZZI OPERATIVI (ARANCIONE GLOW - DISATTIVATO) */}
                     <button 
                         disabled
                         className="w-full bg-white opacity-80 cursor-not-allowed text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.6)] border-2 border-orange-500 animate-pulse p-6 relative overflow-hidden h-32 md:h-40 flex items-center justify-center"
                     >
+                        {/* BADGE IN COSTRUZIONE */}
+                        <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[9px] md:text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl shadow-sm z-20 flex items-center gap-1 animate-pulse">
+                            <span>🚧</span> In Costruzione
+                        </div>
+
                         <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 transform rotate-[-10deg] filter grayscale-0 pointer-events-none">
                             🚒
                         </div>
