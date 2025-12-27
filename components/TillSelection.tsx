@@ -351,7 +351,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                             ☕
                                         </div>
 
-                                        <span className="absolute top-2 right-2 md:top-3 md:right-3 bg-green-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full animate-pulse shadow-sm z-10">
+                                        <span className="absolute top-4 right-4 bg-green-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full animate-pulse shadow-sm z-10">
                                             IN SERVIZIO
                                         </span>
                                         
@@ -365,7 +365,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                                 </span>
                                             </div>
                                             <span className="font-bold text-slate-700 leading-tight bg-slate-50/80 px-3 py-1 rounded-lg text-xl md:text-2xl backdrop-blur-sm uppercase">
-                                                CASSA BAR TURNO {till.shift.toUpperCase()}
+                                                CASSA BAR {till.shift.toUpperCase()}
                                             </span>
                                         </div>
 
@@ -396,56 +396,17 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                     </span>
                                 </div>
                                 <span className="font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg hidden md:block text-xs md:text-lg uppercase">
-                                    CASSA BAR TURNO {till.shift.toUpperCase()}
+                                    CASSA BAR {till.shift.toUpperCase()}
                                 </span>
                             </button>
                         );
                     })}
                 </div>
 
-                {/* --- 2. SEZIONE CENTRALE: STACK VERTICALE (MEZZI OP, EXTRA HUB, PRENOTAZIONE, LAVANDERIA) --- */}
+                {/* --- 2. SEZIONE CENTRALE: STACK VERTICALE (VEICOLI, LAVANDERIA, EXTRA HUB) --- */}
                 <div className="w-full md:w-3/4 lg:w-2/3 px-4 flex flex-col gap-4 mb-4">
                     
-                    {/* 1. MEZZI OPERATIVI (ARANCIONE GLOW - DISATTIVATO) */}
-                    <button 
-                        disabled
-                        className="w-full bg-white opacity-80 cursor-not-allowed text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.6)] border-2 border-orange-500 animate-pulse p-6 relative overflow-hidden h-32 md:h-40 flex items-center justify-center"
-                    >
-                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 transform rotate-[-10deg] filter grayscale-0 pointer-events-none">
-                            🚒
-                        </div>
-                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
-                            <span className="text-5xl md:text-7xl filter drop-shadow-sm">🚒</span>
-                            <div className="flex flex-col items-center md:items-start">
-                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-orange-600">Mezzi Operativi</span>
-                                <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Gestione Caricamenti (Presto Disponibile)</span>
-                            </div>
-                        </div>
-                    </button>
-
-                    {/* 2. EXTRA HUB (VERDE) - Spostato qui con stessa dimensione */}
-                    <button 
-                        onClick={onSelectGames}
-                        className="w-full bg-white hover:bg-green-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] border-2 border-green-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
-                    >
-                        {tombolaNumberCount > 0 && (
-                            <div className="absolute top-4 right-4 bg-red-600 text-white text-xs font-black w-6 h-6 flex items-center justify-center rounded-full shadow-md animate-bounce z-20 border-2 border-white">
-                                {tombolaNumberCount}
-                            </div>
-                        )}
-                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
-                            🎮
-                        </div>
-                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
-                            <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🎮</span>
-                            <div className="flex flex-col items-center md:items-start">
-                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-green-600 transition-colors">Extra Hub</span>
-                                <span className="text-[10px] md:text-xs font-bold text-green-500 uppercase tracking-wider">Intrattenimento</span>
-                            </div>
-                        </div>
-                    </button>
-
-                    {/* 3. PRENOTAZIONE MEZZI (ROSSO) - Ex Automezzi */}
+                    {/* AUTOMEZZI (ROSSO) */}
                     <button 
                         onClick={onSelectFleet}
                         className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.2)] hover:shadow-[0_0_25px_rgba(220,38,38,0.4)] border-2 border-red-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
@@ -456,13 +417,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
                             <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🚗</span>
                             <div className="flex flex-col items-center md:items-start">
-                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-red-600 transition-colors">Prenotazione Mezzi</span>
-                                <span className="text-[10px] md:text-xs font-bold text-red-400 uppercase tracking-wider">Gestione Parco Auto</span>
+                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-red-600 transition-colors">Automezzi</span>
+                                <span className="text-[10px] md:text-xs font-bold text-red-400 uppercase tracking-wider">Prenotazioni & Gestione</span>
                             </div>
                         </div>
                     </button>
 
-                    {/* 4. LAVANDERIA (BLU) */}
+                    {/* LAVANDERIA (BLU) */}
                     <button 
                         onClick={onSelectLaundry}
                         className="w-full bg-white hover:bg-blue-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border-2 border-blue-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
@@ -479,6 +440,27 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                     </button>
 
+                    {/* EXTRA HUB (VERDE) - Spostato qui con stessa dimensione */}
+                    <button 
+                        onClick={onSelectGames}
+                        className="w-full bg-white hover:bg-green-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] border-2 border-green-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
+                    >
+                        {tombolaNumberCount > 0 && (
+                            <div className="absolute top-4 right-4 bg-red-600 text-white text-xs font-black w-6 h-6 flex items-center justify-center rounded-full shadow-md animate-bounce z-20 border-2 border-white">
+                                {tombolaNumberCount}
+                            </div>
+                        )}
+                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                            🎮
+                        </div>
+                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
+                            <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🎮</span>
+                            <div className="flex flex-col items-center md:items-start">
+                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-green-600 transition-colors">Extra Hub</span>
+                                <span className="text-[10px] md:text-xs font-bold text-green-500 uppercase tracking-wider">Giochi & Intrattenimento</span>
+                            </div>
+                        </div>
+                    </button>
                 </div>
 
                 {/* --- 3. SEZIONE BASSA: GRIGLIA FUNZIONALE (PRESENZE, REPORT, ADMIN) --- */}
