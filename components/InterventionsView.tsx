@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { StaffMember, Shift, InterventionTypology, DutyOfficer } from '../types';
 import { useBar } from '../contexts/BarContext';
-import { BackArrowIcon, CheckIcon, FireIcon, TrashIcon, PlusIcon, CalendarIcon } from './Icons';
+import { BackArrowIcon, CheckIcon, FireIcon, TrashIcon, PlusIcon, CalendarIcon, ChartBarIcon, TrophyIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 
 interface InterventionsViewProps {
@@ -55,15 +55,51 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         return shifts[shiftIndex] as Shift;
     }, [getNow]);
 
-    // FILTRO CAPO PARTENZA (CS, CQE, CR, CRE)
+    // FILTRO CAPO PARTENZA (CS, CQE, CR, CRE) con FALLBACK
     const eligibleLeaders = useMemo(() => {
-        return staff.filter(s => {
+        // Prima prova a filtrare per grado
+        const leaders = staff.filter(s => {
             const grade = s.grade || '';
-            // Gradi validi: CS, CQE, CR, CRE
-            // VVF_GRADES: VIG, VE, VESC, VC, VCSC, CS, CQE, CR, CRE
             return ['CS', 'CQE', 'CR', 'CRE'].includes(grade) && s.shift === activeShift;
         }).sort((a,b) => a.name.localeCompare(b.name));
+
+        // Se non trova nessuno (es. gradi non settati), ritorna tutto lo staff del turno
+        if (leaders.length === 0) {
+            return staff.filter(s => s.shift === activeShift).sort((a,b) => a.name.localeCompare(b.name));
+        }
+        return leaders;
     }, [staff, activeShift]);
+
+    // STATISTICHE DASHBOARD
+    const stats = useMemo(() => {
+        const shiftCounts: Record<string, number> = { a: 0, b: 0, c: 0, d: 0 };
+        const leaderCounts: Record<string, number> = {};
+
+        interventions.forEach(i => {
+            // Count Shifts
+            if (i.shift && shiftCounts[i.shift.toLowerCase()] !== undefined) {
+                shiftCounts[i.shift.toLowerCase()]++;
+            }
+            // Count Leaders
+            if (i.teamLeaderId) {
+                leaderCounts[i.teamLeaderId] = (leaderCounts[i.teamLeaderId] || 0) + 1;
+            }
+        });
+
+        // Find Top Leader
+        let topLeaderId = '';
+        let maxCount = 0;
+        Object.entries(leaderCounts).forEach(([id, count]) => {
+            if (count > maxCount) {
+                maxCount = count;
+                topLeaderId = id;
+            }
+        });
+        
+        const topLeader = staff.find(s => s.id === topLeaderId);
+
+        return { shiftCounts, topLeader, maxCount };
+    }, [interventions, staff]);
 
     // Handle Wizard Navigation
     const nextStep = () => {
@@ -80,7 +116,10 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
     const prevStep = () => setStep(prev => prev - 1);
 
     const handleSubmit = async () => {
-        if (!teamLeaderId || !officerId) return alert("Seleziona Capo Partenza e Funzionario.");
+        if (!teamLeaderId) return alert("Seleziona il Capo Partenza.");
+        // Officer ID optional fallback if list is empty
+        const finalOfficerId = officerId || (dutyOfficers.length > 0 ? dutyOfficers[0].id : 'unknown'); 
+        const finalOfficerName = dutyOfficers.find(o => o.id === officerId)?.name || 'N/D';
 
         const leader = staff.find(s => s.id === teamLeaderId);
         
@@ -96,7 +135,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                 locality,
                 teamLeaderId,
                 teamLeaderName: leader?.name || 'Sconosciuto',
-                dutyOfficer: dutyOfficers.find(o => o.id === officerId)?.name || 'Sconosciuto',
+                dutyOfficer: finalOfficerName,
                 shift: activeShift,
                 timestamp: new Date().toISOString()
             });
@@ -109,13 +148,12 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
             setStreet('');
             setNumber('');
             setLocality('');
-            setTeamLeaderId('');
-            // Keep Municipality & Typology/Officer might be sticky
+            // Keep TeamLeader sticky for convenience
             
-            alert("Intervento registrato!");
-        } catch (e) {
+            alert("Intervento registrato con successo!");
+        } catch (e: any) {
             console.error(e);
-            alert("Errore salvataggio.");
+            alert("Errore salvataggio: " + e.message);
         }
     };
 
@@ -154,10 +192,16 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                         <h3 className="font-bold text-orange-800 uppercase text-sm border-b border-orange-200 pb-2">Step 2: Dettagli</h3>
                         <div>
                             <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Tipologia</label>
-                            <select value={typology} onChange={e => setTypology(e.target.value)} className="w-full border rounded p-3 bg-white">
-                                <option value="">-- Seleziona --</option>
-                                {interventionTypologies.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                            </select>
+                            <input 
+                                list="typologies" 
+                                value={typology} 
+                                onChange={e => setTypology(e.target.value)} 
+                                className="w-full border rounded p-3 bg-white"
+                                placeholder="Seleziona o scrivi..."
+                            />
+                            <datalist id="typologies">
+                                {interventionTypologies.map(t => <option key={t.id} value={t.name} />)}
+                            </datalist>
                         </div>
                         <div className="grid grid-cols-3 gap-2">
                             <div className="col-span-2">
@@ -188,10 +232,10 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                         <div>
                             <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Capo Partenza (Turno {activeShift.toUpperCase()})</label>
                             <select value={teamLeaderId} onChange={e => setTeamLeaderId(e.target.value)} className="w-full border rounded p-3 bg-white font-bold">
-                                <option value="">-- Seleziona CS/CR --</option>
+                                <option value="">-- Seleziona --</option>
                                 {eligibleLeaders.map(s => <option key={s.id} value={s.id}>{s.grade} {s.name}</option>)}
                             </select>
-                            {eligibleLeaders.length === 0 && <p className="text-[10px] text-red-500 mt-1 italic">Nessun Capo Squadra/Reparto trovato nel turno {activeShift.toUpperCase()}.</p>}
+                            {eligibleLeaders.length === 0 && <p className="text-[10px] text-red-500 mt-1 italic">Nessun personale trovato nel turno {activeShift.toUpperCase()}.</p>}
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Funzionario di Servizio</label>
@@ -204,6 +248,40 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                 );
             default: return null;
         }
+    };
+
+    // PIE CHART COMPONENT (Local)
+    const SimplePieChart = () => {
+        const total = Object.values(stats.shiftCounts).reduce((a: number, b: number) => a + b, 0);
+        if (total === 0) return <div className="text-center text-xs text-slate-400 py-8">Nessun dato</div>;
+
+        const colors: Record<string, string> = { a: '#ef4444', b: '#3b82f6', c: '#22c55e', d: '#eab308' };
+        let currentAngle = 0;
+        
+        const gradient = Object.entries(stats.shiftCounts).map(([shift, count]) => {
+            const percentage = ((count as number) / total) * 100;
+            const endAngle = currentAngle + percentage;
+            const str = `${colors[shift]} ${currentAngle}% ${endAngle}%`;
+            currentAngle = endAngle;
+            return str;
+        }).join(', ');
+
+        return (
+            <div className="flex items-center gap-4">
+                <div 
+                    className="w-20 h-20 rounded-full border-4 border-slate-100 shadow-sm"
+                    style={{ background: `conic-gradient(${gradient})` }}
+                ></div>
+                <div className="flex flex-col gap-1">
+                    {(['a','b','c','d'] as Shift[]).map(s => (
+                        <div key={s} className="flex items-center gap-2 text-[10px] uppercase font-bold text-slate-600">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[s] }}></div>
+                            Turno {s}: {stats.shiftCounts[s]}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -275,7 +353,50 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                     </div>
                 )}
 
-                {/* LISTA STORICO */}
+                {/* DASHBOARD STATISTICHE */}
+                {!isWizardOpen && interventions.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* 1. GRAFICO TORTA */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 mb-4 border-b pb-2">
+                                <ChartBarIcon className="h-4 w-4"/> Interventi per Turno
+                            </h3>
+                            <SimplePieChart />
+                        </div>
+
+                        {/* 2. TOP LEADER */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-2 opacity-10">
+                                <TrophyIcon className="h-24 w-24 text-yellow-500" />
+                            </div>
+                            <h3 className="text-xs font-bold text-slate-500 uppercase flex items-center gap-2 mb-4 border-b pb-2">
+                                <TrophyIcon className="h-4 w-4 text-yellow-500"/> Top Capo Partenza
+                            </h3>
+                            {stats.topLeader ? (
+                                <div className="flex items-center gap-4 relative z-10">
+                                    <div className="w-16 h-16 rounded-full bg-slate-100 border-2 border-yellow-400 flex items-center justify-center text-3xl shadow-md overflow-hidden">
+                                        {stats.topLeader.photoUrl ? (
+                                            <img src={stats.topLeader.photoUrl} className="w-full h-full object-cover" />
+                                        ) : (
+                                            stats.topLeader.icon || '👤'
+                                        )}
+                                    </div>
+                                    <div>
+                                        <p className="font-black text-slate-800 text-lg">{stats.topLeader.name}</p>
+                                        <p className="text-xs font-bold text-slate-500 uppercase">{stats.topLeader.grade} - Turno {stats.topLeader.shift.toUpperCase()}</p>
+                                        <div className="mt-2 bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded-full inline-block">
+                                            {stats.maxCount} Interventi
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-slate-400 text-xs italic">Dati insufficienti.</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* LISTA STORICO AGGIORNATA */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
                         <h3 className="font-bold text-slate-700 uppercase flex items-center gap-2">
@@ -288,11 +409,11 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                         <table className="w-full text-left text-sm">
                             <thead className="bg-slate-100 text-slate-600 text-xs uppercase font-bold">
                                 <tr>
+                                    <th className="p-3 text-center">Turno</th>
+                                    <th className="p-3">Progr.</th>
                                     <th className="p-3">Data</th>
-                                    <th className="p-3">Orari</th>
                                     <th className="p-3">Tipologia</th>
-                                    <th className="p-3">Luogo</th>
-                                    <th className="p-3">Squadra</th>
+                                    <th className="p-3">Dettagli Luogo</th>
                                     <th className="p-3 text-center">Azioni</th>
                                 </tr>
                             </thead>
@@ -300,37 +421,51 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                 {interventions.length === 0 ? (
                                     <tr><td colSpan={6} className="p-8 text-center text-slate-400 italic">Nessun intervento registrato.</td></tr>
                                 ) : (
-                                    interventions.map(int => (
-                                        <tr key={int.id} className="hover:bg-orange-50/30 transition-colors">
-                                            <td className="p-3 whitespace-nowrap font-mono font-bold text-slate-700">
-                                                {new Date(int.date).toLocaleDateString('it-IT')}
-                                            </td>
-                                            <td className="p-3 whitespace-nowrap">
-                                                <span className="text-green-700 font-bold">{int.exitTime}</span> - <span className="text-red-700 font-bold">{int.returnTime}</span>
-                                            </td>
-                                            <td className="p-3">
-                                                <span className="bg-orange-100 text-orange-800 text-[10px] font-bold px-2 py-1 rounded-full uppercase">
-                                                    {int.typology}
-                                                </span>
-                                            </td>
-                                            <td className="p-3 text-xs text-slate-600">
-                                                <b>{int.street} {int.number}</b><br/>
-                                                {int.municipality} {int.locality && `(${int.locality})`}
-                                            </td>
-                                            <td className="p-3 text-xs">
-                                                <div className="font-bold text-slate-700">CP: {int.teamLeaderName}</div>
-                                                <div className="text-slate-500">Funz: {int.dutyOfficer}</div>
-                                                <div className="mt-1 text-[10px] font-bold bg-slate-100 inline-block px-1 rounded border">Turno {int.shift.toUpperCase()}</div>
-                                            </td>
-                                            <td className="p-3 text-center">
-                                                {isSuperAdmin && (
-                                                    <button onClick={() => handleDelete(int.id)} className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-full transition-colors">
-                                                        <TrashIcon className="h-4 w-4" />
-                                                    </button>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))
+                                    interventions.map((int, idx) => {
+                                        // Calcolo Progressivo (Totale - Indice) per avere ordine inverso
+                                        const progNum = interventions.length - idx;
+                                        const shiftColor = {
+                                            'a': 'bg-red-100 text-red-700 border-red-200',
+                                            'b': 'bg-blue-100 text-blue-700 border-blue-200',
+                                            'c': 'bg-green-100 text-green-700 border-green-200',
+                                            'd': 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                                        }[int.shift.toLowerCase()] || 'bg-slate-100 text-slate-600';
+
+                                        return (
+                                            <tr key={int.id} className="hover:bg-orange-50/30 transition-colors">
+                                                <td className="p-3 text-center">
+                                                    <span className={`text-[10px] font-black uppercase px-2 py-1 rounded border ${shiftColor}`}>
+                                                        {int.shift.toUpperCase()}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3 font-mono font-bold text-slate-400">
+                                                    #{progNum}
+                                                </td>
+                                                <td className="p-3 whitespace-nowrap text-xs text-slate-600">
+                                                    <div className="font-bold">{new Date(int.date).toLocaleDateString('it-IT')}</div>
+                                                    <div>{int.exitTime} - {int.returnTime}</div>
+                                                </td>
+                                                <td className="p-3">
+                                                    <span className="font-bold text-slate-800 uppercase text-xs">
+                                                        {int.typology}
+                                                    </span>
+                                                    <div className="text-[10px] text-slate-500 mt-1">
+                                                        CP: {int.teamLeaderName}
+                                                    </div>
+                                                </td>
+                                                <td className="p-3 text-xs text-slate-500">
+                                                    {int.street} {int.number}, {int.municipality}
+                                                </td>
+                                                <td className="p-3 text-center">
+                                                    {isSuperAdmin && (
+                                                        <button onClick={() => handleDelete(int.id)} className="text-slate-300 hover:text-red-500 p-2 hover:bg-red-50 rounded-full transition-colors">
+                                                            <TrashIcon className="h-4 w-4" />
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>
