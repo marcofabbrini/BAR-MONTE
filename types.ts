@@ -179,6 +179,41 @@ export interface LaundryEntry {
 }
 // ==========================
 
+// === REGISTRO INTERVENTI ===
+export interface InterventionTypology {
+    id: string;
+    name: string; // Es. Incendio, Incidente Stradale, Apertura Porta
+}
+
+export interface DutyOfficer {
+    id: string;
+    name: string; // Es. Funzionario Rossi
+}
+
+export interface Intervention {
+    id: string;
+    date: string; // YYYY-MM-DD
+    exitTime: string; // HH:mm
+    returnTime: string; // HH:mm
+    
+    typology: string; // Nome tipologia
+    
+    // Luogo
+    street: string;
+    number: string;
+    municipality: string;
+    locality: string;
+
+    // Personale
+    teamLeaderId: string; // ID Capo Partenza (CS+)
+    teamLeaderName: string; // Denormalized
+    dutyOfficer: string; // Nome Funzionario
+
+    shift: string; // Turno che ha effettuato l'intervento (A, B, C, D)
+    timestamp: string; // Creation timestamp
+}
+// ==========================
+
 export interface SeasonalityConfig {
     startDate: string;
     endDate: string;

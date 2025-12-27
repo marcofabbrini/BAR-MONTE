@@ -1,8 +1,9 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef, LaundryEntry } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef, LaundryEntry, Intervention, InterventionTypology, DutyOfficer } from '../types';
 import { BarService } from '../services/barService';
 import { VehicleService } from '../services/vehicleService';
+import { InterventionService } from '../services/interventionService';
 
 interface BarContextType {
     products: Product[];
@@ -23,6 +24,11 @@ interface BarContextType {
     // Laundry
     laundryItems: LaundryItemDef[];
     laundryEntries: LaundryEntry[];
+
+    // Interventions
+    interventions: Intervention[];
+    interventionTypologies: InterventionTypology[];
+    dutyOfficers: DutyOfficer[];
 
     activeToast: AppNotification | null;
     isLoading: boolean;
@@ -70,6 +76,14 @@ interface BarContextType {
     addLaundryEntry: (e: Omit<LaundryEntry, 'id'>) => Promise<void>;
     deleteLaundryEntry: (id: string) => Promise<void>;
 
+    // Intervention Actions
+    addIntervention: (i: Omit<Intervention, 'id'>) => Promise<void>;
+    deleteIntervention: (id: string) => Promise<void>;
+    addInterventionTypology: (name: string) => Promise<void>;
+    deleteInterventionTypology: (id: string) => Promise<void>;
+    addDutyOfficer: (name: string) => Promise<void>;
+    deleteDutyOfficer: (id: string) => Promise<void>;
+
     // Time Sync
     getNow: () => Date;
 }
@@ -91,6 +105,9 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [vehicleBookings, setVehicleBookings] = useState<VehicleBooking[]>([]);
     const [laundryItems, setLaundryItems] = useState<LaundryItemDef[]>([]);
     const [laundryEntries, setLaundryEntries] = useState<LaundryEntry[]>([]);
+    const [interventions, setInterventions] = useState<Intervention[]>([]);
+    const [interventionTypologies, setInterventionTypologies] = useState<InterventionTypology[]>([]);
+    const [dutyOfficers, setDutyOfficers] = useState<DutyOfficer[]>([]);
 
     const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -143,6 +160,9 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             BarService.subscribeToLaundryEntries(setLaundryEntries),
             VehicleService.subscribeToVehicles(setVehicles),
             VehicleService.subscribeToBookings(setVehicleBookings),
+            InterventionService.subscribeToInterventions(setInterventions),
+            InterventionService.subscribeToTypologies(setInterventionTypologies),
+            InterventionService.subscribeToOfficers(setDutyOfficers),
             BarService.subscribeToNotifications((n) => {
                 if (n) {
                     setActiveToast(n);
@@ -207,15 +227,24 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const addLaundryEntry = (e: Omit<LaundryEntry, 'id'>) => BarService.addLaundryEntry(e);
     const deleteLaundryEntry = (id: string) => BarService.deleteLaundryEntry(id);
 
+    // Intervention Functions
+    const addIntervention = (i: Omit<Intervention, 'id'>) => InterventionService.addIntervention(i);
+    const deleteIntervention = (id: string) => InterventionService.deleteIntervention(id);
+    const addInterventionTypology = (name: string) => InterventionService.addTypology(name);
+    const deleteInterventionTypology = (id: string) => InterventionService.deleteTypology(id);
+    const addDutyOfficer = (name: string) => InterventionService.addOfficer(name);
+    const deleteDutyOfficer = (id: string) => InterventionService.deleteOfficer(id);
+
     return (
         <BarContext.Provider value={{
             products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
-            vehicles, vehicleBookings, laundryItems, laundryEntries,
+            vehicles, vehicleBookings, laundryItems, laundryEntries, interventions, interventionTypologies, dutyOfficers,
             addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
             addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
             addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
             addVehicle, updateVehicle, deleteVehicle, addBooking, deleteBooking,
             addLaundryItem, updateLaundryItem, deleteLaundryItem, addLaundryEntry, deleteLaundryEntry,
+            addIntervention, deleteIntervention, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer,
             getNow
         }}>
             {children}

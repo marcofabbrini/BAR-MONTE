@@ -16,13 +16,14 @@ import AttendanceCalendar from './components/AttendanceCalendar';
 import InteractiveModelViewer from './components/InteractiveModelViewer';
 import VehicleBookingView from './components/VehicleBookingView';
 import LaundryView from './components/LaundryView';
+import InterventionsView from './components/InterventionsView';
 import { TILLS } from './constants';
 import { BellIcon } from './components/Icons';
 import { AnalottoProvider, useAnalotto } from './contexts/AnalottoContext';
 import { TombolaProvider, useTombola } from './contexts/TombolaContext';
 import { BarProvider, useBar } from './contexts/BarContext';
 
-type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice' | 'attendance_view' | '3d_viewer' | 'vehicle_booking' | 'laundry';
+type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice' | 'attendance_view' | '3d_viewer' | 'vehicle_booking' | 'laundry' | 'interventions';
 
 const AppContent: React.FC = () => {
     const [view, setView] = useState<View>('selection');
@@ -165,6 +166,7 @@ const AppContent: React.FC = () => {
                 isSuperAdmin={isSuperAdmin}
             />;
             case 'laundry': return <LaundryView onGoBack={() => setView('selection')} staff={staff} />;
+            case 'interventions': return <InterventionsView onGoBack={() => setView('selection')} staff={staff} isSuperAdmin={isSuperAdmin} />;
             case 'admin': return <AdminView 
                 onGoBack={() => setView('selection')} orders={orders} tills={TILLS} tillColors={tillColors} products={products} staff={staff} cashMovements={cashMovements}
                 onUpdateTillColors={updateTillColors} onDeleteOrders={(ids, em) => deleteOrders(ids, em)} onPermanentDeleteOrder={permanentDeleteOrder} onUpdateOrder={updateOrder}
@@ -191,6 +193,7 @@ const AppContent: React.FC = () => {
                 onSelectAttendance={() => setView('attendance_view')} 
                 onSelectFleet={() => setView('vehicle_booking')}
                 onSelectLaundry={() => setView('laundry')}
+                onSelectInterventions={() => setView('interventions')}
                 tillColors={tillColors} 
                 seasonalityConfig={seasonalityConfig} 
                 shiftSettings={shiftSettings} 

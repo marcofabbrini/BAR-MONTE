@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef } from '../types';
 import { type User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -88,6 +88,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     // Access Context methods
     const { vehicles, addVehicle, updateVehicle, deleteVehicle } = useBar();
     const { laundryItems, addLaundryItem, updateLaundryItem, deleteLaundryItem } = useBar();
+    const { interventionTypologies, dutyOfficers, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer } = useBar();
 
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -113,6 +114,10 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     // General Settings State
     const [waterPrice, setWaterPrice] = useState(generalSettings?.waterQuotaPrice || 0);
+
+    // Intervention Config State
+    const [newTypology, setNewTypology] = useState('');
+    const [newOfficer, setNewOfficer] = useState('');
 
     // Notification Form
     const [notifTitle, setNotifTitle] = useState('');
@@ -244,6 +249,18 @@ const AdminView: React.FC<AdminViewProps> = ({
         alert("Notifica Inviata a tutti i dispositivi attivi!");
         setNotifTitle('');
         setNotifBody('');
+    };
+
+    const handleAddTypology = async () => {
+        if(!newTypology.trim()) return;
+        await addInterventionTypology(newTypology.trim());
+        setNewTypology('');
+    };
+
+    const handleAddOfficer = async () => {
+        if(!newOfficer.trim()) return;
+        await addDutyOfficer(newOfficer.trim());
+        setNewOfficer('');
     };
 
     const toggleSection = (section: string) => {
@@ -383,6 +400,54 @@ const AdminView: React.FC<AdminViewProps> = ({
                 
                 {activeTab === 'settings' && (
                     <div className="space-y-4 max-w-4xl mx-auto">
+                        
+                        {/* 0. CONFIGURAZIONE INTERVENTI (New) */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('interventions')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <FireIcon className="h-5 w-5 text-orange-500" /> Configurazione Interventi
+                                </h2>
+                                <span>{expandedSection === 'interventions' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'interventions' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* TIPOLOGIE */}
+                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 className="text-xs font-bold uppercase mb-2">Tipologie Intervento</h3>
+                                        <div className="flex gap-2 mb-2">
+                                            <input type="text" value={newTypology} onChange={e => setNewTypology(e.target.value)} placeholder="Es. Incendio, Soccorso..." className="border rounded p-1 text-sm flex-grow" />
+                                            <button onClick={handleAddTypology} className="bg-green-500 text-white px-2 rounded font-bold">+</button>
+                                        </div>
+                                        <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
+                                            {interventionTypologies.map(t => (
+                                                <li key={t.id} className="flex justify-between items-center bg-white p-1 rounded shadow-sm">
+                                                    <span>{t.name}</span>
+                                                    <button onClick={() => deleteInterventionTypology(t.id)} className="text-red-500 font-bold">×</button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    
+                                    {/* FUNZIONARI */}
+                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 className="text-xs font-bold uppercase mb-2">Funzionari di Servizio</h3>
+                                        <div className="flex gap-2 mb-2">
+                                            <input type="text" value={newOfficer} onChange={e => setNewOfficer(e.target.value)} placeholder="Nome Funzionario" className="border rounded p-1 text-sm flex-grow" />
+                                            <button onClick={handleAddOfficer} className="bg-green-500 text-white px-2 rounded font-bold">+</button>
+                                        </div>
+                                        <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
+                                            {dutyOfficers.map(o => (
+                                                <li key={o.id} className="flex justify-between items-center bg-white p-1 rounded shadow-sm">
+                                                    <span>{o.name}</span>
+                                                    <button onClick={() => deleteDutyOfficer(o.id)} className="text-red-500 font-bold">×</button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         {/* 1. CONFIGURAZIONE COLORI CASSE */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('colors')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
@@ -406,7 +471,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             )}
                         </div>
 
-                        {/* 2. STAGIONALITÀ & EFFETTI (RIPRISTINATO) */}
+                        {/* 2. STAGIONALITÀ & EFFETTI */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('seasonality')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
@@ -485,7 +550,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                     </div>
                 )}
                 
-                {/* ADMINS MANAGEMENT (RIPRISTINATO) */}
+                {/* ADMINS MANAGEMENT */}
                 {activeTab === 'admins' && (
                      <div className="max-w-2xl mx-auto space-y-6">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">

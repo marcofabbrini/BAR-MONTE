@@ -9,19 +9,6 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { BackArrowIcon } from './Icons';
 import * as THREE from 'three';
 
-// Fix: Add type definitions for React Three Fiber intrinsic elements
-declare global {
-    namespace JSX {
-        interface IntrinsicElements {
-            mesh: any;
-            group: any;
-            sphereGeometry: any;
-            meshStandardMaterial: any;
-            meshBasicMaterial: any;
-        }
-    }
-}
-
 // --- TIPI ---
 interface Zone {
     id: string;
