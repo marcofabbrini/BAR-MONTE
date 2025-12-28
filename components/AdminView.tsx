@@ -131,7 +131,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [remText, setRemText] = useState('');
     const [remType, setRemType] = useState<'recurring' | 'spot'>('recurring');
     const [remDay, setRemDay] = useState<number>(1);
-    const [remDate, setRemDate] = useState('');
+    const [remDate, setRemDate] = useState(new Date().toLocaleDateString('en-CA')); // YYYY-MM-DD local
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
@@ -290,13 +290,27 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     const handleAddReminder = async () => {
         if (!remText.trim()) return;
-        await addReminder({
-            text: remText.trim(),
-            type: remType,
-            dayOfWeek: remType === 'recurring' ? remDay : undefined,
-            date: remType === 'spot' ? remDate : undefined
-        });
-        setRemText('');
+        
+        if (remType === 'spot' && !remDate) {
+            alert("Seleziona una data per il promemoria spot.");
+            return;
+        }
+
+        try {
+            await addReminder({
+                text: remText.trim(),
+                type: remType,
+                dayOfWeek: remType === 'recurring' ? remDay : undefined,
+                date: remType === 'spot' ? remDate : undefined
+            });
+            alert("Promemoria aggiunto!");
+            setRemText('');
+            // Reset to today to ensure input is never empty
+            setRemDate(new Date().toLocaleDateString('en-CA'));
+        } catch(e) {
+            console.error(e);
+            alert("Errore aggiunta promemoria");
+        }
     };
 
     const handleDeleteReminder = async (id: string) => {
@@ -499,7 +513,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                                             <p className="text-xs text-slate-500">
                                                 {rem.type === 'recurring' 
                                                     ? `Ogni ${['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'][rem.dayOfWeek || 0]}`
-                                                    : `Il ${new Date(rem.date || '').toLocaleDateString()}`
+                                                    : (rem.date ? `Il ${new Date(rem.date).toLocaleDateString()}` : 'Data non valida')
                                                 }
                                             </p>
                                         </div>

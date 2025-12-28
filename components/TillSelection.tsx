@@ -509,7 +509,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         <div className="relative z-10 flex flex-col items-center justify-center gap-2">
                             <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🚗</span>
                             <div className="flex flex-col items-center">
-                                <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-red-600 transition-colors">Autoparco</span>
+                                <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-red-600 transition-colors">Automezzi</span>
                                 <span className="text-[9px] md:text-xs font-bold text-red-400 uppercase tracking-wider block">Prenotazioni</span>
                             </div>
                         </div>
