@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { OperationalVehicle, OperationalVehicleType, CheckDay, VehicleCompartment } from '../types';
 import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon, BoxIcon, CalendarIcon, ListIcon } from './Icons';
-import { APS_VF30217_LOADOUT } from '../constants';
+import { APS_VF30217_LOADOUT, POL_VF29068_LOADOUT } from '../constants';
 
 interface OperationalVehicleManagementProps {
     vehicles: OperationalVehicle[];
@@ -86,7 +86,7 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
         // Deep copy the standard loadout to avoid reference issues
         const standardLoadout: VehicleCompartment[] = JSON.parse(JSON.stringify(APS_VF30217_LOADOUT)).map((comp: any, index: number) => ({
             ...comp,
-            id: `std-${index}-${Date.now()}` // Generate unique IDs for compartments
+            id: `std-aps-${index}-${Date.now()}` // Generate unique IDs for compartments
         }));
 
         setFormData(prev => ({
@@ -94,6 +94,23 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
             plate: prev.plate || 'VF 30217',
             model: prev.model || 'APS Mercedes/Iveco',
             type: 'APS',
+            compartments: standardLoadout
+        }));
+    };
+
+    const loadStandardPOL = () => {
+        if(!confirm("ATTENZIONE: Questo sostituirà tutti i vani e materiali attuali con l'allestimento standard POL VF 29068. Continuare?")) return;
+        
+        const standardLoadout: VehicleCompartment[] = JSON.parse(JSON.stringify(POL_VF29068_LOADOUT)).map((comp: any, index: number) => ({
+            ...comp,
+            id: `std-pol-${index}-${Date.now()}`
+        }));
+
+        setFormData(prev => ({
+            ...prev,
+            plate: prev.plate || 'VF 29068',
+            model: prev.model || 'POLISOC. Iveco Daily',
+            type: 'POL',
             compartments: standardLoadout
         }));
     };
@@ -296,13 +313,20 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
                             <h4 className="font-bold text-slate-700 uppercase flex items-center gap-2">
                                 <BoxIcon className="h-5 w-5 text-slate-500" /> Configurazione Caricamento (Vani & Materiali)
                             </h4>
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                                 <button 
                                     type="button"
                                     onClick={loadStandardAPS}
                                     className="bg-red-50 text-red-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-200 hover:bg-red-100 transition-colors flex items-center gap-1"
                                 >
-                                    <ListIcon className="h-3 w-3" /> Carica APS Standard (VF 30217)
+                                    <ListIcon className="h-3 w-3" /> Load APS VF 30217
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={loadStandardPOL}
+                                    className="bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 hover:bg-orange-100 transition-colors flex items-center gap-1"
+                                >
+                                    <ListIcon className="h-3 w-3" /> Load POL VF 29068
                                 </button>
                                 <button 
                                     type="button" 

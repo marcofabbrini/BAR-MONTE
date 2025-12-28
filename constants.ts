@@ -348,3 +348,112 @@ export const APS_VF30217_LOADOUT: Omit<VehicleCompartment, 'id'>[] = [
         ]
     }
 ];
+
+// Standard Loadout POL VF 29068
+export const POL_VF29068_LOADOUT: Omit<VehicleCompartment, 'id'>[] = [
+    {
+        name: "ANTERIORE CABINA",
+        items: [
+            { id: '1', name: "TELEPAS n. 0659792956", quantity: 1 },
+            { id: '2', name: "RADIO VEICOLARE VHF", quantity: 1 },
+            { id: '3', name: "PALETTA SEGNALAZIONE N. 377", quantity: 1 },
+            { id: '4', name: "SCATOLA GUANTI IN LATTICE", quantity: 1 },
+            { id: '5', name: "LIBRETTO CIRCOLAZIONE", quantity: 1 },
+            { id: '6', name: "LASTRE PER APERTURA PORTA", quantity: 1 },
+            { id: '7', name: "COPIA CERTIFICATO ASSICURAZIONE", quantity: 1 },
+            { id: '8', name: "CRICK IDRAULICO CON LEVA", quantity: 1 },
+            { id: '9', name: "COPIA CERTIFICATO REVISIONE", quantity: 1 },
+            { id: '10', name: "TROUSSE (CHIAVE RUOTE + CACCIAVITE)", quantity: 1 },
+            { id: '11', name: "CID VVF", quantity: 1 },
+            { id: '12', name: "TRATTO COMPETENZA A1", quantity: 1 },
+            { id: '13', name: "GEL DISINFETTANTE MANI", quantity: 1 }
+        ]
+    },
+    {
+        name: "VANO 1 ANTERIORE",
+        items: [
+            { id: '14', name: "TRIANGOLO AD OMBRELLO AUTO FERMA", quantity: 1 },
+            { id: '15', name: "DEFIBRILLATORE AUTOMATICO ESTERNO (DAE)", quantity: 1 },
+            { id: '16', name: "CESOIE TAGLIABULLONI", quantity: 1 },
+            { id: '17', name: "COPERTA ANTIFIAMMA", quantity: 1 },
+            { id: '18', name: "RETINO DA PESCA", quantity: 1 },
+            { id: '19', name: "ROTOLO NASTRO TURAFALLE", quantity: 1 },
+            { id: '20', name: "CERCAFALLE SPRAY", quantity: 1 },
+            { id: '21', name: "ROTOLO NASTRO B/R", quantity: 1 },
+            { id: '22', name: "CASSETTA BOSCH (Trapano + Inserti + 2 Batt. Makita)", quantity: 1 },
+            { id: '23', name: "PALA", quantity: 1 },
+            { id: '24', name: "CASSETTA ATTREZZI COMPLETA (Chiavi, Cacciaviti, Martello...)", quantity: 1 },
+            { id: '25', name: "TANICA METALLICA 10 LT BENZINA + RACCORDO", quantity: 1 },
+            { id: '26', name: "CASSETTA AMIANTO (Tute, Maschere, Guanti, Sacchi...)", quantity: 1 },
+            { id: '27', name: "CALZATOIE PER RUOTE", quantity: 2 },
+            { id: '28', name: "MOTOSEGA MSSI 030 + TROUSSE", quantity: 1 },
+            { id: '29', name: "MOTOSEGA MAKITA 36V MSG 071 + 2 BATTERIE", quantity: 1 },
+            { id: '30', name: "TANICA OLIO CATENA PER MOTOSEGA", quantity: 1 },
+            { id: '31', name: "TANICA MISCELA", quantity: 1 },
+            { id: '32', name: "PENNATO", quantity: 1 },
+            { id: '33', name: "CUSCINI SOLLEVAMENTO", quantity: 2 },
+            { id: '34', name: "CENTRALINA COMANDO CUSCINI", quantity: 1 },
+            { id: '35', name: "TUBI PER CUSCINI (GIALLO + ROSSO)", quantity: 2 },
+            { id: '36', name: "CORDINO", quantity: 1 },
+            { id: '37', name: "CASSETTA NERA RACCORDI/CHIAVI (Olivella, Chiusini, Idrante...)", quantity: 1 },
+            { id: '38', name: "CHIAVE IDRANTI SOTTOSUOLO", quantity: 1 },
+            { id: '39', name: "MOTOTRONCATRICE SI-MTT 015", quantity: 1 },
+            { id: '40', name: "PROLUNGA ELETTRICA", quantity: 1 },
+            { id: '41', name: "MASCHERE PER AUTOPROTETTORI", quantity: 2 },
+            { id: '42', name: "AUTOPROTETTORI", quantity: 2 },
+            { id: '43', name: "ESTINTORE A SCHIUMA", quantity: 1 },
+            { id: '44', name: "ESTINTORE A POLVERE", quantity: 1 },
+            { id: '45', name: "ESTINTORE A CO2", quantity: 1 },
+            { id: '46', name: "TORCE A BATTERIA (SILMP050 - SILMP051)", quantity: 2 },
+            { id: '47', name: "BOMBOLA ARIA CON RIDUTTORE PRESSIONE", quantity: 1 }
+        ]
+    },
+    {
+        name: "VANO 3 CENTRALE",
+        items: [
+            { id: '48', name: "DIVARICATORE ELETTRICO CON BATTERIA", quantity: 1 },
+            { id: '49', name: "CESOIE ELETTRICHE CON BATTERIA", quantity: 1 },
+            { id: '50', name: "PISTONE IDRAULICO", quantity: 1 },
+            { id: '51', name: "CATENE PER DIVARICATORE", quantity: 2 },
+            { id: '52', name: "PIEDE DI PORCO", quantity: 1 },
+            { id: '53', name: "ALIMENTATORE 220V PER CESOIE E DIVARICATORE", quantity: 1 },
+            { id: '54', name: "TAGLIACINTURE", quantity: 1 },
+            { id: '55', name: "MAZZA", quantity: 1 },
+            { id: '56', name: "KIT RIPARAZIONE PNEUMATICI", quantity: 1 },
+            { id: '57', name: "COLLO D'OCA DA 45", quantity: 1 },
+            { id: '58', name: "SACCO TPSS", quantity: 1 },
+            { id: '59', name: "PAIO DI GUANTI DIELETTRICI SI GDIE 07", quantity: 1 },
+            { id: '60', name: "PAIO CATENE DA NEVE", quantity: 1 },
+            { id: '61', name: "TRINCIABULLONI A BATTERIA MAKITA + 2 BATTERIE", quantity: 1 },
+            { id: '62', name: "CARICABATT. X BATTERIA MAKITA (TRINCIABUL.)", quantity: 1 },
+            { id: '63', name: "CARICABATTERIA X BATTERIA BOSCH (TRAPANO)", quantity: 1 },
+            { id: '64', name: "CARICABATTERIA LUCAS (DIVARIC.-CESOIE-PISTONE)", quantity: 1 },
+            { id: '65', name: "ANGOLARE DI SUPPORTO", quantity: 1 }
+        ]
+    },
+    {
+        name: "VANO 5 POSTERIORE",
+        items: [
+            { id: '66', name: "BOMBOLE ARIA COMPRESSA PER IFEX", quantity: 2 },
+            { id: '67', name: "MANICHETTE DA 45", quantity: 4 },
+            { id: '68', name: "NASPO ALTA PRESSIONE", quantity: 1 },
+            { id: '69', name: "RIDUTTORE 70/45", quantity: 1 },
+            { id: '70', name: "LANCIA REGOLABILE DA 45", quantity: 1 },
+            { id: '71', name: "IFEX", quantity: 1 }
+        ]
+    },
+    {
+        name: "SOPRA MACCHINA (IMPERIALE)",
+        items: [
+            { id: '72', name: "SCALA ITALIANA", quantity: 1 },
+            { id: '73', name: "RAMPONE", quantity: 1 },
+            { id: '74', name: "FIORETTO DIELETTRICO", quantity: 1 }
+        ]
+    },
+    {
+        name: "VANO POMPA",
+        items: [
+            { id: '75', name: "PROLUNGA NASPO", quantity: 1 }
+        ]
+    }
+];
