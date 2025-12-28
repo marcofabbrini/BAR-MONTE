@@ -56,12 +56,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     useEffect(() => {
         try {
             const todayStr = new Date().toISOString().split('T')[0];
-            Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('postit_hidden_') && !key.includes(todayStr)) {
-                    localStorage.removeItem(key);
-                }
-            });
+            if (localStorage) {
+                Object.keys(localStorage).forEach(key => {
+                    if (key.startsWith('postit_hidden_') && !key.includes(todayStr)) {
+                        localStorage.removeItem(key);
+                    }
+                });
+            }
         } catch (e) {
+            // Silently fail if storage is restricted or quota exceeded
             console.warn("Storage cleanup warning:", e);
         }
     }, []);
@@ -323,7 +326,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         try {
             isHiddenInStorage = localStorage.getItem(storageKey) === 'true';
         } catch (e) {
-            console.warn("LocalStorage access failed", e);
+            // Silently fail, assume false
         }
 
         if (areAllRemindersCompleted) {
@@ -335,14 +338,20 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     setHidePostIt(true);
                     try {
                         localStorage.setItem(storageKey, 'true');
-                    } catch (e) { console.warn("LocalStorage save failed", e); }
+                    } catch (e) { 
+                        // If Quota Exceeded, we just don't save the preference. 
+                        // The post-it will reappear on reload, but the app won't crash.
+                        console.warn("Could not save post-it preference (Storage Full)", e); 
+                    }
                 }, 60000); // 60 seconds
             }
         } else {
             setHidePostIt(false);
             try {
                 localStorage.removeItem(storageKey);
-            } catch (e) { console.warn("LocalStorage remove failed", e); }
+            } catch (e) { 
+                // Ignore removal errors
+            }
         }
         return () => clearTimeout(timer);
     }, [areAllRemindersCompleted, todayStr]);

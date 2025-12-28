@@ -10,8 +10,10 @@ import './index.css';
 async function tryClearStorage() {
     try {
         const testKey = '__test__';
-        localStorage.setItem(testKey, testKey);
-        localStorage.removeItem(testKey);
+        if (localStorage) {
+            localStorage.setItem(testKey, testKey);
+            localStorage.removeItem(testKey);
+        }
     } catch (e: any) {
         if (e.name === 'QuotaExceededError' || e.code === 22) {
             console.warn("Storage pieno rilevato all'avvio. Eseguo pulizia automatica.");
@@ -23,7 +25,14 @@ async function tryClearStorage() {
                 try {
                     const dbs = await window.indexedDB.databases();
                     for (const db of dbs) {
-                        if(db.name) window.indexedDB.deleteDatabase(db.name);
+                        // Nuke common Firebase IndexedDB names
+                        if(db.name && (
+                            db.name.includes('firebase') || 
+                            db.name.includes('firestore') || 
+                            db.name.includes('gapi')
+                        )) {
+                            window.indexedDB.deleteDatabase(db.name);
+                        }
                     }
                 } catch(err) {
                     console.error("Failed to clear IndexedDB", err);

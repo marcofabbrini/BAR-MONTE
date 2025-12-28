@@ -225,26 +225,29 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
             clearOrder();
         } catch (error: any) {
             console.error("Error completing order: ", error);
+            const msg = error.message || 'Errore sconosciuto';
             
-            // AGGRESSIVE STORAGE CLEANUP FOR QUOTA EXCEEDED
-            let msg = error.message || 'Errore sconosciuto';
-            if (msg.includes("Quota exceeded")) {
-                if(window.confirm("ERRORE MEMORIA PIENA (Quota Exceeded).\n\nQuesto errore indica che la cache locale del browser è corrotta o piena.\n\nPremi OK per eseguire una PULIZIA PROFONDA e riavviare l'app.")) {
-                    try {
-                        localStorage.clear();
-                        sessionStorage.clear();
-                        // Attempt to clear IndexedDB databases
-                        if (window.indexedDB && window.indexedDB.databases) {
-                            const dbs = await window.indexedDB.databases();
-                            for (const db of dbs) {
-                                if (db.name) window.indexedDB.deleteDatabase(db.name);
-                            }
-                        }
-                    } catch(e) {
-                        console.error("Cleanup failed", e);
+            // --- FIX DEFINITIVO QUOTA EXCEEDED ---
+            // Se l'errore è Quota Exceeded, puliamo tutto e invitiamo a riprovare SENZA reload
+            if (msg.includes("Quota exceeded") || error.name === 'QuotaExceededError' || error.code === 22) {
+                try {
+                    console.warn("Storage Quota Exceeded - Executing Emergency Cleanup");
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    
+                    // Tentativo di pulizia IndexedDB (Async)
+                    if (window.indexedDB && window.indexedDB.databases) {
+                        window.indexedDB.databases().then(dbs => {
+                            dbs.forEach(db => {
+                                if(db.name) window.indexedDB.deleteDatabase(db.name);
+                            });
+                        });
                     }
-                    window.location.reload();
-                    return;
+                    
+                    alert("⚠️ MEMORIA DISPOSITIVO PIENA.\n\nIl sistema ha eseguito una pulizia automatica della cache.\n\nPER FAVORE: Premi di nuovo 'Conferma Acquisto'. Ora dovrebbe funzionare.");
+                    return; // Interrompi qui, l'utente premerà di nuovo il pulsante e funzionerà
+                } catch(cleanupError) {
+                    console.error("Cleanup failed", cleanupError);
                 }
             }
 
