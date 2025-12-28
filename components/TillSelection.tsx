@@ -334,7 +334,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const storageKey = `postit_hidden_${todayStr}`;
         
         // Verifica se è stato già nascosto oggi (persistenza)
-        const isHiddenInStorage = localStorage.getItem(storageKey) === 'true';
+        // SAFEGUARD LOCAL STORAGE ACCESS
+        let isHiddenInStorage = false;
+        try {
+            isHiddenInStorage = localStorage.getItem(storageKey) === 'true';
+        } catch (e) {
+            console.warn("LocalStorage access failed (Quota Exceeded or blocked)", e);
+        }
 
         if (areAllRemindersCompleted) {
             if (isHiddenInStorage) {
@@ -343,13 +349,17 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 // Avvia timer per nascondere e salvare persistenza
                 timer = setTimeout(() => {
                     setHidePostIt(true);
-                    localStorage.setItem(storageKey, 'true');
+                    try {
+                        localStorage.setItem(storageKey, 'true');
+                    } catch (e) { console.warn("LocalStorage save failed", e); }
                 }, 60000);
             }
         } else {
             setHidePostIt(false);
-            // Se l'utente toglie la spunta, rimuovi la persistenza così il timer riparte se ricompleta tutto
-            localStorage.removeItem(storageKey);
+            // Se l'utente toglie la spunta, rimuovi la persistenza
+            try {
+                localStorage.removeItem(storageKey);
+            } catch (e) { console.warn("LocalStorage remove failed", e); }
         }
         return () => clearTimeout(timer);
     }, [areAllRemindersCompleted, currentTime]);

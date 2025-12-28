@@ -175,8 +175,9 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                                 <CheckIcon className="h-4 w-4"/> Apri Checklist
                             </span>
                         ) : (
-                            <span className="text-[10px] text-slate-400 italic flex items-center gap-1">
-                                🔒 Controllo non programmato
+                            // STRICT VISIBILITY: Empty or very subtle indicator, no button.
+                            <span className="text-[10px] text-slate-300 opacity-50 select-none">
+                                -
                             </span>
                         )}
                     </div>

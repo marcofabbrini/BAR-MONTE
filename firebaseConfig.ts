@@ -17,11 +17,10 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 
 // Initialize Firestore (Modular)
-// FIX QUOTA EXCEEDED: Use memoryLocalCache instead of persistentLocalCache.
-// This prevents the app from filling up the device's localStorage/IndexedDB limit.
+// CRITICAL FIX: Use memoryLocalCache. persistentLocalCache causes "Quota Exceeded" on mobile devices with low storage.
 const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
-  experimentalForceLongPolling: true
+  experimentalForceLongPolling: true // Helps with "Could not reach backend" on restricted networks
 });
 
 // Initialize Auth (Compat)
