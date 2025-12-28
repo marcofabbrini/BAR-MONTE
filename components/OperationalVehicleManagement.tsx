@@ -1,7 +1,8 @@
 
 import React, { useState, useRef } from 'react';
 import { OperationalVehicle, OperationalVehicleType, CheckDay, VehicleCompartment } from '../types';
-import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon, BoxIcon, CalendarIcon } from './Icons';
+import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon, BoxIcon, CalendarIcon, ListIcon } from './Icons';
+import { APS_VF30217_LOADOUT } from '../constants';
 
 interface OperationalVehicleManagementProps {
     vehicles: OperationalVehicle[];
@@ -76,6 +77,24 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
         setFormData(prev => ({
             ...prev,
             compartments: [...(prev.compartments || []), newComp]
+        }));
+    };
+
+    const loadStandardAPS = () => {
+        if(!confirm("ATTENZIONE: Questo sostituirà tutti i vani e materiali attuali con l'allestimento standard APS VF 30217. Continuare?")) return;
+        
+        // Deep copy the standard loadout to avoid reference issues
+        const standardLoadout: VehicleCompartment[] = JSON.parse(JSON.stringify(APS_VF30217_LOADOUT)).map((comp: any, index: number) => ({
+            ...comp,
+            id: `std-${index}-${Date.now()}` // Generate unique IDs for compartments
+        }));
+
+        setFormData(prev => ({
+            ...prev,
+            plate: prev.plate || 'VF 30217',
+            model: prev.model || 'APS Mercedes/Iveco',
+            type: 'APS',
+            compartments: standardLoadout
         }));
     };
 
@@ -273,17 +292,26 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
 
                     {/* COLONNA 3: GESTIONE VANI E MATERIALI (Full Width below) */}
                     <div className="lg:col-span-3 border-t-2 border-slate-100 pt-6 mt-2">
-                        <div className="flex justify-between items-center mb-4">
+                        <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
                             <h4 className="font-bold text-slate-700 uppercase flex items-center gap-2">
                                 <BoxIcon className="h-5 w-5 text-slate-500" /> Configurazione Caricamento (Vani & Materiali)
                             </h4>
-                            <button 
-                                type="button" 
-                                onClick={addCompartment}
-                                className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-blue-200 hover:bg-blue-100 transition-colors flex items-center gap-1"
-                            >
-                                <PlusIcon className="h-3 w-3" /> Aggiungi Vano
-                            </button>
+                            <div className="flex gap-2">
+                                <button 
+                                    type="button"
+                                    onClick={loadStandardAPS}
+                                    className="bg-red-50 text-red-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-red-200 hover:bg-red-100 transition-colors flex items-center gap-1"
+                                >
+                                    <ListIcon className="h-3 w-3" /> Carica APS Standard (VF 30217)
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onClick={addCompartment}
+                                    className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-blue-200 hover:bg-blue-100 transition-colors flex items-center gap-1"
+                                >
+                                    <PlusIcon className="h-3 w-3" /> Aggiungi Vano
+                                </button>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
