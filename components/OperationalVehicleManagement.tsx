@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { OperationalVehicle, OperationalVehicleType, CheckDay, VehicleCompartment } from '../types';
 import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon, BoxIcon, CalendarIcon, ListIcon } from './Icons';
-import { APS_VF30217_LOADOUT, POL_VF29068_LOADOUT, CAPU_VF32356_LOADOUT, ABP_VF22456_LOADOUT } from '../constants';
+import { APS_VF30217_LOADOUT, POL_VF29068_LOADOUT, CAPU_VF18427_LOADOUT, ABP_VF22456_LOADOUT } from '../constants';
 
 interface OperationalVehicleManagementProps {
     vehicles: OperationalVehicle[];
@@ -116,17 +116,17 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
     };
 
     const loadStandardCAPU = () => {
-        if(!confirm("ATTENZIONE: Questo sostituirà tutti i vani e materiali attuali con l'allestimento standard CA/PU VF 32356. Continuare?")) return;
+        if(!confirm("ATTENZIONE: Questo sostituirà tutti i vani e materiali attuali con l'allestimento standard CA/PU VF 18427. Continuare?")) return;
         
-        const standardLoadout: VehicleCompartment[] = JSON.parse(JSON.stringify(CAPU_VF32356_LOADOUT)).map((comp: any, index: number) => ({
+        const standardLoadout: VehicleCompartment[] = JSON.parse(JSON.stringify(CAPU_VF18427_LOADOUT)).map((comp: any, index: number) => ({
             ...comp,
             id: `std-capu-${index}-${Date.now()}`
         }));
 
         setFormData(prev => ({
             ...prev,
-            plate: prev.plate || 'VF 32356',
-            model: prev.model || 'CA/PU Toyota Hilux',
+            plate: 'VF 18427',
+            model: prev.model || 'CA/PU',
             type: 'CA/PU',
             compartments: standardLoadout
         }));
@@ -374,7 +374,7 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
                                     onClick={loadStandardCAPU}
                                     className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-indigo-200 hover:bg-indigo-100 transition-colors flex items-center gap-1"
                                 >
-                                    <ListIcon className="h-3 w-3" /> Load CA/PU VF 32356
+                                    <ListIcon className="h-3 w-3" /> Load CA/PU VF 18427
                                 </button>
                                 <button 
                                     type="button" 
