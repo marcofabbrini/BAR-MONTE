@@ -457,3 +457,49 @@ export const POL_VF29068_LOADOUT: Omit<VehicleCompartment, 'id'>[] = [
         ]
     }
 ];
+
+// Standard Loadout CA/PU VF32356
+export const CAPU_VF32356_LOADOUT: Omit<VehicleCompartment, 'id'>[] = [
+    {
+        name: "CABINA",
+        items: [
+            { id: '1', name: "TELEPAS n. 0968332700", quantity: 1 },
+            { id: '2', name: "PALETTA SEGNALAZIONE N. 1294", quantity: 1 },
+            { id: '3', name: "LIBRETTO CIRCOLAZIONE", quantity: 1 },
+            { id: '4', name: "COPIA CERTIFICATO ASSICURAZIONE", quantity: 1 },
+            { id: '5', name: "COPPIA CATENE DA NEVE", quantity: 1 },
+            { id: '6', name: "TRATTO COMPETENZA A1", quantity: 1 },
+            { id: '7', name: "CID VVF", quantity: 1 },
+            { id: '8', name: "LASTRE APERTURA PORTA", quantity: 1 },
+            { id: '9', name: "RADIO VEICOLARE", quantity: 1 },
+            { id: '10', name: "NASTRO B/R", quantity: 1 },
+            { id: '11', name: "CONFEZIONE GUANTI IN LATTICE", quantity: 1 },
+            { id: '12', name: "SACCA ROSSA VVF (2 Radio Hytera + Caricabatt + Radio Puma)", quantity: 1 }
+        ]
+    },
+    {
+        name: "CABINA SOTTO SEDILE POSTERIORE",
+        items: [
+            { id: '13', name: "TRIANGOLO AUTO FERMA", quantity: 1 },
+            { id: '14', name: "CRIC MECCANICO COMPLETO DI LEVE", quantity: 1 },
+            { id: '15', name: "GILET ALTA VISIBILITA", quantity: 1 },
+            { id: '16', name: "KIT PRONTO SOCCORSO", quantity: 1 },
+            { id: '17', name: "ESTINTORE A POLVERE DA 1 Kg", quantity: 1 }
+        ]
+    },
+    {
+        name: "CASSONE POSTERIORE",
+        items: [
+            { id: '18', name: "MODULO ANTINCENDIO (ESK SIMO 022)", quantity: 1 },
+            { id: '19', name: "CASSETTA GIALLA (Pennato, Grillo, Chiavi Mandata, Fascia, Riduttore, Leverino)", quantity: 1 },
+            { id: '20', name: "TANICA GASOLIO 10 L", quantity: 1 },
+            { id: '21', name: "CORDINO", quantity: 1 },
+            { id: '22', name: "BATTIFIAMMA", quantity: 1 },
+            { id: '23', name: "ESTINTORE A POLVERE DA 6 Kg", quantity: 1 },
+            { id: '24', name: "SACCA MOTOSEGA SIMSG 076 + TROUSSE", quantity: 1 },
+            { id: '25', name: "CALZATOIA PER RUOTE", quantity: 1 },
+            { id: '26', name: "TUBO ASPIRAZIONE FONTE ESTERNA CON VALVOLA DI FONDO", quantity: 1 },
+            { id: '27', name: "MANICHETTA DA 45", quantity: 1 }
+        ]
+    }
+];
