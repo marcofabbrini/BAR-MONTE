@@ -1,7 +1,7 @@
 
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, memoryLocalCache } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDVs7kbp_O6oMZ8AetE03S6Wu6cywL_ca0",
@@ -16,8 +16,13 @@ const firebaseConfig = {
 // Initialize Firebase (Compat)
 const app = firebase.initializeApp(firebaseConfig);
 
-// Initialize Firestore (Modular - compatible with compat app instance)
-const db = getFirestore(app);
+// Initialize Firestore (Modular)
+// FIX QUOTA EXCEEDED: Use memoryLocalCache instead of persistentLocalCache.
+// This prevents the app from filling up the device's localStorage/IndexedDB limit.
+const db = initializeFirestore(app, {
+  localCache: memoryLocalCache(),
+  experimentalForceLongPolling: true
+});
 
 // Initialize Auth (Compat)
 const auth = firebase.auth();

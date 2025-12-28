@@ -9,7 +9,7 @@ interface OperationalVehiclesViewProps {
 }
 
 const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoBack }) => {
-    const { operationalVehicles, vehicleChecks, addVehicleCheck, updateVehicleCheck, getNow } = useBar();
+    const { operationalVehicles, vehicles, vehicleChecks, addVehicleCheck, updateVehicleCheck, getNow } = useBar();
     const [selectedVehicle, setSelectedVehicle] = useState<OperationalVehicle | null>(null);
 
     // CALCOLO TURNO ATTIVO (Logica condivisa)
@@ -43,7 +43,22 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
 
     // --- LOGICA ORDINAMENTO E RAGGRUPPAMENTO AGGIORNATA ---
     const { featuredVehicles, gridVehicles } = useMemo(() => {
-        if (operationalVehicles.length === 0) return { featuredVehicles: [], gridVehicles: [] };
+        // 1. UNIFICAZIONE LISTE: Mezzi Operativi + Autovetture (Fleet)
+        // Adattiamo le Autovetture (Vehicle) al tipo OperationalVehicle per visualizzarle insieme
+        const fleetAsOperational: OperationalVehicle[] = vehicles.map(v => ({
+            id: v.id,
+            plate: v.plate,
+            model: v.model,
+            type: 'ALTRO', // Visualizzato come Autovettura
+            checkDay: v.checkDay || 'Lunedì',
+            photoUrl: v.photoUrl,
+            notes: `Alimentazione: ${v.fuelType}`,
+            compartments: [] // Le autovetture non hanno vani configurati di default
+        }));
+
+        const allVehicles = [...operationalVehicles, ...fleetAsOperational];
+
+        if (allVehicles.length === 0) return { featuredVehicles: [], gridVehicles: [] };
 
         const today = getNow();
         const currentDayIndex = today.getDay(); // 0 = Domenica, 1 = Lunedì...
@@ -52,7 +67,7 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
         const daysMap = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
 
         // Copia e ordina TUTTI i veicoli in base alla prossimità del controllo
-        const sortedVehicles = [...operationalVehicles].sort((a, b) => {
+        const sortedVehicles = [...allVehicles].sort((a, b) => {
             const idxA = daysMap.indexOf(a.checkDay); 
             const idxB = daysMap.indexOf(b.checkDay);
 
@@ -61,8 +76,6 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
             if (idxB === -1) return -1;
 
             // Calcolo distanza circolare da "Oggi" in avanti
-            // Esempio: Oggi=Mercoledì(3). Veicolo=Venerdì(5). Distanza = (5 - 3 + 7) % 7 = 2 giorni.
-            // Esempio: Oggi=Venerdì(5). Veicolo=Lunedì(1). Distanza = (1 - 5 + 7) % 7 = 3 giorni.
             const distA = (idxA - currentDayIndex + 7) % 7;
             const distB = (idxB - currentDayIndex + 7) % 7;
 
@@ -76,7 +89,7 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
         const others = sortedVehicles.length > 1 ? sortedVehicles.slice(1) : [];
 
         return { featuredVehicles: featured, gridVehicles: others };
-    }, [operationalVehicles, getNow]);
+    }, [operationalVehicles, vehicles, getNow]);
 
 
     if (selectedVehicle) {
@@ -96,14 +109,20 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
     const VehicleCard = ({ vehicle, isFeatured }: { vehicle: OperationalVehicle, isFeatured?: boolean }) => {
         const today = getNow();
         const daysMap = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
-        const isTodayCheck = vehicle.checkDay === daysMap[today.getDay()];
+        const todayName = daysMap[today.getDay()];
+        
+        // LOGICA VISIBILITÀ: Checklist accessibile SOLO se oggi è il giorno di controllo
+        const isTodayCheck = vehicle.checkDay === todayName;
 
         return (
             <div 
-                onClick={() => handleSelectVehicle(vehicle)}
+                onClick={() => isTodayCheck && handleSelectVehicle(vehicle)}
                 className={`
-                    bg-white rounded-2xl shadow-md border overflow-hidden flex flex-col group relative cursor-pointer hover:shadow-xl transition-all hover:scale-[1.01]
-                    ${isFeatured ? 'border-red-500 ring-2 ring-red-100 shadow-[0_0_20px_rgba(220,38,38,0.2)]' : 'border-slate-200'}
+                    bg-white rounded-2xl shadow-md border overflow-hidden flex flex-col group relative transition-all
+                    ${isTodayCheck 
+                        ? 'cursor-pointer hover:shadow-xl hover:scale-[1.01] border-red-500 ring-2 ring-red-100' 
+                        : 'opacity-80 cursor-not-allowed border-slate-200 grayscale-[0.3]'
+                    }
                 `}
             >
                 {/* BADGE GIORNO CONTROLLO */}
@@ -111,10 +130,10 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                     absolute top-3 right-3 z-10 font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-lg border
                     ${isTodayCheck 
                         ? 'bg-red-600 text-white border-red-400 shadow-[0_0_15px_#ef4444] animate-pulse' 
-                        : 'bg-white/90 text-slate-500 border-slate-200 backdrop-blur-sm'
+                        : 'bg-slate-200 text-slate-500 border-slate-300'
                     }
                 `}>
-                    {isTodayCheck ? 'DI CONTROLLO OGGI' : vehicle.checkDay}
+                    {isTodayCheck ? 'DI CONTROLLO OGGI' : `Controllo: ${vehicle.checkDay}`}
                 </div>
 
                 <div className={`
@@ -124,10 +143,10 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                     {vehicle.photoUrl ? (
                         <img src={vehicle.photoUrl} alt={vehicle.model} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     ) : (
-                        <span className={`${isFeatured ? 'text-8xl' : 'text-5xl'} filter drop-shadow-md`}>🚒</span>
+                        <span className={`${isFeatured ? 'text-8xl' : 'text-5xl'} filter drop-shadow-md`}>{vehicle.type === 'ALTRO' ? '🚗' : '🚒'}</span>
                     )}
                     <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-2 md:p-4">
-                        <span className="text-[10px] md:text-xs font-black text-white bg-red-600 px-2 py-0.5 rounded uppercase">{vehicle.type}</span>
+                        <span className="text-[10px] md:text-xs font-black text-white bg-red-600 px-2 py-0.5 rounded uppercase">{vehicle.type === 'ALTRO' ? 'Vettura' : vehicle.type}</span>
                     </div>
                 </div>
                 
@@ -148,8 +167,18 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                             <p className="text-[10px] md:text-xs text-slate-500 italic leading-relaxed line-clamp-2">{vehicle.notes}</p>
                         </div>
                     )}
-                    <div className="mt-2 md:mt-4 pt-2 md:pt-4 border-t border-slate-100 text-center mt-auto">
-                        <span className="text-[10px] md:text-xs font-bold text-blue-600 uppercase">Apri Checklist →</span>
+                    
+                    {/* PULSANTE VISIBILE SOLO SE È IL GIORNO DI CONTROLLO */}
+                    <div className="mt-2 md:mt-4 pt-2 md:pt-4 border-t border-slate-100 text-center mt-auto min-h-[30px] flex items-center justify-center">
+                        {isTodayCheck ? (
+                            <span className="text-[10px] md:text-xs font-bold text-blue-600 uppercase flex items-center gap-1 animate-pulse">
+                                <CheckIcon className="h-4 w-4"/> Apri Checklist
+                            </span>
+                        ) : (
+                            <span className="text-[10px] text-slate-400 italic flex items-center gap-1">
+                                🔒 Controllo non programmato
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>
@@ -171,7 +200,7 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                 
                 <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest flex items-center gap-3 drop-shadow-md">
                     <TruckIcon className="h-8 w-8" />
-                    <span>Mezzi Operativi</span>
+                    <span>Mezzi & Vetture</span>
                 </h1>
                 
                 <div className="w-12 md:w-24"></div> 
@@ -203,7 +232,7 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                     {featuredVehicles.length > 0 && gridVehicles.length > 0 && (
                         <div className="flex items-center gap-2 mb-4 mt-8 pt-8 border-t border-slate-200">
                             <ListIcon className="h-5 w-5 text-slate-400" />
-                            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Altri Mezzi</h2>
+                            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Altri Mezzi & Vetture</h2>
                         </div>
                     )}
                     
@@ -215,9 +244,9 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                     </div>
                 </div>
 
-                {operationalVehicles.length === 0 && (
+                {operationalVehicles.length === 0 && vehicles.length === 0 && (
                     <div className="col-span-full text-center py-20 bg-slate-100 rounded-3xl border-2 border-dashed border-slate-300">
-                        <p className="text-slate-400 font-bold text-lg">Nessun mezzo operativo registrato.</p>
+                        <p className="text-slate-400 font-bold text-lg">Nessun mezzo operativo o vettura registrata.</p>
                         <p className="text-sm text-slate-400">Accedi come Amministratore per aggiungere i mezzi.</p>
                     </div>
                 )}
@@ -295,6 +324,7 @@ const VehicleChecklist: React.FC<{
             setCheckedItems({});
             setNotes('');
             setExpandedCompartments({});
+            onBack(); // Torna alla lista
         } catch (e) {
             console.error(e);
             alert("Errore salvataggio.");
@@ -394,7 +424,10 @@ const VehicleChecklist: React.FC<{
                             );
                         })}
                         {(!vehicle.compartments || vehicle.compartments.length === 0) && (
-                            <div className="p-8 text-center text-slate-400 text-sm">Nessun vano configurato.</div>
+                            <div className="p-8 text-center text-slate-400 text-sm">
+                                <p>Nessun vano configurato.</p>
+                                <p className="text-xs mt-1">Puoi comunque archiviare il controllo per registrare l'avvenuta verifica.</p>
+                            </div>
                         )}
                     </div>
 
