@@ -118,38 +118,38 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                 </div>
 
                 <div className={`
-                    ${isFeatured ? 'h-56' : 'h-40'} 
+                    ${isFeatured ? 'h-56' : 'h-32'} 
                     bg-slate-100 flex items-center justify-center overflow-hidden relative transition-all
                 `}>
                     {vehicle.photoUrl ? (
                         <img src={vehicle.photoUrl} alt={vehicle.model} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     ) : (
-                        <span className={`${isFeatured ? 'text-8xl' : 'text-6xl'} filter drop-shadow-md`}>🚒</span>
+                        <span className={`${isFeatured ? 'text-8xl' : 'text-5xl'} filter drop-shadow-md`}>🚒</span>
                     )}
-                    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-4">
-                        <span className="text-xs font-black text-white bg-red-600 px-2 py-0.5 rounded uppercase">{vehicle.type}</span>
+                    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-2 md:p-4">
+                        <span className="text-[10px] md:text-xs font-black text-white bg-red-600 px-2 py-0.5 rounded uppercase">{vehicle.type}</span>
                     </div>
                 </div>
                 
-                <div className="p-5 flex-grow flex flex-col">
+                <div className="p-3 md:p-5 flex-grow flex flex-col">
                     <div className="flex justify-between items-start">
-                        <h3 className={`${isFeatured ? 'text-2xl' : 'text-lg'} font-black text-slate-800 leading-tight`}>{vehicle.model}</h3>
+                        <h3 className={`${isFeatured ? 'text-2xl' : 'text-sm md:text-lg'} font-black text-slate-800 leading-tight`}>{vehicle.model}</h3>
                         {isTodayCheck && isFeatured && <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded font-bold uppercase animate-pulse">Prioritario</span>}
                     </div>
                     
                     <div className="mt-2">
-                        <span className="text-sm font-mono font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 uppercase tracking-wide">
+                        <span className="text-[10px] md:text-sm font-mono font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 uppercase tracking-wide">
                             {vehicle.plate}
                         </span>
                     </div>
                     
                     {vehicle.notes && (
-                        <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                            <p className="text-xs text-slate-500 italic leading-relaxed line-clamp-2">{vehicle.notes}</p>
+                        <div className="mt-4 p-2 md:p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <p className="text-[10px] md:text-xs text-slate-500 italic leading-relaxed line-clamp-2">{vehicle.notes}</p>
                         </div>
                     )}
-                    <div className="mt-4 pt-4 border-t border-slate-100 text-center">
-                        <span className="text-xs font-bold text-blue-600 uppercase">Apri Checklist →</span>
+                    <div className="mt-2 md:mt-4 pt-2 md:pt-4 border-t border-slate-100 text-center mt-auto">
+                        <span className="text-[10px] md:text-xs font-bold text-blue-600 uppercase">Apri Checklist →</span>
                     </div>
                 </div>
             </div>
@@ -205,7 +205,8 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                         </div>
                     )}
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* FIXED: Enforce 2 columns even on mobile (grid-cols-2) */}
+                    <div className="grid grid-cols-2 gap-4 md:gap-6">
                         {gridVehicles.map(v => (
                             <VehicleCard key={v.id} vehicle={v} />
                         ))}
