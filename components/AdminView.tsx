@@ -12,6 +12,7 @@ import ShiftCalendar from './ShiftCalendar';
 import VehicleManagement from './VehicleManagement';
 import LaundryManagement from './LaundryManagement';
 import { useBar } from '../contexts/BarContext';
+import { DEFAULT_INTERVENTION_TYPES } from '../constants';
 
 interface AdminViewProps {
     onGoBack: () => void;
@@ -257,6 +258,21 @@ const AdminView: React.FC<AdminViewProps> = ({
         setNewTypology('');
     };
 
+    const handleLoadStandardTypologies = async () => {
+        if(!confirm("Vuoi caricare la lista standard delle tipologie VVF? Verranno aggiunte solo quelle mancanti.")) return;
+        
+        let addedCount = 0;
+        for (const typeName of DEFAULT_INTERVENTION_TYPES) {
+            // Check existence case-insensitive
+            const exists = interventionTypologies.some(t => t.name.toLowerCase() === typeName.toLowerCase());
+            if (!exists) {
+                await addInterventionTypology(typeName);
+                addedCount++;
+            }
+        }
+        alert(`Operazione completata. Aggiunte ${addedCount} nuove tipologie.`);
+    };
+
     const handleAddOfficer = async () => {
         if(!newOfficer.trim()) return;
         await addDutyOfficer(newOfficer.trim());
@@ -413,7 +429,16 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 <div className="p-6 animate-fade-in border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* TIPOLOGIE */}
                                     <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                        <h3 className="text-xs font-bold uppercase mb-2">Tipologie Intervento</h3>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <h3 className="text-xs font-bold uppercase">Tipologie Intervento</h3>
+                                            <button 
+                                                onClick={handleLoadStandardTypologies}
+                                                className="bg-blue-500 hover:bg-blue-600 text-white p-1 rounded-full shadow-sm"
+                                                title="Carica Lista Standard"
+                                            >
+                                                <ListIcon className="h-3 w-3" />
+                                            </button>
+                                        </div>
                                         <div className="flex gap-2 mb-2">
                                             <input type="text" value={newTypology} onChange={e => setNewTypology(e.target.value)} placeholder="Es. Incendio, Soccorso..." className="border rounded p-1 text-sm flex-grow" />
                                             <button onClick={handleAddTypology} className="bg-green-500 text-white px-2 rounded font-bold">+</button>
