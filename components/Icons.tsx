@@ -91,3 +91,4 @@ export const WhatsAppIcon = (props: IconProps) => <EmojiIcon emoji="💬" {...pr
 export const ShirtIcon = (props: IconProps) => <EmojiIcon emoji="👕" {...props} />;
 export const FireIcon = (props: IconProps) => <EmojiIcon emoji="🔥" {...props} />;
 export const WrenchIcon = (props: IconProps) => <EmojiIcon emoji="🔧" {...props} />;
+export const PinIcon = (props: IconProps) => <EmojiIcon emoji="📌" {...props} />;

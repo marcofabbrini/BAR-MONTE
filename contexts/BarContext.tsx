@@ -1,10 +1,11 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef, LaundryEntry, Intervention, InterventionTypology, DutyOfficer, OperationalVehicle, VehicleCheck } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef, LaundryEntry, Intervention, InterventionTypology, DutyOfficer, OperationalVehicle, VehicleCheck, Reminder } from '../types';
 import { BarService } from '../services/barService';
 import { VehicleService } from '../services/vehicleService';
 import { InterventionService } from '../services/interventionService';
 import { OperationalVehicleService } from '../services/operationalVehicleService';
+import { ReminderService } from '../services/reminderService';
 
 interface BarContextType {
     products: Product[];
@@ -34,6 +35,9 @@ interface BarContextType {
     interventions: Intervention[];
     interventionTypologies: InterventionTypology[];
     dutyOfficers: DutyOfficer[];
+
+    // Reminders
+    reminders: Reminder[];
 
     activeToast: AppNotification | null;
     isLoading: boolean;
@@ -98,6 +102,11 @@ interface BarContextType {
     addDutyOfficer: (name: string) => Promise<void>;
     deleteDutyOfficer: (id: string) => Promise<void>;
 
+    // Reminder Actions
+    addReminder: (r: Omit<Reminder, 'id' | 'createdAt' | 'completedDates'>) => Promise<void>;
+    deleteReminder: (id: string) => Promise<void>;
+    toggleReminderCompletion: (id: string, date: string, completedDates: string[]) => Promise<void>;
+
     // Time Sync
     getNow: () => Date;
 }
@@ -124,6 +133,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [interventions, setInterventions] = useState<Intervention[]>([]);
     const [interventionTypologies, setInterventionTypologies] = useState<InterventionTypology[]>([]);
     const [dutyOfficers, setDutyOfficers] = useState<DutyOfficer[]>([]);
+    const [reminders, setReminders] = useState<Reminder[]>([]);
 
     const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -181,6 +191,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             InterventionService.subscribeToInterventions(setInterventions),
             InterventionService.subscribeToTypologies(setInterventionTypologies),
             InterventionService.subscribeToOfficers(setDutyOfficers),
+            ReminderService.subscribeToReminders(setReminders),
             BarService.subscribeToNotifications((n) => {
                 if (n) {
                     setActiveToast(n);
@@ -262,10 +273,15 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const addDutyOfficer = (name: string) => InterventionService.addOfficer(name);
     const deleteDutyOfficer = (id: string) => InterventionService.deleteOfficer(id);
 
+    // Reminder Functions
+    const addReminder = (r: Omit<Reminder, 'id' | 'createdAt' | 'completedDates'>) => ReminderService.addReminder(r);
+    const deleteReminder = (id: string) => ReminderService.deleteReminder(id);
+    const toggleReminderCompletion = (id: string, date: string, completedDates: string[]) => ReminderService.toggleCompletion(id, date, completedDates);
+
     return (
         <BarContext.Provider value={{
             products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
-            vehicles, vehicleBookings, operationalVehicles, vehicleChecks, laundryItems, laundryEntries, interventions, interventionTypologies, dutyOfficers,
+            vehicles, vehicleBookings, operationalVehicles, vehicleChecks, laundryItems, laundryEntries, interventions, interventionTypologies, dutyOfficers, reminders,
             addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
             addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
             addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
@@ -273,6 +289,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             addOperationalVehicle, updateOperationalVehicle, deleteOperationalVehicle, addVehicleCheck, updateVehicleCheck,
             addLaundryItem, updateLaundryItem, deleteLaundryItem, addLaundryEntry, deleteLaundryEntry,
             addIntervention, updateIntervention, deleteIntervention, permanentDeleteIntervention, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer,
+            addReminder, deleteReminder, toggleReminderCompletion,
             getNow
         }}>
             {children}

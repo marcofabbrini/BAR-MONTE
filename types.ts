@@ -263,6 +263,18 @@ export interface Intervention {
 }
 // ==========================
 
+// === PROMEMORIA (REMINDERS) ===
+export interface Reminder {
+    id: string;
+    text: string;
+    type: 'recurring' | 'spot';
+    dayOfWeek?: number; // 0=Dom, 1=Lun... per recurring
+    date?: string; // YYYY-MM-DD per spot
+    completedDates: string[]; // Array di stringhe YYYY-MM-DD in cui è stato completato
+    createdAt: string;
+}
+// ==============================
+
 export interface SeasonalityConfig {
     startDate: string;
     endDate: string;

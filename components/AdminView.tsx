@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef } from '../types';
+import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef, Reminder } from '../types';
 import firebase from 'firebase/compat/app';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon, WrenchIcon, TruckIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon, WrenchIcon, TruckIcon, PinIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -70,7 +70,7 @@ interface AdminViewProps {
     onSendNotification?: (title: string, body: string, target?: string) => Promise<void>;
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet' | 'operational_fleet' | 'laundry'; 
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet' | 'operational_fleet' | 'laundry' | 'reminders'; 
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
@@ -92,6 +92,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     const { operationalVehicles, addOperationalVehicle, updateOperationalVehicle, deleteOperationalVehicle } = useBar();
     const { laundryItems, addLaundryItem, updateLaundryItem, deleteLaundryItem } = useBar();
     const { interventionTypologies, dutyOfficers, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer } = useBar();
+    const { reminders, addReminder, deleteReminder } = useBar();
 
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -125,6 +126,12 @@ const AdminView: React.FC<AdminViewProps> = ({
     // Notification Form
     const [notifTitle, setNotifTitle] = useState('');
     const [notifBody, setNotifBody] = useState('');
+
+    // Reminder Form State
+    const [remText, setRemText] = useState('');
+    const [remType, setRemType] = useState<'recurring' | 'spot'>('recurring');
+    const [remDay, setRemDay] = useState<number>(1);
+    const [remDate, setRemDate] = useState('');
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
@@ -281,6 +288,23 @@ const AdminView: React.FC<AdminViewProps> = ({
         setNewOfficer('');
     };
 
+    const handleAddReminder = async () => {
+        if (!remText.trim()) return;
+        await addReminder({
+            text: remText.trim(),
+            type: remType,
+            dayOfWeek: remType === 'recurring' ? remDay : undefined,
+            date: remType === 'spot' ? remDate : undefined
+        });
+        setRemText('');
+    };
+
+    const handleDeleteReminder = async (id: string) => {
+        if (confirm("Eliminare definitivamente questo promemoria?")) {
+            await deleteReminder(id);
+        }
+    };
+
     const toggleSection = (section: string) => {
         setExpandedSection(prev => prev === section ? null : section);
     };
@@ -345,7 +369,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                     </div>
                     
                     {/* GRIGLIA NAVIGAZIONE AGGIORNATA */}
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-11 gap-2 w-full overflow-x-auto">
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-12 gap-2 w-full overflow-x-auto">
                         <TabButton tab="movements" label="Movimenti" icon={<ListIcon />} />
                         <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon />} />
                         <TabButton tab="stock" label="Stock" icon={<BoxIcon />} />
@@ -356,6 +380,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="fleet" label="Automezzi" icon={<CarIcon />} />
                         <TabButton tab="operational_fleet" label="Mezzi Op." icon={<TruckIcon />} />
                         <TabButton tab="laundry" label="Lavanderia" icon={<ShirtIcon />} />
+                        <TabButton tab="reminders" label="Promemoria" icon={<PinIcon />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon />} />
                     </div>
                 </div>
@@ -421,6 +446,74 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'operational_fleet' && <OperationalVehicleManagement vehicles={operationalVehicles} onAddVehicle={addOperationalVehicle} onUpdateVehicle={updateOperationalVehicle} onDeleteVehicle={deleteOperationalVehicle} />}
                 {activeTab === 'laundry' && <LaundryManagement items={laundryItems} onAddItem={addLaundryItem} onUpdateItem={updateLaundryItem} onDeleteItem={deleteLaundryItem} />}
                 
+                {activeTab === 'reminders' && (
+                    <div className="max-w-4xl mx-auto space-y-6">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <PinIcon className="h-6 w-6 text-yellow-500" /> Gestione Promemoria (Post-it)
+                            </h2>
+                            <div className="flex flex-col gap-4">
+                                <input 
+                                    type="text" 
+                                    placeholder="Testo Promemoria" 
+                                    value={remText} 
+                                    onChange={e => setRemText(e.target.value)} 
+                                    className="border rounded p-3 text-sm"
+                                />
+                                <div className="flex gap-4">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" checked={remType === 'recurring'} onChange={() => setRemType('recurring')} className="text-yellow-500" />
+                                        <span className="text-sm font-bold">Ricorrente (Settimanale)</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" checked={remType === 'spot'} onChange={() => setRemType('spot')} className="text-yellow-500" />
+                                        <span className="text-sm font-bold">Spot (Data Singola)</span>
+                                    </label>
+                                </div>
+                                
+                                {remType === 'recurring' ? (
+                                    <select value={remDay} onChange={e => setRemDay(parseInt(e.target.value))} className="border rounded p-2 text-sm bg-white">
+                                        {['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'].map((d, i) => (
+                                            <option key={i} value={i}>{d}</option>
+                                        ))}
+                                    </select>
+                                ) : (
+                                    <input type="date" value={remDate} onChange={e => setRemDate(e.target.value)} className="border rounded p-2 text-sm" />
+                                )}
+
+                                <button onClick={handleAddReminder} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 rounded shadow-sm">
+                                    Aggiungi Promemoria
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div className="bg-slate-50 p-4 border-b border-slate-200">
+                                <h3 className="font-bold text-slate-700">Elenco Promemoria Attivi</h3>
+                            </div>
+                            <ul className="divide-y divide-slate-100">
+                                {reminders.map(rem => (
+                                    <li key={rem.id} className="p-4 flex justify-between items-center hover:bg-slate-50">
+                                        <div>
+                                            <p className="font-bold text-slate-800">{rem.text}</p>
+                                            <p className="text-xs text-slate-500">
+                                                {rem.type === 'recurring' 
+                                                    ? `Ogni ${['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'][rem.dayOfWeek || 0]}`
+                                                    : `Il ${new Date(rem.date || '').toLocaleDateString()}`
+                                                }
+                                            </p>
+                                        </div>
+                                        <button onClick={() => handleDeleteReminder(rem.id)} className="text-red-500 hover:bg-red-50 p-2 rounded">
+                                            <TrashIcon className="h-5 w-5" />
+                                        </button>
+                                    </li>
+                                ))}
+                                {reminders.length === 0 && <li className="p-8 text-center text-slate-400 italic">Nessun promemoria.</li>}
+                            </ul>
+                        </div>
+                    </div>
+                )}
+
                 {activeTab === 'settings' && (
                     <div className="space-y-4 max-w-4xl mx-auto">
                         

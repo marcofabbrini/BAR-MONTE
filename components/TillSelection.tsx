@@ -1,7 +1,7 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
-import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig } from '../types';
-import { BellIcon, TruckIcon, ShirtIcon, FireIcon } from './Icons';
+import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder } from '../types';
+import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 
 interface TillSelectionProps {
@@ -15,7 +15,7 @@ interface TillSelectionProps {
     onSelectFleet: () => void;
     onSelectLaundry: () => void;
     onSelectInterventions: () => void; 
-    onSelectOperationalVehicles: () => void; // NEW PROP
+    onSelectOperationalVehicles: () => void;
     tillColors: TillColors;
     seasonalityConfig?: SeasonalityConfig;
     shiftSettings?: ShiftSettings;
@@ -23,6 +23,8 @@ interface TillSelectionProps {
     isSuperAdmin?: boolean | null;
     notificationPermission?: NotificationPermission;
     onRequestNotification?: () => void;
+    reminders?: Reminder[];
+    onToggleReminder?: (id: string, date: string, completedDates: string[]) => Promise<void>;
 }
 
 interface WeatherData {
@@ -30,7 +32,7 @@ interface WeatherData {
     weathercode: number;
 }
 
-const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, onSelectOperationalVehicles, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification }) => {
+const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, onSelectOperationalVehicles, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification, reminders = [], onToggleReminder }) => {
     
     // Context for Reliable Time
     const { getNow } = useBar();
@@ -232,6 +234,20 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return active ? [active] : []; 
     }, [tills, activeShift, isSuperAdmin]);
 
+    // --- REMINDER LOGIC ---
+    const todayReminders = useMemo(() => {
+        const todayStr = currentTime.toISOString().split('T')[0];
+        const dayOfWeek = currentTime.getDay(); // 0=Dom, 1=Lun...
+
+        return reminders.filter(rem => {
+            if (rem.type === 'spot') {
+                return rem.date === todayStr;
+            } else {
+                return rem.dayOfWeek === dayOfWeek;
+            }
+        });
+    }, [reminders, currentTime]);
+
     const backgroundColor = seasonalityConfig?.backgroundColor || '#f8fafc';
     const tombolaNumberCount = tombolaConfig?.status === 'active' ? (tombolaConfig.extractedNumbers?.length || 0) : 0;
 
@@ -405,6 +421,40 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     })}
                 </div>
 
+                {/* --- SEZIONE PROMEMORIA (POST-IT) --- */}
+                {todayReminders.length > 0 && (
+                    <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
+                        <div className="bg-yellow-100 border-l-8 border-yellow-400 p-4 rounded-r-xl shadow-[5px_5px_15px_rgba(0,0,0,0.15)] relative transform rotate-1 transition-transform hover:rotate-0">
+                            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-red-500 drop-shadow-sm">
+                                <PinIcon className="h-8 w-8" />
+                            </div>
+                            <h3 className="font-black text-slate-800 text-lg mb-3 uppercase tracking-wide text-center" style={{ fontFamily: 'cursive, sans-serif' }}>
+                                Da fare oggi...
+                            </h3>
+                            <div className="space-y-2">
+                                {todayReminders.map(rem => {
+                                    const todayStr = currentTime.toISOString().split('T')[0];
+                                    const isDone = rem.completedDates.includes(todayStr);
+                                    
+                                    return (
+                                        <div key={rem.id} className="flex justify-between items-center group">
+                                            <span className={`text-sm font-bold text-slate-700 flex-grow ${isDone ? 'line-through opacity-50 decoration-2 decoration-slate-500' : ''}`}>
+                                                • {rem.text}
+                                            </span>
+                                            <button 
+                                                onClick={() => onToggleReminder && onToggleReminder(rem.id, todayStr, rem.completedDates)}
+                                                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isDone ? 'bg-green-500 border-green-500 text-white' : 'border-slate-400 text-transparent hover:border-slate-600'}`}
+                                            >
+                                                <CheckIcon className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* --- 2. SEZIONE CENTRALE: GRIGLIA FUNZIONALE A 2 COLONNE FISSE --- */}
                 {/* FIXED: grid-cols-2 instead of grid-cols-1 md:grid-cols-2 */}
                 <div className="w-full md:w-3/4 lg:w-2/3 px-4 grid grid-cols-2 gap-3 md:gap-4 mb-4">
@@ -536,7 +586,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar VVF v4.1 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar VVF v4.2 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );
