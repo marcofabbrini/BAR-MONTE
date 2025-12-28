@@ -46,6 +46,9 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     const [graceTimeLeft, setGraceTimeLeft] = useState<number>(0);
     const [activeShiftTimeLeft, setActiveShiftTimeLeft] = useState<number>(0);
 
+    // POST-IT STATE
+    const [hidePostIt, setHidePostIt] = useState(false);
+
     // Sync Timer (Updates UI frequently for centiseconds)
     useEffect(() => {
         const updateTick = () => {
@@ -253,6 +256,26 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         });
     }, [reminders, currentTime]);
 
+    // --- CHECK ALL COMPLETED & AUTO HIDE ---
+    const areAllRemindersCompleted = useMemo(() => {
+        if (todayReminders.length === 0) return false;
+        const todayStr = currentTime.toISOString().split('T')[0];
+        return todayReminders.every(rem => rem.completedDates.includes(todayStr));
+    }, [todayReminders, currentTime]);
+
+    useEffect(() => {
+        let timer: ReturnType<typeof setTimeout>;
+        if (areAllRemindersCompleted) {
+            // Hide after 1 minute (60000ms)
+            timer = setTimeout(() => {
+                setHidePostIt(true);
+            }, 60000);
+        } else {
+            setHidePostIt(false);
+        }
+        return () => clearTimeout(timer);
+    }, [areAllRemindersCompleted]);
+
     const backgroundColor = seasonalityConfig?.backgroundColor || '#f8fafc';
     const tombolaNumberCount = tombolaConfig?.status === 'active' ? (tombolaConfig.extractedNumbers?.length || 0) : 0;
 
@@ -398,13 +421,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 )}
 
                 {/* --- SEZIONE PROMEMORIA (POST-IT) --- */}
-                {todayReminders.length > 0 && (
+                {todayReminders.length > 0 && !hidePostIt && (
                     <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
-                        <div className="bg-yellow-100 border-l-8 border-yellow-400 p-4 rounded-r-xl shadow-[5px_5px_15px_rgba(0,0,0,0.15)] relative transform rotate-1 transition-transform hover:rotate-0">
+                        <div className="bg-yellow-200 p-4 rounded-xl shadow-[5px_5px_15px_rgba(0,0,0,0.15)] relative transform rotate-1 transition-transform hover:rotate-0">
                             <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-red-500 drop-shadow-sm">
                                 <PinIcon className="h-8 w-8" />
                             </div>
-                            <h3 className="font-black text-slate-800 text-lg mb-3 uppercase tracking-wide text-center" style={{ fontFamily: 'cursive, sans-serif' }}>
+                            <h3 className="text-slate-800 text-lg mb-3 uppercase tracking-wide text-center" style={{ fontFamily: '"Permanent Marker", cursive' }}>
                                 Da fare oggi...
                             </h3>
                             <div className="space-y-2">
