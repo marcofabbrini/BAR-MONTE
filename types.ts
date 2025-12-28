@@ -192,6 +192,7 @@ export interface DutyOfficer {
 
 export interface Intervention {
     id: string;
+    interventionNumber?: string; // Nr. Intervento S.O.
     date: string; // YYYY-MM-DD
     exitTime: string; // HH:mm
     returnTime: string; // HH:mm
@@ -199,8 +200,9 @@ export interface Intervention {
     typology: string; // Nome tipologia
     
     // Luogo
-    street: string;
-    number: string;
+    addressType?: string; // Via, Piazza, SS...
+    street: string; // Nome via o KM
+    number: string; // Civico
     municipality: string;
     locality: string;
 
@@ -211,6 +213,11 @@ export interface Intervention {
 
     shift: string; // Turno che ha effettuato l'intervento (A, B, C, D)
     timestamp: string; // Creation timestamp
+    
+    // Soft Delete
+    isDeleted?: boolean;
+    deletedBy?: string;
+    deletedAt?: string;
 }
 // ==========================
 

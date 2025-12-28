@@ -6,6 +6,7 @@ import {
     onSnapshot, 
     addDoc, 
     deleteDoc, 
+    updateDoc,
     query, 
     orderBy, 
     limit,
@@ -19,11 +20,10 @@ export const InterventionService = {
     
     subscribeToInterventions: (onUpdate: (data: Intervention[]) => void) => {
         // Ultimi 200 interventi
-        // FIX: Rimosso orderBy secondario 'exitTime' per evitare errore "Requires Index" di Firestore
         const q = query(collection(db, 'interventions'), orderBy('date', 'desc'), limit(200));
         return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => {
             const items = s.docs.map(d => ({ ...d.data(), id: d.id } as Intervention));
-            // Ordinamento lato client per Data + Ora Uscita
+            // Ordinamento lato client per Data + Ora Uscita (per gestire meglio i casi limite)
             items.sort((a, b) => {
                 const dateDiff = b.date.localeCompare(a.date);
                 if (dateDiff !== 0) return dateDiff;
@@ -53,7 +53,22 @@ export const InterventionService = {
         await addDoc(collection(db, 'interventions'), intervention);
     },
 
-    deleteIntervention: async (id: string) => {
+    updateIntervention: async (intervention: Intervention) => {
+        const { id, ...data } = intervention;
+        await updateDoc(doc(db, 'interventions', id), data);
+    },
+
+    // Soft delete (sets flag)
+    deleteIntervention: async (id: string, user: string = 'User') => {
+        await updateDoc(doc(db, 'interventions', id), {
+            isDeleted: true,
+            deletedBy: user,
+            deletedAt: new Date().toISOString()
+        });
+    },
+
+    // Hard delete (removes document) - Super Admin only
+    permanentDeleteIntervention: async (id: string) => {
         await deleteDoc(doc(db, 'interventions', id));
     },
 

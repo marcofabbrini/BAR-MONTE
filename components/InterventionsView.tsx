@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
-import { StaffMember, Shift, InterventionTypology, DutyOfficer } from '../types';
+import { StaffMember, Shift, InterventionTypology, DutyOfficer, Intervention } from '../types';
 import { useBar } from '../contexts/BarContext';
-import { BackArrowIcon, CheckIcon, FireIcon, TrashIcon, PlusIcon, CalendarIcon, ChartBarIcon, TrophyIcon } from './Icons';
+import { BackArrowIcon, CheckIcon, FireIcon, TrashIcon, PlusIcon, CalendarIcon, ChartBarIcon, TrophyIcon, EditIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
+import { GradeBadge } from './StaffManagement';
 
 interface InterventionsViewProps {
     onGoBack: () => void;
@@ -11,20 +12,30 @@ interface InterventionsViewProps {
     isSuperAdmin?: boolean | null;
 }
 
+const ADDRESS_TYPES = ['Via', 'Viale', 'Piazza', 'Vicolo', 'Corso', 'S.S.', 'S.R.', 'S.P.', 'Loc.', ''];
+
 const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, isSuperAdmin }) => {
-    const { interventions, interventionTypologies, dutyOfficers, addIntervention, deleteIntervention, getNow } = useBar();
+    const { interventions, interventionTypologies, dutyOfficers, addIntervention, updateIntervention, deleteIntervention, permanentDeleteIntervention, getNow } = useBar();
 
     const [isWizardOpen, setIsWizardOpen] = useState(false);
     const [step, setStep] = useState<number>(1);
+    
+    // Edit Mode State
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     // Form Data
+    const [interventionNumber, setInterventionNumber] = useState('');
     const [date, setDate] = useState(getNow().toISOString().split('T')[0]);
     const [exitTime, setExitTime] = useState('');
     const [returnTime, setReturnTime] = useState('');
     
     const [typology, setTypology] = useState('');
-    const [street, setStreet] = useState('');
-    const [number, setNumber] = useState('');
+    
+    // Address Parts
+    const [addressType, setAddressType] = useState('Via');
+    const [streetName, setStreetName] = useState(''); // "Indirizzo o km"
+    const [civicNumber, setCivicNumber] = useState('');
+    
     const [municipality, setMunicipality] = useState('Montepulciano');
     const [locality, setLocality] = useState('');
 
@@ -63,19 +74,19 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
             return ['CS', 'CQE', 'CR', 'CRE'].includes(grade) && s.shift === activeShift;
         }).sort((a,b) => a.name.localeCompare(b.name));
 
-        // Se non trova nessuno (es. gradi non settati), ritorna tutto lo staff del turno
+        // Se non trova nessuno (es. gradi non settati), ritorna tutto lo staff del turno (esclusa cassa)
         if (leaders.length === 0) {
-            return staff.filter(s => s.shift === activeShift).sort((a,b) => a.name.localeCompare(b.name));
+            return staff.filter(s => s.shift === activeShift && !s.name.toLowerCase().includes('cassa')).sort((a,b) => a.name.localeCompare(b.name));
         }
         return leaders;
     }, [staff, activeShift]);
 
-    // STATISTICHE DASHBOARD
+    // STATISTICHE DASHBOARD (Esclude cancellati)
     const stats = useMemo(() => {
         const shiftCounts: Record<string, number> = { a: 0, b: 0, c: 0, d: 0 };
         const leaderCounts: Record<string, number> = {};
 
-        interventions.forEach(i => {
+        interventions.filter(i => !i.isDeleted).forEach(i => {
             // Count Shifts
             if (i.shift && shiftCounts[i.shift.toLowerCase()] !== undefined) {
                 shiftCounts[i.shift.toLowerCase()]++;
@@ -101,14 +112,54 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         return { shiftCounts, topLeader, maxCount };
     }, [interventions, staff]);
 
+    const resetForm = () => {
+        setEditingId(null);
+        setInterventionNumber('');
+        setDate(getNow().toISOString().split('T')[0]);
+        setExitTime('');
+        setReturnTime('');
+        setTypology('');
+        setAddressType('Via');
+        setStreetName('');
+        setCivicNumber('');
+        setLocality('');
+        setTeamLeaderId('');
+        setOfficerId('');
+        setStep(1);
+    };
+
+    const handleOpenEdit = (i: Intervention) => {
+        setEditingId(i.id);
+        setInterventionNumber(i.interventionNumber || '');
+        setDate(i.date);
+        setExitTime(i.exitTime);
+        setReturnTime(i.returnTime);
+        setTypology(i.typology);
+        setAddressType(i.addressType || 'Via');
+        setStreetName(i.street || '');
+        setCivicNumber(i.number || '');
+        setMunicipality(i.municipality || 'Montepulciano');
+        setLocality(i.locality || '');
+        setTeamLeaderId(i.teamLeaderId || '');
+        // Trova ID funzionario dal nome (se possibile)
+        const off = dutyOfficers.find(o => o.name === i.dutyOfficer);
+        setOfficerId(off ? off.id : '');
+        
+        setIsWizardOpen(true);
+        setStep(1);
+    };
+
     // Handle Wizard Navigation
     const nextStep = () => {
         if (step === 1) {
+            // Step 1: Quando
             if (!date || !exitTime || !returnTime) return alert("Compila tutti i campi orari.");
-            if (returnTime <= exitTime) return alert("L'orario di rientro deve essere successivo all'uscita.");
+            // Rimosso controllo returnTime > exitTime per permettere turni a cavallo mezzanotte
         }
         if (step === 2) {
-            if (!typology || !street || !municipality) return alert("Compila tipologia e indirizzo.");
+            // Step 2: Dettagli
+            if (!typology) return alert("Seleziona la tipologia.");
+            if (!streetName) return alert("Inserisci il nome della via o i km.");
         }
         setStep((prev: number) => prev + 1);
     };
@@ -127,44 +178,51 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
 
         const leader = staff.find(s => s.id === teamLeaderId);
         
+        const payload = {
+            interventionNumber,
+            date,
+            exitTime,
+            returnTime,
+            typology,
+            addressType,
+            street: streetName,
+            number: civicNumber,
+            municipality,
+            locality,
+            teamLeaderId,
+            teamLeaderName: leader?.name || 'Sconosciuto',
+            dutyOfficer: finalOfficerName,
+            shift: activeShift,
+            timestamp: new Date().toISOString()
+        };
+
         try {
-            await addIntervention({
-                date,
-                exitTime,
-                returnTime,
-                typology,
-                street,
-                number,
-                municipality,
-                locality,
-                teamLeaderId,
-                teamLeaderName: leader?.name || 'Sconosciuto',
-                dutyOfficer: finalOfficerName,
-                shift: activeShift,
-                timestamp: new Date().toISOString()
-            });
+            if (editingId) {
+                await updateIntervention({ id: editingId, ...payload });
+                alert("Intervento aggiornato!");
+            } else {
+                await addIntervention(payload);
+                alert("Intervento registrato con successo!");
+            }
             
             // Reset & Close
             setIsWizardOpen(false);
-            setStep(1);
-            setExitTime('');
-            setReturnTime('');
-            setStreet('');
-            setNumber('');
-            setLocality('');
-            setTypology('');
-            // Keep TeamLeader sticky for convenience
-            
-            alert("Intervento registrato con successo!");
+            resetForm();
         } catch (e: any) {
             console.error(e);
             alert("Errore salvataggio: " + e.message);
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if(confirm("Eliminare definitivamente questo intervento?")) {
+    const handleSoftDelete = async (id: string) => {
+        if(confirm("Annullare questo intervento? Rimarrà visibile nel registro ma barrato.")) {
             await deleteIntervention(id);
+        }
+    };
+
+    const handleHardDelete = async (id: string) => {
+        if(isSuperAdmin && confirm("ELIMINAZIONE DEFINITIVA. Procedere?")) {
+            await permanentDeleteIntervention(id);
         }
     };
 
@@ -174,21 +232,30 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
             case 1:
                 return (
                     <div className="space-y-4 animate-fade-in">
-                        <h3 className="font-bold text-orange-800 uppercase text-sm border-b border-orange-200 pb-2">Step 1: Tempi</h3>
+                        <h3 className="font-bold text-orange-800 uppercase text-sm border-b border-orange-200 pb-2">Step 1: Quando</h3>
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Data Intervento</label>
-                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full border rounded p-3 font-bold text-slate-700 bg-white" />
+                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Nr. Intervento (S.O.)</label>
+                            <input type="text" value={interventionNumber} onChange={e => setInterventionNumber(e.target.value)} placeholder="Es. 1234" className="w-full border rounded p-3 font-mono font-bold text-slate-700 bg-white focus:ring-2 focus:ring-orange-200 outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Data Uscita</label>
+                            <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full border rounded p-3 font-bold text-slate-700 bg-white focus:ring-2 focus:ring-orange-200 outline-none" />
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Uscita</label>
-                                <input type="time" value={exitTime} onChange={e => setExitTime(e.target.value)} className="w-full border rounded p-3 font-bold text-slate-700 bg-white" />
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Ora Uscita</label>
+                                <input type="time" value={exitTime} onChange={e => setExitTime(e.target.value)} className="w-full border rounded p-3 font-bold text-slate-700 bg-white focus:ring-2 focus:ring-orange-200 outline-none" />
                             </div>
                             <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Rientro</label>
-                                <input type="time" value={returnTime} onChange={e => setReturnTime(e.target.value)} className="w-full border rounded p-3 font-bold text-slate-700 bg-white" />
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Ora Rientro</label>
+                                <input type="time" value={returnTime} onChange={e => setReturnTime(e.target.value)} className="w-full border rounded p-3 font-bold text-slate-700 bg-white focus:ring-2 focus:ring-orange-200 outline-none" />
                             </div>
                         </div>
+                        {exitTime && returnTime && exitTime > returnTime && (
+                            <p className="text-[10px] text-orange-600 italic bg-orange-50 p-2 rounded border border-orange-100">
+                                ⚠️ Nota: L'orario di rientro è precedente all'uscita. Si assume che l'intervento sia terminato il giorno successivo.
+                            </p>
+                        )}
                     </div>
                 );
             case 2:
@@ -201,53 +268,98 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                 list="typologies" 
                                 value={typology} 
                                 onChange={e => setTypology(e.target.value)} 
-                                className="w-full border rounded p-3 bg-white"
+                                className="w-full border rounded p-3 bg-white focus:ring-2 focus:ring-orange-200 outline-none"
                                 placeholder="Seleziona o scrivi..."
                             />
                             <datalist id="typologies">
                                 {interventionTypologies.map(t => <option key={t.id} value={t.name} />)}
                             </datalist>
                         </div>
-                        <div className="grid grid-cols-3 gap-2">
-                            <div className="col-span-2">
-                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Via / Piazza</label>
-                                <input type="text" value={street} onChange={e => setStreet(e.target.value)} className="w-full border rounded p-3 bg-white" placeholder="Via Roma" />
+                        
+                        <div className="grid grid-cols-4 gap-2 items-end">
+                            <div className="col-span-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Tipo</label>
+                                <select value={addressType} onChange={e => setAddressType(e.target.value)} className="w-full border rounded p-3 bg-white text-xs font-bold outline-none">
+                                    {ADDRESS_TYPES.map(t => <option key={t} value={t}>{t || 'Nessuno'}</option>)}
+                                </select>
                             </div>
-                            <div>
-                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Civico</label>
-                                <input type="text" value={number} onChange={e => setNumber(e.target.value)} className="w-full border rounded p-3 bg-white" placeholder="10" />
+                            <div className="col-span-2">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Indirizzo o km *</label>
+                                <input type="text" value={streetName} onChange={e => setStreetName(e.target.value)} className="w-full border rounded p-3 bg-white text-sm outline-none" placeholder="Nome via" />
+                            </div>
+                            <div className="col-span-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Civico</label>
+                                <input type="text" value={civicNumber} onChange={e => setCivicNumber(e.target.value)} className="w-full border rounded p-3 bg-white text-sm outline-none" placeholder="Nr" />
                             </div>
                         </div>
+
                         <div className="grid grid-cols-2 gap-2">
                             <div>
                                 <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Comune</label>
-                                <input type="text" value={municipality} onChange={e => setMunicipality(e.target.value)} className="w-full border rounded p-3 bg-white" />
+                                <input type="text" value={municipality} onChange={e => setMunicipality(e.target.value)} className="w-full border rounded p-3 bg-white outline-none" />
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Località</label>
-                                <input type="text" value={locality} onChange={e => setLocality(e.target.value)} className="w-full border rounded p-3 bg-white" placeholder="(Opzionale)" />
+                                <input type="text" value={locality} onChange={e => setLocality(e.target.value)} className="w-full border rounded p-3 bg-white outline-none" placeholder="(Opzionale)" />
                             </div>
                         </div>
                     </div>
                 );
             case 3:
                 return (
-                    <div className="space-y-4 animate-fade-in">
+                    <div className="space-y-6 animate-fade-in">
                         <h3 className="font-bold text-orange-800 uppercase text-sm border-b border-orange-200 pb-2">Step 3: Personale</h3>
+                        
+                        {/* TEAM LEADER AVATAR GRID */}
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Capo Partenza (Turno {activeShift.toUpperCase()})</label>
-                            <select value={teamLeaderId} onChange={e => setTeamLeaderId(e.target.value)} className="w-full border rounded p-3 bg-white font-bold">
-                                <option value="">-- Seleziona --</option>
-                                {eligibleLeaders.map(s => <option key={s.id} value={s.id}>{s.grade} {s.name}</option>)}
-                            </select>
-                            {eligibleLeaders.length === 0 && <p className="text-[10px] text-red-500 mt-1 italic">Nessun personale trovato nel turno {activeShift.toUpperCase()}.</p>}
+                            <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Capo Partenza (Turno {activeShift.toUpperCase()})</label>
+                            <div className="grid grid-cols-4 gap-3 max-h-40 overflow-y-auto p-1">
+                                {eligibleLeaders.map(s => {
+                                    const isSelected = teamLeaderId === s.id;
+                                    return (
+                                        <button 
+                                            key={s.id}
+                                            onClick={() => setTeamLeaderId(s.id)}
+                                            className={`
+                                                flex flex-col items-center p-2 rounded-xl border-2 transition-all
+                                                ${isSelected ? 'bg-orange-100 border-orange-500 shadow-md transform scale-105' : 'bg-white border-slate-200 hover:border-orange-300'}
+                                            `}
+                                        >
+                                            <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border border-slate-200 flex items-center justify-center">
+                                                {s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" /> : <span className="text-lg">{s.icon || '👤'}</span>}
+                                            </div>
+                                            <span className={`text-[9px] font-bold mt-1 text-center w-full truncate ${isSelected ? 'text-orange-800' : 'text-slate-600'}`}>{s.name.split(' ')[0]}</span>
+                                            {s.grade && <span className="text-[8px] bg-slate-100 px-1 rounded text-slate-500">{s.grade}</span>}
+                                        </button>
+                                    )
+                                })}
+                                {eligibleLeaders.length === 0 && <p className="text-xs text-red-400 italic col-span-4">Nessun personale idoneo nel turno.</p>}
+                            </div>
                         </div>
+
+                        {/* OFFICER ICON GRID */}
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Funzionario di Servizio</label>
-                            <select value={officerId} onChange={e => setOfficerId(e.target.value)} className="w-full border rounded p-3 bg-white">
-                                <option value="">-- Seleziona --</option>
-                                {dutyOfficers.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                            </select>
+                            <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Funzionario di Servizio</label>
+                            <div className="grid grid-cols-3 gap-3 max-h-40 overflow-y-auto p-1">
+                                {dutyOfficers.map(o => {
+                                    const isSelected = officerId === o.id;
+                                    return (
+                                        <button 
+                                            key={o.id}
+                                            onClick={() => setOfficerId(o.id)}
+                                            className={`
+                                                flex flex-col items-center p-2 rounded-xl border-2 transition-all
+                                                ${isSelected ? 'bg-blue-100 border-blue-500 shadow-md transform scale-105' : 'bg-white border-slate-200 hover:border-blue-300'}
+                                            `}
+                                        >
+                                            <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center">
+                                                <span className="text-xl">👮‍♂️</span>
+                                            </div>
+                                            <span className={`text-[9px] font-bold mt-1 text-center w-full truncate ${isSelected ? 'text-blue-800' : 'text-slate-600'}`}>{o.name}</span>
+                                        </button>
+                                    )
+                                })}
+                            </div>
                         </div>
                     </div>
                 );
@@ -315,7 +427,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                 {/* BUTTON NUOVO INTERVENTO */}
                 {!isWizardOpen && (
                     <button 
-                        onClick={() => setIsWizardOpen(true)}
+                        onClick={() => { resetForm(); setIsWizardOpen(true); }}
                         className="w-full bg-white p-6 rounded-xl shadow-md border-l-8 border-orange-500 flex items-center justify-between hover:bg-orange-50 transition-all group"
                     >
                         <div className="text-left">
@@ -334,8 +446,10 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                 {isWizardOpen && (
                     <div className="bg-white rounded-xl shadow-xl border border-orange-200 overflow-hidden animate-slide-up">
                         <div className="bg-orange-50 p-4 border-b border-orange-100 flex justify-between items-center">
-                            <h2 className="font-bold text-orange-900 uppercase">Nuovo Intervento - Step {step}/3</h2>
-                            <button onClick={() => { setIsWizardOpen(false); setStep(1); }} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
+                            <h2 className="font-bold text-orange-900 uppercase">
+                                {editingId ? 'Modifica Intervento' : 'Nuovo Intervento'} - Step {step}/3
+                            </h2>
+                            <button onClick={() => { setIsWizardOpen(false); resetForm(); }} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
                         </div>
                         
                         <div className="p-6">
@@ -353,7 +467,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                 <button onClick={nextStep} className="px-6 py-2 rounded-lg font-bold bg-orange-600 text-white hover:bg-orange-700 shadow-md transition-colors">Avanti</button>
                             ) : (
                                 <button onClick={handleSubmit} className="px-6 py-2 rounded-lg font-bold bg-green-600 text-white hover:bg-green-700 shadow-md transition-colors flex items-center gap-2">
-                                    <CheckIcon className="h-5 w-5"/> Salva nel Registro
+                                    <CheckIcon className="h-5 w-5"/> {editingId ? 'Aggiorna' : 'Salva nel Registro'}
                                 </button>
                             )}
                         </div>
@@ -417,16 +531,15 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                             <thead className="bg-slate-100 text-slate-600 text-xs uppercase font-bold">
                                 <tr>
                                     <th className="p-3 text-center">Turno</th>
-                                    <th className="p-3">Progr.</th>
-                                    <th className="p-3">Data</th>
-                                    <th className="p-3">Tipologia</th>
-                                    <th className="p-3">Dettagli Luogo</th>
+                                    <th className="p-3">Nr. / Data</th>
+                                    <th className="p-3">Tipologia / Luogo</th>
+                                    <th className="p-3">Squadra</th>
                                     <th className="p-3 text-center">Azioni</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {interventions.length === 0 ? (
-                                    <tr><td colSpan={6} className="p-8 text-center text-slate-400 italic">Nessun intervento registrato.</td></tr>
+                                    <tr><td colSpan={5} className="p-8 text-center text-slate-400 italic">Nessun intervento registrato.</td></tr>
                                 ) : (
                                     interventions.map((int, idx) => {
                                         // Calcolo Progressivo (Totale - Indice) per avere ordine inverso
@@ -439,35 +552,62 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                         }[int.shift.toLowerCase()] || 'bg-slate-100 text-slate-600';
 
                                         return (
-                                            <tr key={int.id} className="hover:bg-orange-50/30 transition-colors">
-                                                <td className="p-3 text-center">
+                                            <tr key={int.id} className={`transition-colors ${int.isDeleted ? 'bg-red-50' : 'hover:bg-orange-50/30'}`}>
+                                                <td className="p-3 text-center align-top">
                                                     <span className={`text-[10px] font-black uppercase px-2 py-1 rounded border ${shiftColor}`}>
                                                         {int.shift.toUpperCase()}
                                                     </span>
                                                 </td>
-                                                <td className="p-3 font-mono font-bold text-slate-400">
-                                                    #{progNum}
-                                                </td>
-                                                <td className="p-3 whitespace-nowrap text-xs text-slate-600">
-                                                    <div className="font-bold">{new Date(int.date).toLocaleDateString('it-IT')}</div>
-                                                    <div>{int.exitTime} - {int.returnTime}</div>
-                                                </td>
-                                                <td className="p-3">
-                                                    <span className="font-bold text-slate-800 uppercase text-xs">
-                                                        {int.typology}
-                                                    </span>
-                                                    <div className="text-[10px] text-slate-500 mt-1">
-                                                        CP: {int.teamLeaderName}
+                                                <td className="p-3 align-top">
+                                                    {int.interventionNumber && (
+                                                        <div className={`font-mono text-xs font-bold mb-1 ${int.isDeleted ? 'line-through text-red-400' : 'text-slate-800'}`}>
+                                                            #{int.interventionNumber}
+                                                        </div>
+                                                    )}
+                                                    <div className={`text-xs ${int.isDeleted ? 'text-red-400' : 'text-slate-600'}`}>
+                                                        <div className="font-bold">{new Date(int.date).toLocaleDateString('it-IT')}</div>
+                                                        <div className="font-mono text-[10px]">{int.exitTime} - {int.returnTime}</div>
                                                     </div>
                                                 </td>
-                                                <td className="p-3 text-xs text-slate-500">
-                                                    {int.street} {int.number}, {int.municipality}
+                                                <td className="p-3 align-top">
+                                                    <span className={`font-bold uppercase text-xs block ${int.isDeleted ? 'line-through text-red-400' : 'text-slate-800'}`}>
+                                                        {int.typology}
+                                                    </span>
+                                                    <div className={`text-[11px] mt-1 ${int.isDeleted ? 'text-red-300' : 'text-slate-500'}`}>
+                                                        {int.addressType} {int.street} {int.number}, {int.municipality}
+                                                    </div>
                                                 </td>
-                                                <td className="p-3 text-center">
-                                                    {isSuperAdmin && (
-                                                        <button onClick={() => handleDelete(int.id)} className="text-slate-300 hover:text-red-500 p-2 hover:bg-red-50 rounded-full transition-colors">
-                                                            <TrashIcon className="h-4 w-4" />
-                                                        </button>
+                                                <td className="p-3 text-xs text-slate-500 align-top">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="font-bold text-[9px] uppercase tracking-wide opacity-70">CP:</span>
+                                                        <span className={int.isDeleted ? 'line-through' : ''}>{int.teamLeaderName}</span>
+                                                    </div>
+                                                    {int.dutyOfficer && (
+                                                        <div className="flex items-center gap-1 mt-1">
+                                                            <span className="font-bold text-[9px] uppercase tracking-wide opacity-70">FUNZ:</span>
+                                                            <span className={int.isDeleted ? 'line-through' : ''}>{int.dutyOfficer}</span>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="p-3 text-center align-middle">
+                                                    {int.isDeleted ? (
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="text-[9px] font-bold text-red-500 bg-red-100 px-2 py-0.5 rounded border border-red-200 mb-1">ANNULLATO</span>
+                                                            {isSuperAdmin && (
+                                                                <button onClick={() => handleHardDelete(int.id)} className="text-slate-400 hover:text-black p-1 transition-colors" title="Elimina definitivamente">
+                                                                    <TrashIcon className="h-4 w-4" />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex justify-center gap-2">
+                                                            <button onClick={() => handleOpenEdit(int)} className="text-blue-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-full transition-colors" title="Modifica">
+                                                                <EditIcon className="h-4 w-4" />
+                                                            </button>
+                                                            <button onClick={() => handleSoftDelete(int.id)} className="text-slate-300 hover:text-red-500 p-2 hover:bg-red-50 rounded-full transition-colors" title="Elimina">
+                                                                <TrashIcon className="h-4 w-4" />
+                                                            </button>
+                                                        </div>
                                                     )}
                                                 </td>
                                             </tr>

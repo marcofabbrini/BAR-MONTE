@@ -78,7 +78,9 @@ interface BarContextType {
 
     // Intervention Actions
     addIntervention: (i: Omit<Intervention, 'id'>) => Promise<void>;
+    updateIntervention: (i: Intervention) => Promise<void>;
     deleteIntervention: (id: string) => Promise<void>;
+    permanentDeleteIntervention: (id: string) => Promise<void>;
     addInterventionTypology: (name: string) => Promise<void>;
     deleteInterventionTypology: (id: string) => Promise<void>;
     addDutyOfficer: (name: string) => Promise<void>;
@@ -229,7 +231,9 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Intervention Functions
     const addIntervention = (i: Omit<Intervention, 'id'>) => InterventionService.addIntervention(i);
+    const updateIntervention = (i: Intervention) => InterventionService.updateIntervention(i);
     const deleteIntervention = (id: string) => InterventionService.deleteIntervention(id);
+    const permanentDeleteIntervention = (id: string) => InterventionService.permanentDeleteIntervention(id);
     const addInterventionTypology = (name: string) => InterventionService.addTypology(name);
     const deleteInterventionTypology = (id: string) => InterventionService.deleteTypology(id);
     const addDutyOfficer = (name: string) => InterventionService.addOfficer(name);
@@ -244,7 +248,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
             addVehicle, updateVehicle, deleteVehicle, addBooking, deleteBooking,
             addLaundryItem, updateLaundryItem, deleteLaundryItem, addLaundryEntry, deleteLaundryEntry,
-            addIntervention, deleteIntervention, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer,
+            addIntervention, updateIntervention, deleteIntervention, permanentDeleteIntervention, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer,
             getNow
         }}>
             {children}
