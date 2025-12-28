@@ -267,8 +267,9 @@ export interface Intervention {
 export interface Reminder {
     id: string;
     text: string;
-    type: 'recurring' | 'spot';
+    type: 'recurring' | 'spot' | 'monthly'; // Added monthly
     dayOfWeek?: number; // 0=Dom, 1=Lun... per recurring
+    monthlyDetail?: 'first-day' | 'last-day'; // Dettaglio per tipo mensile
     date?: string; // YYYY-MM-DD per spot
     completedDates: string[]; // Array di stringhe YYYY-MM-DD in cui è stato completato
     createdAt: string;

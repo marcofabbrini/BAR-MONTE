@@ -225,23 +225,28 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return tills.find(t => t.shift === previousShiftCode);
     }, [tills, previousShiftCode]);
 
-    const visibleTills = useMemo(() => {
-        const active = tills.find(t => t.shift === activeShift);
-        if (isSuperAdmin) {
-            const others = tills.filter(t => t.shift !== activeShift);
-            return active ? [active, ...others] : tills;
-        }
-        return active ? [active] : []; 
-    }, [tills, activeShift, isSuperAdmin]);
+    // Split tills into active and others (for Super Admin layout)
+    const activeTill = useMemo(() => tills.find(t => t.shift === activeShift), [tills, activeShift]);
+    const inactiveTills = useMemo(() => tills.filter(t => t.shift !== activeShift), [tills, activeShift]);
 
     // --- REMINDER LOGIC ---
     const todayReminders = useMemo(() => {
         const todayStr = currentTime.toISOString().split('T')[0];
         const dayOfWeek = currentTime.getDay(); // 0=Dom, 1=Lun...
+        const dayOfMonth = currentTime.getDate(); // 1-31
+        
+        // Calcola ultimo giorno del mese
+        const year = currentTime.getFullYear();
+        const month = currentTime.getMonth();
+        const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
 
         return reminders.filter(rem => {
             if (rem.type === 'spot') {
                 return rem.date === todayStr;
+            } else if (rem.type === 'monthly') {
+                if (rem.monthlyDetail === 'first-day') return dayOfMonth === 1;
+                if (rem.monthlyDetail === 'last-day') return dayOfMonth === lastDayOfMonth;
+                return false;
             } else {
                 return rem.dayOfWeek === dayOfWeek;
             }
@@ -316,110 +321,81 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     </div>
                 </div>
 
-                {/* --- 1. SEZIONE CASSE (TOP) --- */}
-                <div className="grid grid-cols-3 md:grid-cols-3 gap-4 w-full md:w-3/4 lg:w-2/3 mb-6 px-4 transition-all">
-                    {visibleTills.map((till) => {
-                        const bgColor = tillColors[till.id] || '#f97316';
-                        const isActiveShift = till.shift === activeShift;
-                        
-                        // Layout principale per il turno attivo
-                        if (isActiveShift) {
-                            return (
-                                <div key={till.id} className="col-span-3 h-40 md:h-64 flex gap-2 order-first scale-[1.02] z-10 transition-all duration-500">
-                                    
-                                    {/* PULSANTE "SMONTANTE" (TURNO PRECEDENTE) */}
-                                    {graceTimeLeft > 0 && previousShiftTill && (
-                                        <button 
-                                            onClick={() => onSelectTill(previousShiftTill.id)}
-                                            className="w-1/4 bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-slate-200 flex flex-col items-center justify-center hover:bg-white hover:border-red-200 hover:shadow-lg transition-all relative overflow-hidden group shadow-md"
-                                        >
-                                            <div className="absolute top-2 w-full flex justify-center">
-                                                <span className="bg-red-500 text-white text-[8px] md:text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wide">
-                                                    SMONTANTE
-                                                </span>
-                                            </div>
-                                            <div className="flex flex-col items-center justify-center mt-3 md:mt-4 gap-1">
-                                                <div 
-                                                    className="rounded-full flex items-center justify-center shadow-inner w-10 h-10 md:w-14 md:h-14 transition-transform group-hover:scale-110"
-                                                    style={{ backgroundColor: tillColors[previousShiftTill.id] || '#94a3b8' }}
-                                                >
-                                                    <span className="text-lg md:text-2xl font-black text-white select-none">
-                                                        {previousShiftTill.shift.toUpperCase()}
-                                                    </span>
-                                                </div>
-                                                <span className="text-xs md:text-base font-sans font-extralight text-slate-700 tracking-widest tabular-nums">
-                                                    {formatCountdown(graceTimeLeft)}
-                                                </span>
-                                            </div>
-                                        </button>
-                                    )}
-
-                                    {/* PULSANTE TURNO ATTIVO (STILE COFFEE GLOW) */}
-                                    <button 
-                                        onClick={() => onSelectTill(till.id)} 
-                                        className={`
-                                            flex-grow relative bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-2 
-                                            border-2 border-amber-100 flex flex-col items-center justify-center
-                                            transition-all duration-500 ease-out hover:shadow-[0_0_25px_rgba(180,83,9,0.3)] shadow-xl
-                                            group overflow-hidden
-                                        `}
-                                    >
-                                        {/* Background Emoji Effect - COFFEE */}
-                                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
-                                            ☕
-                                        </div>
-
-                                        <span className="absolute top-2 right-2 md:top-3 md:right-3 bg-green-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full animate-pulse shadow-sm z-10">
-                                            IN SERVIZIO
-                                        </span>
-                                        
-                                        <div className="relative z-10 flex flex-col items-center">
-                                            <div 
-                                                className="rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110 w-20 h-20 md:w-32 md:h-32"
-                                                style={{ backgroundColor: bgColor }}
-                                            >
-                                                <span className="font-black text-white select-none text-4xl md:text-6xl">
-                                                    {till.shift.toUpperCase()}
-                                                </span>
-                                            </div>
-                                            <span className="font-bold text-slate-700 leading-tight bg-slate-50/80 px-3 py-1 rounded-lg text-xl md:text-2xl backdrop-blur-sm uppercase">
-                                                CASSA BAR TURNO {till.shift.toUpperCase()}
-                                            </span>
-                                        </div>
-
-                                        {/* ACTIVE SHIFT COUNTDOWN */}
-                                        {activeShiftTimeLeft > 0 && (
-                                            <span className="absolute bottom-3 right-4 text-[9px] md:text-[10px] font-sans font-extralight text-slate-600 tabular-nums opacity-90 z-10">
-                                                -{formatCountdown(activeShiftTimeLeft)}
-                                            </span>
-                                        )}
-                                    </button>
-                                </div>
-                            );
-                        }
-
-                        // Layout standard per altri turni (se visibili, es. admin)
-                        return (
-                            <button 
-                                key={till.id} 
-                                onClick={() => onSelectTill(till.id)} 
-                                className="group relative bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-2 border border-slate-100 flex flex-col items-center justify-center w-full transition-all duration-500 ease-out hover:shadow-2xl col-span-1 h-20 md:h-40 opacity-90 hover:opacity-100 hover:scale-[1.02]"
-                            >
-                                <div 
-                                    className="rounded-full flex items-center justify-center shadow-inner mb-1 md:mb-2 transition-transform duration-300 group-hover:scale-110 w-10 h-10 md:w-20 md:h-20"
-                                    style={{ backgroundColor: bgColor }}
+                {/* --- 1. SEZIONE CASSA ATTIVA (TOP) --- */}
+                {activeTill && (
+                    <div className="grid grid-cols-1 w-full md:w-3/4 lg:w-2/3 mb-6 px-4 transition-all">
+                        <div key={activeTill.id} className="h-40 md:h-64 flex gap-2 scale-[1.02] z-10 transition-all duration-500">
+                            
+                            {/* PULSANTE "SMONTANTE" (TURNO PRECEDENTE) */}
+                            {graceTimeLeft > 0 && previousShiftTill && (
+                                <button 
+                                    onClick={() => onSelectTill(previousShiftTill.id)}
+                                    className="w-1/4 bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl border border-slate-200 flex flex-col items-center justify-center hover:bg-white hover:border-red-200 hover:shadow-lg transition-all relative overflow-hidden group shadow-md"
                                 >
-                                    <span className="font-black text-white select-none text-xl md:text-4xl">
-                                        {till.shift.toUpperCase()}
+                                    <div className="absolute top-2 w-full flex justify-center">
+                                        <span className="bg-red-500 text-white text-[8px] md:text-[10px] font-black px-2 py-0.5 rounded-full shadow-sm uppercase tracking-wide">
+                                            SMONTANTE
+                                        </span>
+                                    </div>
+                                    <div className="flex flex-col items-center justify-center mt-3 md:mt-4 gap-1">
+                                        <div 
+                                            className="rounded-full flex items-center justify-center shadow-inner w-10 h-10 md:w-14 md:h-14 transition-transform group-hover:scale-110"
+                                            style={{ backgroundColor: tillColors[previousShiftTill.id] || '#94a3b8' }}
+                                        >
+                                            <span className="text-lg md:text-2xl font-black text-white select-none">
+                                                {previousShiftTill.shift.toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <span className="text-xs md:text-base font-sans font-extralight text-slate-700 tracking-widest tabular-nums">
+                                            {formatCountdown(graceTimeLeft)}
+                                        </span>
+                                    </div>
+                                </button>
+                            )}
+
+                            {/* PULSANTE TURNO ATTIVO (STILE COFFEE GLOW) */}
+                            <button 
+                                onClick={() => onSelectTill(activeTill.id)} 
+                                className={`
+                                    flex-grow relative bg-white/90 backdrop-blur-sm rounded-2xl md:rounded-3xl p-2 
+                                    border-2 border-amber-100 flex flex-col items-center justify-center
+                                    transition-all duration-500 ease-out hover:shadow-[0_0_25px_rgba(180,83,9,0.3)] shadow-xl
+                                    group overflow-hidden
+                                `}
+                            >
+                                {/* Background Emoji Effect - COFFEE */}
+                                <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                                    ☕
+                                </div>
+
+                                <span className="absolute top-2 right-2 md:top-3 md:right-3 bg-green-500 text-white text-[10px] md:text-xs font-bold px-3 py-1 rounded-full animate-pulse shadow-sm z-10">
+                                    IN SERVIZIO
+                                </span>
+                                
+                                <div className="relative z-10 flex flex-col items-center">
+                                    <div 
+                                        className="rounded-full flex items-center justify-center shadow-inner mb-2 md:mb-4 transition-transform duration-300 group-hover:scale-110 w-20 h-20 md:w-32 md:h-32"
+                                        style={{ backgroundColor: tillColors[activeTill.id] || '#f97316' }}
+                                    >
+                                        <span className="font-black text-white select-none text-4xl md:text-6xl">
+                                            {activeTill.shift.toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <span className="font-bold text-slate-700 leading-tight bg-slate-50/80 px-3 py-1 rounded-lg text-xl md:text-2xl backdrop-blur-sm uppercase">
+                                        CASSA BAR TURNO {activeTill.shift.toUpperCase()}
                                     </span>
                                 </div>
-                                <span className="font-bold text-slate-700 leading-tight bg-slate-50 px-3 py-1 rounded-lg hidden md:block text-xs md:text-lg uppercase">
-                                    CASSA BAR TURNO {till.shift.toUpperCase()}
-                                </span>
+
+                                {/* ACTIVE SHIFT COUNTDOWN */}
+                                {activeShiftTimeLeft > 0 && (
+                                    <span className="absolute bottom-3 right-4 text-[9px] md:text-[10px] font-sans font-extralight text-slate-600 tabular-nums opacity-90 z-10">
+                                        -{formatCountdown(activeShiftTimeLeft)}
+                                    </span>
+                                )}
                             </button>
-                        );
-                    })}
-                </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* --- SEZIONE PROMEMORIA (POST-IT) --- */}
                 {todayReminders.length > 0 && (
@@ -456,7 +432,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 )}
 
                 {/* --- 2. SEZIONE CENTRALE: GRIGLIA FUNZIONALE A 2 COLONNE FISSE --- */}
-                {/* FIXED: grid-cols-2 instead of grid-cols-1 md:grid-cols-2 */}
                 <div className="w-full md:w-3/4 lg:w-2/3 px-4 grid grid-cols-2 gap-3 md:gap-4 mb-4">
                     
                     {/* 1. INTERVENTI (ARANCIONE) */}
@@ -583,10 +558,37 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     </button>
                 </div>
 
+                {/* --- 4. SEZIONE CASSE NON ATTIVE (SOLO SUPER ADMIN) --- */}
+                {isSuperAdmin && inactiveTills.length > 0 && (
+                    <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
+                        <div className="grid grid-cols-3 gap-3">
+                            {inactiveTills.map(till => (
+                                <button 
+                                    key={till.id} 
+                                    onClick={() => onSelectTill(till.id)} 
+                                    className="group relative bg-white/90 backdrop-blur-sm rounded-xl border border-slate-200 flex flex-col items-center justify-center w-full transition-all duration-200 hover:shadow-lg h-20 opacity-80 hover:opacity-100 active:scale-95"
+                                >
+                                    <div 
+                                        className="rounded-full flex items-center justify-center shadow-inner w-8 h-8 mb-1"
+                                        style={{ backgroundColor: tillColors[till.id] || '#94a3b8' }}
+                                    >
+                                        <span className="font-black text-white select-none text-sm">
+                                            {till.shift.toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <span className="font-bold text-slate-500 text-[9px] uppercase tracking-wider">
+                                        Cassa {till.shift.toUpperCase()}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar VVF v4.2 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar VVF v4.3 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );

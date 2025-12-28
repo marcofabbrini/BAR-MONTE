@@ -18,7 +18,23 @@ const EmojiIcon = ({ emoji, className, ...props }: { emoji: string } & IconProps
     </span>
 );
 
-export const BackArrowIcon = (props: IconProps) => <EmojiIcon emoji="⬅" {...props} />;
+// Updated to SVG for perfect centering
+export const BackArrowIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="3" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className} 
+        {...props}
+    >
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+    </svg>
+);
+
 export const EditIcon = (props: IconProps) => <EmojiIcon emoji="✏️" {...props} />;
 export const TrashIcon = (props: IconProps) => <EmojiIcon emoji="🗑️" {...props} />;
 export const PlusIcon = (props: IconProps) => <EmojiIcon emoji="➕" {...props} />;

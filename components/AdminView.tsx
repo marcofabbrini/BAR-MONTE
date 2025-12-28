@@ -129,8 +129,9 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     // Reminder Form State
     const [remText, setRemText] = useState('');
-    const [remType, setRemType] = useState<'recurring' | 'spot'>('recurring');
+    const [remType, setRemType] = useState<'recurring' | 'spot' | 'monthly'>('recurring');
     const [remDay, setRemDay] = useState<number>(1);
+    const [remMonthlyDetail, setRemMonthlyDetail] = useState<'first-day' | 'last-day'>('first-day');
     const [remDate, setRemDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD local
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
@@ -301,6 +302,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                 text: remText.trim(),
                 type: remType,
                 dayOfWeek: remType === 'recurring' ? remDay : undefined,
+                monthlyDetail: remType === 'monthly' ? remMonthlyDetail : undefined,
                 date: remType === 'spot' ? remDate : undefined
             });
             alert("Promemoria aggiunto!");
@@ -474,10 +476,14 @@ const AdminView: React.FC<AdminViewProps> = ({
                                     onChange={e => setRemText(e.target.value)} 
                                     className="border rounded p-3 text-sm"
                                 />
-                                <div className="flex gap-4">
+                                <div className="flex flex-wrap gap-4">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="radio" checked={remType === 'recurring'} onChange={() => setRemType('recurring')} className="text-yellow-500" />
-                                        <span className="text-sm font-bold">Ricorrente (Settimanale)</span>
+                                        <span className="text-sm font-bold">Settimanale</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input type="radio" checked={remType === 'monthly'} onChange={() => setRemType('monthly')} className="text-yellow-500" />
+                                        <span className="text-sm font-bold">Mensile</span>
                                     </label>
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input type="radio" checked={remType === 'spot'} onChange={() => setRemType('spot')} className="text-yellow-500" />
@@ -485,13 +491,22 @@ const AdminView: React.FC<AdminViewProps> = ({
                                     </label>
                                 </div>
                                 
-                                {remType === 'recurring' ? (
+                                {remType === 'recurring' && (
                                     <select value={remDay} onChange={e => setRemDay(parseInt(e.target.value))} className="border rounded p-2 text-sm bg-white">
                                         {['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'].map((d, i) => (
                                             <option key={i} value={i}>{d}</option>
                                         ))}
                                     </select>
-                                ) : (
+                                )}
+
+                                {remType === 'monthly' && (
+                                    <select value={remMonthlyDetail} onChange={e => setRemMonthlyDetail(e.target.value as any)} className="border rounded p-2 text-sm bg-white">
+                                        <option value="first-day">Primo giorno del mese (1°)</option>
+                                        <option value="last-day">Ultimo giorno del mese</option>
+                                    </select>
+                                )}
+
+                                {remType === 'spot' && (
                                     <input type="date" value={remDate} onChange={e => setRemDate(e.target.value)} className="border rounded p-2 text-sm" />
                                 )}
 
@@ -513,7 +528,9 @@ const AdminView: React.FC<AdminViewProps> = ({
                                             <p className="text-xs text-slate-500">
                                                 {rem.type === 'recurring' 
                                                     ? `Ogni ${['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'][rem.dayOfWeek || 0]}`
-                                                    : (rem.date ? `Il ${new Date(rem.date).toLocaleDateString()}` : 'Data non valida')
+                                                    : rem.type === 'monthly'
+                                                        ? (rem.monthlyDetail === 'first-day' ? 'Primo giorno del mese' : 'Ultimo giorno del mese')
+                                                        : (rem.date ? `Il ${new Date(rem.date).toLocaleDateString()}` : 'Data non valida')
                                                 }
                                             </p>
                                         </div>
@@ -530,8 +547,7 @@ const AdminView: React.FC<AdminViewProps> = ({
 
                 {activeTab === 'settings' && (
                     <div className="space-y-4 max-w-4xl mx-auto">
-                        
-                        {/* 0. CONFIGURAZIONE INTERVENTI (New) */}
+                        {/* 0. CONFIGURAZIONE INTERVENTI */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('interventions')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
