@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { OperationalVehicle, OperationalVehicleType, CheckDay, VehicleCompartment } from '../types';
-import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon, BoxIcon, ListIcon } from './Icons';
+import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon, BoxIcon, CalendarIcon } from './Icons';
 
 interface OperationalVehicleManagementProps {
     vehicles: OperationalVehicle[];
@@ -20,6 +20,13 @@ const emptyVehicle: Omit<OperationalVehicle, 'id'> = {
     compartments: []
 };
 
+// Interface for new item input state
+interface NewItemInput {
+    name: string;
+    quantity: string;
+    expirationDate: string;
+}
+
 const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> = ({ vehicles, onAddVehicle, onUpdateVehicle, onDeleteVehicle }) => {
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [formData, setFormData] = useState<Omit<OperationalVehicle, 'id'>>(emptyVehicle);
@@ -27,7 +34,7 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
     const fileInputRef = useRef<HTMLInputElement>(null);
     
     // State per l'input rapido di materiale (chiave = id vano)
-    const [newItemInput, setNewItemInput] = useState<Record<string, string>>({});
+    const [newItemInput, setNewItemInput] = useState<Record<string, NewItemInput>>({});
 
     const vehicleTypes: OperationalVehicleType[] = ['APS', 'ABP', 'POL', 'CA/PU', 'AV', 'AF', 'RIBA', 'CARRELLO', 'ALTRO'];
     const checkDays: CheckDay[] = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'];
@@ -39,11 +46,13 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
         if (!data.compartments) data.compartments = [];
         setFormData(data);
         window.scrollTo(0,0);
+        setNewItemInput({}); // Reset inputs
     };
 
     const handleCancel = () => {
         setIsEditing(null);
         setFormData(emptyVehicle);
+        setNewItemInput({});
     };
 
     const handleDelete = async (id: string) => {
@@ -87,9 +96,26 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
 
     // --- LOGICA MATERIALI (ITEMS) ---
 
+    const handleItemInputChange = (compId: string, field: keyof NewItemInput, value: string) => {
+        setNewItemInput(prev => ({
+            ...prev,
+            [compId]: {
+                ...(prev[compId] || { name: '', quantity: '1', expirationDate: '' }),
+                [field]: value
+            }
+        }));
+    };
+
     const addItemToCompartment = (compId: string) => {
-        const itemName = newItemInput[compId]?.trim();
-        if (!itemName) return;
+        const input = newItemInput[compId];
+        if (!input || !input.name.trim()) return;
+
+        const newItem = {
+            id: Date.now().toString() + Math.random(),
+            name: input.name.trim(),
+            quantity: parseInt(input.quantity) || 1,
+            expirationDate: input.expirationDate || undefined
+        };
 
         setFormData(prev => ({
             ...prev,
@@ -97,14 +123,15 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
                 if (c.id === compId) {
                     return {
                         ...c,
-                        items: [...c.items, { id: Date.now().toString() + Math.random(), name: itemName }]
+                        items: [...c.items, newItem]
                     };
                 }
                 return c;
             })
         }));
 
-        setNewItemInput(prev => ({ ...prev, [compId]: '' }));
+        // Reset inputs for this compartment
+        setNewItemInput(prev => ({ ...prev, [compId]: { name: '', quantity: '1', expirationDate: '' } }));
     };
 
     const removeItemFromCompartment = (compId: string, itemId: string) => {
@@ -261,7 +288,7 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {formData.compartments?.map((comp, index) => (
-                                <div key={comp.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 relative group hover:shadow-md transition-all">
+                                <div key={comp.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 relative group hover:shadow-md transition-all flex flex-col h-full">
                                     {/* Header Vano */}
                                     <div className="flex items-center gap-2 mb-3">
                                         <div className="bg-slate-200 text-slate-500 w-6 h-6 flex items-center justify-center rounded font-bold text-xs">
@@ -285,39 +312,67 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
                                     </div>
 
                                     {/* Lista Materiali */}
-                                    <div className="bg-white rounded-lg border border-slate-200 p-2 min-h-[80px] max-h-[200px] overflow-y-auto space-y-1 mb-3">
+                                    <div className="bg-white rounded-lg border border-slate-200 p-2 min-h-[80px] max-h-[240px] overflow-y-auto space-y-1 mb-3 flex-grow">
                                         {comp.items.length === 0 && <p className="text-center text-xs text-slate-300 italic py-4">Nessun materiale</p>}
                                         {comp.items.map(item => (
-                                            <div key={item.id} className="flex justify-between items-center text-xs bg-slate-50 px-2 py-1.5 rounded border border-slate-100 group/item hover:border-slate-300">
-                                                <span className="font-medium text-slate-700">{item.name}</span>
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => removeItemFromCompartment(comp.id, item.id)}
-                                                    className="text-slate-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
-                                                >
-                                                    &times;
-                                                </button>
+                                            <div key={item.id} className="flex justify-between items-center text-xs bg-slate-50 px-2 py-2 rounded border border-slate-100 group/item hover:border-slate-300">
+                                                <div className="flex items-center gap-2 flex-grow min-w-0">
+                                                    <span className="font-bold bg-slate-200 text-slate-600 px-1.5 rounded text-[10px]">x{item.quantity}</span>
+                                                    <span className="font-medium text-slate-700 truncate">{item.name}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 flex-shrink-0">
+                                                    {item.expirationDate && (
+                                                        <span className="text-[10px] text-orange-600 font-mono bg-orange-50 px-1 rounded border border-orange-100 flex items-center gap-1" title="Scadenza">
+                                                            <CalendarIcon className="h-3 w-3" />
+                                                            {new Date(item.expirationDate).toLocaleDateString(undefined, { month: '2-digit', year: '2-digit' })}
+                                                        </span>
+                                                    )}
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => removeItemFromCompartment(comp.id, item.id)}
+                                                        className="text-slate-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                                    >
+                                                        &times;
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
 
-                                    {/* Input Nuovo Materiale */}
-                                    <div className="flex gap-2">
-                                        <input 
-                                            type="text" 
-                                            value={newItemInput[comp.id] || ''}
-                                            onChange={(e) => setNewItemInput(prev => ({ ...prev, [comp.id]: e.target.value }))}
-                                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addItemToCompartment(comp.id))}
-                                            placeholder="Aggiungi materiale..."
-                                            className="flex-grow bg-white border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-blue-400"
-                                        />
-                                        <button 
-                                            type="button" 
-                                            onClick={() => addItemToCompartment(comp.id)}
-                                            className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold hover:bg-blue-600"
-                                        >
-                                            +
-                                        </button>
+                                    {/* Input Nuovo Materiale (Compact Grid) */}
+                                    <div className="bg-slate-100 p-2 rounded-lg border border-slate-200">
+                                        <div className="grid grid-cols-4 gap-2 mb-2">
+                                            <input 
+                                                type="text" 
+                                                value={newItemInput[comp.id]?.name || ''}
+                                                onChange={(e) => handleItemInputChange(comp.id, 'name', e.target.value)}
+                                                placeholder="Nome materiale..."
+                                                className="col-span-3 bg-white border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-blue-400 font-bold"
+                                            />
+                                            <input 
+                                                type="number" 
+                                                min="1"
+                                                value={newItemInput[comp.id]?.quantity || '1'}
+                                                onChange={(e) => handleItemInputChange(comp.id, 'quantity', e.target.value)}
+                                                className="col-span-1 bg-white border border-slate-200 rounded px-1 py-1 text-xs outline-none focus:border-blue-400 text-center font-mono"
+                                                placeholder="Qt"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <input 
+                                                type="date"
+                                                value={newItemInput[comp.id]?.expirationDate || ''}
+                                                onChange={(e) => handleItemInputChange(comp.id, 'expirationDate', e.target.value)}
+                                                className="flex-grow bg-white border border-slate-200 rounded px-2 py-1 text-[10px] outline-none focus:border-blue-400 text-slate-500"
+                                            />
+                                            <button 
+                                                type="button" 
+                                                onClick={() => addItemToCompartment(comp.id)}
+                                                className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-700 shadow-sm"
+                                            >
+                                                + Aggiungi
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             ))}

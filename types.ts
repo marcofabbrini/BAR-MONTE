@@ -167,7 +167,8 @@ export type CheckDay = 'Lunedì' | 'Martedì' | 'Mercoledì' | 'Giovedì' | 'Ven
 export interface VehicleItem {
     id: string;
     name: string;
-    quantity?: number; // Opzionale, per futuro
+    quantity: number;
+    expirationDate?: string; // ISO Date YYYY-MM-DD
 }
 
 export interface VehicleCompartment {
