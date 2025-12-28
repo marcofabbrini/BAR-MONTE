@@ -52,6 +52,20 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     // POST-IT STATE
     const [hidePostIt, setHidePostIt] = useState(false);
 
+    // Cleanup old keys on mount to prevent Storage Full
+    useEffect(() => {
+        try {
+            const todayStr = new Date().toISOString().split('T')[0];
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('postit_hidden_') && !key.includes(todayStr)) {
+                    localStorage.removeItem(key);
+                }
+            });
+        } catch (e) {
+            console.warn("Storage cleanup warning:", e);
+        }
+    }, []);
+
     // Sync Timer (Updates UI frequently for centiseconds)
     useEffect(() => {
         const updateTick = () => {
@@ -59,14 +73,12 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             setCurrentTime(now);
             
             // Format Date (es. "Lunedì, 27 Ottobre 2025")
-            // Aggiorniamo la stringa data solo se cambia il giorno per efficienza, ma qui lo facciamo ad ogni tick per semplicità dato che è leggero
             const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
             setCurrentDateString(now.toLocaleDateString('it-IT', options));
 
             // Grace Period Calculation
             const hour = now.getHours();
             
-            // Determina l'orario di inizio dell'ultimo turno (08:00 o 20:00)
             const shiftStartTime = new Date(now);
             shiftStartTime.setMinutes(0);
             shiftStartTime.setSeconds(0);
@@ -94,14 +106,11 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             shiftEndTime.setMilliseconds(0);
 
             if (hour >= 8 && hour < 20) {
-                // Giorno: finisce alle 20:00
                 shiftEndTime.setHours(20);
             } else if (hour >= 20) {
-                // Notte (prima di mezzanotte): finisce domani alle 08:00
                 shiftEndTime.setDate(shiftEndTime.getDate() + 1);
                 shiftEndTime.setHours(8);
             } else {
-                // Notte (dopo mezzanotte): finisce oggi alle 08:00
                 shiftEndTime.setHours(8);
             }
 
@@ -110,7 +119,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         };
 
         updateTick(); // Initial call
-        // Refresh rate ~41ms (approx 24fps) to show centiseconds smoothly without killing CPU
         const timer = setInterval(updateTick, 41); 
         return () => clearInterval(timer);
     }, [getNow]);
@@ -138,20 +146,19 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const h = Math.floor(ms / (1000 * 60 * 60));
         const m = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
         const s = Math.floor((ms % (1000 * 60)) / 1000);
-        const cs = Math.floor((ms % 1000) / 10); // Centesimi (2 cifre)
-        
+        const cs = Math.floor((ms % 1000) / 10); // Centesimi
         return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
     };
 
     const getWeatherEmoji = (code: number) => {
-        if (code === 0) return '☀️'; // Sereno
-        if (code >= 1 && code <= 3) return '⛅'; // Parz. nuvoloso
-        if (code >= 45 && code <= 48) return '🌫️'; // Nebbia
-        if (code >= 51 && code <= 67) return '🌧️'; // Pioggia
-        if (code >= 71 && code <= 77) return '❄️'; // Neve
-        if (code >= 80 && code <= 82) return '🌦️'; // Rovesci
-        if (code >= 95) return '⛈️'; // Temporale
-        return '☀️'; // Default
+        if (code === 0) return '☀️';
+        if (code >= 1 && code <= 3) return '⛅';
+        if (code >= 45 && code <= 48) return '🌫️';
+        if (code >= 51 && code <= 67) return '🌧️';
+        if (code >= 71 && code <= 77) return '❄️';
+        if (code >= 80 && code <= 82) return '🌦️';
+        if (code >= 95) return '⛈️';
+        return '☀️';
     };
 
     const animatedEmojis = useMemo(() => {
@@ -180,17 +187,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
     const activeShift = useMemo(() => {
         const hour = currentTime.getHours();
-        
-        // Data operativa (se prima delle 8, conta come ieri)
         const calculationDate = new Date(currentTime);
         if (hour < 8) {
             calculationDate.setDate(calculationDate.getDate() - 1);
         }
         calculationDate.setHours(12, 0, 0, 0);
 
-        // ANCORAGGIO ESPLICITO: 20 Dicembre 2025 = B
-        const anchorDate = new Date(2025, 11, 20, 12, 0, 0); // Mese 11 = Dicembre
-        const anchorShift = 'b'; // Index 1
+        const anchorDate = new Date(2025, 11, 20, 12, 0, 0); 
+        const anchorShift = 'b';
 
         const diffTime = calculationDate.getTime() - anchorDate.getTime();
         const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
@@ -198,14 +202,9 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift.toLowerCase());
         
-        // ROTAZIONE IN AVANTI (A->B->C->D)
-        // Formula: (Anchor + Diff) % 4
-        // Aggiungiamo un multiplo di 4 grande per gestire diff negativi
         let shiftIndex = (anchorIndex + diffDays) % 4;
         if (shiftIndex < 0) shiftIndex += 4;
         
-        // LOGICA NOTTE: "Quando B smonta (20:00), monta A".
-        // Quindi la notte è il turno precedente nell'alfabeto.
         if (hour >= 20 || hour < 8) {
             shiftIndex = (shiftIndex - 1 + 4) % 4;
         }
@@ -213,7 +212,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return shifts[shiftIndex];
     }, [currentTime]);
 
-    // Calcolo "Smontante" (Chi c'era prima del turno attivo)
     const previousShiftCode = useMemo(() => {
         const shifts = ['a', 'b', 'c', 'd'];
         const currentIndex = shifts.indexOf(activeShift);
@@ -231,19 +229,18 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return tills.find(t => t.shift === previousShiftCode);
     }, [tills, previousShiftCode]);
 
-    // Split tills into active and others (for Super Admin layout)
     const activeTill = useMemo(() => tills.find(t => t.shift === activeShift), [tills, activeShift]);
     const inactiveTills = useMemo(() => tills.filter(t => t.shift !== activeShift), [tills, activeShift]);
 
-    // --- REMINDER & VEHICLE CHECK LOGIC ---
-    
-    // 1. Promemoria Standard
+    // --- REMINDER LOGIC (OPTIMIZED DEPENDENCIES) ---
+    // Extract primitives for stable dependencies to avoid 41ms re-renders
+    const todayStr = useMemo(() => currentTime.toISOString().split('T')[0], [currentTime]);
+    const dayOfWeek = useMemo(() => currentTime.getDay(), [currentTime]);
+    const dayOfMonth = useMemo(() => currentTime.getDate(), [currentTime]);
+    const month = useMemo(() => currentTime.getMonth(), [currentTime]);
+    const year = useMemo(() => currentTime.getFullYear(), [currentTime]);
+
     const standardReminders = useMemo(() => {
-        const todayStr = currentTime.toISOString().split('T')[0];
-        const dayOfWeek = currentTime.getDay(); 
-        const dayOfMonth = currentTime.getDate(); 
-        const year = currentTime.getFullYear();
-        const month = currentTime.getMonth();
         const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
 
         return reminders.filter(rem => {
@@ -257,22 +254,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 return rem.dayOfWeek === dayOfWeek;
             }
         });
-    }, [reminders, currentTime]);
+    }, [reminders, todayStr, dayOfWeek, dayOfMonth, month, year]);
 
-    // 2. Controlli Veicoli (Dynamic Reminders) - OPERATIONAL & FLEET
     const vehicleCheckReminders = useMemo(() => {
-        const dayOfWeek = currentTime.getDay(); 
         const daysMap = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
         const todayName = daysMap[dayOfWeek];
-        const todayStr = currentTime.toISOString().split('T')[0];
 
-        // Filtra veicoli operativi che hanno il controllo OGGI
         const opVehiclesToCheck = operationalVehicles.filter(v => v.checkDay === todayName);
-        
-        // Filtra automezzi (Fleet) che hanno il controllo OGGI
         const fleetVehiclesToCheck = vehicles.filter(v => v.checkDay === todayName);
 
-        // Mappa Operational in formato Reminder
         const opReminders = opVehiclesToCheck.map(v => {
             const isDone = vehicleChecks.some(check => 
                 check.vehicleId === v.id && 
@@ -286,7 +276,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             };
         });
 
-        // Mappa Fleet in formato Reminder
         const fleetReminders = fleetVehiclesToCheck.map(v => {
             const isDone = vehicleChecks.some(check => 
                 check.vehicleId === v.id && 
@@ -301,13 +290,12 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         });
 
         return [...opReminders, ...fleetReminders];
-    }, [operationalVehicles, vehicles, vehicleChecks, currentTime]);
+    }, [operationalVehicles, vehicles, vehicleChecks, todayStr, dayOfWeek]);
 
-    // Merge Lists
     const allReminders = useMemo(() => {
         const standardList = standardReminders.map(r => ({
             ...r,
-            isDone: r.completedDates.includes(currentTime.toISOString().split('T')[0]),
+            isDone: r.completedDates.includes(todayStr),
             source: 'manual' as const
         }));
         
@@ -315,14 +303,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             id: r.id,
             text: r.text,
             isDone: r.isDone,
-            source: r.type, // 'vehicle_op' or 'vehicle_fleet'
-            completedDates: [] // Dummy
+            source: r.type,
+            completedDates: [] 
         }));
 
         return [...standardList, ...vehicleList];
-    }, [standardReminders, vehicleCheckReminders, currentTime]);
+    }, [standardReminders, vehicleCheckReminders, todayStr]);
 
-    // --- CHECK ALL COMPLETED & AUTO HIDE (WITH PERSISTENCE) ---
     const areAllRemindersCompleted = useMemo(() => {
         if (allReminders.length === 0) return false;
         return allReminders.every(rem => rem.isDone);
@@ -330,59 +317,43 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
     useEffect(() => {
         let timer: ReturnType<typeof setTimeout>;
-        const now = getNow();
-        const todayStr = now.toISOString().split('T')[0];
         const storageKey = `postit_hidden_${todayStr}`;
         
-        // Verifica se è stato già nascosto oggi (persistenza)
-        // SAFEGUARD LOCAL STORAGE ACCESS
         let isHiddenInStorage = false;
         try {
             isHiddenInStorage = localStorage.getItem(storageKey) === 'true';
         } catch (e) {
-            console.warn("LocalStorage access failed (Quota Exceeded or blocked)", e);
+            console.warn("LocalStorage access failed", e);
         }
 
         if (areAllRemindersCompleted) {
             if (isHiddenInStorage) {
                 setHidePostIt(true);
             } else {
-                // Avvia timer per nascondere e salvare persistenza
-                // FIX: Rimosso currentTime dalle dipendenze per evitare reset del timer ogni 41ms
+                // FIXED TIMER: Doesn't reset because `todayStr` is stable for 24h
                 timer = setTimeout(() => {
                     setHidePostIt(true);
                     try {
                         localStorage.setItem(storageKey, 'true');
                     } catch (e) { console.warn("LocalStorage save failed", e); }
-                }, 60000);
+                }, 60000); // 60 seconds
             }
         } else {
             setHidePostIt(false);
-            // Se l'utente toglie la spunta, rimuovi la persistenza
             try {
                 localStorage.removeItem(storageKey);
             } catch (e) { console.warn("LocalStorage remove failed", e); }
         }
         return () => clearTimeout(timer);
-    }, [areAllRemindersCompleted, getNow]);
+    }, [areAllRemindersCompleted, todayStr]);
 
     const handleReminderClick = async (rem: any) => {
         if (rem.source === 'vehicle_op') {
-            // Se è un controllo veicolo operativo e NON è fatto, manda alla pagina
-            if (!rem.isDone) {
-                onSelectOperationalVehicles();
-            }
+            if (!rem.isDone) onSelectOperationalVehicles();
         } else if (rem.source === 'vehicle_fleet') {
-            // Se è un controllo automezzo e NON è fatto, manda alla pagina automezzi
-            if (!rem.isDone) {
-                onSelectFleet();
-            }
+            if (!rem.isDone) onSelectFleet();
         } else {
-            // Promemoria standard
-            const todayStr = currentTime.toISOString().split('T')[0];
-            if (onToggleReminder) {
-                await onToggleReminder(rem.id, todayStr, rem.completedDates);
-            }
+            if (onToggleReminder) await onToggleReminder(rem.id, todayStr, rem.completedDates);
         }
     };
 
@@ -459,7 +430,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     <div className="grid grid-cols-1 w-full md:w-3/4 lg:w-2/3 mb-6 px-4 transition-all">
                         <div key={activeTill.id} className="h-40 md:h-64 flex gap-2 scale-[1.02] z-10 transition-all duration-500">
                             
-                            {/* PULSANTE "SMONTANTE" (TURNO PRECEDENTE) */}
+                            {/* PULSANTE "SMONTANTE" */}
                             {graceTimeLeft > 0 && previousShiftTill && (
                                 <button 
                                     onClick={() => onSelectTill(previousShiftTill.id)}
@@ -486,7 +457,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                 </button>
                             )}
 
-                            {/* PULSANTE TURNO ATTIVO (STILE COFFEE GLOW) */}
+                            {/* PULSANTE TURNO ATTIVO */}
                             <button 
                                 onClick={() => onSelectTill(activeTill.id)} 
                                 className={`
@@ -496,7 +467,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                     group overflow-hidden
                                 `}
                             >
-                                {/* Background Emoji Effect - COFFEE */}
                                 <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                                     ☕
                                 </div>
@@ -519,7 +489,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                     </span>
                                 </div>
 
-                                {/* ACTIVE SHIFT COUNTDOWN */}
                                 {activeShiftTimeLeft > 0 && (
                                     <span className="absolute bottom-3 right-4 text-[9px] md:text-[10px] font-sans font-extralight text-slate-600 tabular-nums opacity-90 z-10">
                                         -{formatCountdown(activeShiftTimeLeft)}
@@ -530,31 +499,31 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     </div>
                 )}
 
-                {/* --- SEZIONE PROMEMORIA (POST-IT) --- */}
+                {/* --- SEZIONE PROMEMORIA (POST-IT REDUCED SIZE) --- */}
                 {allReminders.length > 0 && !hidePostIt && (
                     <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
-                        <div className="bg-yellow-200 p-6 rounded-xl shadow-[5px_5px_15px_rgba(0,0,0,0.15)] relative transform rotate-1 transition-transform hover:rotate-0">
-                            {/* Titolo spostato a SINISTRA, Font Fuzzy Bubbles, Bold, Tighter spacing, Smaller */}
-                            <h3 className="text-slate-900 text-lg mb-3 uppercase tracking-tighter text-left pl-2 font-bold leading-none" style={{ fontFamily: '"Fuzzy Bubbles", cursive' }}>
+                        <div className="bg-yellow-200 p-4 rounded-xl shadow-[5px_5px_15px_rgba(0,0,0,0.15)] relative transform rotate-1 transition-transform hover:rotate-0">
+                            {/* Titolo più piccolo */}
+                            <h3 className="text-slate-900 text-sm mb-3 uppercase tracking-tighter text-left pl-2 font-bold leading-none" style={{ fontFamily: '"Fuzzy Bubbles", cursive' }}>
                                 Da fare:
                             </h3>
-                            <div className="space-y-1.5 flex flex-col">
+                            <div className="space-y-1 flex flex-col">
                                 {allReminders.map(rem => (
                                     <div key={rem.id} className="flex items-start gap-2 group w-full text-left">
-                                        {/* Button a SINISTRA - Quadratino bordo scuro */}
+                                        {/* Button più piccolo */}
                                         <button 
                                             onClick={() => handleReminderClick(rem)}
                                             className={`
-                                                w-4 h-4 border-2 border-slate-800 flex-shrink-0 flex items-center justify-center 
-                                                transition-all cursor-pointer rounded-md bg-white/10 hover:bg-white/30 mt-0.5
+                                                w-3.5 h-3.5 border-2 border-slate-800 flex-shrink-0 flex items-center justify-center 
+                                                transition-all cursor-pointer rounded-sm bg-white/10 hover:bg-white/30 mt-0.5
                                                 ${rem.isDone ? 'text-slate-900' : 'text-transparent'}
                                             `}
                                         >
                                             <CheckIcon className="h-3 w-3" strokeWidth={4} />
                                         </button>
-                                        {/* Testo a DESTRA - Smaller (text-sm), Tighter spacing */}
+                                        {/* Testo più piccolo (text-xs) */}
                                         <span 
-                                            className={`text-sm text-slate-800 flex-grow leading-tight tracking-tight ${rem.isDone ? 'line-through opacity-60 decoration-2 decoration-slate-800' : ''}`}
+                                            className={`text-xs text-slate-800 flex-grow leading-tight tracking-tight font-bold ${rem.isDone ? 'line-through opacity-60 decoration-2 decoration-slate-800' : ''}`}
                                             style={{ fontFamily: '"Fuzzy Bubbles", cursive' }}
                                         >
                                             {rem.text}
@@ -569,7 +538,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 {/* --- 2. SEZIONE CENTRALE: GRIGLIA FUNZIONALE A 2 COLONNE FISSE --- */}
                 <div className="w-full md:w-3/4 lg:w-2/3 px-4 grid grid-cols-2 gap-3 md:gap-4 mb-4">
                     
-                    {/* 1. INTERVENTI (ARANCIONE) */}
+                    {/* 1. INTERVENTI */}
                     <button 
                         onClick={onSelectInterventions}
                         className="w-full bg-white hover:bg-orange-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.3)] hover:shadow-[0_0_25px_rgba(249,115,22,0.5)] border-2 border-orange-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
@@ -586,12 +555,11 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                     </button>
 
-                    {/* 2. MEZZI OPERATIVI (ROSSO) */}
+                    {/* 2. MEZZI OPERATIVI */}
                     <button 
                         onClick={onSelectOperationalVehicles}
                         className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:shadow-[0_0_25px_rgba(220,38,38,0.5)] border-2 border-red-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
                     >
-                        {/* BADGE IN AGGIORNAMENTO */}
                         <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[8px] md:text-[9px] font-black uppercase px-2 py-0.5 rounded-bl-lg shadow-sm z-20 flex items-center gap-1 animate-pulse">
                             <span>🚧</span> In Agg.
                         </div>
@@ -608,7 +576,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                     </button>
 
-                    {/* 3. PRENOTAZIONE MEZZI (ROSSO SCURO/AUTO) */}
+                    {/* 3. PRENOTAZIONE MEZZI */}
                     <button 
                         onClick={onSelectFleet}
                         className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.2)] hover:shadow-[0_0_25px_rgba(220,38,38,0.4)] border-2 border-red-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
@@ -625,7 +593,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                     </button>
 
-                    {/* 4. LAVANDERIA (BLU) */}
+                    {/* 4. LAVANDERIA */}
                     <button 
                         onClick={onSelectLaundry}
                         className="w-full bg-white hover:bg-blue-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border-2 border-blue-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
@@ -642,7 +610,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                     </button>
 
-                    {/* 5. EXTRA HUB (VERDE) - FULL WIDTH (COL-SPAN-2) */}
+                    {/* 5. EXTRA HUB */}
                     <button 
                         onClick={onSelectGames}
                         className="col-span-2 w-full bg-white hover:bg-green-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] border-2 border-green-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
@@ -666,9 +634,8 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
                 </div>
 
-                {/* --- 3. SEZIONE BASSA: GRIGLIA FUNZIONALE (PRESENZE, REPORT, ADMIN) --- */}
+                {/* --- 3. SEZIONE BASSA --- */}
                 <div className="grid grid-cols-3 gap-3 w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
-                    {/* Pulsante: Presenze (Glow Nero/Slate) */}
                     <button onClick={onSelectAttendance} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
                         <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
                             📋
@@ -676,7 +643,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Presenze</span>
                     </button>
 
-                    {/* Pulsante: Report (Glow Nero/Slate) */}
                     <button onClick={onSelectReports} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
                         <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
                             📊
@@ -684,7 +650,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Report</span>
                     </button>
                     
-                    {/* Pulsante: Admin (Glow Nero/Slate) */}
                     <button onClick={onSelectAdmin} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
                         <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
                             🔐
@@ -693,7 +658,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     </button>
                 </div>
 
-                {/* --- 4. SEZIONE CASSE NON ATTIVE (SOLO SUPER ADMIN) --- */}
+                {/* --- 4. SEZIONE CASSE NON ATTIVE --- */}
                 {isSuperAdmin && inactiveTills.length > 0 && (
                     <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
                         <div className="grid grid-cols-3 gap-3">
