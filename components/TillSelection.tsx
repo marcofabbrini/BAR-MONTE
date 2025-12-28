@@ -1,6 +1,6 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
-import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder } from '../types';
+import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder, OperationalVehicle, VehicleCheck } from '../types';
 import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 
@@ -25,6 +25,8 @@ interface TillSelectionProps {
     onRequestNotification?: () => void;
     reminders?: Reminder[];
     onToggleReminder?: (id: string, date: string, completedDates: string[]) => Promise<void>;
+    operationalVehicles?: OperationalVehicle[];
+    vehicleChecks?: VehicleCheck[];
 }
 
 interface WeatherData {
@@ -32,7 +34,7 @@ interface WeatherData {
     weathercode: number;
 }
 
-const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, onSelectOperationalVehicles, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification, reminders = [], onToggleReminder }) => {
+const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, onSelectOperationalVehicles, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification, reminders = [], onToggleReminder, operationalVehicles = [], vehicleChecks = [] }) => {
     
     // Context for Reliable Time
     const { getNow } = useBar();
@@ -232,13 +234,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     const activeTill = useMemo(() => tills.find(t => t.shift === activeShift), [tills, activeShift]);
     const inactiveTills = useMemo(() => tills.filter(t => t.shift !== activeShift), [tills, activeShift]);
 
-    // --- REMINDER LOGIC ---
-    const todayReminders = useMemo(() => {
+    // --- REMINDER & VEHICLE CHECK LOGIC ---
+    
+    // 1. Promemoria Standard
+    const standardReminders = useMemo(() => {
         const todayStr = currentTime.toISOString().split('T')[0];
-        const dayOfWeek = currentTime.getDay(); // 0=Dom, 1=Lun...
-        const dayOfMonth = currentTime.getDate(); // 1-31
-        
-        // Calcola ultimo giorno del mese
+        const dayOfWeek = currentTime.getDay(); 
+        const dayOfMonth = currentTime.getDate(); 
         const year = currentTime.getFullYear();
         const month = currentTime.getMonth();
         const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
@@ -256,12 +258,57 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         });
     }, [reminders, currentTime]);
 
+    // 2. Controlli Veicoli (Dynamic Reminders)
+    const vehicleCheckReminders = useMemo(() => {
+        const dayOfWeek = currentTime.getDay(); 
+        const daysMap = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+        const todayName = daysMap[dayOfWeek];
+        const todayStr = currentTime.toISOString().split('T')[0];
+
+        // Filtra veicoli che hanno il controllo OGGI
+        const vehiclesToCheck = operationalVehicles.filter(v => v.checkDay === todayName);
+
+        // Mappa in formato Reminder
+        return vehiclesToCheck.map(v => {
+            // Controlla se esiste già un controllo per questo veicolo oggi
+            const isDone = vehicleChecks.some(check => 
+                check.vehicleId === v.id && 
+                new Date(check.timestamp).toISOString().split('T')[0] === todayStr
+            );
+
+            return {
+                id: `veh_${v.id}`, // ID fittizio
+                text: `Controllo ${v.model} ${v.plate}`,
+                isDone: isDone,
+                type: 'vehicle'
+            };
+        });
+    }, [operationalVehicles, vehicleChecks, currentTime]);
+
+    // Merge Lists
+    const allReminders = useMemo(() => {
+        const standardList = standardReminders.map(r => ({
+            ...r,
+            isDone: r.completedDates.includes(currentTime.toISOString().split('T')[0]),
+            source: 'manual' as const
+        }));
+        
+        const vehicleList = vehicleCheckReminders.map(r => ({
+            id: r.id,
+            text: r.text,
+            isDone: r.isDone,
+            source: 'vehicle' as const,
+            completedDates: [] // Dummy
+        }));
+
+        return [...standardList, ...vehicleList];
+    }, [standardReminders, vehicleCheckReminders, currentTime]);
+
     // --- CHECK ALL COMPLETED & AUTO HIDE ---
     const areAllRemindersCompleted = useMemo(() => {
-        if (todayReminders.length === 0) return false;
-        const todayStr = currentTime.toISOString().split('T')[0];
-        return todayReminders.every(rem => rem.completedDates.includes(todayStr));
-    }, [todayReminders, currentTime]);
+        if (allReminders.length === 0) return false;
+        return allReminders.every(rem => rem.isDone);
+    }, [allReminders]);
 
     useEffect(() => {
         let timer: ReturnType<typeof setTimeout>;
@@ -275,6 +322,22 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         }
         return () => clearTimeout(timer);
     }, [areAllRemindersCompleted]);
+
+    const handleReminderClick = async (rem: any) => {
+        if (rem.source === 'vehicle') {
+            // Se è un controllo veicolo e NON è fatto, manda alla pagina
+            if (!rem.isDone) {
+                onSelectOperationalVehicles();
+            }
+            // Se è fatto, non fa nulla (o potremmo mandare allo storico)
+        } else {
+            // Promemoria standard
+            const todayStr = currentTime.toISOString().split('T')[0];
+            if (onToggleReminder) {
+                await onToggleReminder(rem.id, todayStr, rem.completedDates);
+            }
+        }
+    };
 
     const backgroundColor = seasonalityConfig?.backgroundColor || '#f8fafc';
     const tombolaNumberCount = tombolaConfig?.status === 'active' ? (tombolaConfig.extractedNumbers?.length || 0) : 0;
@@ -421,34 +484,30 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 )}
 
                 {/* --- SEZIONE PROMEMORIA (POST-IT) --- */}
-                {todayReminders.length > 0 && !hidePostIt && (
+                {allReminders.length > 0 && !hidePostIt && (
                     <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
-                        <div className="bg-yellow-200 p-4 rounded-xl shadow-[5px_5px_15px_rgba(0,0,0,0.15)] relative transform rotate-1 transition-transform hover:rotate-0">
-                            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-red-500 drop-shadow-sm">
-                                <PinIcon className="h-8 w-8" />
-                            </div>
-                            <h3 className="text-slate-800 text-lg mb-3 uppercase tracking-wide text-center" style={{ fontFamily: '"Permanent Marker", cursive' }}>
-                                Da fare oggi...
+                        <div className="bg-yellow-200 p-6 rounded-xl shadow-[5px_5px_15px_rgba(0,0,0,0.15)] relative transform rotate-1 transition-transform hover:rotate-0">
+                            {/* Titolo spostato a destra */}
+                            <h3 className="text-slate-800 text-2xl mb-4 uppercase tracking-wide text-right pr-6 font-normal leading-none" style={{ fontFamily: '"Permanent Marker", cursive' }}>
+                                Da fare:
                             </h3>
-                            <div className="space-y-2">
-                                {todayReminders.map(rem => {
-                                    const todayStr = currentTime.toISOString().split('T')[0];
-                                    const isDone = rem.completedDates.includes(todayStr);
-                                    
-                                    return (
-                                        <div key={rem.id} className="flex justify-between items-center group">
-                                            <span className={`text-sm font-bold text-slate-700 flex-grow ${isDone ? 'line-through opacity-50 decoration-2 decoration-slate-500' : ''}`}>
-                                                • {rem.text}
-                                            </span>
-                                            <button 
-                                                onClick={() => onToggleReminder && onToggleReminder(rem.id, todayStr, rem.completedDates)}
-                                                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${isDone ? 'bg-green-500 border-green-500 text-white' : 'border-slate-400 text-transparent hover:border-slate-600'}`}
-                                            >
-                                                <CheckIcon className="h-4 w-4" />
-                                            </button>
-                                        </div>
-                                    );
-                                })}
+                            <div className="space-y-3 flex flex-col items-end">
+                                {allReminders.map(rem => (
+                                    <div key={rem.id} className="flex justify-end items-start gap-3 group w-full text-right">
+                                        <span 
+                                            className={`text-lg text-slate-800 flex-grow leading-tight ${rem.isDone ? 'line-through opacity-50 decoration-2 decoration-slate-500' : ''}`}
+                                            style={{ fontFamily: '"Permanent Marker", cursive' }}
+                                        >
+                                            {rem.text}
+                                        </span>
+                                        <button 
+                                            onClick={() => handleReminderClick(rem)}
+                                            className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all cursor-pointer ${rem.isDone ? 'bg-green-500 border-green-500 text-white' : 'border-slate-400 text-transparent hover:border-slate-600'}`}
+                                        >
+                                            <CheckIcon className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </div>

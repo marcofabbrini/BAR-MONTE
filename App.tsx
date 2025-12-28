@@ -41,7 +41,7 @@ const AppContent: React.FC = () => {
         addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
         addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
         vehicles, vehicleBookings, addBooking, deleteBooking,
-        operationalVehicles, reminders, toggleReminderCompletion
+        operationalVehicles, vehicleChecks, reminders, toggleReminderCompletion
     } = useBar();
 
     const { 
@@ -207,6 +207,8 @@ const AppContent: React.FC = () => {
                 onRequestNotification={requestNotificationPermission} 
                 reminders={reminders}
                 onToggleReminder={toggleReminderCompletion}
+                operationalVehicles={operationalVehicles}
+                vehicleChecks={vehicleChecks}
             />;
         }
     };
