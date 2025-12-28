@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
-import { OperationalVehicle, OperationalVehicleType, CheckDay } from '../types';
-import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon } from './Icons';
+import { OperationalVehicle, OperationalVehicleType, CheckDay, VehicleCompartment } from '../types';
+import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon, BoxIcon, ListIcon } from './Icons';
 
 interface OperationalVehicleManagementProps {
     vehicles: OperationalVehicle[];
@@ -16,7 +16,8 @@ const emptyVehicle: Omit<OperationalVehicle, 'id'> = {
     type: 'APS',
     checkDay: 'Lunedì',
     notes: '',
-    photoUrl: ''
+    photoUrl: '',
+    compartments: []
 };
 
 const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> = ({ vehicles, onAddVehicle, onUpdateVehicle, onDeleteVehicle }) => {
@@ -24,6 +25,9 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
     const [formData, setFormData] = useState<Omit<OperationalVehicle, 'id'>>(emptyVehicle);
     const [isProcessingImg, setIsProcessingImg] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    // State per l'input rapido di materiale (chiave = id vano)
+    const [newItemInput, setNewItemInput] = useState<Record<string, string>>({});
 
     const vehicleTypes: OperationalVehicleType[] = ['APS', 'ABP', 'POL', 'CA/PU', 'AV', 'AF', 'RIBA', 'CARRELLO', 'ALTRO'];
     const checkDays: CheckDay[] = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'];
@@ -31,6 +35,8 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
     const handleEdit = (v: OperationalVehicle) => {
         setIsEditing(v.id);
         const { id, ...data } = v;
+        // Ensure compartments is initialized
+        if (!data.compartments) data.compartments = [];
         setFormData(data);
         window.scrollTo(0,0);
     };
@@ -48,6 +54,72 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    // --- LOGICA VANI (COMPARTMENTS) ---
+
+    const addCompartment = () => {
+        const newComp: VehicleCompartment = {
+            id: Date.now().toString(),
+            name: `Vano ${formData.compartments ? formData.compartments.length + 1 : 1}`,
+            items: []
+        };
+        setFormData(prev => ({
+            ...prev,
+            compartments: [...(prev.compartments || []), newComp]
+        }));
+    };
+
+    const removeCompartment = (compId: string) => {
+        if(!confirm("Eliminare questo vano e tutto il suo contenuto?")) return;
+        setFormData(prev => ({
+            ...prev,
+            compartments: (prev.compartments || []).filter(c => c.id !== compId)
+        }));
+    };
+
+    const updateCompartmentName = (compId: string, newName: string) => {
+        setFormData(prev => ({
+            ...prev,
+            compartments: (prev.compartments || []).map(c => c.id === compId ? { ...c, name: newName } : c)
+        }));
+    };
+
+    // --- LOGICA MATERIALI (ITEMS) ---
+
+    const addItemToCompartment = (compId: string) => {
+        const itemName = newItemInput[compId]?.trim();
+        if (!itemName) return;
+
+        setFormData(prev => ({
+            ...prev,
+            compartments: (prev.compartments || []).map(c => {
+                if (c.id === compId) {
+                    return {
+                        ...c,
+                        items: [...c.items, { id: Date.now().toString() + Math.random(), name: itemName }]
+                    };
+                }
+                return c;
+            })
+        }));
+
+        setNewItemInput(prev => ({ ...prev, [compId]: '' }));
+    };
+
+    const removeItemFromCompartment = (compId: string, itemId: string) => {
+        setFormData(prev => ({
+            ...prev,
+            compartments: (prev.compartments || []).map(c => {
+                if (c.id === compId) {
+                    return {
+                        ...c,
+                        items: c.items.filter(i => i.id !== itemId)
+                    };
+                }
+                return c;
+            })
+        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -108,90 +180,204 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <TruckIcon className="h-6 w-6 text-red-600" />
-                    {isEditing ? 'Modifica Mezzo Operativo' : 'Nuovo Mezzo Operativo'}
+        <div className="max-w-5xl mx-auto space-y-8">
+            <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
+                <h3 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-3 uppercase tracking-wide border-b border-slate-100 pb-4">
+                    <TruckIcon className="h-8 w-8 text-red-600" />
+                    {isEditing ? 'Modifica Mezzo' : 'Nuovo Mezzo'}
                 </h3>
                 
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex flex-col items-center justify-center md:row-span-3">
+                <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* COLONNA 1: FOTO */}
+                    <div className="flex flex-col items-center justify-start gap-4">
                         <div 
                             onClick={() => fileInputRef.current?.click()}
-                            className="w-40 h-32 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center cursor-pointer hover:bg-slate-100 overflow-hidden relative"
+                            className="w-full aspect-video lg:aspect-square rounded-xl border-4 border-dashed border-slate-200 bg-slate-50 flex items-center justify-center cursor-pointer hover:bg-slate-100 hover:border-red-300 transition-all overflow-hidden relative group shadow-inner"
                         >
                             {formData.photoUrl ? (
                                 <img src={formData.photoUrl} alt="Preview" className="w-full h-full object-cover" />
                             ) : (
-                                <span className="text-4xl text-slate-300">🚒</span>
+                                <div className="text-center text-slate-300">
+                                    <span className="text-6xl block mb-2">📷</span>
+                                    <span className="text-xs font-bold uppercase">Carica Foto</span>
+                                </div>
                             )}
-                            {isProcessingImg && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><div className="animate-spin h-6 w-6 border-b-2 border-slate-500 rounded-full"></div></div>}
+                            {isProcessingImg && <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><div className="animate-spin h-8 w-8 border-b-4 border-red-600 rounded-full"></div></div>}
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <span className="text-white font-bold uppercase text-sm">Cambia</span>
+                            </div>
                         </div>
                         <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-                        <span className="text-xs text-slate-400 mt-2">Carica Foto Mezzo</span>
                     </div>
 
-                    <div className="space-y-3">
-                        <div>
-                            <label className="text-[10px] uppercase font-bold text-slate-500">Targa</label>
-                            <input name="plate" value={formData.plate} onChange={handleChange} placeholder="VF 12345" className="w-full border p-2 rounded font-mono font-bold uppercase" required />
-                        </div>
-                        <div>
-                            <label className="text-[10px] uppercase font-bold text-slate-500">Modello / Marca</label>
-                            <input name="model" value={formData.model} onChange={handleChange} placeholder="Iveco Eurocargo" className="w-full border p-2 rounded" required />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
+                    {/* COLONNA 2: DATI PRINCIPALI */}
+                    <div className="lg:col-span-2 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="text-[10px] uppercase font-bold text-slate-500">Tipologia</label>
-                                <select name="type" value={formData.type} onChange={handleChange} className="w-full border p-2 rounded bg-white">
+                                <label className="text-[10px] uppercase font-black text-slate-400 tracking-wider mb-1 block">Targa</label>
+                                <input name="plate" value={formData.plate} onChange={handleChange} placeholder="VF 12345" className="w-full border-2 border-slate-200 p-3 rounded-lg font-mono font-bold uppercase text-lg focus:border-red-500 focus:ring-red-200 outline-none transition-all" required />
+                            </div>
+                            <div>
+                                <label className="text-[10px] uppercase font-black text-slate-400 tracking-wider mb-1 block">Modello / Marca</label>
+                                <input name="model" value={formData.model} onChange={handleChange} placeholder="Iveco Eurocargo" className="w-full border-2 border-slate-200 p-3 rounded-lg font-bold text-slate-700 text-lg focus:border-red-500 focus:ring-red-200 outline-none transition-all" required />
+                            </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] uppercase font-black text-slate-400 tracking-wider mb-1 block">Tipologia</label>
+                                <select name="type" value={formData.type} onChange={handleChange} className="w-full border-2 border-slate-200 p-3 rounded-lg bg-white font-bold text-slate-700 outline-none focus:border-red-500">
                                     {vehicleTypes.map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <label className="text-[10px] uppercase font-bold text-slate-500">Giorno Controllo</label>
-                                <select name="checkDay" value={formData.checkDay} onChange={handleChange} className="w-full border p-2 rounded bg-white">
+                                <label className="text-[10px] uppercase font-black text-slate-400 tracking-wider mb-1 block">Giorno Controllo</label>
+                                <select name="checkDay" value={formData.checkDay} onChange={handleChange} className="w-full border-2 border-slate-200 p-3 rounded-lg bg-white font-bold text-slate-700 outline-none focus:border-red-500">
                                     {checkDays.map(d => <option key={d} value={d}>{d}</option>)}
                                 </select>
                             </div>
                         </div>
+                        
                         <div>
-                            <label className="text-[10px] uppercase font-bold text-slate-500">Note</label>
-                            <textarea name="notes" value={formData.notes || ''} onChange={handleChange} placeholder="Note aggiuntive..." className="w-full border p-2 rounded text-sm" rows={2} />
+                            <label className="text-[10px] uppercase font-black text-slate-400 tracking-wider mb-1 block">Note Operative</label>
+                            <textarea name="notes" value={formData.notes || ''} onChange={handleChange} placeholder="Note aggiuntive..." className="w-full border-2 border-slate-200 p-3 rounded-lg text-sm font-medium focus:border-red-500 outline-none" rows={3} />
                         </div>
                     </div>
 
-                    <div className="md:col-span-2 flex gap-2 pt-2">
-                        {isEditing && <button type="button" onClick={handleCancel} className="flex-1 bg-slate-200 text-slate-700 py-2 rounded font-bold">Annulla</button>}
-                        <button type="submit" disabled={isProcessingImg} className="flex-1 bg-red-600 text-white py-2 rounded font-bold hover:bg-red-700 flex items-center justify-center gap-2 shadow-sm">
-                            <SaveIcon className="h-4 w-4" /> {isEditing ? 'Aggiorna' : 'Salva'}
+                    {/* COLONNA 3: GESTIONE VANI E MATERIALI (Full Width below) */}
+                    <div className="lg:col-span-3 border-t-2 border-slate-100 pt-6 mt-2">
+                        <div className="flex justify-between items-center mb-4">
+                            <h4 className="font-bold text-slate-700 uppercase flex items-center gap-2">
+                                <BoxIcon className="h-5 w-5 text-slate-500" /> Configurazione Caricamento (Vani & Materiali)
+                            </h4>
+                            <button 
+                                type="button" 
+                                onClick={addCompartment}
+                                className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-blue-200 hover:bg-blue-100 transition-colors flex items-center gap-1"
+                            >
+                                <PlusIcon className="h-3 w-3" /> Aggiungi Vano
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {formData.compartments?.map((comp, index) => (
+                                <div key={comp.id} className="bg-slate-50 border border-slate-200 rounded-xl p-4 relative group hover:shadow-md transition-all">
+                                    {/* Header Vano */}
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="bg-slate-200 text-slate-500 w-6 h-6 flex items-center justify-center rounded font-bold text-xs">
+                                            {index + 1}
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            value={comp.name} 
+                                            onChange={(e) => updateCompartmentName(comp.id, e.target.value)}
+                                            className="font-bold text-slate-800 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 outline-none flex-grow"
+                                            placeholder="Nome Vano (es. 1SX)"
+                                        />
+                                        <button 
+                                            type="button" 
+                                            onClick={() => removeCompartment(comp.id)}
+                                            className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                                            title="Elimina Vano"
+                                        >
+                                            <TrashIcon className="h-4 w-4" />
+                                        </button>
+                                    </div>
+
+                                    {/* Lista Materiali */}
+                                    <div className="bg-white rounded-lg border border-slate-200 p-2 min-h-[80px] max-h-[200px] overflow-y-auto space-y-1 mb-3">
+                                        {comp.items.length === 0 && <p className="text-center text-xs text-slate-300 italic py-4">Nessun materiale</p>}
+                                        {comp.items.map(item => (
+                                            <div key={item.id} className="flex justify-between items-center text-xs bg-slate-50 px-2 py-1.5 rounded border border-slate-100 group/item hover:border-slate-300">
+                                                <span className="font-medium text-slate-700">{item.name}</span>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => removeItemFromCompartment(comp.id, item.id)}
+                                                    className="text-slate-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                                >
+                                                    &times;
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Input Nuovo Materiale */}
+                                    <div className="flex gap-2">
+                                        <input 
+                                            type="text" 
+                                            value={newItemInput[comp.id] || ''}
+                                            onChange={(e) => setNewItemInput(prev => ({ ...prev, [comp.id]: e.target.value }))}
+                                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addItemToCompartment(comp.id))}
+                                            placeholder="Aggiungi materiale..."
+                                            className="flex-grow bg-white border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-blue-400"
+                                        />
+                                        <button 
+                                            type="button" 
+                                            onClick={() => addItemToCompartment(comp.id)}
+                                            className="bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold hover:bg-blue-600"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            
+                            {(!formData.compartments || formData.compartments.length === 0) && (
+                                <div className="col-span-full text-center py-8 text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
+                                    <p className="text-sm">Nessun vano configurato per questo mezzo.</p>
+                                    <button type="button" onClick={addCompartment} className="text-blue-500 text-xs font-bold hover:underline mt-2">Crea il primo vano</button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="lg:col-span-3 flex gap-4 pt-4">
+                        {isEditing && <button type="button" onClick={handleCancel} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold hover:bg-slate-200 transition-colors">Annulla</button>}
+                        <button type="submit" disabled={isProcessingImg} className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white py-3 rounded-xl font-bold hover:from-red-700 hover:to-red-800 flex items-center justify-center gap-2 shadow-lg shadow-red-200 transition-all transform active:scale-95">
+                            <SaveIcon className="h-5 w-5" /> {isEditing ? 'Salva Modifiche' : 'Crea Veicolo'}
                         </button>
                     </div>
                 </form>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* LISTA VEICOLI ESISTENTI */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {vehicles.map(v => (
-                    <div key={v.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex gap-4 items-center group relative overflow-hidden">
-                        <div className="absolute top-0 right-0 bg-slate-100 text-[10px] font-bold px-2 py-0.5 rounded-bl-lg text-slate-500 border-l border-b border-slate-200">
+                    <div key={v.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4 group relative overflow-hidden">
+                        <div className="absolute top-0 right-0 bg-slate-100 text-[10px] font-bold px-2 py-0.5 rounded-bl-lg text-slate-500 border-l border-b border-slate-200 z-10">
                             {v.checkDay}
                         </div>
-                        <div className="w-20 h-20 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200 flex items-center justify-center">
-                            {v.photoUrl ? <img src={v.photoUrl} className="w-full h-full object-cover" /> : <span className="text-4xl">🚒</span>}
+                        
+                        <div className="flex gap-4 items-start">
+                            <div className="w-20 h-20 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200 flex items-center justify-center">
+                                {v.photoUrl ? <img src={v.photoUrl} className="w-full h-full object-cover" /> : <span className="text-4xl">🚒</span>}
+                            </div>
+                            <div className="flex-grow min-w-0 pt-1">
+                                <span className="text-[10px] font-black text-white bg-red-500 px-1.5 py-0.5 rounded uppercase tracking-wider">{v.type}</span>
+                                <h4 className="font-bold text-slate-800 truncate mt-1 text-lg leading-tight">{v.model}</h4>
+                                <p className="text-xs font-mono font-bold text-slate-600 bg-slate-50 px-1 rounded inline-block border border-slate-200">{v.plate}</p>
+                            </div>
                         </div>
-                        <div className="flex-grow min-w-0 pt-2">
-                            <span className="text-[10px] font-black text-white bg-red-500 px-1.5 py-0.5 rounded uppercase tracking-wider">{v.type}</span>
-                            <h4 className="font-bold text-slate-800 truncate mt-1">{v.model}</h4>
-                            <p className="text-xs font-mono font-bold text-slate-600 bg-slate-50 px-1 rounded inline-block border border-slate-200">{v.plate}</p>
-                            {v.notes && <p className="text-[9px] text-slate-400 mt-1 italic truncate">{v.notes}</p>}
+
+                        {/* Riepilogo Vani */}
+                        <div className="bg-slate-50 rounded-lg p-2 border border-slate-100 flex gap-2 items-center text-xs text-slate-500">
+                            <BoxIcon className="h-4 w-4 text-slate-400" />
+                            <span className="font-bold">{v.compartments?.length || 0}</span> Vani configurati
                         </div>
-                        <div className="flex flex-col gap-1 absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => handleEdit(v)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"><EditIcon className="h-4 w-4" /></button>
-                            <button onClick={() => handleDelete(v.id)} className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"><TrashIcon className="h-4 w-4" /></button>
+
+                        {v.notes && <p className="text-[10px] text-slate-400 italic truncate border-t border-slate-100 pt-2">{v.notes}</p>}
+                        
+                        <div className="flex justify-end gap-2 mt-auto pt-2 border-t border-slate-100">
+                            <button onClick={() => handleEdit(v)} className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 font-bold text-xs flex items-center gap-1 transition-colors">
+                                <EditIcon className="h-3 w-3" /> Modifica
+                            </button>
+                            <button onClick={() => handleDelete(v.id)} className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-bold text-xs flex items-center gap-1 transition-colors">
+                                <TrashIcon className="h-3 w-3" /> Elimina
+                            </button>
                         </div>
                     </div>
                 ))}
-                {vehicles.length === 0 && <p className="col-span-full text-center text-slate-400 italic">Nessun mezzo operativo inserito.</p>}
+                {vehicles.length === 0 && <p className="col-span-full text-center text-slate-400 italic py-10">Nessun mezzo operativo inserito.</p>}
             </div>
         </div>
     );

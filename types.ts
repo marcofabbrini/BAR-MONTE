@@ -160,9 +160,21 @@ export interface VehicleBooking {
 }
 // ==========================
 
-// === MEZZI OPERATIVI (CHECKLIST) ===
+// === MEZZI OPERATIVI (CHECKLIST & CARICAMENTO) ===
 export type OperationalVehicleType = 'APS' | 'ABP' | 'POL' | 'CA/PU' | 'AV' | 'AF' | 'RIBA' | 'CARRELLO' | 'ALTRO';
 export type CheckDay = 'Lunedì' | 'Martedì' | 'Mercoledì' | 'Giovedì' | 'Venerdì';
+
+export interface VehicleItem {
+    id: string;
+    name: string;
+    quantity?: number; // Opzionale, per futuro
+}
+
+export interface VehicleCompartment {
+    id: string;
+    name: string; // Es. "Vano 1SX", "Tetto", "Cabina"
+    items: VehicleItem[];
+}
 
 export interface OperationalVehicle {
     id: string;
@@ -172,6 +184,7 @@ export interface OperationalVehicle {
     checkDay: CheckDay;
     notes?: string;
     photoUrl?: string;
+    compartments?: VehicleCompartment[]; // Nuovo campo per scomparti
 }
 // ==========================
 
