@@ -104,6 +104,7 @@ interface BarContextType {
 
     // Reminder Actions
     addReminder: (r: Omit<Reminder, 'id' | 'createdAt' | 'completedDates'>) => Promise<void>;
+    updateReminder: (id: string, r: Partial<Reminder>) => Promise<void>;
     deleteReminder: (id: string) => Promise<void>;
     toggleReminderCompletion: (id: string, date: string, completedDates: string[]) => Promise<void>;
 
@@ -275,6 +276,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Reminder Functions
     const addReminder = (r: Omit<Reminder, 'id' | 'createdAt' | 'completedDates'>) => ReminderService.addReminder(r);
+    const updateReminder = (id: string, r: Partial<Reminder>) => ReminderService.updateReminder(id, r);
     const deleteReminder = (id: string) => ReminderService.deleteReminder(id);
     const toggleReminderCompletion = (id: string, date: string, completedDates: string[]) => ReminderService.toggleCompletion(id, date, completedDates);
 
@@ -289,7 +291,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             addOperationalVehicle, updateOperationalVehicle, deleteOperationalVehicle, addVehicleCheck, updateVehicleCheck,
             addLaundryItem, updateLaundryItem, deleteLaundryItem, addLaundryEntry, deleteLaundryEntry,
             addIntervention, updateIntervention, deleteIntervention, permanentDeleteIntervention, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer,
-            addReminder, deleteReminder, toggleReminderCompletion,
+            addReminder, updateReminder, deleteReminder, toggleReminderCompletion,
             getNow
         }}>
             {children}

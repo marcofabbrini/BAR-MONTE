@@ -41,7 +41,7 @@ const AppContent: React.FC = () => {
         addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
         addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
         vehicles, vehicleBookings, addBooking, deleteBooking,
-        operationalVehicles, vehicleChecks, reminders, toggleReminderCompletion
+        operationalVehicles, vehicleChecks, reminders, toggleReminderCompletion, addVehicleCheck
     } = useBar();
 
     const { 
@@ -166,6 +166,8 @@ const AppContent: React.FC = () => {
                 onAddBooking={addBooking}
                 onDeleteBooking={deleteBooking}
                 isSuperAdmin={isSuperAdmin}
+                vehicleChecks={vehicleChecks}
+                onAddCheck={addVehicleCheck}
             />;
             case 'operational_vehicles': return <OperationalVehiclesView onGoBack={() => setView('selection')} />;
             case 'laundry': return <LaundryView onGoBack={() => setView('selection')} staff={staff} />;
@@ -208,6 +210,7 @@ const AppContent: React.FC = () => {
                 reminders={reminders}
                 onToggleReminder={toggleReminderCompletion}
                 operationalVehicles={operationalVehicles}
+                vehicles={vehicles}
                 vehicleChecks={vehicleChecks}
             />;
         }

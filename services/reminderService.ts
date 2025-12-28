@@ -34,6 +34,13 @@ export const ReminderService = {
         });
     },
 
+    updateReminder: async (id: string, reminder: Partial<Reminder>) => {
+        const cleanReminder = Object.fromEntries(
+            Object.entries(reminder).filter(([_, v]) => v !== undefined)
+        );
+        await updateDoc(doc(db, 'reminders', id), cleanReminder);
+    },
+
     deleteReminder: async (id: string) => {
         await deleteDoc(doc(db, 'reminders', id));
     },

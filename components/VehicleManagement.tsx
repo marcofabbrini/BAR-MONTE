@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Vehicle } from '../types';
+import { Vehicle, CheckDay } from '../types';
 import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon } from './Icons';
 
 interface VehicleManagementProps {
@@ -14,6 +14,7 @@ const emptyVehicle: Omit<Vehicle, 'id'> = {
     plate: '',
     model: '',
     fuelType: 'diesel',
+    checkDay: 'Lunedì',
     photoUrl: ''
 };
 
@@ -22,6 +23,8 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVe
     const [formData, setFormData] = useState<Omit<Vehicle, 'id'>>(emptyVehicle);
     const [isProcessingImg, setIsProcessingImg] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const checkDays: CheckDay[] = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
     const handleEdit = (v: Vehicle) => {
         setIsEditing(v.id);
@@ -110,7 +113,7 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVe
                 </h3>
                 
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex flex-col items-center justify-center md:row-span-2">
+                    <div className="flex flex-col items-center justify-center md:row-span-3">
                         <div 
                             onClick={() => fileInputRef.current?.click()}
                             className="w-32 h-32 rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 flex items-center justify-center cursor-pointer hover:bg-slate-100 overflow-hidden relative"
@@ -135,14 +138,22 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVe
                             <label className="text-[10px] uppercase font-bold text-slate-500">Modello</label>
                             <input name="model" value={formData.model} onChange={handleChange} placeholder="Fiat Punto" className="w-full border p-2 rounded" required />
                         </div>
-                        <div>
-                            <label className="text-[10px] uppercase font-bold text-slate-500">Alimentazione</label>
-                            <select name="fuelType" value={formData.fuelType} onChange={handleChange} className="w-full border p-2 rounded">
-                                <option value="diesel">Diesel</option>
-                                <option value="benzina">Benzina</option>
-                                <option value="elettrica">Elettrica</option>
-                                <option value="ibrida">Ibrida</option>
-                            </select>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-[10px] uppercase font-bold text-slate-500">Alimentazione</label>
+                                <select name="fuelType" value={formData.fuelType} onChange={handleChange} className="w-full border p-2 rounded">
+                                    <option value="diesel">Diesel</option>
+                                    <option value="benzina">Benzina</option>
+                                    <option value="elettrica">Elettrica</option>
+                                    <option value="ibrida">Ibrida</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] uppercase font-bold text-slate-500">Giorno Controllo</label>
+                                <select name="checkDay" value={formData.checkDay || 'Lunedì'} onChange={handleChange} className="w-full border p-2 rounded">
+                                    {checkDays.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -157,7 +168,10 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVe
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {vehicles.map(v => (
-                    <div key={v.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex gap-4 items-center group">
+                    <div key={v.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex gap-4 items-center group relative overflow-hidden">
+                        <div className="absolute top-0 right-0 bg-slate-100 px-2 py-0.5 rounded-bl-lg text-[9px] font-bold text-slate-500 border-b border-l border-slate-200">
+                            {v.checkDay || 'Non pianificato'}
+                        </div>
                         <div className="w-16 h-16 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200 flex items-center justify-center">
                             {v.photoUrl ? <img src={v.photoUrl} className="w-full h-full object-cover" /> : <TruckIcon className="h-8 w-8 text-slate-300" />}
                         </div>

@@ -135,6 +135,7 @@ export interface Vehicle {
     plate: string;
     model: string;
     fuelType: 'diesel' | 'benzina' | 'elettrica' | 'ibrida';
+    checkDay?: CheckDay; // Giorno controllo settimanale
     photoUrl?: string;
 }
 
@@ -162,7 +163,7 @@ export interface VehicleBooking {
 
 // === MEZZI OPERATIVI (CHECKLIST & CARICAMENTO) ===
 export type OperationalVehicleType = 'APS' | 'ABP' | 'POL' | 'CA/PU' | 'AV' | 'AF' | 'RIBA' | 'CARRELLO' | 'ALTRO';
-export type CheckDay = 'Lunedì' | 'Martedì' | 'Mercoledì' | 'Giovedì' | 'Venerdì';
+export type CheckDay = 'Lunedì' | 'Martedì' | 'Mercoledì' | 'Giovedì' | 'Venerdì' | 'Sabato' | 'Domenica';
 
 export interface VehicleItem {
     id: string;

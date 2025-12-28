@@ -92,7 +92,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     const { operationalVehicles, addOperationalVehicle, updateOperationalVehicle, deleteOperationalVehicle } = useBar();
     const { laundryItems, addLaundryItem, updateLaundryItem, deleteLaundryItem } = useBar();
     const { interventionTypologies, dutyOfficers, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer } = useBar();
-    const { reminders, addReminder, deleteReminder } = useBar();
+    const { reminders, addReminder, updateReminder, deleteReminder } = useBar();
 
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -133,6 +133,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [remDay, setRemDay] = useState<number>(1);
     const [remMonthlyDetail, setRemMonthlyDetail] = useState<'first-day' | 'last-day'>('first-day');
     const [remDate, setRemDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD local
+    const [editingReminderId, setEditingReminderId] = useState<string | null>(null);
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
@@ -289,7 +290,7 @@ const AdminView: React.FC<AdminViewProps> = ({
         setNewOfficer('');
     };
 
-    const handleAddReminder = async () => {
+    const handleSaveReminder = async () => {
         if (!remText.trim()) return;
         
         if (remType === 'spot' && !remDate) {
@@ -298,26 +299,57 @@ const AdminView: React.FC<AdminViewProps> = ({
         }
 
         try {
-            await addReminder({
-                text: remText.trim(),
-                type: remType,
-                dayOfWeek: remType === 'recurring' ? remDay : undefined,
-                monthlyDetail: remType === 'monthly' ? remMonthlyDetail : undefined,
-                date: remType === 'spot' ? remDate : undefined
-            });
-            alert("Promemoria aggiunto!");
+            if (editingReminderId) {
+                await updateReminder(editingReminderId, {
+                    text: remText.trim(),
+                    type: remType,
+                    dayOfWeek: remType === 'recurring' ? remDay : undefined,
+                    monthlyDetail: remType === 'monthly' ? remMonthlyDetail : undefined,
+                    date: remType === 'spot' ? remDate : undefined
+                });
+                alert("Promemoria aggiornato!");
+                setEditingReminderId(null);
+            } else {
+                await addReminder({
+                    text: remText.trim(),
+                    type: remType,
+                    dayOfWeek: remType === 'recurring' ? remDay : undefined,
+                    monthlyDetail: remType === 'monthly' ? remMonthlyDetail : undefined,
+                    date: remType === 'spot' ? remDate : undefined
+                });
+                alert("Promemoria aggiunto!");
+            }
+            
             setRemText('');
             // Reset to today to ensure input is never empty
             setRemDate(new Date().toISOString().split('T')[0]);
         } catch(e) {
             console.error(e);
-            alert("Errore aggiunta promemoria");
+            alert("Errore salvataggio promemoria");
         }
+    };
+
+    const handleEditReminder = (rem: Reminder) => {
+        setEditingReminderId(rem.id);
+        setRemText(rem.text);
+        setRemType(rem.type);
+        if (rem.dayOfWeek !== undefined) setRemDay(rem.dayOfWeek);
+        if (rem.monthlyDetail) setRemMonthlyDetail(rem.monthlyDetail);
+        if (rem.date) setRemDate(rem.date);
+        
+        window.scrollTo(0,0);
+    };
+
+    const handleCancelEditReminder = () => {
+        setEditingReminderId(null);
+        setRemText('');
+        setRemDate(new Date().toISOString().split('T')[0]);
     };
 
     const handleDeleteReminder = async (id: string) => {
         if (confirm("Eliminare definitivamente questo promemoria?")) {
             await deleteReminder(id);
+            if (editingReminderId === id) handleCancelEditReminder();
         }
     };
 
@@ -466,7 +498,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                     <div className="max-w-4xl mx-auto space-y-6">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                <PinIcon className="h-6 w-6 text-yellow-500" /> Gestione Promemoria (Post-it)
+                                <PinIcon className="h-6 w-6 text-yellow-500" /> {editingReminderId ? 'Modifica Promemoria' : 'Nuovo Promemoria'}
                             </h2>
                             <div className="flex flex-col gap-4">
                                 <input 
@@ -510,9 +542,16 @@ const AdminView: React.FC<AdminViewProps> = ({
                                     <input type="date" value={remDate} onChange={e => setRemDate(e.target.value)} className="border rounded p-2 text-sm" />
                                 )}
 
-                                <button onClick={handleAddReminder} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 rounded shadow-sm">
-                                    Aggiungi Promemoria
-                                </button>
+                                <div className="flex gap-2">
+                                    <button onClick={handleSaveReminder} className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 rounded shadow-sm">
+                                        {editingReminderId ? 'Aggiorna Promemoria' : 'Aggiungi Promemoria'}
+                                    </button>
+                                    {editingReminderId && (
+                                        <button onClick={handleCancelEditReminder} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold rounded">
+                                            Annulla
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -534,9 +573,14 @@ const AdminView: React.FC<AdminViewProps> = ({
                                                 }
                                             </p>
                                         </div>
-                                        <button onClick={() => handleDeleteReminder(rem.id)} className="text-red-500 hover:bg-red-50 p-2 rounded">
-                                            <TrashIcon className="h-5 w-5" />
-                                        </button>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleEditReminder(rem)} className="text-blue-500 hover:bg-blue-50 p-2 rounded">
+                                                <EditIcon className="h-5 w-5" />
+                                            </button>
+                                            <button onClick={() => handleDeleteReminder(rem.id)} className="text-red-500 hover:bg-red-50 p-2 rounded">
+                                                <TrashIcon className="h-5 w-5" />
+                                            </button>
+                                        </div>
                                     </li>
                                 ))}
                                 {reminders.length === 0 && <li className="p-8 text-center text-slate-400 italic">Nessun promemoria.</li>}

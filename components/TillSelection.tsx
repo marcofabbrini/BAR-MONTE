@@ -1,6 +1,6 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
-import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder, OperationalVehicle, VehicleCheck } from '../types';
+import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder, OperationalVehicle, VehicleCheck, Vehicle } from '../types';
 import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 
@@ -26,6 +26,7 @@ interface TillSelectionProps {
     reminders?: Reminder[];
     onToggleReminder?: (id: string, date: string, completedDates: string[]) => Promise<void>;
     operationalVehicles?: OperationalVehicle[];
+    vehicles?: Vehicle[]; // Fleet vehicles added
     vehicleChecks?: VehicleCheck[];
 }
 
@@ -34,7 +35,7 @@ interface WeatherData {
     weathercode: number;
 }
 
-const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, onSelectOperationalVehicles, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification, reminders = [], onToggleReminder, operationalVehicles = [], vehicleChecks = [] }) => {
+const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, onSelectOperationalVehicles, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification, reminders = [], onToggleReminder, operationalVehicles = [], vehicles = [], vehicleChecks = [] }) => {
     
     // Context for Reliable Time
     const { getNow } = useBar();
@@ -258,32 +259,49 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         });
     }, [reminders, currentTime]);
 
-    // 2. Controlli Veicoli (Dynamic Reminders)
+    // 2. Controlli Veicoli (Dynamic Reminders) - OPERATIONAL & FLEET
     const vehicleCheckReminders = useMemo(() => {
         const dayOfWeek = currentTime.getDay(); 
         const daysMap = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
         const todayName = daysMap[dayOfWeek];
         const todayStr = currentTime.toISOString().split('T')[0];
 
-        // Filtra veicoli che hanno il controllo OGGI
-        const vehiclesToCheck = operationalVehicles.filter(v => v.checkDay === todayName);
+        // Filtra veicoli operativi che hanno il controllo OGGI
+        const opVehiclesToCheck = operationalVehicles.filter(v => v.checkDay === todayName);
+        
+        // Filtra automezzi (Fleet) che hanno il controllo OGGI
+        const fleetVehiclesToCheck = vehicles.filter(v => v.checkDay === todayName);
 
-        // Mappa in formato Reminder
-        return vehiclesToCheck.map(v => {
-            // Controlla se esiste già un controllo per questo veicolo oggi
+        // Mappa Operational in formato Reminder
+        const opReminders = opVehiclesToCheck.map(v => {
             const isDone = vehicleChecks.some(check => 
                 check.vehicleId === v.id && 
                 new Date(check.timestamp).toISOString().split('T')[0] === todayStr
             );
-
             return {
-                id: `veh_${v.id}`, // ID fittizio
+                id: `op_${v.id}`, 
                 text: `Controllo ${v.model} ${v.plate}`,
                 isDone: isDone,
-                type: 'vehicle'
+                type: 'vehicle_op'
             };
         });
-    }, [operationalVehicles, vehicleChecks, currentTime]);
+
+        // Mappa Fleet in formato Reminder
+        const fleetReminders = fleetVehiclesToCheck.map(v => {
+            const isDone = vehicleChecks.some(check => 
+                check.vehicleId === v.id && 
+                new Date(check.timestamp).toISOString().split('T')[0] === todayStr
+            );
+            return {
+                id: `fl_${v.id}`, 
+                text: `Controllo ${v.model} ${v.plate}`,
+                isDone: isDone,
+                type: 'vehicle_fleet'
+            };
+        });
+
+        return [...opReminders, ...fleetReminders];
+    }, [operationalVehicles, vehicles, vehicleChecks, currentTime]);
 
     // Merge Lists
     const allReminders = useMemo(() => {
@@ -297,14 +315,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             id: r.id,
             text: r.text,
             isDone: r.isDone,
-            source: 'vehicle' as const,
+            source: r.type, // 'vehicle_op' or 'vehicle_fleet'
             completedDates: [] // Dummy
         }));
 
         return [...standardList, ...vehicleList];
     }, [standardReminders, vehicleCheckReminders, currentTime]);
 
-    // --- CHECK ALL COMPLETED & AUTO HIDE ---
+    // --- CHECK ALL COMPLETED & AUTO HIDE (WITH PERSISTENCE) ---
     const areAllRemindersCompleted = useMemo(() => {
         if (allReminders.length === 0) return false;
         return allReminders.every(rem => rem.isDone);
@@ -312,24 +330,41 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
     useEffect(() => {
         let timer: ReturnType<typeof setTimeout>;
+        const todayStr = currentTime.toISOString().split('T')[0];
+        const storageKey = `postit_hidden_${todayStr}`;
+        
+        // Verifica se è stato già nascosto oggi (persistenza)
+        const isHiddenInStorage = localStorage.getItem(storageKey) === 'true';
+
         if (areAllRemindersCompleted) {
-            // Hide after 1 minute (60000ms)
-            timer = setTimeout(() => {
+            if (isHiddenInStorage) {
                 setHidePostIt(true);
-            }, 60000);
+            } else {
+                // Avvia timer per nascondere e salvare persistenza
+                timer = setTimeout(() => {
+                    setHidePostIt(true);
+                    localStorage.setItem(storageKey, 'true');
+                }, 60000);
+            }
         } else {
             setHidePostIt(false);
+            // Se l'utente toglie la spunta, rimuovi la persistenza così il timer riparte se ricompleta tutto
+            localStorage.removeItem(storageKey);
         }
         return () => clearTimeout(timer);
-    }, [areAllRemindersCompleted]);
+    }, [areAllRemindersCompleted, currentTime]);
 
     const handleReminderClick = async (rem: any) => {
-        if (rem.source === 'vehicle') {
-            // Se è un controllo veicolo e NON è fatto, manda alla pagina
+        if (rem.source === 'vehicle_op') {
+            // Se è un controllo veicolo operativo e NON è fatto, manda alla pagina
             if (!rem.isDone) {
                 onSelectOperationalVehicles();
             }
-            // Se è fatto, non fa nulla (o potremmo mandare allo storico)
+        } else if (rem.source === 'vehicle_fleet') {
+            // Se è un controllo automezzo e NON è fatto, manda alla pagina automezzi
+            if (!rem.isDone) {
+                onSelectFleet();
+            }
         } else {
             // Promemoria standard
             const todayStr = currentTime.toISOString().split('T')[0];
@@ -487,25 +522,27 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 {allReminders.length > 0 && !hidePostIt && (
                     <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
                         <div className="bg-yellow-200 p-6 rounded-xl shadow-[5px_5px_15px_rgba(0,0,0,0.15)] relative transform rotate-1 transition-transform hover:rotate-0">
-                            {/* Titolo spostato a destra */}
-                            <h3 className="text-slate-800 text-2xl mb-4 uppercase tracking-wide text-right pr-6 font-normal leading-none" style={{ fontFamily: '"Permanent Marker", cursive' }}>
+                            {/* Titolo spostato a SINISTRA, Font Fuzzy Bubbles */}
+                            <h3 className="text-slate-800 text-[23px] mb-4 uppercase tracking-wide text-left pl-2 font-normal leading-none" style={{ fontFamily: '"Fuzzy Bubbles", cursive' }}>
                                 Da fare:
                             </h3>
-                            <div className="space-y-3 flex flex-col items-end">
+                            <div className="space-y-3 flex flex-col">
                                 {allReminders.map(rem => (
-                                    <div key={rem.id} className="flex justify-end items-start gap-3 group w-full text-right">
-                                        <span 
-                                            className={`text-lg text-slate-800 flex-grow leading-tight ${rem.isDone ? 'line-through opacity-50 decoration-2 decoration-slate-500' : ''}`}
-                                            style={{ fontFamily: '"Permanent Marker", cursive' }}
-                                        >
-                                            {rem.text}
-                                        </span>
+                                    <div key={rem.id} className="flex items-start gap-3 group w-full text-left">
+                                        {/* Button a SINISTRA */}
                                         <button 
                                             onClick={() => handleReminderClick(rem)}
                                             className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all cursor-pointer ${rem.isDone ? 'bg-green-500 border-green-500 text-white' : 'border-slate-400 text-transparent hover:border-slate-600'}`}
                                         >
                                             <CheckIcon className="h-4 w-4" />
                                         </button>
+                                        {/* Testo a DESTRA */}
+                                        <span 
+                                            className={`text-[22px] text-slate-800 flex-grow leading-tight ${rem.isDone ? 'line-through opacity-50 decoration-2 decoration-slate-500' : ''}`}
+                                            style={{ fontFamily: '"Fuzzy Bubbles", cursive' }}
+                                        >
+                                            {rem.text}
+                                        </span>
                                     </div>
                                 ))}
                             </div>

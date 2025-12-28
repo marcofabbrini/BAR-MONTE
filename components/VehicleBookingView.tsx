@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
-import { Vehicle, VehicleBooking, StaffMember, Shift } from '../types';
-import { BackArrowIcon, CalendarIcon, CheckIcon, TrashIcon, FilterIcon, SortIcon, PrinterIcon, TruckIcon } from './Icons';
+import { Vehicle, VehicleBooking, StaffMember, Shift, VehicleCheck } from '../types';
+import { BackArrowIcon, CalendarIcon, CheckIcon, TrashIcon, SortIcon, PrinterIcon, TruckIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 import { GradeBadge } from './StaffManagement';
+import { useBar } from '../contexts/BarContext';
 
 interface VehicleBookingViewProps {
     onGoBack: () => void;
@@ -13,11 +14,14 @@ interface VehicleBookingViewProps {
     onAddBooking: (b: Omit<VehicleBooking, 'id' | 'timestamp'>) => Promise<void>;
     onDeleteBooking: (id: string) => Promise<void>;
     isSuperAdmin?: boolean | null;
+    vehicleChecks?: VehicleCheck[];
+    onAddCheck?: (c: Omit<VehicleCheck, 'id'>) => Promise<void>;
 }
 
 const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({ 
-    onGoBack, vehicles, bookings, staff, onAddBooking, onDeleteBooking, isSuperAdmin 
+    onGoBack, vehicles, bookings, staff, onAddBooking, onDeleteBooking, isSuperAdmin, vehicleChecks = [], onAddCheck
 }) => {
+    const { getNow } = useBar();
     // Form State
     const [startDate, setStartDate] = useState('');
     const [startTime, setStartTime] = useState('08:00');
@@ -178,6 +182,37 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
         window.print();
     };
 
+    const handleQuickCheck = async (e: React.MouseEvent, v: Vehicle) => {
+        e.stopPropagation();
+        if(!onAddCheck) return;
+        
+        if (confirm(`Confermi di aver effettuato il controllo ordinario per ${v.model} (${v.plate})?\n\nVerrà registrato come "Completo" nel registro.`)) {
+            try {
+                // Calcolo turno attivo approssimativo (fallback logica) o generico
+                const hour = getNow().getHours();
+                const now = getNow();
+                
+                await onAddCheck({
+                    vehicleId: v.id,
+                    vehicleName: `${v.model} (${v.plate})`,
+                    date: now.toISOString().split('T')[0],
+                    timestamp: now.toISOString(),
+                    shift: '?', // Non critico per automezzi generici
+                    status: 'ok',
+                    missingItems: [],
+                    notes: 'Controllo ordinario automezzo (Senza caricamento)'
+                });
+                alert("Controllo registrato!");
+            } catch(e) {
+                console.error(e);
+                alert("Errore registrazione.");
+            }
+        }
+    };
+
+    const todayDayName = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'][getNow().getDay()];
+    const todayStr = getNow().toISOString().split('T')[0];
+
     return (
         <div className="flex flex-col min-h-screen bg-slate-50">
             {/* HEADER MIGLIORATO (NASCOSTO IN STAMPA) */}
@@ -238,6 +273,10 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
                                         {vehicles.map(v => {
                                             const isSelected = selectedVehicle === v.id;
+                                            const isCheckDay = v.checkDay === todayDayName;
+                                            // Check if already checked today
+                                            const isCheckedToday = vehicleChecks.some(c => c.vehicleId === v.id && c.date === todayStr);
+
                                             return (
                                                 <div 
                                                     key={v.id}
@@ -250,6 +289,21 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                                         }
                                                     `}
                                                 >
+                                                    {isCheckDay && !isCheckedToday && (
+                                                        <div 
+                                                            className="absolute -top-2 -left-2 z-20 bg-yellow-400 text-yellow-900 text-[9px] font-black uppercase px-2 py-1 rounded shadow-md border border-yellow-500 animate-pulse cursor-pointer hover:scale-110 transition-transform flex items-center gap-1"
+                                                            onClick={(e) => handleQuickCheck(e, v)}
+                                                            title="Clicca per registrare controllo rapido"
+                                                        >
+                                                            <span>⚠️ Controllo</span>
+                                                        </div>
+                                                    )}
+                                                    {isCheckDay && isCheckedToday && (
+                                                        <div className="absolute -top-2 -left-2 z-20 bg-green-500 text-white text-[9px] font-black uppercase px-2 py-1 rounded shadow-md border border-green-600 flex items-center gap-1">
+                                                            <CheckIcon className="h-3 w-3"/> OK
+                                                        </div>
+                                                    )}
+
                                                     {isSelected && (
                                                         <div className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm z-10">
                                                             <CheckIcon className="h-3 w-3" />
