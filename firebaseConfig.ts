@@ -18,11 +18,12 @@ const app = firebase.initializeApp(firebaseConfig);
 
 // Initialize Firestore (Modular)
 // CRITICAL FIX: Use memoryLocalCache with LRU Garbage Collector.
-// This prevents "Quota Exceeded" by not writing to disk (IndexedDB) and keeps RAM usage managed.
+// This prevents "Quota Exceeded" by not writing to disk (IndexedDB).
+// Fixed: 'cacheSizeBytes' is the correct property name.
 const db = initializeFirestore(app, {
   localCache: memoryLocalCache({
     garbageCollector: memoryLruGarbageCollector({
-        sizeBytes: 5 * 1024 * 1024 // Limit cache to 5MB
+        cacheSizeBytes: 5 * 1024 * 1024 // Limit cache to 5MB
     })
   }),
   experimentalForceLongPolling: true 

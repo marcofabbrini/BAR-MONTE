@@ -35,13 +35,14 @@ export const BarService = {
     },
 
     subscribeToOrders: (onUpdate: (data: Order[]) => void) => {
-        // FIX MEMORY: Reduced limit to 100 to prevent crash on mobile
-        return onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc'), limit(100)), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as Order))));
+        // RESTORE HISTORY: Increased limit to 500. 
+        // With memory cache, this is safe and won't cause "Quota Exceeded".
+        return onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc'), limit(500)), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as Order))));
     },
 
     subscribeToCashMovements: (onUpdate: (data: CashMovement[]) => void) => {
-        // FIX MEMORY: Reduced limit to 100
-        return onSnapshot(query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc'), limit(100)), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement))));
+        // RESTORE HISTORY: Increased limit to 500.
+        return onSnapshot(query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc'), limit(500)), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement))));
     },
 
     subscribeToAdmins: (onUpdate: (data: AdminUser[]) => void) => {
@@ -66,7 +67,7 @@ export const BarService = {
     },
 
     subscribeToLaundryEntries: (onUpdate: (data: LaundryEntry[]) => void) => {
-        // Ultimi 50 inserimenti
+        // Ultimi 50 inserimenti lavanderia
         const q = query(collection(db, 'laundry_entries'), orderBy('timestamp', 'desc'), limit(50));
         return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as LaundryEntry))));
     },
@@ -109,8 +110,8 @@ export const BarService = {
     },
 
     subscribeToAttendance: (onUpdate: (data: AttendanceRecord[]) => void) => {
-        // Reduce limit for attendance records to avoid huge downloads
-        return onSnapshot(query(collection(db, 'shift_attendance'), orderBy('date', 'desc'), limit(100)), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as AttendanceRecord))));
+        // Increased limit for attendance to 200 days
+        return onSnapshot(query(collection(db, 'shift_attendance'), orderBy('date', 'desc'), limit(200)), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as AttendanceRecord))));
     },
 
     // --- OPERATIONS ---
