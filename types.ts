@@ -187,6 +187,19 @@ export interface OperationalVehicle {
     photoUrl?: string;
     compartments?: VehicleCompartment[]; // Nuovo campo per scomparti
 }
+
+export interface VehicleCheck {
+    id: string;
+    vehicleId: string;
+    vehicleName: string;
+    date: string; // YYYY-MM-DD
+    timestamp: string; // Full ISO
+    shift: string; // Turno che ha effettuato il controllo
+    operatorName?: string; // Opzionale
+    status: 'ok' | 'issues'; // ok = tutto presente, issues = mancanze
+    missingItems: { compartmentName: string, itemName: string, quantity: number }[]; // Lista mancanze
+    notes: string;
+}
 // ==========================
 
 // === GESTIONE LAVANDERIA ===

@@ -8,14 +8,25 @@ import {
     updateDoc, 
     deleteDoc, 
     QuerySnapshot,
-    DocumentData
+    DocumentData,
+    query,
+    orderBy,
+    limit
 } from 'firebase/firestore';
-import { OperationalVehicle } from '../types';
+import { OperationalVehicle, VehicleCheck } from '../types';
 
 export const OperationalVehicleService = {
     subscribeToVehicles: (onUpdate: (data: OperationalVehicle[]) => void) => {
         return onSnapshot(collection(db, 'operational_vehicles'), (s: QuerySnapshot<DocumentData>) => {
             onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as OperationalVehicle)));
+        });
+    },
+
+    subscribeToChecks: (onUpdate: (data: VehicleCheck[]) => void) => {
+        // Ultimi 50 controlli
+        const q = query(collection(db, 'vehicle_checks'), orderBy('timestamp', 'desc'), limit(50));
+        return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => {
+            onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as VehicleCheck)));
         });
     },
 
@@ -30,5 +41,14 @@ export const OperationalVehicleService = {
 
     deleteVehicle: async (id: string) => {
         await deleteDoc(doc(db, 'operational_vehicles', id));
+    },
+
+    // Check Methods
+    addCheck: async (check: Omit<VehicleCheck, 'id'>) => {
+        await addDoc(collection(db, 'vehicle_checks'), check);
+    },
+
+    updateCheck: async (id: string, updates: Partial<VehicleCheck>) => {
+        await updateDoc(doc(db, 'vehicle_checks', id), updates);
     }
 };
