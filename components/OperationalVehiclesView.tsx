@@ -41,41 +41,39 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
         window.scrollTo(0,0);
     };
 
-    // --- LOGICA ORDINAMENTO E RAGGRUPPAMENTO ---
+    // --- LOGICA ORDINAMENTO E RAGGRUPPAMENTO AGGIORNATA ---
     const { featuredVehicles, gridVehicles } = useMemo(() => {
+        if (operationalVehicles.length === 0) return { featuredVehicles: [], gridVehicles: [] };
+
         const today = getNow();
-        const daysMap = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
         const currentDayIndex = today.getDay(); // 0 = Domenica, 1 = Lunedì...
-        const currentDayName = daysMap[currentDayIndex];
-
-        // Giorni della settimana lavorativa ordinati per il calcolo della distanza
-        const workDaysOrder = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì'];
-
-        // Mezzi di OGGI
-        const featured = operationalVehicles.filter(v => v.checkDay === currentDayName);
         
-        // Altri Mezzi
-        const others = operationalVehicles.filter(v => v.checkDay !== currentDayName);
+        // Mappa i giorni della settimana standard italiani ai loro indici (Domenica=0)
+        const daysMap = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
 
-        // Ordina gli altri mezzi ciclicamente partendo da domani
-        others.sort((a, b) => {
-            const idxA = workDaysOrder.indexOf(a.checkDay as string);
-            const idxB = workDaysOrder.indexOf(b.checkDay as string);
-            
-            // Se un giorno non è nella lista (es. Sabato/Domenica se impostati erroneamente), mettili alla fine
+        // Copia e ordina TUTTI i veicoli in base alla prossimità del controllo
+        const sortedVehicles = [...operationalVehicles].sort((a, b) => {
+            const idxA = daysMap.indexOf(a.checkDay); 
+            const idxB = daysMap.indexOf(b.checkDay);
+
+            // Gestione giorni non validi (es. typo nel DB) - vanno in fondo
             if (idxA === -1) return 1;
             if (idxB === -1) return -1;
 
-            // Indice del giorno corrente nella settimana lavorativa (se Sab/Dom, consideriamo Lunedì come prossimo target base 0)
-            let currentWorkDayIdx = workDaysOrder.indexOf(currentDayName);
-            if (currentWorkDayIdx === -1) currentWorkDayIdx = -1; // Se oggi è weekend, l'ordine parte da Lunedì (index 0)
+            // Calcolo distanza circolare da "Oggi" in avanti
+            // Esempio: Oggi=Mercoledì(3). Veicolo=Venerdì(5). Distanza = (5 - 3 + 7) % 7 = 2 giorni.
+            // Esempio: Oggi=Venerdì(5). Veicolo=Lunedì(1). Distanza = (1 - 5 + 7) % 7 = 3 giorni.
+            const distA = (idxA - currentDayIndex + 7) % 7;
+            const distB = (idxB - currentDayIndex + 7) % 7;
 
-            // Calcolo distanza circolare: (GiornoTarget - GiornoOggi + 5) % 5
-            const distA = (idxA - currentWorkDayIdx + 5) % 5;
-            const distB = (idxB - currentWorkDayIdx + 5) % 5;
-
-            return distA - distB;
+            // Se la distanza è uguale (stesso giorno), ordina per nome modello
+            if (distA !== distB) return distA - distB;
+            return a.model.localeCompare(b.model);
         });
+
+        // Il primo veicolo della lista ordinata è il "Hero" (quello di oggi o il prossimo più vicino)
+        const featured = sortedVehicles.length > 0 ? [sortedVehicles[0]] : [];
+        const others = sortedVehicles.length > 1 ? sortedVehicles.slice(1) : [];
 
         return { featuredVehicles: featured, gridVehicles: others };
     }, [operationalVehicles, getNow]);
@@ -95,62 +93,68 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
     }
 
     // Sottocomponente Card per riutilizzo
-    const VehicleCard = ({ vehicle, isFeatured }: { vehicle: OperationalVehicle, isFeatured?: boolean }) => (
-        <div 
-            onClick={() => handleSelectVehicle(vehicle)}
-            className={`
-                bg-white rounded-2xl shadow-md border overflow-hidden flex flex-col group relative cursor-pointer hover:shadow-xl transition-all hover:scale-[1.01]
-                ${isFeatured ? 'border-red-500 ring-2 ring-red-100 shadow-[0_0_20px_rgba(220,38,38,0.2)]' : 'border-slate-200'}
-            `}
-        >
-            {/* BADGE GIORNO CONTROLLO */}
-            <div className={`
-                absolute top-3 right-3 z-10 font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-lg border
-                ${isFeatured 
-                    ? 'bg-red-600 text-white border-red-400 shadow-[0_0_15px_#ef4444] animate-pulse' 
-                    : 'bg-white/90 text-slate-500 border-slate-200 backdrop-blur-sm'
-                }
-            `}>
-                {isFeatured ? 'DI CONTROLLO OGGI' : vehicle.checkDay}
-            </div>
+    const VehicleCard = ({ vehicle, isFeatured }: { vehicle: OperationalVehicle, isFeatured?: boolean }) => {
+        const today = getNow();
+        const daysMap = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+        const isTodayCheck = vehicle.checkDay === daysMap[today.getDay()];
 
-            <div className={`
-                ${isFeatured ? 'h-56' : 'h-40'} 
-                bg-slate-100 flex items-center justify-center overflow-hidden relative transition-all
-            `}>
-                {vehicle.photoUrl ? (
-                    <img src={vehicle.photoUrl} alt={vehicle.model} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                ) : (
-                    <span className={`${isFeatured ? 'text-8xl' : 'text-6xl'} filter drop-shadow-md`}>🚒</span>
-                )}
-                <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-4">
-                    <span className="text-xs font-black text-white bg-red-600 px-2 py-0.5 rounded uppercase">{vehicle.type}</span>
+        return (
+            <div 
+                onClick={() => handleSelectVehicle(vehicle)}
+                className={`
+                    bg-white rounded-2xl shadow-md border overflow-hidden flex flex-col group relative cursor-pointer hover:shadow-xl transition-all hover:scale-[1.01]
+                    ${isFeatured ? 'border-red-500 ring-2 ring-red-100 shadow-[0_0_20px_rgba(220,38,38,0.2)]' : 'border-slate-200'}
+                `}
+            >
+                {/* BADGE GIORNO CONTROLLO */}
+                <div className={`
+                    absolute top-3 right-3 z-10 font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-lg border
+                    ${isTodayCheck 
+                        ? 'bg-red-600 text-white border-red-400 shadow-[0_0_15px_#ef4444] animate-pulse' 
+                        : 'bg-white/90 text-slate-500 border-slate-200 backdrop-blur-sm'
+                    }
+                `}>
+                    {isTodayCheck ? 'DI CONTROLLO OGGI' : vehicle.checkDay}
                 </div>
-            </div>
-            
-            <div className="p-5 flex-grow flex flex-col">
-                <div className="flex justify-between items-start">
-                    <h3 className={`${isFeatured ? 'text-2xl' : 'text-lg'} font-black text-slate-800 leading-tight`}>{vehicle.model}</h3>
-                    {isFeatured && <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded font-bold uppercase animate-pulse">Prioritario</span>}
-                </div>
-                
-                <div className="mt-2">
-                    <span className="text-sm font-mono font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 uppercase tracking-wide">
-                        {vehicle.plate}
-                    </span>
-                </div>
-                
-                {vehicle.notes && (
-                    <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                        <p className="text-xs text-slate-500 italic leading-relaxed line-clamp-2">{vehicle.notes}</p>
+
+                <div className={`
+                    ${isFeatured ? 'h-56' : 'h-40'} 
+                    bg-slate-100 flex items-center justify-center overflow-hidden relative transition-all
+                `}>
+                    {vehicle.photoUrl ? (
+                        <img src={vehicle.photoUrl} alt={vehicle.model} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    ) : (
+                        <span className={`${isFeatured ? 'text-8xl' : 'text-6xl'} filter drop-shadow-md`}>🚒</span>
+                    )}
+                    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-4">
+                        <span className="text-xs font-black text-white bg-red-600 px-2 py-0.5 rounded uppercase">{vehicle.type}</span>
                     </div>
-                )}
-                <div className="mt-4 pt-4 border-t border-slate-100 text-center">
-                    <span className="text-xs font-bold text-blue-600 uppercase">Apri Checklist →</span>
+                </div>
+                
+                <div className="p-5 flex-grow flex flex-col">
+                    <div className="flex justify-between items-start">
+                        <h3 className={`${isFeatured ? 'text-2xl' : 'text-lg'} font-black text-slate-800 leading-tight`}>{vehicle.model}</h3>
+                        {isTodayCheck && isFeatured && <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded font-bold uppercase animate-pulse">Prioritario</span>}
+                    </div>
+                    
+                    <div className="mt-2">
+                        <span className="text-sm font-mono font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 uppercase tracking-wide">
+                            {vehicle.plate}
+                        </span>
+                    </div>
+                    
+                    {vehicle.notes && (
+                        <div className="mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                            <p className="text-xs text-slate-500 italic leading-relaxed line-clamp-2">{vehicle.notes}</p>
+                        </div>
+                    )}
+                    <div className="mt-4 pt-4 border-t border-slate-100 text-center">
+                        <span className="text-xs font-bold text-blue-600 uppercase">Apri Checklist →</span>
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
@@ -173,12 +177,16 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
 
             <main className="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full">
                 
-                {/* SEZIONE HERO: MEZZI DI OGGI */}
+                {/* SEZIONE HERO: PROSSIMO MEZZO DA CONTROLLARE (OGGI O FUTURO) */}
                 {featuredVehicles.length > 0 && (
                     <div className="mb-10 animate-fade-in">
                         <div className="flex items-center gap-2 mb-4">
                             <CalendarIcon className="h-5 w-5 text-red-600" />
-                            <h2 className="text-sm font-bold text-red-600 uppercase tracking-widest">Controllo Programmato Oggi</h2>
+                            <h2 className="text-sm font-bold text-red-600 uppercase tracking-widest">
+                                {featuredVehicles[0].checkDay === ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'][getNow().getDay()] 
+                                    ? "Controllo Programmato Oggi" 
+                                    : "Prossimo Controllo Programmato"}
+                            </h2>
                         </div>
                         <div className="flex flex-col gap-6">
                             {featuredVehicles.map(v => (
@@ -190,10 +198,10 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
 
                 {/* GRIGLIA ALTRI MEZZI */}
                 <div>
-                    {featuredVehicles.length > 0 && (
+                    {featuredVehicles.length > 0 && gridVehicles.length > 0 && (
                         <div className="flex items-center gap-2 mb-4 mt-8 pt-8 border-t border-slate-200">
                             <ListIcon className="h-5 w-5 text-slate-400" />
-                            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Altri Mezzi (Prossimi Controlli)</h2>
+                            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Altri Mezzi</h2>
                         </div>
                     )}
                     

@@ -413,11 +413,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         onClick={onSelectInterventions}
                         className="w-full bg-white hover:bg-orange-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.3)] hover:shadow-[0_0_25px_rgba(249,115,22,0.5)] border-2 border-orange-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
                     >
-                        {/* BADGE IN COSTRUZIONE */}
-                        <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[9px] md:text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl shadow-sm z-20 flex items-center gap-1 animate-pulse">
-                            <span>🚧</span> In Costruzione
-                        </div>
-
                         <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🔥
                         </div>
@@ -435,6 +430,11 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         onClick={onSelectOperationalVehicles}
                         className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:shadow-[0_0_25px_rgba(220,38,38,0.5)] border-2 border-red-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
                     >
+                        {/* BADGE IN AGGIORNAMENTO */}
+                        <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[9px] md:text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl shadow-sm z-20 flex items-center gap-1 animate-pulse">
+                            <span>🚧</span> In Aggiornamento
+                        </div>
+
                         <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🚒
                         </div>
@@ -535,7 +535,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar v4.0 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar VVF v4.1 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );
