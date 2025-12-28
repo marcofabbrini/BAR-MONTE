@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { StaffMember, Shift, InterventionTypology, DutyOfficer, Intervention } from '../types';
 import { useBar } from '../contexts/BarContext';
-import { BackArrowIcon, CheckIcon, FireIcon, TrashIcon, PlusIcon, CalendarIcon, ChartBarIcon, TrophyIcon, EditIcon } from './Icons';
+import { BackArrowIcon, CheckIcon, FireIcon, TrashIcon, PlusIcon, CalendarIcon, ChartBarIcon, TrophyIcon, EditIcon, FilterIcon, SortIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 import { GradeBadge } from './StaffManagement';
 
@@ -12,7 +12,21 @@ interface InterventionsViewProps {
     isSuperAdmin?: boolean | null;
 }
 
-const ADDRESS_TYPES = ['Via', 'Viale', 'Piazza', 'Vicolo', 'Corso', 'S.S.', 'S.R.', 'S.P.', 'Loc.', ''];
+const ADDRESS_TYPES = ['Via', 'Viale', 'Piazza', 'Vicolo', 'Corso', 'S.S.', 'S.R.', 'S.P.', 'Loc.', 'Autostrada'];
+
+const MUNICIPALITIES = [
+    'MONTEPULCIANO',
+    'CETONA',
+    'CHIANCIANO TERME',
+    'CHIUSI',
+    'PIENZA',
+    'SARTEANO',
+    'SINALUNGA',
+    'TORRITA DI SIENA',
+    'TREQUANDA',
+    'FOIANO DELLA CHIANA (AR)',
+    'ALTRO...'
+];
 
 const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, isSuperAdmin }) => {
     const { interventions, interventionTypologies, dutyOfficers, addIntervention, updateIntervention, deleteIntervention, permanentDeleteIntervention, getNow } = useBar();
@@ -33,14 +47,22 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
     
     // Address Parts
     const [addressType, setAddressType] = useState('Via');
-    const [streetName, setStreetName] = useState(''); // "Indirizzo o km"
-    const [civicNumber, setCivicNumber] = useState('');
+    const [streetName, setStreetName] = useState(''); // "Indirizzo"
+    const [civicNumber, setCivicNumber] = useState(''); // "Civico o Km"
     
-    const [municipality, setMunicipality] = useState('Montepulciano');
+    const [municipality, setMunicipality] = useState('MONTEPULCIANO');
+    const [isCustomMunicipality, setIsCustomMunicipality] = useState(false); // Per gestire "ALTRO..."
     const [locality, setLocality] = useState('');
 
     const [teamLeaderId, setTeamLeaderId] = useState('');
     const [officerId, setOfficerId] = useState('');
+
+    // FILTER STATE
+    const [showFilters, setShowFilters] = useState(false);
+    const [filterDate, setFilterDate] = useState('');
+    const [filterTypology, setFilterTypology] = useState('');
+    const [filterMunicipality, setFilterMunicipality] = useState('');
+    const [filterLeader, setFilterLeader] = useState('');
 
     // CALCOLO TURNO ATTIVO (Logica condivisa)
     const activeShift = useMemo(() => {
@@ -80,6 +102,17 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         }
         return leaders;
     }, [staff, activeShift]);
+
+    // LISTA FILTRATA
+    const filteredInterventions = useMemo(() => {
+        return interventions.filter(int => {
+            if (filterDate && int.date !== filterDate) return false;
+            if (filterTypology && !int.typology.toLowerCase().includes(filterTypology.toLowerCase())) return false;
+            if (filterMunicipality && !int.municipality.toLowerCase().includes(filterMunicipality.toLowerCase())) return false;
+            if (filterLeader && !int.teamLeaderName.toLowerCase().includes(filterLeader.toLowerCase())) return false;
+            return true;
+        });
+    }, [interventions, filterDate, filterTypology, filterMunicipality, filterLeader]);
 
     // STATISTICHE DASHBOARD (Esclude cancellati)
     const stats = useMemo(() => {
@@ -125,6 +158,8 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         setLocality('');
         setTeamLeaderId('');
         setOfficerId('');
+        setMunicipality('MONTEPULCIANO');
+        setIsCustomMunicipality(false);
         setStep(1);
     };
 
@@ -138,7 +173,16 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         setAddressType(i.addressType || 'Via');
         setStreetName(i.street || '');
         setCivicNumber(i.number || '');
-        setMunicipality(i.municipality || 'Montepulciano');
+        
+        // Handle Municipality Edit
+        if (MUNICIPALITIES.includes(i.municipality.toUpperCase())) {
+            setMunicipality(i.municipality.toUpperCase());
+            setIsCustomMunicipality(false);
+        } else {
+            setMunicipality(i.municipality);
+            setIsCustomMunicipality(true);
+        }
+
         setLocality(i.locality || '');
         setTeamLeaderId(i.teamLeaderId || '');
         // Trova ID funzionario dal nome (se possibile)
@@ -154,12 +198,12 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         if (step === 1) {
             // Step 1: Quando
             if (!date || !exitTime || !returnTime) return alert("Compila tutti i campi orari.");
-            // Rimosso controllo returnTime > exitTime per permettere turni a cavallo mezzanotte
         }
         if (step === 2) {
             // Step 2: Dettagli
             if (!typology) return alert("Seleziona la tipologia.");
-            if (!streetName) return alert("Inserisci il nome della via o i km.");
+            if (!streetName) return alert("Inserisci l'indirizzo.");
+            if (!municipality) return alert("Inserisci il comune.");
         }
         setStep((prev: number) => prev + 1);
     };
@@ -280,23 +324,50 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                             <div className="col-span-1">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Tipo</label>
                                 <select value={addressType} onChange={e => setAddressType(e.target.value)} className="w-full border rounded p-3 bg-white text-xs font-bold outline-none">
-                                    {ADDRESS_TYPES.map(t => <option key={t} value={t}>{t || 'Nessuno'}</option>)}
+                                    {ADDRESS_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                                 </select>
                             </div>
                             <div className="col-span-2">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Indirizzo o km *</label>
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Indirizzo *</label>
                                 <input type="text" value={streetName} onChange={e => setStreetName(e.target.value)} className="w-full border rounded p-3 bg-white text-sm outline-none" placeholder="Nome via" />
                             </div>
                             <div className="col-span-1">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Civico</label>
-                                <input type="text" value={civicNumber} onChange={e => setCivicNumber(e.target.value)} className="w-full border rounded p-3 bg-white text-sm outline-none" placeholder="Nr" />
+                                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Civico/Km</label>
+                                <input type="text" value={civicNumber} onChange={e => setCivicNumber(e.target.value)} className="w-full border rounded p-3 bg-white text-sm outline-none" placeholder="Nr/Km" />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-2">
                             <div>
                                 <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Comune</label>
-                                <input type="text" value={municipality} onChange={e => setMunicipality(e.target.value)} className="w-full border rounded p-3 bg-white outline-none" />
+                                {isCustomMunicipality ? (
+                                    <div className="flex gap-1">
+                                        <input 
+                                            type="text" 
+                                            value={municipality} 
+                                            onChange={e => setMunicipality(e.target.value.toUpperCase())} 
+                                            className="w-full border rounded p-3 bg-white outline-none text-sm font-bold" 
+                                            placeholder="Inserisci comune..."
+                                            autoFocus
+                                        />
+                                        <button onClick={() => { setIsCustomMunicipality(false); setMunicipality('MONTEPULCIANO'); }} className="bg-slate-200 px-2 rounded text-xs">x</button>
+                                    </div>
+                                ) : (
+                                    <select 
+                                        value={municipality} 
+                                        onChange={e => {
+                                            if (e.target.value === 'ALTRO...') {
+                                                setIsCustomMunicipality(true);
+                                                setMunicipality('');
+                                            } else {
+                                                setMunicipality(e.target.value);
+                                            }
+                                        }} 
+                                        className="w-full border rounded p-3 bg-white outline-none text-sm font-bold"
+                                    >
+                                        {MUNICIPALITIES.map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                )}
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Località</label>
@@ -519,11 +590,56 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
 
                 {/* LISTA STORICO AGGIORNATA */}
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
-                        <h3 className="font-bold text-slate-700 uppercase flex items-center gap-2">
-                            <CalendarIcon className="h-5 w-5 text-slate-500"/> Registro Storico
-                        </h3>
-                        <span className="text-xs font-bold bg-white px-2 py-1 rounded text-slate-500 border">{interventions.length} Record</span>
+                    <div className="bg-slate-50 p-4 border-b border-slate-200 flex flex-col gap-4">
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-bold text-slate-700 uppercase flex items-center gap-2">
+                                <CalendarIcon className="h-5 w-5 text-slate-500"/> Registro Storico
+                            </h3>
+                            <div className="flex gap-2 items-center">
+                                <button 
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className={`p-2 rounded-full transition-all ${showFilters ? 'bg-orange-100 text-orange-600 shadow-inner' : 'bg-white text-slate-400 border hover:bg-slate-50'}`}
+                                    title="Filtri"
+                                >
+                                    <FilterIcon className="h-4 w-4" />
+                                </button>
+                                <span className="text-xs font-bold bg-white px-2 py-1 rounded text-slate-500 border">{filteredInterventions.length} Record</span>
+                            </div>
+                        </div>
+
+                        {/* FILTER BAR */}
+                        {showFilters && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 animate-slide-up">
+                                <input 
+                                    type="date" 
+                                    value={filterDate} 
+                                    onChange={e => setFilterDate(e.target.value)} 
+                                    className="border rounded px-2 py-1 text-xs" 
+                                    placeholder="Data"
+                                />
+                                <input 
+                                    type="text" 
+                                    value={filterTypology} 
+                                    onChange={e => setFilterTypology(e.target.value)} 
+                                    className="border rounded px-2 py-1 text-xs" 
+                                    placeholder="Cerca Tipologia..."
+                                />
+                                <input 
+                                    type="text" 
+                                    value={filterMunicipality} 
+                                    onChange={e => setFilterMunicipality(e.target.value)} 
+                                    className="border rounded px-2 py-1 text-xs" 
+                                    placeholder="Cerca Comune..."
+                                />
+                                <input 
+                                    type="text" 
+                                    value={filterLeader} 
+                                    onChange={e => setFilterLeader(e.target.value)} 
+                                    className="border rounded px-2 py-1 text-xs" 
+                                    placeholder="Cerca Capo Partenza..."
+                                />
+                            </div>
+                        )}
                     </div>
                     
                     <div className="overflow-x-auto">
@@ -538,12 +654,10 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {interventions.length === 0 ? (
-                                    <tr><td colSpan={5} className="p-8 text-center text-slate-400 italic">Nessun intervento registrato.</td></tr>
+                                {filteredInterventions.length === 0 ? (
+                                    <tr><td colSpan={5} className="p-8 text-center text-slate-400 italic">Nessun intervento trovato.</td></tr>
                                 ) : (
-                                    interventions.map((int, idx) => {
-                                        // Calcolo Progressivo (Totale - Indice) per avere ordine inverso
-                                        const progNum = interventions.length - idx;
+                                    filteredInterventions.map((int) => {
                                         const shiftColor = {
                                             'a': 'bg-red-100 text-red-700 border-red-200',
                                             'b': 'bg-blue-100 text-blue-700 border-blue-200',
