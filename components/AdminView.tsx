@@ -131,7 +131,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [remText, setRemText] = useState('');
     const [remType, setRemType] = useState<'recurring' | 'spot'>('recurring');
     const [remDay, setRemDay] = useState<number>(1);
-    const [remDate, setRemDate] = useState(new Date().toLocaleDateString('en-CA')); // YYYY-MM-DD local
+    const [remDate, setRemDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD local
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
@@ -306,7 +306,7 @@ const AdminView: React.FC<AdminViewProps> = ({
             alert("Promemoria aggiunto!");
             setRemText('');
             // Reset to today to ensure input is never empty
-            setRemDate(new Date().toLocaleDateString('en-CA'));
+            setRemDate(new Date().toISOString().split('T')[0]);
         } catch(e) {
             console.error(e);
             alert("Errore aggiunta promemoria");

@@ -22,8 +22,13 @@ export const ReminderService = {
     },
 
     addReminder: async (reminder: Omit<Reminder, 'id' | 'createdAt' | 'completedDates'>) => {
+        // Remove undefined fields to prevent Firestore errors
+        const cleanReminder = Object.fromEntries(
+            Object.entries(reminder).filter(([_, v]) => v !== undefined)
+        );
+
         await addDoc(collection(db, 'reminders'), {
-            ...reminder,
+            ...cleanReminder,
             completedDates: [],
             createdAt: new Date().toISOString()
         });
