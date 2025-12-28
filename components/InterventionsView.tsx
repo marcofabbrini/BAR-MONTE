@@ -130,6 +130,34 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         return Array.from(set).sort();
     }, [interventions]);
 
+    // CALCOLO PROGRESSIVI DINAMICI
+    // Mappa ID intervento -> Numero Progressivo per quel turno
+    const progressiveMap = useMemo(() => {
+        const map = new Map<string, number>();
+        const counters: Record<string, number> = { a: 0, b: 0, c: 0, d: 0 };
+
+        // Ordina dal più vecchio al più nuovo per assegnare i numeri 1, 2, 3...
+        // Filtra solo quelli non cancellati per il conteggio
+        const sortedAsc = [...interventions]
+            .filter(i => !i.isDeleted)
+            .sort((a, b) => {
+                const dateA = new Date(a.date).getTime();
+                const dateB = new Date(b.date).getTime();
+                if (dateA !== dateB) return dateA - dateB;
+                return a.exitTime.localeCompare(b.exitTime);
+            });
+
+        sortedAsc.forEach(int => {
+            const s = int.shift ? int.shift.toLowerCase() : 'a';
+            if (counters[s] !== undefined) {
+                counters[s]++;
+                map.set(int.id, counters[s]);
+            }
+        });
+
+        return map;
+    }, [interventions]);
+
     // LISTA FILTRATA
     const filteredInterventions = useMemo(() => {
         return interventions.filter(int => {
@@ -626,7 +654,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                             <div className="flex gap-2 items-center">
                                 <button 
                                     onClick={() => setShowFilters(!showFilters)}
-                                    className={`p-2 rounded-full transition-all ${showFilters ? 'bg-orange-100 text-orange-600 shadow-inner' : 'bg-white text-slate-400 border hover:bg-slate-50'}`}
+                                    className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${showFilters ? 'bg-orange-100 text-orange-600 shadow-inner' : 'bg-white text-slate-400 border hover:bg-slate-50'}`}
                                     title="Filtri"
                                 >
                                     <FilterIcon className="h-4 w-4" />
@@ -696,17 +724,24 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                             'd': 'bg-yellow-100 text-yellow-700 border-yellow-200'
                                         }[int.shift.toLowerCase()] || 'bg-slate-100 text-slate-600';
 
+                                        const progNum = progressiveMap.get(int.id);
+
                                         return (
                                             <tr key={int.id} className={`transition-colors ${int.isDeleted ? 'bg-red-50' : 'hover:bg-orange-50/30'}`}>
                                                 <td className="p-3 text-center align-top">
-                                                    <span className={`text-[10px] font-black uppercase px-2 py-1 rounded border ${shiftColor}`}>
-                                                        {int.shift.toUpperCase()}
-                                                    </span>
+                                                    <div className="flex flex-col items-center gap-1">
+                                                        <span className={`text-[10px] font-black uppercase px-2 py-1 rounded border ${shiftColor}`}>
+                                                            {int.shift.toUpperCase()}
+                                                        </span>
+                                                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 rounded border border-slate-200">
+                                                            N° {progNum}
+                                                        </span>
+                                                    </div>
                                                 </td>
                                                 <td className="p-3 align-top">
                                                     {int.interventionNumber && (
                                                         <div className={`font-mono text-xs font-bold mb-1 ${int.isDeleted ? 'line-through text-red-400' : 'text-slate-800'}`}>
-                                                            #{int.interventionNumber}
+                                                            S.O. Nr. {int.interventionNumber}
                                                         </div>
                                                     )}
                                                     <div className={`text-xs ${int.isDeleted ? 'text-red-400' : 'text-slate-600'}`}>
