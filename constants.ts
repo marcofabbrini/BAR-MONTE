@@ -503,3 +503,123 @@ export const CAPU_VF32356_LOADOUT: Omit<VehicleCompartment, 'id'>[] = [
         ]
     }
 ];
+
+// Standard Loadout ABP VF 22456
+export const ABP_VF22456_LOADOUT: Omit<VehicleCompartment, 'id'>[] = [
+    {
+        name: "ANTERIORE CABINA",
+        items: [
+            { id: '1', name: "TELEPAS n. 0617847348", quantity: 1 },
+            { id: '2', name: "PALETTA SEGNALAZIONE N. 0074", quantity: 1 },
+            { id: '3', name: "PALETTA SEGNALAZIONE N. 0075", quantity: 1 },
+            { id: '4', name: "LIBRETTO CIRCOLAZIONE", quantity: 1 },
+            { id: '5', name: "COPIA CERTIFICATO ASSICURAZIONE", quantity: 1 },
+            { id: '6', name: "COPIA CERTIFICATO REVISIONE", quantity: 1 },
+            { id: '7', name: "CID VVF", quantity: 1 },
+            { id: '8', name: "RADIO VEICOLARE", quantity: 1 },
+            { id: '9', name: "CASETTA PRONTO SOCCORSO", quantity: 1 },
+            { id: '10', name: "TRIANGOLO VEICOLO FERMO", quantity: 1 },
+            { id: '11', name: "TUBO ARIA MEZZI INCIDENTATI", quantity: 1 },
+            { id: '12', name: "CUFFIE ANTIRUMORE", quantity: 1 },
+            { id: '13', name: "CHIAVE A1", quantity: 1 },
+            { id: '14', name: "CONFEZIONE GUANTI IN LATTICE", quantity: 1 }
+        ]
+    },
+    {
+        name: "VANO 1 ANTERIORE SINISTRO",
+        items: [
+            { id: '15', name: "CORDINI", quantity: 2 },
+            { id: '16', name: "CESOIA", quantity: 1 },
+            { id: '17', name: "BADILE", quantity: 1 },
+            { id: '18', name: "PICCONE", quantity: 1 },
+            { id: '19', name: "MARTELLO DA MURATORE", quantity: 1 },
+            { id: '20', name: "PENNATO", quantity: 1 },
+            { id: '21', name: "CASSETTA CON 2 AUTOPROTETTORI E 2 MASCHERE", quantity: 1 },
+            { id: '22', name: "TRIANGOLO OMBRELLO", quantity: 1 },
+            { id: '23', name: "PIEDE DI PORCO GRANDE", quantity: 1 },
+            { id: '24', name: "PIEDE DI PORCO PICCOLO", quantity: 1 },
+            { id: '25', name: "CAVO D'ACCIAIO", quantity: 1 },
+            { id: '26', name: "GRILLI", quantity: 2 },
+            { id: '27', name: "CESOIA DIELETTRICA SICSD011", quantity: 1 },
+            { id: '28', name: "ESTINTORE A POLVERE KG 6", quantity: 1 },
+            { id: '29', name: "ESTINTORE A CO2 KG 5", quantity: 1 },
+            { id: '30', name: "FORCONE", quantity: 1 }
+        ]
+    },
+    {
+        name: "VANO 2 POSTERIORE SINISTRO",
+        items: [
+            { id: '31', name: "MANICHETTA DA 70", quantity: 3 },
+            { id: '32', name: "MANICHETTA DA 45", quantity: 7 },
+            { id: '33', name: "LANCIA GETTO VARIABILE DA 70", quantity: 1 },
+            { id: '34', name: "LANCIA GETTO VARIABILE DA 45", quantity: 1 },
+            { id: '35', name: "COLONNINA IDRANTE DA 45", quantity: 1 },
+            { id: '36', name: "SPEZZONE MANICHETTA DA 70", quantity: 1 },
+            { id: '37', name: "LANCIA REGOLABILE UNIFIRE DA 45", quantity: 1 },
+            { id: '38', name: "DIVISORE 70x45 3 VIE", quantity: 1 },
+            { id: '39', name: "DIVISORE 70x70 2 VIE", quantity: 1 },
+            { id: '40', name: "RIDUTTORE 70/45", quantity: 2 },
+            { id: '41', name: "DIFFUSORE 45/70", quantity: 2 },
+            { id: '42', name: "LANCIA CAVA AWG da 70 + TROMBONCINO", quantity: 1 }
+        ]
+    },
+    {
+        name: "VANO BASSO POSTERIORE SOTTO VANO 2",
+        items: [
+            { id: '43', name: "TUBI ASPIRAZIONE DA 100", quantity: 4 }
+        ]
+    },
+    {
+        name: "VANO POMPA",
+        items: [
+            { id: '44', name: "CHIAVE ASPIRAZIONE", quantity: 2 },
+            { id: '45', name: "CHIAVE DI MANDATA", quantity: 2 },
+            { id: '46', name: "LANCIA SCHIUMA PER NASPO", quantity: 1 },
+            { id: '47', name: "CHIAVE TUBI STORZ", quantity: 2 },
+            { id: '48', name: "SPINOTTO PER GANCIO TRAINO", quantity: 1 }
+        ]
+    },
+    {
+        name: "SOPRA MACCHINA (IMPERIALE)",
+        items: [
+            { id: '49', name: "SCALA ITALIANA", quantity: 1 },
+            { id: '50', name: "CANNONCINO", quantity: 1 }
+        ]
+    },
+    {
+        name: "VANO 3 POSTERIORE DESTRO",
+        items: [
+            { id: '51', name: "MANICHETTA DA 70", quantity: 3 },
+            { id: '52', name: "MANICHETTA DA 45", quantity: 4 },
+            { id: '53', name: "CHIAVI IDRANTI", quantity: 2 },
+            { id: '54', name: "MANICHETTA STORZ DA 38", quantity: 3 },
+            { id: '55', name: "NASPO STORZ", quantity: 1 },
+            { id: '56', name: "LANCIA SCHIUMA PER NASPO STORZ", quantity: 1 },
+            { id: '57', name: "VALVOLA DI FONDO", quantity: 1 },
+            { id: '58', name: "LEVA AVVOLGIMENTO NASPO", quantity: 1 },
+            { id: '59', name: "LANCIA CAVA BLUE DEVIL + TROMBONCINO", quantity: 1 },
+            { id: '60', name: "ADATTATORE SCHIUMA MEDIA ESPANSIONE", quantity: 1 },
+            { id: '61', name: "TUBO PESCAGGIO SCHIUMOGENO", quantity: 2 },
+            { id: '62', name: "DOPPIA FEMMINA DA 45", quantity: 1 },
+            { id: '63', name: "DOPPIA FEMMINA DA 70", quantity: 1 },
+            { id: '64', name: "DOPPIO MASCHIO DA 45", quantity: 1 },
+            { id: '65', name: "DOPPIO MASCHIO DA 70", quantity: 1 },
+            { id: '66', name: "COLONNINA IDRANTE DA 70", quantity: 1 },
+            { id: '67', name: "PREMESCOLATORE DI LINEA DA 45", quantity: 1 }
+        ]
+    },
+    {
+        name: "VANO 4 ANTERIORE DESTRO",
+        items: [
+            { id: '68', name: "CALZATOIA", quantity: 2 },
+            { id: '69', name: "LEVA PER MARTINETTO", quantity: 2 },
+            { id: '70', name: "CHIAVE IDRANTE SOTTOSUOLO", quantity: 1 },
+            { id: '71', name: "LAMPADA PORTATILE SILMP025", quantity: 1 },
+            { id: '72', name: "TREPIEDE PER FARETTO", quantity: 1 },
+            { id: '73', name: "MARTINETTO IDRAULICO", quantity: 1 },
+            { id: '74', name: "CASSETTA ATTREZZI", quantity: 1 },
+            { id: '75', name: "FARETTO PORTATILE", quantity: 2 },
+            { id: '76', name: "COPPIA CATENE DA NEVE + CHIAVE", quantity: 1 }
+        ]
+    }
+];

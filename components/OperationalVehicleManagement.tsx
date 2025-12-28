@@ -2,7 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { OperationalVehicle, OperationalVehicleType, CheckDay, VehicleCompartment } from '../types';
 import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon, BoxIcon, CalendarIcon, ListIcon } from './Icons';
-import { APS_VF30217_LOADOUT, POL_VF29068_LOADOUT, CAPU_VF32356_LOADOUT } from '../constants';
+import { APS_VF30217_LOADOUT, POL_VF29068_LOADOUT, CAPU_VF32356_LOADOUT, ABP_VF22456_LOADOUT } from '../constants';
 
 interface OperationalVehicleManagementProps {
     vehicles: OperationalVehicle[];
@@ -128,6 +128,23 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
             plate: prev.plate || 'VF 32356',
             model: prev.model || 'CA/PU Toyota Hilux',
             type: 'CA/PU',
+            compartments: standardLoadout
+        }));
+    };
+
+    const loadStandardABP = () => {
+        if(!confirm("ATTENZIONE: Questo sostituirà tutti i vani e materiali attuali con l'allestimento standard ABP VF 22456. Continuare?")) return;
+        
+        const standardLoadout: VehicleCompartment[] = JSON.parse(JSON.stringify(ABP_VF22456_LOADOUT)).map((comp: any, index: number) => ({
+            ...comp,
+            id: `std-abp-${index}-${Date.now()}`
+        }));
+
+        setFormData(prev => ({
+            ...prev,
+            plate: prev.plate || 'VF 22456',
+            model: prev.model || 'ABP Iveco',
+            type: 'ABP',
             compartments: standardLoadout
         }));
     };
@@ -340,6 +357,13 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
                                 </button>
                                 <button 
                                     type="button"
+                                    onClick={loadStandardABP}
+                                    className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-blue-200 hover:bg-blue-100 transition-colors flex items-center gap-1"
+                                >
+                                    <ListIcon className="h-3 w-3" /> Load ABP VF 22456
+                                </button>
+                                <button 
+                                    type="button"
                                     onClick={loadStandardPOL}
                                     className="bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-orange-200 hover:bg-orange-100 transition-colors flex items-center gap-1"
                                 >
@@ -355,7 +379,7 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
                                 <button 
                                     type="button" 
                                     onClick={addCompartment}
-                                    className="bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-blue-200 hover:bg-blue-100 transition-colors flex items-center gap-1"
+                                    className="bg-green-50 text-green-600 px-3 py-1.5 rounded-lg text-xs font-bold border border-green-200 hover:bg-green-100 transition-colors flex items-center gap-1"
                                 >
                                     <PlusIcon className="h-3 w-3" /> Aggiungi Vano
                                 </button>
