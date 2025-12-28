@@ -458,7 +458,7 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                         <div className="flex justify-between items-center mb-2 border-b border-stone-100 pb-1">
                                             <span className="text-[10px] font-bold text-stone-400 uppercase">Serie {ticket.id.slice(-4)}</span>
                                             {isSuperAdmin && (
-                                                <button onClick={() => handleSingleDelete(ticket.id)} className="text-red-400 hover:text-red-600">
+                                                <button onClick={() => handleSingleRefund(ticket.id)} className="text-red-400 hover:text-red-600">
                                                     <TrashIcon className="h-3 w-3" />
                                                 </button>
                                             )}
