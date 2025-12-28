@@ -1,9 +1,10 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef, LaundryEntry, Intervention, InterventionTypology, DutyOfficer } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef, LaundryEntry, Intervention, InterventionTypology, DutyOfficer, OperationalVehicle } from '../types';
 import { BarService } from '../services/barService';
 import { VehicleService } from '../services/vehicleService';
 import { InterventionService } from '../services/interventionService';
+import { OperationalVehicleService } from '../services/operationalVehicleService';
 
 interface BarContextType {
     products: Product[];
@@ -17,9 +18,12 @@ interface BarContextType {
     generalSettings: GeneralSettings;
     attendanceRecords: AttendanceRecord[];
     
-    // Vehicles
+    // Vehicles (Booking)
     vehicles: Vehicle[];
     vehicleBookings: VehicleBooking[];
+
+    // Operational Vehicles
+    operationalVehicles: OperationalVehicle[];
 
     // Laundry
     laundryItems: LaundryItemDef[];
@@ -62,12 +66,17 @@ interface BarContextType {
     sendNotification: (title: string, body: string, sender: string) => Promise<void>;
     massDelete: (d: string, t: 'orders'|'movements') => Promise<void>;
     
-    // Vehicle Actions
+    // Vehicle Actions (Booking)
     addVehicle: (v: Omit<Vehicle, 'id'>) => Promise<void>;
     updateVehicle: (v: Vehicle) => Promise<void>;
     deleteVehicle: (id: string) => Promise<void>;
     addBooking: (b: Omit<VehicleBooking, 'id' | 'timestamp'>) => Promise<void>;
     deleteBooking: (id: string) => Promise<void>;
+
+    // Operational Vehicle Actions
+    addOperationalVehicle: (v: Omit<OperationalVehicle, 'id'>) => Promise<void>;
+    updateOperationalVehicle: (v: OperationalVehicle) => Promise<void>;
+    deleteOperationalVehicle: (id: string) => Promise<void>;
 
     // Laundry Actions
     addLaundryItem: (i: Omit<LaundryItemDef, 'id'>) => Promise<void>;
@@ -105,6 +114,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [vehicleBookings, setVehicleBookings] = useState<VehicleBooking[]>([]);
+    const [operationalVehicles, setOperationalVehicles] = useState<OperationalVehicle[]>([]);
     const [laundryItems, setLaundryItems] = useState<LaundryItemDef[]>([]);
     const [laundryEntries, setLaundryEntries] = useState<LaundryEntry[]>([]);
     const [interventions, setInterventions] = useState<Intervention[]>([]);
@@ -162,6 +172,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             BarService.subscribeToLaundryEntries(setLaundryEntries),
             VehicleService.subscribeToVehicles(setVehicles),
             VehicleService.subscribeToBookings(setVehicleBookings),
+            OperationalVehicleService.subscribeToVehicles(setOperationalVehicles),
             InterventionService.subscribeToInterventions(setInterventions),
             InterventionService.subscribeToTypologies(setInterventionTypologies),
             InterventionService.subscribeToOfficers(setDutyOfficers),
@@ -215,12 +226,17 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const sendNotification = (t: string, b: string, s: string) => BarService.sendNotification(t, b, s);
     const massDelete = (d: string, t: 'orders'|'movements') => BarService.massDelete(d, t);
 
-    // Vehicle Functions
+    // Vehicle Functions (Booking)
     const addVehicle = (v: Omit<Vehicle, 'id'>) => VehicleService.addVehicle(v);
     const updateVehicle = (v: Vehicle) => VehicleService.updateVehicle(v);
     const deleteVehicle = (id: string) => VehicleService.deleteVehicle(id);
     const addBooking = (b: Omit<VehicleBooking, 'id' | 'timestamp'>) => VehicleService.addBooking(b);
     const deleteBooking = (id: string) => VehicleService.deleteBooking(id);
+
+    // Operational Vehicle Functions
+    const addOperationalVehicle = (v: Omit<OperationalVehicle, 'id'>) => OperationalVehicleService.addVehicle(v);
+    const updateOperationalVehicle = (v: OperationalVehicle) => OperationalVehicleService.updateVehicle(v);
+    const deleteOperationalVehicle = (id: string) => OperationalVehicleService.deleteVehicle(id);
 
     // Laundry Functions
     const addLaundryItem = (i: Omit<LaundryItemDef, 'id'>) => BarService.addLaundryItem(i);
@@ -242,11 +258,12 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return (
         <BarContext.Provider value={{
             products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
-            vehicles, vehicleBookings, laundryItems, laundryEntries, interventions, interventionTypologies, dutyOfficers,
+            vehicles, vehicleBookings, operationalVehicles, laundryItems, laundryEntries, interventions, interventionTypologies, dutyOfficers,
             addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
             addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
             addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
             addVehicle, updateVehicle, deleteVehicle, addBooking, deleteBooking,
+            addOperationalVehicle, updateOperationalVehicle, deleteOperationalVehicle,
             addLaundryItem, updateLaundryItem, deleteLaundryItem, addLaundryEntry, deleteLaundryEntry,
             addIntervention, updateIntervention, deleteIntervention, permanentDeleteIntervention, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer,
             getNow

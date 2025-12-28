@@ -14,7 +14,8 @@ interface TillSelectionProps {
     onSelectAttendance: () => void;
     onSelectFleet: () => void;
     onSelectLaundry: () => void;
-    onSelectInterventions: () => void; // New Prop
+    onSelectInterventions: () => void; 
+    onSelectOperationalVehicles: () => void; // NEW PROP
     tillColors: TillColors;
     seasonalityConfig?: SeasonalityConfig;
     shiftSettings?: ShiftSettings;
@@ -29,7 +30,7 @@ interface WeatherData {
     weathercode: number;
 }
 
-const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification }) => {
+const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, onSelectOperationalVehicles, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification }) => {
     
     // Context for Reliable Time
     const { getNow } = useBar();
@@ -429,24 +430,19 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                     </button>
 
-                    {/* 1. MEZZI OPERATIVI (ARANCIONE GLOW - DISATTIVATO) */}
+                    {/* 1. MEZZI OPERATIVI (ENABLED NOW) */}
                     <button 
-                        disabled
-                        className="w-full bg-white opacity-80 cursor-not-allowed text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.6)] border-2 border-orange-500 animate-pulse p-6 relative overflow-hidden h-32 md:h-40 flex items-center justify-center"
+                        onClick={onSelectOperationalVehicles}
+                        className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:shadow-[0_0_25px_rgba(220,38,38,0.5)] border-2 border-red-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
                     >
-                        {/* BADGE IN COSTRUZIONE */}
-                        <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[9px] md:text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl shadow-sm z-20 flex items-center gap-1 animate-pulse">
-                            <span>🚧</span> In Costruzione
-                        </div>
-
-                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 transform rotate-[-10deg] filter grayscale-0 pointer-events-none">
+                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🚒
                         </div>
                         <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
-                            <span className="text-5xl md:text-7xl filter drop-shadow-sm">🚒</span>
+                            <span className="text-5xl md:text-7xl filter drop-shadow-sm group-hover:scale-110 transition-transform">🚒</span>
                             <div className="flex flex-col items-center md:items-start">
-                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-orange-600">Mezzi Operativi</span>
-                                <span className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">Gestione Caricamenti (Presto Disponibile)</span>
+                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-red-700 group-hover:text-red-600 transition-colors">Mezzi Operativi</span>
+                                <span className="text-[10px] md:text-xs font-bold text-red-400 uppercase tracking-wider">Checklist & Controlli</span>
                             </div>
                         </div>
                     </button>

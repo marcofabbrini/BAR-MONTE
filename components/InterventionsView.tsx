@@ -59,6 +59,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
 
     // FILTER STATE
     const [showFilters, setShowFilters] = useState(false);
+    const [filterNumber, setFilterNumber] = useState('');
     const [filterDate, setFilterDate] = useState('');
     const [filterTypology, setFilterTypology] = useState('');
     const [filterMunicipality, setFilterMunicipality] = useState('');
@@ -166,9 +167,10 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
             if (filterTypology && !int.typology.toLowerCase().includes(filterTypology.toLowerCase())) return false;
             if (filterMunicipality && !int.municipality.toLowerCase().includes(filterMunicipality.toLowerCase())) return false;
             if (filterLeader && !int.teamLeaderName.toLowerCase().includes(filterLeader.toLowerCase())) return false;
+            if (filterNumber && (!int.interventionNumber || !int.interventionNumber.toLowerCase().includes(filterNumber.toLowerCase()))) return false;
             return true;
         });
-    }, [interventions, filterDate, filterTypology, filterMunicipality, filterLeader]);
+    }, [interventions, filterDate, filterTypology, filterMunicipality, filterLeader, filterNumber]);
 
     // STATISTICHE DASHBOARD (Esclude cancellati)
     const stats = useMemo(() => {
@@ -665,7 +667,14 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
 
                         {/* FILTER BAR (DROPDOWNS) */}
                         {showFilters && (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 animate-slide-up">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 animate-slide-up">
+                                <input
+                                    type="text"
+                                    value={filterNumber}
+                                    onChange={e => setFilterNumber(e.target.value)}
+                                    className="border rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-orange-200"
+                                    placeholder="Cerca Nr. S.O."
+                                />
                                 <input 
                                     type="date" 
                                     value={filterDate} 

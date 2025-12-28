@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { signInWithPopup, signOut, onAuthStateChanged, type User } from 'firebase/auth';
+import firebase from 'firebase/compat/app'; // For types
 import TillSelection from './components/TillSelection';
 import TillView from './components/TillView';
 import ReportsView from './components/ReportsView';
@@ -15,6 +15,7 @@ import ShiftCalendar from './components/ShiftCalendar';
 import AttendanceCalendar from './components/AttendanceCalendar';
 import InteractiveModelViewer from './components/InteractiveModelViewer';
 import VehicleBookingView from './components/VehicleBookingView';
+import OperationalVehiclesView from './components/OperationalVehiclesView';
 import LaundryView from './components/LaundryView';
 import InterventionsView from './components/InterventionsView';
 import { TILLS } from './constants';
@@ -23,14 +24,14 @@ import { AnalottoProvider, useAnalotto } from './contexts/AnalottoContext';
 import { TombolaProvider, useTombola } from './contexts/TombolaContext';
 import { BarProvider, useBar } from './contexts/BarContext';
 
-type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice' | 'attendance_view' | '3d_viewer' | 'vehicle_booking' | 'laundry' | 'interventions';
+type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice' | 'attendance_view' | '3d_viewer' | 'vehicle_booking' | 'operational_vehicles' | 'laundry' | 'interventions';
 
 const AppContent: React.FC = () => {
     const [view, setView] = useState<View>('selection');
     const [selectedTillId, setSelectedTillId] = useState<string | null>(null);
     
     // Auth State
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [currentUser, setCurrentUser] = useState<firebase.User | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
 
     // --- CONTEXT HOOKS ---
@@ -39,7 +40,8 @@ const AppContent: React.FC = () => {
         addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
         addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
         addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
-        vehicles, vehicleBookings, addBooking, deleteBooking
+        vehicles, vehicleBookings, addBooking, deleteBooking,
+        operationalVehicles
     } = useBar();
 
     const { 
@@ -69,7 +71,7 @@ const AppContent: React.FC = () => {
 
     // Auth Listener
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        const unsubscribe = auth.onAuthStateChanged(async (user) => {
             setCurrentUser(user);
             if (user && user.email) {
                 try {
@@ -106,8 +108,8 @@ const AppContent: React.FC = () => {
         await sendNotification("TOMBOLA INIZIATA! 🎟️", "L'estrazione è partita. Corri a controllare la tua cartella!", "Sistema");
     };
 
-    const handleGoogleLogin = async () => { try { await signInWithPopup(auth, googleProvider); } catch (e: any) { alert("Login fallito: " + e.message); } };
-    const handleLogout = async () => { try { await signOut(auth); setView('selection'); } catch (e) { console.error(e); } };
+    const handleGoogleLogin = async () => { try { await auth.signInWithPopup(googleProvider); } catch (e: any) { alert("Login fallito: " + e.message); } };
+    const handleLogout = async () => { try { await auth.signOut(); setView('selection'); } catch (e) { console.error(e); } };
 
     const renderContent = () => {
         if (isLoading) return <div className="flex items-center justify-center min-h-dvh"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
@@ -165,6 +167,7 @@ const AppContent: React.FC = () => {
                 onDeleteBooking={deleteBooking}
                 isSuperAdmin={isSuperAdmin}
             />;
+            case 'operational_vehicles': return <OperationalVehiclesView onGoBack={() => setView('selection')} />;
             case 'laundry': return <LaundryView onGoBack={() => setView('selection')} staff={staff} />;
             case 'interventions': return <InterventionsView onGoBack={() => setView('selection')} staff={staff} isSuperAdmin={isSuperAdmin} />;
             case 'admin': return <AdminView 
@@ -194,6 +197,7 @@ const AppContent: React.FC = () => {
                 onSelectFleet={() => setView('vehicle_booking')}
                 onSelectLaundry={() => setView('laundry')}
                 onSelectInterventions={() => setView('interventions')}
+                onSelectOperationalVehicles={() => setView('operational_vehicles')}
                 tillColors={tillColors} 
                 seasonalityConfig={seasonalityConfig} 
                 shiftSettings={shiftSettings} 

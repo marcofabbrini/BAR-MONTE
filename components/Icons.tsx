@@ -90,3 +90,4 @@ export const PaletteIcon = (props: IconProps) => <EmojiIcon emoji="🎨" {...pro
 export const WhatsAppIcon = (props: IconProps) => <EmojiIcon emoji="💬" {...props} />;
 export const ShirtIcon = (props: IconProps) => <EmojiIcon emoji="👕" {...props} />;
 export const FireIcon = (props: IconProps) => <EmojiIcon emoji="🔥" {...props} />;
+export const WrenchIcon = (props: IconProps) => <EmojiIcon emoji="🔧" {...props} />;

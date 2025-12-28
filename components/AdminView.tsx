@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef } from '../types';
-import { type User } from 'firebase/auth';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon } from './Icons';
+import firebase from 'firebase/compat/app';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon, WrenchIcon, TruckIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -10,6 +10,7 @@ import CashManagement from './CashManagement';
 import GamesHub from './GamesHub';
 import ShiftCalendar from './ShiftCalendar';
 import VehicleManagement from './VehicleManagement';
+import OperationalVehicleManagement from './OperationalVehicleManagement';
 import LaundryManagement from './LaundryManagement';
 import { useBar } from '../contexts/BarContext';
 import { DEFAULT_INTERVENTION_TYPES } from '../constants';
@@ -42,7 +43,7 @@ interface AdminViewProps {
     onMassDelete: (date: string, type: 'orders' | 'movements') => Promise<void>;
     
     isAuthenticated: boolean;
-    currentUser: User | null;
+    currentUser: firebase.User | null;
     onLogin: () => void;
     onLogout: () => void;
     adminList: AdminUser[];
@@ -69,7 +70,7 @@ interface AdminViewProps {
     onSendNotification?: (title: string, body: string, target?: string) => Promise<void>;
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet' | 'laundry'; 
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet' | 'operational_fleet' | 'laundry'; 
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
@@ -88,6 +89,7 @@ const AdminView: React.FC<AdminViewProps> = ({
 }) => {
     // Access Context methods
     const { vehicles, addVehicle, updateVehicle, deleteVehicle } = useBar();
+    const { operationalVehicles, addOperationalVehicle, updateOperationalVehicle, deleteOperationalVehicle } = useBar();
     const { laundryItems, addLaundryItem, updateLaundryItem, deleteLaundryItem } = useBar();
     const { interventionTypologies, dutyOfficers, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer } = useBar();
 
@@ -340,7 +342,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                     </div>
                     
                     {/* GRIGLIA NAVIGAZIONE AGGIORNATA */}
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-10 gap-2 w-full overflow-x-auto">
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-11 gap-2 w-full overflow-x-auto">
                         <TabButton tab="movements" label="Movimenti" icon={<ListIcon />} />
                         <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon />} />
                         <TabButton tab="stock" label="Stock" icon={<BoxIcon />} />
@@ -349,6 +351,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="staff" label="Staff" icon={<StaffIcon />} />
                         <TabButton tab="admins" label="Admin" icon={<LockIcon />} />
                         <TabButton tab="fleet" label="Automezzi" icon={<CarIcon />} />
+                        <TabButton tab="operational_fleet" label="Mezzi Op." icon={<TruckIcon />} />
                         <TabButton tab="laundry" label="Lavanderia" icon={<ShirtIcon />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon />} />
                     </div>
@@ -412,6 +415,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
                 {activeTab === 'calendar' && <ShiftCalendar onGoBack={() => {}} tillColors={tillColors} shiftSettings={shiftSettings} />} 
                 {activeTab === 'fleet' && <VehicleManagement vehicles={vehicles} onAddVehicle={addVehicle} onUpdateVehicle={updateVehicle} onDeleteVehicle={deleteVehicle} />}
+                {activeTab === 'operational_fleet' && <OperationalVehicleManagement vehicles={operationalVehicles} onAddVehicle={addOperationalVehicle} onUpdateVehicle={updateOperationalVehicle} onDeleteVehicle={deleteOperationalVehicle} />}
                 {activeTab === 'laundry' && <LaundryManagement items={laundryItems} onAddItem={addLaundryItem} onUpdateItem={updateLaundryItem} onDeleteItem={deleteLaundryItem} />}
                 
                 {activeTab === 'settings' && (

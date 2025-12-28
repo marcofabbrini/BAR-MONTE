@@ -129,7 +129,7 @@ export interface AnalottoExtraction {
 }
 // ====================
 
-// === GESTIONE AUTOPARCO ===
+// === GESTIONE AUTOPARCO (PRENOTAZIONI) ===
 export interface Vehicle {
     id: string;
     plate: string;
@@ -157,6 +157,21 @@ export interface VehicleBooking {
     serviceType: 'Sostituzione personale' | 'Missione' | 'Servizio Comando' | 'Altro';
     destination: string;
     timestamp: string; // Booking creation time
+}
+// ==========================
+
+// === MEZZI OPERATIVI (CHECKLIST) ===
+export type OperationalVehicleType = 'APS' | 'ABP' | 'POL' | 'CA/PU' | 'AV' | 'AF' | 'RIBA' | 'CARRELLO' | 'ALTRO';
+export type CheckDay = 'Lunedì' | 'Martedì' | 'Mercoledì' | 'Giovedì' | 'Venerdì';
+
+export interface OperationalVehicle {
+    id: string;
+    plate: string;
+    type: OperationalVehicleType;
+    model: string;
+    checkDay: CheckDay;
+    notes?: string;
+    photoUrl?: string;
 }
 // ==========================
 

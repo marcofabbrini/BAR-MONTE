@@ -1,7 +1,7 @@
 
-import { initializeApp } from "firebase/app";
+import firebase from "firebase/compat/app";
+import "firebase/compat/auth";
 import { getFirestore } from "firebase/firestore";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDVs7kbp_O6oMZ8AetE03S6Wu6cywL_ca0",
@@ -13,14 +13,14 @@ const firebaseConfig = {
   measurementId: "G-F5NHE0PFSK"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// Initialize Firebase (Compat)
+const app = firebase.initializeApp(firebaseConfig);
 
-// Initialize Firestore
+// Initialize Firestore (Modular - compatible with compat app instance)
 const db = getFirestore(app);
 
-// Initialize Auth
-const auth = getAuth(app);
-const googleProvider = new GoogleAuthProvider();
+// Initialize Auth (Compat)
+const auth = firebase.auth();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
 
 export { db, auth, googleProvider };
