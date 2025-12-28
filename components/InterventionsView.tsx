@@ -542,9 +542,11 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
             <header className="bg-orange-600 text-white p-4 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)]">
                 <button 
                     onClick={onGoBack} 
-                    className="flex items-center gap-2 font-bold text-white/90 hover:text-white bg-orange-700/40 px-4 py-2 rounded-full hover:bg-orange-700/60 transition-colors backdrop-blur-sm"
+                    className="flex items-center gap-2 font-bold text-white/90 hover:text-white transition-colors"
                 >
-                    <BackArrowIcon className="h-5 w-5" /> 
+                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                        <BackArrowIcon className="h-5 w-5" />
+                    </div>
                     <span className="text-sm hidden md:inline">Indietro</span>
                 </button>
                 

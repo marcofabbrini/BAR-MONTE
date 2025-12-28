@@ -229,7 +229,10 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
             <header className="bg-red-900 text-yellow-100 p-3 shadow-2xl sticky top-0 z-50 border-b-4 border-yellow-600 mt-[env(safe-area-inset-top)]">
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <button onClick={onGoBack} className="flex items-center gap-1 font-bold hover:text-white transition-colors">
-                        <BackArrowIcon className="h-5 w-5" /> Esci
+                        <div className="w-10 h-10 rounded-full bg-red-800/50 flex items-center justify-center">
+                            <BackArrowIcon className="h-5 w-5" />
+                        </div>
+                        <span className="text-sm hidden md:inline">Esci</span>
                     </button>
                     <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest flex items-center gap-2 drop-shadow-md text-yellow-400" style={{ textShadow: '2px 2px 0px #7f1d1d' }}>
                         <span className="text-3xl">🎟️</span> Tombola VVF
@@ -423,87 +426,76 @@ const TombolaView: React.FC<TombolaViewProps> = ({ onGoBack, config, tickets, wi
                                     
                                     <div className="flex gap-3 justify-center items-center bg-stone-50 p-3 rounded-xl border border-stone-100">
                                         <div className="flex gap-2">
-                                            <button onClick={() => setBuyQuantity(1)} className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold text-sm border-2 transition-all ${buyQuantity===1 ? 'bg-amber-500 text-white border-amber-600 shadow-md transform -translate-y-0.5' : 'bg-white text-stone-400 border-stone-200'}`}>1</button>
-                                            <button onClick={() => setBuyQuantity(6)} className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold text-sm border-2 transition-all ${buyQuantity===6 ? 'bg-amber-500 text-white border-amber-600 shadow-md transform -translate-y-0.5' : 'bg-white text-stone-400 border-stone-200'}`}>6</button>
+                                            <button onClick={() => setBuyQuantity(1)} className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold text-sm border-2 transition-all ${buyQuantity===1 ? 'bg-amber-400 text-white border-amber-600' : 'bg-white text-stone-400 border-stone-200'}`}>1</button>
+                                            <button onClick={() => setBuyQuantity(6)} className={`w-10 h-10 flex items-center justify-center rounded-lg font-bold text-sm border-2 transition-all ${buyQuantity===6 ? 'bg-amber-400 text-white border-amber-600' : 'bg-white text-stone-400 border-stone-200'}`}>6</button>
                                         </div>
-                                        <button onClick={handleBuy} className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-black text-xs uppercase shadow-md active:translate-y-0.5 transition-all">
-                                            Compra
-                                        </button>
+                                        <span className="text-xs font-bold text-stone-400 uppercase">Cartelle</span>
                                     </div>
-                                </div>
 
-                                {/* LISTA CARTELLE REALISTICHE */}
-                                <div className="w-full max-w-md space-y-6">
-                                    {myTickets.map((ticket, idx) => {
-                                        const style = getTicketStyle(ticket.playerId);
-                                        return (
-                                            <div 
-                                                key={ticket.id} 
-                                                className="relative p-3 rounded-lg shadow-xl transform transition-transform hover:scale-[1.02] border-b-4"
-                                                style={{ 
-                                                    backgroundColor: style.backgroundColor, 
-                                                    borderColor: style.borderColor 
-                                                }}
-                                            >
-                                                {/* Header Cartella */}
-                                                <div 
-                                                    className="flex justify-between items-center mb-2 px-2 py-1 rounded text-white shadow-sm"
-                                                    style={{ backgroundColor: style.headerBg }}
-                                                >
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-lg filter drop-shadow-sm">{selectedStaffMember?.icon}</span>
-                                                        <span className="font-bold text-xs uppercase tracking-widest text-white">{selectedStaffMember?.name}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-mono opacity-90">#{ticket.id.slice(-4)}</span>
-                                                        {isSuperAdmin && config.status === 'pending' && (
-                                                            <button onClick={() => handleSingleRefund(ticket.id)} className="bg-black/20 hover:bg-black/40 text-white p-1 rounded transition-colors">
-                                                                <TrashIcon className="h-3 w-3" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                
-                                                {/* Corpo Cartella (Sfondo chiaro) */}
-                                                <div className="bg-white rounded shadow-inner p-1">
-                                                    {/* Griglia Numeri */}
-                                                    <div className="border border-stone-300">
-                                                        {formatTicketToGrid(ticket.numbers).map((row, rIdx) => (
-                                                            <div key={rIdx} className="grid grid-cols-9 bg-stone-300 gap-px border-b border-stone-300 last:border-b-0">
-                                                                {row.map((num, cIdx) => (
-                                                                    <div key={cIdx} className="aspect-[4/3] bg-white relative flex items-center justify-center">
-                                                                        {num !== null ? (
-                                                                            <>
-                                                                                <span className="text-sm md:text-base font-bold text-stone-800 z-0 font-sans">{num}</span>
-                                                                                {/* Segnalino numero estratto (Plastica rossa trasparente) */}
-                                                                                {extractedNumbersSafe.includes(num) && (
-                                                                                    <div className="absolute inset-0.5 bg-red-500/60 rounded-full shadow-sm z-10 backdrop-blur-[1px] border border-red-600/50"></div>
-                                                                                )}
-                                                                            </>
-                                                                        ) : (
-                                                                            // Cella vuota decorativa
-                                                                            <div className="w-full h-full bg-stone-100 opacity-50 pattern-diagonal-lines"></div>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                    
-                                    {myTickets.length === 0 && (
-                                        <div className="text-center p-8 bg-white/50 rounded-xl border-2 border-dashed border-stone-300">
-                                            <p className="text-stone-400 font-bold">Nessuna cartella acquistata</p>
-                                        </div>
-                                    )}
+                                    <button 
+                                        onClick={handleBuy}
+                                        className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl shadow-lg border-b-4 border-green-800 active:border-b-0 active:translate-y-1 transition-all mt-4 uppercase tracking-widest text-sm flex items-center justify-center gap-2"
+                                    >
+                                        Acquista {buyQuantity} per €{(config?.ticketPriceSingle || 0) * buyQuantity}
+                                    </button>
                                 </div>
                             </div>
                         )}
                     </div>
                 </div>
+
+                {/* MY TICKETS GRID */}
+                {selectedStaffId && (
+                    <div className="mt-8 animate-fade-in">
+                        <h3 className="text-center font-bold text-stone-600 uppercase text-xs mb-4 divider flex items-center justify-center gap-2 before:h-px before:bg-stone-300 before:flex-grow after:h-px after:bg-stone-300 after:flex-grow">
+                            Le tue Cartelle ({myTickets.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {myTickets.map((ticket, idx) => (
+                                <div key={ticket.id} className="relative group perspective-1000">
+                                    <div className="bg-white p-3 rounded-xl shadow-md border-t-8 relative overflow-hidden" style={{ borderTopColor: getTicketStyle(ticket.playerId).headerBg }}>
+                                        {/* Ticket Header */}
+                                        <div className="flex justify-between items-center mb-2 border-b border-stone-100 pb-1">
+                                            <span className="text-[10px] font-bold text-stone-400 uppercase">Serie {ticket.id.slice(-4)}</span>
+                                            {isSuperAdmin && (
+                                                <button onClick={() => handleSingleDelete(ticket.id)} className="text-red-400 hover:text-red-600">
+                                                    <TrashIcon className="h-3 w-3" />
+                                                </button>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Grid */}
+                                        <div className="grid grid-rows-3 gap-1 bg-stone-100 p-1 rounded-lg border border-stone-200">
+                                            {formatTicketToGrid(ticket.numbers).map((row, rIdx) => (
+                                                <div key={rIdx} className="grid grid-cols-9 gap-1">
+                                                    {row.map((num, cIdx) => (
+                                                        <div 
+                                                            key={cIdx} 
+                                                            className={`
+                                                                aspect-square flex items-center justify-center text-[10px] sm:text-xs font-bold rounded
+                                                                ${num !== null 
+                                                                    ? (extractedNumbersSafe.includes(num) 
+                                                                        ? 'bg-red-500 text-white shadow-sm scale-105' 
+                                                                        : 'bg-white text-stone-800 border border-stone-200')
+                                                                    : 'bg-transparent'}
+                                                            `}
+                                                        >
+                                                            {num}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {myTickets.length === 0 && (
+                                <p className="col-span-full text-center text-stone-400 italic text-sm">Nessuna cartella acquistata.</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+
             </main>
         </div>
     );

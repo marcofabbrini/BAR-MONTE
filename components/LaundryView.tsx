@@ -148,9 +148,11 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
             <header className="bg-blue-600 text-white p-4 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)] print:hidden">
                 <button 
                     onClick={onGoBack} 
-                    className="flex items-center gap-2 font-bold text-white/90 hover:text-white bg-blue-700/40 px-4 py-2 rounded-full hover:bg-blue-700/60 transition-colors backdrop-blur-sm"
+                    className="flex items-center gap-2 font-bold text-white/90 hover:text-white transition-colors"
                 >
-                    <BackArrowIcon className="h-5 w-5" /> 
+                    <div className="w-10 h-10 rounded-full bg-blue-700/40 flex items-center justify-center">
+                        <BackArrowIcon className="h-5 w-5" />
+                    </div>
                     <span className="text-sm hidden md:inline">Indietro</span>
                 </button>
                 
