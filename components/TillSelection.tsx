@@ -405,22 +405,23 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     })}
                 </div>
 
-                {/* --- 2. SEZIONE CENTRALE: GRIGLIA FUNZIONALE A 2 COLONNE --- */}
-                <div className="w-full md:w-3/4 lg:w-2/3 px-4 grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* --- 2. SEZIONE CENTRALE: GRIGLIA FUNZIONALE A 2 COLONNE FISSE --- */}
+                {/* FIXED: grid-cols-2 instead of grid-cols-1 md:grid-cols-2 */}
+                <div className="w-full md:w-3/4 lg:w-2/3 px-4 grid grid-cols-2 gap-3 md:gap-4 mb-4">
                     
                     {/* 1. INTERVENTI (ARANCIONE) */}
                     <button 
                         onClick={onSelectInterventions}
-                        className="w-full bg-white hover:bg-orange-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.3)] hover:shadow-[0_0_25px_rgba(249,115,22,0.5)] border-2 border-orange-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
+                        className="w-full bg-white hover:bg-orange-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.3)] hover:shadow-[0_0_25px_rgba(249,115,22,0.5)] border-2 border-orange-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
                     >
-                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                        <div className="absolute -bottom-8 -right-8 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🔥
                         </div>
-                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
-                            <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🔥</span>
-                            <div className="flex flex-col items-center md:items-start">
-                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-orange-600 transition-colors">INTERVENTI</span>
-                                <span className="text-[10px] md:text-xs font-bold text-orange-500 uppercase tracking-wider">Registro Interventi</span>
+                        <div className="relative z-10 flex flex-col items-center justify-center gap-2">
+                            <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🔥</span>
+                            <div className="flex flex-col items-center">
+                                <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-orange-600 transition-colors">INTERVENTI</span>
+                                <span className="text-[9px] md:text-xs font-bold text-orange-500 uppercase tracking-wider hidden md:block">Registro Interventi</span>
                             </div>
                         </div>
                     </button>
@@ -428,38 +429,38 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     {/* 2. MEZZI OPERATIVI (ROSSO) */}
                     <button 
                         onClick={onSelectOperationalVehicles}
-                        className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:shadow-[0_0_25px_rgba(220,38,38,0.5)] border-2 border-red-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
+                        className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:shadow-[0_0_25px_rgba(220,38,38,0.5)] border-2 border-red-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
                     >
                         {/* BADGE IN AGGIORNAMENTO */}
-                        <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[9px] md:text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl shadow-sm z-20 flex items-center gap-1 animate-pulse">
-                            <span>🚧</span> In Aggiornamento
+                        <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[8px] md:text-[9px] font-black uppercase px-2 py-0.5 rounded-bl-lg shadow-sm z-20 flex items-center gap-1 animate-pulse">
+                            <span>🚧</span> In Agg.
                         </div>
 
-                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                        <div className="absolute -bottom-8 -right-8 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🚒
                         </div>
-                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
-                            <span className="text-5xl md:text-7xl filter drop-shadow-sm group-hover:scale-110 transition-transform">🚒</span>
-                            <div className="flex flex-col items-center md:items-start">
-                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-red-700 group-hover:text-red-600 transition-colors">Mezzi Operativi</span>
-                                <span className="text-[10px] md:text-xs font-bold text-red-400 uppercase tracking-wider">Checklist & Controlli</span>
+                        <div className="relative z-10 flex flex-col items-center justify-center gap-2">
+                            <span className="text-4xl md:text-5xl filter drop-shadow-sm group-hover:scale-110 transition-transform">🚒</span>
+                            <div className="flex flex-col items-center">
+                                <span className="font-black text-sm md:text-xl uppercase tracking-widest text-red-700 group-hover:text-red-600 transition-colors">Mezzi VVF</span>
+                                <span className="text-[9px] md:text-xs font-bold text-red-400 uppercase tracking-wider hidden md:block">Checklist & Controlli</span>
                             </div>
                         </div>
                     </button>
 
-                    {/* 3. PRENOTAZIONE MEZZI (ROSSO) */}
+                    {/* 3. PRENOTAZIONE MEZZI (ROSSO SCURO/AUTO) */}
                     <button 
                         onClick={onSelectFleet}
-                        className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.2)] hover:shadow-[0_0_25px_rgba(220,38,38,0.4)] border-2 border-red-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
+                        className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.2)] hover:shadow-[0_0_25px_rgba(220,38,38,0.4)] border-2 border-red-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
                     >
-                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                        <div className="absolute -bottom-8 -right-8 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🚗
                         </div>
-                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
-                            <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🚗</span>
-                            <div className="flex flex-col items-center md:items-start">
-                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-red-600 transition-colors">Prenotazione Mezzi</span>
-                                <span className="text-[10px] md:text-xs font-bold text-red-400 uppercase tracking-wider">Gestione Parco Auto</span>
+                        <div className="relative z-10 flex flex-col items-center justify-center gap-2">
+                            <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🚗</span>
+                            <div className="flex flex-col items-center">
+                                <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-red-600 transition-colors">Autoparco</span>
+                                <span className="text-[9px] md:text-xs font-bold text-red-400 uppercase tracking-wider hidden md:block">Prenotazioni</span>
                             </div>
                         </div>
                     </button>
@@ -467,38 +468,38 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     {/* 4. LAVANDERIA (BLU) */}
                     <button 
                         onClick={onSelectLaundry}
-                        className="w-full bg-white hover:bg-blue-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border-2 border-blue-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
+                        className="w-full bg-white hover:bg-blue-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border-2 border-blue-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
                     >
-                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                        <div className="absolute -bottom-8 -right-8 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🫧
                         </div>
-                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
-                            <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🫧</span>
-                            <div className="flex flex-col items-center md:items-start">
-                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-blue-600 transition-colors">Lavanderia</span>
-                                <span className="text-[10px] md:text-xs font-bold text-blue-400 uppercase tracking-wider">Consegna & Ritiro Capi</span>
+                        <div className="relative z-10 flex flex-col items-center justify-center gap-2">
+                            <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🫧</span>
+                            <div className="flex flex-col items-center">
+                                <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-blue-600 transition-colors">Lavanderia</span>
+                                <span className="text-[9px] md:text-xs font-bold text-blue-400 uppercase tracking-wider hidden md:block">Consegna Capi</span>
                             </div>
                         </div>
                     </button>
 
-                    {/* 5. EXTRA HUB (VERDE) - FULL WIDTH */}
+                    {/* 5. EXTRA HUB (VERDE) - FULL WIDTH (COL-SPAN-2) */}
                     <button 
                         onClick={onSelectGames}
-                        className="col-span-1 md:col-span-2 w-full bg-white hover:bg-green-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] border-2 border-green-50 p-6 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 md:h-40 flex items-center justify-center"
+                        className="col-span-2 w-full bg-white hover:bg-green-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] border-2 border-green-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
                     >
                         {tombolaNumberCount > 0 && (
                             <div className="absolute top-4 right-4 bg-red-600 text-white text-xs font-black w-6 h-6 flex items-center justify-center rounded-full shadow-md animate-bounce z-20 border-2 border-white">
                                 {tombolaNumberCount}
                             </div>
                         )}
-                        <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                        <div className="absolute -bottom-8 -right-8 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🎮
                         </div>
-                        <div className="relative z-10 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-6">
-                            <span className="text-5xl md:text-7xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🎮</span>
-                            <div className="flex flex-col items-center md:items-start">
-                                <span className="font-black text-xl md:text-3xl uppercase tracking-widest text-slate-800 group-hover:text-green-600 transition-colors">Extra Hub</span>
-                                <span className="text-[10px] md:text-xs font-bold text-green-500 uppercase tracking-wider">Intrattenimento</span>
+                        <div className="relative z-10 flex flex-col items-center justify-center gap-2">
+                            <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🎮</span>
+                            <div className="flex flex-col items-center">
+                                <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-green-600 transition-colors">Extra Hub</span>
+                                <span className="text-[9px] md:text-xs font-bold text-green-500 uppercase tracking-wider hidden md:block">Intrattenimento</span>
                             </div>
                         </div>
                     </button>

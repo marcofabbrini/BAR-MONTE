@@ -196,7 +196,7 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                     </div>
                 )}
 
-                {/* GRIGLIA ALTRI MEZZI */}
+                {/* GRIGLIA ALTRI MEZZI - FIXED 2 COLUMNS */}
                 <div>
                     {featuredVehicles.length > 0 && gridVehicles.length > 0 && (
                         <div className="flex items-center gap-2 mb-4 mt-8 pt-8 border-t border-slate-200">
@@ -205,8 +205,8 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                         </div>
                     )}
                     
-                    {/* FIXED: Enforce 2 columns even on mobile (grid-cols-2) */}
-                    <div className="grid grid-cols-2 gap-4 md:gap-6">
+                    {/* IMPORTO GRID-COLS-2 ANCHE SU MOBILE */}
+                    <div className="grid grid-cols-2 gap-3 md:gap-6">
                         {gridVehicles.map(v => (
                             <VehicleCard key={v.id} vehicle={v} />
                         ))}
