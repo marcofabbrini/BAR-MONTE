@@ -522,23 +522,27 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 {allReminders.length > 0 && !hidePostIt && (
                     <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
                         <div className="bg-yellow-200 p-6 rounded-xl shadow-[5px_5px_15px_rgba(0,0,0,0.15)] relative transform rotate-1 transition-transform hover:rotate-0">
-                            {/* Titolo spostato a SINISTRA, Font Fuzzy Bubbles */}
-                            <h3 className="text-slate-800 text-[23px] mb-4 uppercase tracking-wide text-left pl-2 font-normal leading-none" style={{ fontFamily: '"Fuzzy Bubbles", cursive' }}>
+                            {/* Titolo spostato a SINISTRA, Font Fuzzy Bubbles, Bold, Tighter spacing, Smaller */}
+                            <h3 className="text-slate-900 text-[20px] mb-4 uppercase tracking-tighter text-left pl-2 font-bold leading-none" style={{ fontFamily: '"Fuzzy Bubbles", cursive' }}>
                                 Da fare:
                             </h3>
-                            <div className="space-y-3 flex flex-col">
+                            <div className="space-y-2 flex flex-col">
                                 {allReminders.map(rem => (
                                     <div key={rem.id} className="flex items-start gap-3 group w-full text-left">
-                                        {/* Button a SINISTRA */}
+                                        {/* Button a SINISTRA - Quadratino bordo nero */}
                                         <button 
                                             onClick={() => handleReminderClick(rem)}
-                                            className={`w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all cursor-pointer ${rem.isDone ? 'bg-green-500 border-green-500 text-white' : 'border-slate-400 text-transparent hover:border-slate-600'}`}
+                                            className={`
+                                                w-5 h-5 border-2 border-slate-900 flex-shrink-0 flex items-center justify-center 
+                                                transition-all cursor-pointer rounded-[4px] bg-white/10 hover:bg-white/30
+                                                ${rem.isDone ? 'text-slate-900' : 'text-transparent'}
+                                            `}
                                         >
-                                            <CheckIcon className="h-4 w-4" />
+                                            <CheckIcon className="h-4 w-4" strokeWidth={4} />
                                         </button>
-                                        {/* Testo a DESTRA */}
+                                        {/* Testo a DESTRA - Smaller, Tighter spacing */}
                                         <span 
-                                            className={`text-[22px] text-slate-800 flex-grow leading-tight ${rem.isDone ? 'line-through opacity-50 decoration-2 decoration-slate-500' : ''}`}
+                                            className={`text-[18px] text-slate-800 flex-grow leading-tight tracking-tight ${rem.isDone ? 'line-through opacity-60 decoration-2 decoration-slate-800' : ''}`}
                                             style={{ fontFamily: '"Fuzzy Bubbles", cursive' }}
                                         >
                                             {rem.text}
