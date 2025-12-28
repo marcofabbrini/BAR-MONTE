@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { StaffMember, Shift, InterventionTypology, DutyOfficer } from '../types';
 import { useBar } from '../contexts/BarContext';
@@ -116,9 +117,13 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
 
     const handleSubmit = async () => {
         if (!teamLeaderId) return alert("Seleziona il Capo Partenza.");
-        // Officer ID optional fallback if list is empty
-        const finalOfficerId = officerId || (dutyOfficers.length > 0 ? dutyOfficers[0].id : 'unknown'); 
-        const finalOfficerName = dutyOfficers.find(o => o.id === officerId)?.name || 'N/D';
+        
+        // Risoluzione Nome Funzionario
+        let finalOfficerName = 'N/D';
+        if (officerId) {
+            const officer = dutyOfficers.find(o => o.id === officerId);
+            if (officer) finalOfficerName = officer.name;
+        }
 
         const leader = staff.find(s => s.id === teamLeaderId);
         
@@ -147,6 +152,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
             setStreet('');
             setNumber('');
             setLocality('');
+            setTypology('');
             // Keep TeamLeader sticky for convenience
             
             alert("Intervento registrato con successo!");

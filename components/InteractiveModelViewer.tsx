@@ -9,6 +9,19 @@ import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { BackArrowIcon } from './Icons';
 import * as THREE from 'three';
 
+// Augment JSX.IntrinsicElements to include Three.js elements
+declare global {
+    namespace JSX {
+        interface IntrinsicElements {
+            mesh: any;
+            group: any;
+            meshStandardMaterial: any;
+            meshBasicMaterial: any;
+            sphereGeometry: any;
+        }
+    }
+}
+
 // --- TIPI ---
 interface Zone {
     id: string;
@@ -174,7 +187,7 @@ const InteractiveModelViewer: React.FC<InteractiveModelViewerProps> = ({ onGoBac
                         <Canvas shadows camera={{ position: [50, 50, 50], fov: 50 }}>
                             <Suspense fallback={<Loader />}>
                                 <Stage environment="city" intensity={0.6}>
-                                    <Model url={fileUrl} type={fileType} onModelClick={handleModelClick} />
+                                    <Model key={fileUrl} url={fileUrl} type={fileType} onModelClick={handleModelClick} />
                                 </Stage>
                                 {zones.map(zone => (
                                     <Hotspot key={zone.id} zone={zone} onClick={handleZoneClick} />

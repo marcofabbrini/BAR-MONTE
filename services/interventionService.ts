@@ -19,9 +19,17 @@ export const InterventionService = {
     
     subscribeToInterventions: (onUpdate: (data: Intervention[]) => void) => {
         // Ultimi 200 interventi
-        const q = query(collection(db, 'interventions'), orderBy('date', 'desc'), orderBy('exitTime', 'desc'), limit(200));
+        // FIX: Rimosso orderBy secondario 'exitTime' per evitare errore "Requires Index" di Firestore
+        const q = query(collection(db, 'interventions'), orderBy('date', 'desc'), limit(200));
         return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => {
-            onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as Intervention)));
+            const items = s.docs.map(d => ({ ...d.data(), id: d.id } as Intervention));
+            // Ordinamento lato client per Data + Ora Uscita
+            items.sort((a, b) => {
+                const dateDiff = b.date.localeCompare(a.date);
+                if (dateDiff !== 0) return dateDiff;
+                return b.exitTime.localeCompare(a.exitTime);
+            });
+            onUpdate(items);
         });
     },
 
