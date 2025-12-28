@@ -523,18 +523,18 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
                         <div className="bg-yellow-200 p-6 rounded-xl shadow-[5px_5px_15px_rgba(0,0,0,0.15)] relative transform rotate-1 transition-transform hover:rotate-0">
                             {/* Titolo spostato a SINISTRA, Font Fuzzy Bubbles, Bold, Tighter spacing, Smaller */}
-                            <h3 className="text-slate-900 text-[20px] mb-4 uppercase tracking-tighter text-left pl-2 font-bold leading-none" style={{ fontFamily: '"Fuzzy Bubbles", cursive' }}>
+                            <h3 className="text-slate-900 text-xl mb-4 uppercase tracking-tighter text-left pl-2 font-bold leading-none" style={{ fontFamily: '"Fuzzy Bubbles", cursive' }}>
                                 Da fare:
                             </h3>
                             <div className="space-y-2 flex flex-col">
                                 {allReminders.map(rem => (
                                     <div key={rem.id} className="flex items-start gap-3 group w-full text-left">
-                                        {/* Button a SINISTRA - Quadratino bordo nero */}
+                                        {/* Button a SINISTRA - Quadratino bordo scuro */}
                                         <button 
                                             onClick={() => handleReminderClick(rem)}
                                             className={`
-                                                w-5 h-5 border-2 border-slate-900 flex-shrink-0 flex items-center justify-center 
-                                                transition-all cursor-pointer rounded-[4px] bg-white/10 hover:bg-white/30
+                                                w-5 h-5 border-2 border-slate-800 flex-shrink-0 flex items-center justify-center 
+                                                transition-all cursor-pointer rounded-md bg-white/10 hover:bg-white/30
                                                 ${rem.isDone ? 'text-slate-900' : 'text-transparent'}
                                             `}
                                         >
@@ -542,7 +542,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                         </button>
                                         {/* Testo a DESTRA - Smaller, Tighter spacing */}
                                         <span 
-                                            className={`text-[18px] text-slate-800 flex-grow leading-tight tracking-tight ${rem.isDone ? 'line-through opacity-60 decoration-2 decoration-slate-800' : ''}`}
+                                            className={`text-lg text-slate-800 flex-grow leading-tight tracking-tight ${rem.isDone ? 'line-through opacity-60 decoration-2 decoration-slate-800' : ''}`}
                                             style={{ fontFamily: '"Fuzzy Bubbles", cursive' }}
                                         >
                                             {rem.text}

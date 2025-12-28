@@ -252,7 +252,19 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
             clearOrder();
         } catch (error: any) {
             console.error("Error completing order: ", error);
-            alert(`Errore nel completamento dell'ordine: ${error.message || 'Errore sconosciuto'}. Riprova.`);
+            
+            // Gestione Specifica Quota Exceeded (Fix iPhone)
+            let msg = error.message || 'Errore sconosciuto';
+            if (msg.includes("Quota exceeded")) {
+                if(window.confirm("ERRORE MEMORIA PIENA (Quota Exceeded).\n\nQuesto errore indica che la cache locale del browser è piena. Vuoi svuotare la cache e ricaricare l'app per risolvere?")) {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                    window.location.reload();
+                    return;
+                }
+            }
+
+            alert(`Errore nel completamento dell'ordine: ${msg}. Riprova.`);
             setIsCartOpen(true); // Reopen if failed
         }
     }, [currentOrder, cartTotal, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder, clearOrder, getNow]);

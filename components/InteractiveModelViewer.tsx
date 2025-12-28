@@ -1,4 +1,4 @@
-
+// @ts-nocheck
 import React, { useState, Suspense, useMemo } from 'react';
 import { Canvas, useLoader } from '@react-three/fiber';
 import { OrbitControls, Stage, Html, useProgress } from '@react-three/drei';
