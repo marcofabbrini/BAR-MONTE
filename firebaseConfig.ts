@@ -1,7 +1,7 @@
 
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
-import { initializeFirestore, memoryLocalCache } from "firebase/firestore";
+import { initializeFirestore, memoryLocalCache, memoryLruGarbageCollector } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDVs7kbp_O6oMZ8AetE03S6Wu6cywL_ca0",
@@ -17,10 +17,15 @@ const firebaseConfig = {
 const app = firebase.initializeApp(firebaseConfig);
 
 // Initialize Firestore (Modular)
-// CRITICAL FIX: Use memoryLocalCache. persistentLocalCache causes "Quota Exceeded" on mobile devices with low storage.
+// CRITICAL FIX: Use memoryLocalCache with LRU Garbage Collector.
+// This prevents "Quota Exceeded" by not writing to disk (IndexedDB) and keeps RAM usage managed.
 const db = initializeFirestore(app, {
-  localCache: memoryLocalCache(),
-  experimentalForceLongPolling: true // Helps with "Could not reach backend" on restricted networks
+  localCache: memoryLocalCache({
+    garbageCollector: memoryLruGarbageCollector({
+        sizeBytes: 5 * 1024 * 1024 // Limit cache to 5MB
+    })
+  }),
+  experimentalForceLongPolling: true 
 });
 
 // Initialize Auth (Compat)

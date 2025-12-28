@@ -1,18 +1,18 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, AnalottoWheel, TombolaConfig, TombolaTicket, AttendanceRecord, GeneralSettings, AttendanceStatus } from '../types';
+import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, TombolaConfig, TombolaTicket, AttendanceRecord, GeneralSettings, AttendanceStatus } from '../types';
 import { VVF_GRADES } from '../constants';
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
 import ProductCard from './ProductCard';
-import { BackArrowIcon, UsersIcon, CheckIcon, CloverIcon, TicketIcon, LockIcon, EyeIcon, ClipboardIcon, DropletIcon } from './Icons';
+import { BackArrowIcon, UsersIcon, DropletIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 import { GradeBadge } from './StaffManagement';
 
 interface TillViewProps {
     till: Till;
     onGoBack: () => void;
-    onRedirectToAttendance: () => void; // New prop for redirection
+    onRedirectToAttendance: () => void;
     products: Product[];
     allStaff: StaffMember[];
     allOrders: Order[];
@@ -38,17 +38,11 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
     // PRESENZE STATE
     const [presentStaffIds, setPresentStaffIds] = useState<string[]>([]);
     
-    // --- CALCOLO DATA OPERATIVA PER LE PRESENZE ---
-    // Logica Aggiornata per SMONTANTE:
-    // 1. Calcoliamo il turno di GIORNO effettivo di OGGI (08:00 - 20:00).
-    // 2. Il turno SMONTANTE (che ha fatto la notte ieri 20:00 -> oggi 08:00) è 2 posizioni indietro nel ciclo A->B->C->D.
-    //    Esempio: Se oggi è 25/12 (Turno C di Giorno), allora il turno Smontante stamattina è A.
-    // 3. Se sto aprendo la cassa del turno Smontante E sono prima delle 11:00, la data è IERI.
+    // CALCOLO DATA OPERATIVA
     const operativeDateStr = useMemo(() => {
         const now = getNow();
         const currentHour = now.getHours();
         
-        // Calcolo turno Giorno di OGGI per riferimento
         const anchorDate = new Date(2025, 11, 20, 12, 0, 0); // 20 Dic 2025 = B
         const anchorShift = 'b';
         
@@ -61,27 +55,20 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         const shifts = ['a', 'b', 'c', 'd'];
         const anchorIndex = shifts.indexOf(anchorShift);
         
-        // Indice del turno che fa GIORNO oggi
         let dayShiftIndex = (anchorIndex + diffDays) % 4;
         if (dayShiftIndex < 0) dayShiftIndex += 4;
         
-        // Indice del turno SMONTANTE (quello che ha finito la notte stamattina alle 8)
-        // Se la rotazione è Giorno A -> Notte A -> Giorno B -> Notte B...
-        // Allora la notte di ieri (che smonta oggi) corrisponde a (GiornoOggi - 2).
         let smontanteShiftIndex = (dayShiftIndex - 2 + 4) % 4;
-        const smontanteShiftCode = shifts[smontanteShiftIndex]; // 'a', 'b', 'c', o 'd'
+        const smontanteShiftCode = shifts[smontanteShiftIndex];
 
         const isSmontanteTill = till.shift.toLowerCase() === smontanteShiftCode;
 
-        // Estensione validità: Dalle 00:00 alle 11:00 (8:00 fine turno + 3h tolleranza)
-        // Se sto guardando la cassa del turno Smontante, mi riferisco a IERI.
         if (isSmontanteTill && currentHour < 11) {
              const yesterday = new Date(now);
              yesterday.setDate(yesterday.getDate() - 1);
              return yesterday.toISOString().split('T')[0];
         }
 
-        // Altrimenti OGGI
         return now.toISOString().split('T')[0];
     }, [getNow, till.shift]);
 
@@ -89,14 +76,12 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         attendanceRecords?.find(r => r.date === operativeDateStr && r.tillId === till.id),
     [attendanceRecords, operativeDateStr, till.id]);
     
-    // STRICT MODE: Turno deve essere CHIUSO (validato) per operare
     const isShiftValidated = !!existingAttendanceRecord?.closedAt;
 
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
     const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift), [allStaff, till.shift]);
     
-    // Load attendance from validated record only
     useEffect(() => {
         if (isShiftValidated && existingAttendanceRecord) {
             setPresentStaffIds(existingAttendanceRecord.presentStaffIds);
@@ -105,16 +90,13 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         }
     }, [isShiftValidated, existingAttendanceRecord]);
 
-    // Ordinamento Staff: "Cassa" -> Grado (Alto->Basso) -> Alfabetico
     const sortedStaffForShift = useMemo(() => {
         return [...staffForShift].sort((a, b) => {
-            // 1. Priorità Cassa
             const aIsCassa = a.name.toLowerCase().includes('cassa');
             const bIsCassa = b.name.toLowerCase().includes('cassa');
             if (aIsCassa && !bIsCassa) return -1;
             if (!aIsCassa && bIsCassa) return 1;
 
-            // 2. Priorità Grado (Indice più alto = Grado più alto)
             const getRank = (gradeId?: string) => {
                 if (!gradeId) return -1;
                 return VVF_GRADES.findIndex(g => g.id === gradeId);
@@ -124,10 +106,9 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
             const rankB = getRank(b.grade);
             
             if (rankA !== rankB) {
-                return rankB - rankA; // Decrescente (CRE prima di VIG)
+                return rankB - rankA;
             }
 
-            // 3. Alfabetico
             return a.name.localeCompare(b.name);
         });
     }, [staffForShift]);
@@ -142,7 +123,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         return tillOrders;
     }, [allOrders, till.id, selectedStaffId]);
 
-    // POPOLARITÀ PRODOTTI
     const productPopularity = useMemo(() => {
         const counts: Record<string, number> = {};
         allOrders.forEach(order => {
@@ -170,12 +150,9 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
     const cartTotal = useMemo(() => currentOrder.reduce((sum, item) => sum + item.product.price * item.quantity, 0), [currentOrder]);
     const cartItemCount = useMemo(() => currentOrder.reduce((sum, item) => sum + item.quantity, 0), [currentOrder]);
 
-    // Calcolo Quote Acqua (Mese di Riferimento della Data Operativa)
     const waterData = useMemo(() => {
         if (!attendanceRecords) return { quotas: [], totalCount: 0, totalValue: 0 };
         
-        // FIX: Usa la data operativa (operativeDateStr) come riferimento per il mese, non la data odierna.
-        // Se sto guardando lo smontante del 31 Gennaio il 1 Febbraio, voglio vedere i dati di Gennaio.
         const refDate = new Date(operativeDateStr);
         const currentMonth = refDate.getMonth();
         const currentYear = refDate.getFullYear();
@@ -191,15 +168,11 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                     const isSameMonth = d.getMonth() === currentMonth && d.getFullYear() === currentYear;
                     if (!isSameMonth) return false;
 
-                    // --- LOGICA SPECIALE STATUS (FIX) ---
-                    // Se abbiamo i dettagli, controlliamo se lo status è "Pagante" (Presente o Sostituzione)
                     if (r.attendanceDetails && r.attendanceDetails[member.id]) {
                         const status = r.attendanceDetails[member.id];
-                        // Presente (P), Sostituzione (S, S1, S2, S3) pagano l'acqua.
                         return ['present', 'substitution', 'sub1', 'sub2', 'sub3'].includes(status);
                     }
 
-                    // Fallback per record vecchi
                     return r.presentStaffIds.includes(member.id);
                 }).length;
                 
@@ -241,31 +214,42 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         const newOrder: Omit<Order, 'id'> = {
             items: currentOrder.map(item => ({ product: item.product, quantity: item.quantity })),
             total: cartTotal,
-            timestamp: getNow().toISOString(), // Use Reliable Time
+            timestamp: getNow().toISOString(),
             staffId: selectedStaffId,
             staffName: selectedStaffMember?.name,
             tillId: till.id,
         };
         try {
-            setIsCartOpen(false); // Close UI immediately for better UX
+            setIsCartOpen(false); 
             await onCompleteOrder(newOrder);
             clearOrder();
         } catch (error: any) {
             console.error("Error completing order: ", error);
             
-            // Gestione Specifica Quota Exceeded (Fix iPhone)
+            // AGGRESSIVE STORAGE CLEANUP FOR QUOTA EXCEEDED
             let msg = error.message || 'Errore sconosciuto';
             if (msg.includes("Quota exceeded")) {
-                if(window.confirm("ERRORE MEMORIA PIENA (Quota Exceeded).\n\nQuesto errore indica che la cache locale del browser è piena. Vuoi svuotare la cache e ricaricare l'app per risolvere?")) {
-                    localStorage.clear();
-                    sessionStorage.clear();
+                if(window.confirm("ERRORE MEMORIA PIENA (Quota Exceeded).\n\nQuesto errore indica che la cache locale del browser è corrotta o piena.\n\nPremi OK per eseguire una PULIZIA PROFONDA e riavviare l'app.")) {
+                    try {
+                        localStorage.clear();
+                        sessionStorage.clear();
+                        // Attempt to clear IndexedDB databases
+                        if (window.indexedDB && window.indexedDB.databases) {
+                            const dbs = await window.indexedDB.databases();
+                            for (const db of dbs) {
+                                if (db.name) window.indexedDB.deleteDatabase(db.name);
+                            }
+                        }
+                    } catch(e) {
+                        console.error("Cleanup failed", e);
+                    }
                     window.location.reload();
                     return;
                 }
             }
 
             alert(`Errore nel completamento dell'ordine: ${msg}. Riprova.`);
-            setIsCartOpen(true); // Reopen if failed
+            setIsCartOpen(true);
         }
     }, [currentOrder, cartTotal, selectedStaffId, selectedStaffMember, till.id, onCompleteOrder, clearOrder, getNow]);
 
@@ -285,51 +269,6 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
     };
 
-    const handleQuickAnalotto = async (amount: number) => {
-        if (!selectedStaffId) {
-            alert("Seleziona prima un utente per giocare.");
-            return;
-        }
-        if (!onPlaceAnalottoBet) return;
-
-        try {
-            await onPlaceAnalottoBet({
-                playerId: selectedStaffId,
-                playerName: selectedStaffMember?.name || 'Utente',
-                amount: amount,
-                status: 'pending',
-                numbers: [],
-                wheels: []
-            });
-            alert("Ticket Analotto acquistato! Completalo nella sezione Extra Hub.");
-        } catch (error) {
-            console.error(error);
-            alert("Errore durante l'acquisto del ticket.");
-        }
-    };
-
-    const handleQuickTombola = async (quantity: number) => {
-        if (!selectedStaffId) {
-            alert("Seleziona prima un utente per giocare.");
-            return;
-        }
-        if (!onBuyTombolaTicket || !tombolaTickets) return;
-
-        const currentTickets = tombolaTickets.filter(t => t.playerId === selectedStaffId).length;
-        if (currentTickets + quantity > 18) {
-            alert(`Limite raggiunto! L'utente ha già ${currentTickets} cartelle. Il massimo è 18.`);
-            return;
-        }
-
-        try {
-            await onBuyTombolaTicket(selectedStaffId, quantity);
-            alert(`Acquisto confermato: ${quantity} cartella/e!`);
-        } catch (error: any) {
-            console.error(error);
-            alert("Errore acquisto Tombola: " + (error.message || 'Sconosciuto'));
-        }
-    };
-
     return (
         <div className="flex flex-col min-h-dvh bg-slate-50 md:flex-row relative">
             
@@ -337,26 +276,15 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
             {!isShiftValidated && (
                 <div className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center animate-bounce-slow border-b-8 border-red-500">
-                        <div className="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <ClipboardIcon className="h-10 w-10 text-red-500" />
-                        </div>
                         <h2 className="text-2xl font-black text-slate-800 uppercase mb-2">Presenze Mancanti</h2>
                         <p className="text-slate-600 mb-8">
                             Prima di aprire la cassa, devi inserire e <b>VALIDARE</b> le presenze del turno di riferimento ({new Date(operativeDateStr).toLocaleDateString()}).
                         </p>
-                        
                         <div className="flex flex-col gap-3">
-                            <button 
-                                onClick={onRedirectToAttendance}
-                                className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
-                            >
-                                <UsersIcon className="h-5 w-5" />
-                                Vai a Gestione Presenze
+                            <button onClick={onRedirectToAttendance} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                                <UsersIcon className="h-5 w-5" /> Vai a Gestione Presenze
                             </button>
-                            <button 
-                                onClick={onGoBack}
-                                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold py-3 rounded-xl transition-all"
-                            >
+                            <button onClick={onGoBack} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold py-3 rounded-xl transition-all">
                                 Torna Indietro
                             </button>
                         </div>
@@ -383,10 +311,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                     
                     <div className="flex items-center gap-2 h-8">
                         {selectedStaffId && selectedStaffMember && (
-                            <button 
-                                onClick={handleStaffDeselection}
-                                className="hidden md:flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-full pr-3 pl-1 py-1 transition-all animate-fade-in h-full mr-2"
-                            >
+                            <button onClick={handleStaffDeselection} className="hidden md:flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-full pr-3 pl-1 py-1 transition-all animate-fade-in h-full mr-2">
                                 <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs shadow-sm text-slate-800 overflow-hidden border border-white/50">
                                     {selectedStaffMember.photoUrl ? (
                                         <img src={selectedStaffMember.photoUrl} className="w-full h-full object-cover" />
@@ -397,12 +322,9 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                 <span className="font-bold text-xs">{selectedStaffMember.name}</span>
                             </button>
                         )}
-                        
                         <div className="flex items-center gap-2 bg-white/90 rounded-lg px-3 py-1 shadow-sm h-full border border-white/50">
                             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                            <span className="text-[10px] font-black uppercase tracking-wide text-slate-800 flex items-center h-full">
-                                Turno {till.shift}
-                            </span>
+                            <span className="text-[10px] font-black uppercase tracking-wide text-slate-800 flex items-center h-full">Turno {till.shift}</span>
                         </div>
                     </div>
                 </header>
@@ -426,51 +348,25 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                         <div className={`grid grid-cols-4 sm:grid-cols-6 gap-4 p-4 rounded-xl ${!selectedStaffId ? 'animate-red-pulse' : ''}`}>
                                             {sortedStaffForShift.map(staff => {
                                                 const isCassa = staff.name.toLowerCase().includes('cassa');
-                                                
-                                                // --- NUOVA LOGICA VISIBILITÀ (STRICT) ---
                                                 let isVisiblyPresent = false;
                                                 
                                                 if (existingAttendanceRecord?.attendanceDetails) {
-                                                    // Se esiste il record dettagliato, controlliamo lo status
                                                     const status = existingAttendanceRecord.attendanceDetails[staff.id];
-                                                    // VISIBILE SOLO SE: Presente (P) o Sostituzione (S, S1, S2, S3)
                                                     isVisiblyPresent = ['present', 'substitution', 'sub1', 'sub2', 'sub3'].includes(status);
-                                                    
-                                                    // Eccezione: Mostra sempre "Cassa" se salvata (fallback di sicurezza)
-                                                    if (isCassa && existingAttendanceRecord.presentStaffIds.includes(staff.id)) {
-                                                        isVisiblyPresent = true;
-                                                    }
+                                                    if (isCassa && existingAttendanceRecord.presentStaffIds.includes(staff.id)) isVisiblyPresent = true;
                                                 } else {
-                                                    // Fallback per record vecchi (Legacy): usa lista generica
                                                     isVisiblyPresent = presentStaffIds.includes(staff.id);
                                                 }
 
                                                 if (!isVisiblyPresent) return null;
                                                 
                                                 return (
-                                                    <button 
-                                                        key={staff.id} 
-                                                        onClick={() => handleStaffSelection(staff.id)}
-                                                        className={`group flex flex-col items-center gap-2 transition-all cursor-pointer`}
-                                                    >
-                                                        {/* FIXED AVATAR CONTAINER */}
+                                                    <button key={staff.id} onClick={() => handleStaffSelection(staff.id)} className={`group flex flex-col items-center gap-2 transition-all cursor-pointer`}>
                                                         <div className="relative w-16 h-16 flex-shrink-0 group-hover:scale-105 transition-transform mx-auto">
-                                                            <div className={`
-                                                                w-full h-full rounded-full overflow-hidden flex items-center justify-center text-2xl border-2 shadow-md
-                                                                ${isCassa ? 'bg-primary border-primary-dark text-white' : 'bg-white border-slate-100 group-hover:border-primary'}
-                                                            `}>
-                                                                {staff.photoUrl ? (
-                                                                    <img src={staff.photoUrl} alt={staff.name} className="w-full h-full object-cover rounded-full" />
-                                                                ) : (
-                                                                    <span className="pb-1">{staff.icon || getInitials(staff.name)}</span>
-                                                                )}
+                                                            <div className={`w-full h-full rounded-full overflow-hidden flex items-center justify-center text-2xl border-2 shadow-md ${isCassa ? 'bg-primary border-primary-dark text-white' : 'bg-white border-slate-100 group-hover:border-primary'}`}>
+                                                                {staff.photoUrl ? <img src={staff.photoUrl} alt={staff.name} className="w-full h-full object-cover rounded-full" /> : <span className="pb-1">{staff.icon || getInitials(staff.name)}</span>}
                                                             </div>
-                                                            {/* VISUAL BADGE */}
-                                                            {!isCassa && staff.grade && (
-                                                                <div className="absolute -top-1 -right-1 z-20">
-                                                                    <GradeBadge grade={staff.grade} />
-                                                                </div>
-                                                            )}
+                                                            {!isCassa && staff.grade && <div className="absolute -top-1 -right-1 z-20"><GradeBadge grade={staff.grade} /></div>}
                                                         </div>
                                                         <span className="text-[10px] font-bold text-slate-600 group-hover:text-primary truncate w-full text-center">{staff.name.split(' ')[0]}</span>
                                                     </button>
@@ -507,15 +403,13 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                         )}
                         {activeTab === 'history' && (
                             <div className="max-w-3xl mx-auto bg-white/90 backdrop-blur rounded-2xl p-4 shadow-sm border border-slate-100">
-                                {/* ... History content ... */}
                                 {!selectedStaffId && waterData.quotas.length > 0 && (
                                     <div className="mb-6 bg-blue-50/50 rounded-2xl border border-blue-200/60 p-5 relative overflow-hidden shadow-sm">
                                         <div className="relative z-10">
                                             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-4 border-b border-blue-200 pb-2">
                                                 <div>
                                                     <h4 className="text-sm font-black text-blue-900 uppercase tracking-wider flex items-center gap-2">
-                                                        <DropletIcon className="h-5 w-5 text-blue-500" /> 
-                                                        Riepilogo Acqua
+                                                        <DropletIcon className="h-5 w-5 text-blue-500" /> Riepilogo Acqua
                                                     </h4>
                                                     <p className="text-[10px] text-blue-600 font-bold mt-1 uppercase">
                                                         {new Date(operativeDateStr).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
@@ -539,12 +433,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                                             </div>
                                                             <span className="text-xs font-bold text-slate-700 truncate pr-6">{user.name}</span>
                                                             <div className="mt-2 flex justify-between items-end">
-                                                                <span className="text-[9px] text-slate-400 font-bold uppercase">
-                                                                    Presenze
-                                                                </span>
-                                                                <span className="text-sm font-black text-blue-700">
-                                                                    €{user.value.toFixed(2)}
-                                                                </span>
+                                                                <span className="text-[9px] text-slate-400 font-bold uppercase">Presenze</span>
+                                                                <span className="text-sm font-black text-blue-700">€{user.value.toFixed(2)}</span>
                                                             </div>
                                                         </div>
                                                     );
@@ -555,17 +445,9 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                 )}
 
                                 <div className="mb-4 text-sm md:text-base font-black text-slate-500 uppercase text-center tracking-wider bg-slate-100/50 py-2 rounded-lg relative overflow-hidden">
-                                    <span className="relative z-10">
-                                        {selectedStaffId ? `Storico di ${selectedStaffMember?.name}` : 'Storico Completo Cassa'}
-                                    </span>
+                                    <span className="relative z-10">{selectedStaffId ? `Storico di ${selectedStaffMember?.name}` : 'Storico Completo Cassa'}</span>
                                 </div>
-                                <OrderHistory 
-                                    orders={ordersForHistory} 
-                                    staff={staffForShift} 
-                                    attendanceRecords={attendanceRecords} 
-                                    tillId={till.id}
-                                    generalSettings={generalSettings}
-                                />
+                                <OrderHistory orders={ordersForHistory} staff={staffForShift} attendanceRecords={attendanceRecords} tillId={till.id} generalSettings={generalSettings} />
                             </div>
                         )}
                     </div>
