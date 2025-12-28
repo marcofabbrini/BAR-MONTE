@@ -103,10 +103,38 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         return leaders;
     }, [staff, activeShift]);
 
+    // LISTE UNIVIOCHE PER FILTRI (POPOLATE DALLO STORICO + CONFIGURAZIONI)
+    const uniqueTypologies = useMemo(() => {
+        const set = new Set<string>();
+        // Aggiungi quelli configurati
+        interventionTypologies.forEach(t => set.add(t.name));
+        // Aggiungi quelli usati nello storico (anche se cancellati dalla config)
+        interventions.forEach(i => set.add(i.typology));
+        return Array.from(set).sort();
+    }, [interventionTypologies, interventions]);
+
+    const uniqueMunicipalities = useMemo(() => {
+        const set = new Set<string>();
+        // Aggiungi lista standard
+        MUNICIPALITIES.forEach(m => {
+            if(m !== 'ALTRO...') set.add(m);
+        });
+        // Aggiungi quelli usati nello storico
+        interventions.forEach(i => set.add(i.municipality.toUpperCase()));
+        return Array.from(set).sort();
+    }, [interventions]);
+
+    const uniqueLeaders = useMemo(() => {
+        const set = new Set<string>();
+        interventions.forEach(i => set.add(i.teamLeaderName));
+        return Array.from(set).sort();
+    }, [interventions]);
+
     // LISTA FILTRATA
     const filteredInterventions = useMemo(() => {
         return interventions.filter(int => {
             if (filterDate && int.date !== filterDate) return false;
+            // Includes usato per sicurezza, ma con le select sarà quasi sempre match esatto
             if (filterTypology && !int.typology.toLowerCase().includes(filterTypology.toLowerCase())) return false;
             if (filterMunicipality && !int.municipality.toLowerCase().includes(filterMunicipality.toLowerCase())) return false;
             if (filterLeader && !int.teamLeaderName.toLowerCase().includes(filterLeader.toLowerCase())) return false;
@@ -607,37 +635,40 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                             </div>
                         </div>
 
-                        {/* FILTER BAR */}
+                        {/* FILTER BAR (DROPDOWNS) */}
                         {showFilters && (
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 animate-slide-up">
                                 <input 
                                     type="date" 
                                     value={filterDate} 
                                     onChange={e => setFilterDate(e.target.value)} 
-                                    className="border rounded px-2 py-1 text-xs" 
+                                    className="border rounded px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-orange-200" 
                                     placeholder="Data"
                                 />
-                                <input 
-                                    type="text" 
+                                <select 
                                     value={filterTypology} 
                                     onChange={e => setFilterTypology(e.target.value)} 
-                                    className="border rounded px-2 py-1 text-xs" 
-                                    placeholder="Cerca Tipologia..."
-                                />
-                                <input 
-                                    type="text" 
+                                    className="border rounded px-2 py-1 text-xs bg-white outline-none focus:ring-1 focus:ring-orange-200"
+                                >
+                                    <option value="">Tutte le Tipologie</option>
+                                    {uniqueTypologies.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                                <select 
                                     value={filterMunicipality} 
                                     onChange={e => setFilterMunicipality(e.target.value)} 
-                                    className="border rounded px-2 py-1 text-xs" 
-                                    placeholder="Cerca Comune..."
-                                />
-                                <input 
-                                    type="text" 
+                                    className="border rounded px-2 py-1 text-xs bg-white outline-none focus:ring-1 focus:ring-orange-200"
+                                >
+                                    <option value="">Tutti i Comuni</option>
+                                    {uniqueMunicipalities.map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                                <select 
                                     value={filterLeader} 
                                     onChange={e => setFilterLeader(e.target.value)} 
-                                    className="border rounded px-2 py-1 text-xs" 
-                                    placeholder="Cerca Capo Partenza..."
-                                />
+                                    className="border rounded px-2 py-1 text-xs bg-white outline-none focus:ring-1 focus:ring-orange-200"
+                                >
+                                    <option value="">Tutti i Capi Partenza</option>
+                                    {uniqueLeaders.map(l => <option key={l} value={l}>{l}</option>)}
+                                </select>
                             </div>
                         )}
                     </div>
