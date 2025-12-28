@@ -414,14 +414,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         onClick={onSelectInterventions}
                         className="w-full bg-white hover:bg-orange-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.3)] hover:shadow-[0_0_25px_rgba(249,115,22,0.5)] border-2 border-orange-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
                     >
-                        <div className="absolute -bottom-8 -right-8 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-7xl opacity-10 group-hover:opacity-20 filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110">
                             🔥
                         </div>
                         <div className="relative z-10 flex flex-col items-center justify-center gap-2">
                             <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🔥</span>
                             <div className="flex flex-col items-center">
                                 <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-orange-600 transition-colors">INTERVENTI</span>
-                                <span className="text-[9px] md:text-xs font-bold text-orange-500 uppercase tracking-wider hidden md:block">Registro Interventi</span>
+                                <span className="text-[9px] md:text-xs font-bold text-orange-500 uppercase tracking-wider block">Registro Interventi</span>
                             </div>
                         </div>
                     </button>
@@ -436,14 +436,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             <span>🚧</span> In Agg.
                         </div>
 
-                        <div className="absolute -bottom-8 -right-8 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-7xl opacity-10 group-hover:opacity-20 filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110">
                             🚒
                         </div>
                         <div className="relative z-10 flex flex-col items-center justify-center gap-2">
                             <span className="text-4xl md:text-5xl filter drop-shadow-sm group-hover:scale-110 transition-transform">🚒</span>
                             <div className="flex flex-col items-center">
                                 <span className="font-black text-sm md:text-xl uppercase tracking-widest text-red-700 group-hover:text-red-600 transition-colors">Mezzi VVF</span>
-                                <span className="text-[9px] md:text-xs font-bold text-red-400 uppercase tracking-wider hidden md:block">Checklist & Controlli</span>
+                                <span className="text-[9px] md:text-xs font-bold text-red-400 uppercase tracking-wider block">Checklist & Controlli</span>
                             </div>
                         </div>
                     </button>
@@ -453,14 +453,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         onClick={onSelectFleet}
                         className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.2)] hover:shadow-[0_0_25px_rgba(220,38,38,0.4)] border-2 border-red-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
                     >
-                        <div className="absolute -bottom-8 -right-8 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-7xl opacity-10 group-hover:opacity-20 filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110">
                             🚗
                         </div>
                         <div className="relative z-10 flex flex-col items-center justify-center gap-2">
                             <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🚗</span>
                             <div className="flex flex-col items-center">
                                 <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-red-600 transition-colors">Autoparco</span>
-                                <span className="text-[9px] md:text-xs font-bold text-red-400 uppercase tracking-wider hidden md:block">Prenotazioni</span>
+                                <span className="text-[9px] md:text-xs font-bold text-red-400 uppercase tracking-wider block">Prenotazioni</span>
                             </div>
                         </div>
                     </button>
@@ -470,14 +470,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         onClick={onSelectLaundry}
                         className="w-full bg-white hover:bg-blue-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border-2 border-blue-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
                     >
-                        <div className="absolute -bottom-8 -right-8 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-7xl opacity-10 group-hover:opacity-20 filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110">
                             🫧
                         </div>
                         <div className="relative z-10 flex flex-col items-center justify-center gap-2">
                             <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🫧</span>
                             <div className="flex flex-col items-center">
                                 <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-blue-600 transition-colors">Lavanderia</span>
-                                <span className="text-[9px] md:text-xs font-bold text-blue-400 uppercase tracking-wider hidden md:block">Consegna Capi</span>
+                                <span className="text-[9px] md:text-xs font-bold text-blue-400 uppercase tracking-wider block">Consegna Capi</span>
                             </div>
                         </div>
                     </button>
@@ -492,14 +492,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                 {tombolaNumberCount}
                             </div>
                         )}
-                        <div className="absolute -bottom-8 -right-8 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-7xl opacity-10 group-hover:opacity-20 filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110">
                             🎮
                         </div>
                         <div className="relative z-10 flex flex-col items-center justify-center gap-2">
                             <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🎮</span>
                             <div className="flex flex-col items-center">
                                 <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-green-600 transition-colors">Extra Hub</span>
-                                <span className="text-[9px] md:text-xs font-bold text-green-500 uppercase tracking-wider hidden md:block">Intrattenimento</span>
+                                <span className="text-[9px] md:text-xs font-bold text-green-500 uppercase tracking-wider block">Intrattenimento</span>
                             </div>
                         </div>
                     </button>

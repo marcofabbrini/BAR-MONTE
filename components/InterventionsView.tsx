@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { StaffMember, Shift, InterventionTypology, DutyOfficer, Intervention } from '../types';
 import { useBar } from '../contexts/BarContext';
 import { BackArrowIcon, CheckIcon, FireIcon, TrashIcon, PlusIcon, CalendarIcon, ChartBarIcon, TrophyIcon, EditIcon, FilterIcon, SortIcon } from './Icons';
@@ -64,6 +64,11 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
     const [filterTypology, setFilterTypology] = useState('');
     const [filterMunicipality, setFilterMunicipality] = useState('');
     const [filterLeader, setFilterLeader] = useState('');
+
+    // SCROLL TO TOP ON MOUNT
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
 
     // CALCOLO TURNO ATTIVO (Logica condivisa)
     const activeShift = useMemo(() => {
@@ -553,20 +558,28 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
 
             <main className="flex-grow p-4 md:p-8 max-w-5xl mx-auto w-full flex flex-col gap-6">
                 
-                {/* BUTTON NUOVO INTERVENTO */}
+                {/* BUTTON NUOVO INTERVENTO - REDESIGNED */}
                 {!isWizardOpen && (
                     <button 
                         onClick={() => { resetForm(); setIsWizardOpen(true); }}
-                        className="w-full bg-white p-6 rounded-xl shadow-md border-l-8 border-orange-500 flex items-center justify-between hover:bg-orange-50 transition-all group"
+                        className="w-full bg-white p-4 rounded-2xl shadow-md border-2 border-orange-100 hover:border-orange-300 hover:shadow-lg transition-all group active:scale-[0.99] flex items-center gap-4 relative overflow-hidden"
                     >
-                        <div className="text-left">
-                            <h2 className="text-xl font-black text-slate-800 uppercase flex items-center gap-2">
-                                <PlusIcon className="h-6 w-6 text-orange-600 group-hover:scale-110 transition-transform"/> Nuovo Intervento
-                            </h2>
-                            <p className="text-sm text-slate-500 mt-1 font-medium">Registra uscita squadra turno {activeShift.toUpperCase()}</p>
+                        <div className="bg-orange-100 p-4 rounded-full border-2 border-orange-200 group-hover:bg-orange-200 group-hover:scale-110 transition-transform z-10">
+                            <FireIcon className="h-8 w-8 text-orange-600 drop-shadow-sm" />
                         </div>
-                        <div className="bg-orange-100 p-3 rounded-full text-orange-600 group-hover:bg-orange-200">
-                            <FireIcon className="h-8 w-8" />
+                        
+                        <div className="text-left z-10 flex-grow">
+                            <h2 className="text-xl md:text-2xl font-black text-slate-800 uppercase tracking-tight group-hover:text-orange-700 transition-colors">
+                                Nuovo Intervento
+                            </h2>
+                            <p className="text-xs md:text-sm text-slate-500 font-bold uppercase tracking-wide">
+                                Registra uscita squadra turno {activeShift.toUpperCase()}
+                            </p>
+                        </div>
+
+                        {/* Background Decor */}
+                        <div className="absolute right-[-20px] bottom-[-20px] opacity-5 transform rotate-12 group-hover:rotate-0 transition-all duration-500">
+                            <FireIcon className="h-32 w-32" />
                         </div>
                     </button>
                 )}
