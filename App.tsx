@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import firebase from 'firebase/compat/app'; // For types
@@ -31,7 +30,7 @@ const AppContent: React.FC = () => {
     const [view, setView] = useState<View>('selection');
     const [selectedTillId, setSelectedTillId] = useState<string | null>(null);
     
-    // Auth State
+    // Auth State (Firebase)
     const [currentUser, setCurrentUser] = useState<firebase.User | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
 
@@ -68,8 +67,21 @@ const AppContent: React.FC = () => {
         return 'default';
     });
 
-    // Calcolo Super Admin
-    const isSuperAdmin = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
+    // Calcolo Super Admin (Firebase Auth OR Local App Login)
+    const isSuperAdmin = useMemo(() => {
+        // 1. Firebase Google Auth Check (Legacy)
+        const firebaseSuper = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
+        
+        // 2. Local App Login Check (New)
+        // Check if logged in as the virtual super admin OR as a user named "Super Admin" / "Admin"
+        const localSuper = activeBarUser && (
+            activeBarUser.id === 'super-admin-virtual' || 
+            activeBarUser.name.toLowerCase() === 'super admin' || 
+            activeBarUser.name.toLowerCase() === 'admin'
+        );
+
+        return !!(firebaseSuper || localSuper);
+    }, [currentUser, adminList, activeBarUser]);
 
     // Auth Listener
     useEffect(() => {
@@ -190,7 +202,7 @@ const AppContent: React.FC = () => {
                 onAddStaff={addStaff} onUpdateStaff={updateStaff} onDeleteStaff={deleteStaff}
                 onAddCashMovement={addCashMovement} onUpdateMovement={updateCashMovement} onDeleteMovement={deleteCashMovement} onPermanentDeleteMovement={permanentDeleteMovement}
                 onStockPurchase={stockPurchase} onStockCorrection={stockCorrection} onResetCash={resetCash} onMassDelete={massDelete}
-                isAuthenticated={isAdmin} currentUser={currentUser} onLogin={handleGoogleLogin} onLogout={handleLogout}
+                isAuthenticated={true} currentUser={currentUser} onLogin={handleGoogleLogin} onLogout={handleLogout}
                 adminList={adminList} onAddAdmin={(e) => addAdmin(e, currentUser?.email||'')} onRemoveAdmin={removeAdmin}
                 tombolaConfig={tombolaConfig} onNavigateToTombola={() => setView('tombola')}
                 seasonalityConfig={seasonalityConfig} onUpdateSeasonality={updateSeasonality}

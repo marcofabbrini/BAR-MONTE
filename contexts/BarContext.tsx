@@ -21,7 +21,7 @@ interface BarContextType {
     
     // Auth State
     activeBarUser: StaffMember | null;
-    loginBarUser: (staffId: string, password?: string) => Promise<boolean>;
+    loginBarUser: (username: string, password: string) => Promise<boolean>;
     logoutBarUser: () => void;
     onlineStaffCount: number;
 
@@ -149,14 +149,13 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     
-    // Time Offset (Difference between Server Time and Local Time in ms)
+    // Time Offset
     const [timeOffset, setTimeOffset] = useState(0);
 
     // Fetch reliable time on mount
     useEffect(() => {
         const fetchTime = async () => {
             try {
-                // Fonte attendibile per l'orario Italiano (Europe/Rome)
                 const response = await fetch('https://worldtimeapi.org/api/timezone/Europe/Rome');
                 if (response.ok) {
                     const data = await response.json();
@@ -164,15 +163,12 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                     const localTime = Date.now();
                     const offset = serverTime - localTime;
                     setTimeOffset(offset);
-                    console.log("Time synchronized. Offset:", offset, "ms");
                 }
             } catch (error) {
                 console.warn("Could not fetch world time, falling back to local clock.", error);
             }
         };
         fetchTime();
-        
-        // Re-sync every 30 minutes
         const interval = setInterval(fetchTime, 30 * 60 * 1000);
         return () => clearInterval(interval);
     }, []);
@@ -184,26 +180,36 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // Restore login from localStorage
     useEffect(() => {
         const savedUserId = localStorage.getItem('bar_user_id');
-        if (savedUserId && staff.length > 0) {
-            const user = staff.find(s => s.id === savedUserId);
-            if (user) setActiveBarUser(user);
+        if (savedUserId) {
+            if (savedUserId === 'super-admin-virtual') {
+                setActiveBarUser({
+                    id: 'super-admin-virtual',
+                    name: 'Super Admin',
+                    grade: 'Admin',
+                    shift: 'a',
+                    icon: '👑'
+                });
+            } else if (staff.length > 0) {
+                const user = staff.find(s => s.id === savedUserId);
+                if (user) setActiveBarUser(user);
+            }
         }
-    }, [staff]); // Re-run when staff loads
+    }, [staff]);
 
-    // Heartbeat Effect (Sends "I am alive" every minute)
+    // Heartbeat Effect
     useEffect(() => {
-        if (!activeBarUser) return;
+        if (!activeBarUser || activeBarUser.id === 'super-admin-virtual') return;
         
         const heartbeat = () => {
             BarService.updateStaffLastSeen(activeBarUser.id);
         };
 
-        heartbeat(); // Run immediately
-        const interval = setInterval(heartbeat, 60 * 1000); // And every minute
+        heartbeat();
+        const interval = setInterval(heartbeat, 60 * 1000);
         return () => clearInterval(interval);
     }, [activeBarUser]);
 
-    // Calculate Online Users (Active in last 5 minutes)
+    // Calculate Online Users
     useEffect(() => {
         const calculateOnline = () => {
             const now = new Date().getTime();
@@ -217,23 +223,74 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         };
 
         calculateOnline();
-        const interval = setInterval(calculateOnline, 30 * 1000); // Recalculate locally every 30s
+        const interval = setInterval(calculateOnline, 30 * 1000);
         return () => clearInterval(interval);
     }, [staff]);
 
-    const loginBarUser = async (staffId: string, password?: string) => {
-        const user = staff.find(s => s.id === staffId);
-        if (!user) return false;
-
-        // If user has a password set, verify it
-        if (user.password && user.password.trim() !== "") {
-            if (user.password !== password) return false;
+    const loginBarUser = async (username: string, password: string) => {
+        const lowerInputName = username.trim().toLowerCase();
+        
+        // 1. GESTIONE SUPER ADMIN (Backdoor o Utente Reale)
+        if (lowerInputName === 'admin') {
+            // Cerca se esiste un utente reale chiamato "Admin" o "Super Admin" nel DB
+            const dbAdmin = staff.find(s => s.name.toLowerCase() === 'admin' || s.name.toLowerCase() === 'super admin');
+            
+            if (dbAdmin) {
+                // Se esiste, usa la sua password. Se non ha password, usa 1234
+                const storedPwd = dbAdmin.password;
+                if (storedPwd && storedPwd.trim() !== '') {
+                    if (storedPwd === password) { 
+                        setActiveBarUser(dbAdmin); 
+                        localStorage.setItem('bar_user_id', dbAdmin.id);
+                        return true; 
+                    }
+                } else {
+                    // Fallback se l'utente esiste ma non ha pwd settata
+                    if (password === '1234') { 
+                        setActiveBarUser(dbAdmin); 
+                        localStorage.setItem('bar_user_id', dbAdmin.id);
+                        return true; 
+                    }
+                }
+            } else {
+                // Utente virtuale (Primo avvio o Admin non censito)
+                if (password === '1234') {
+                    const virtualAdmin: StaffMember = {
+                        id: 'super-admin-virtual',
+                        name: 'Super Admin',
+                        grade: 'Admin',
+                        shift: 'a',
+                        icon: '👑'
+                    };
+                    setActiveBarUser(virtualAdmin);
+                    localStorage.setItem('bar_user_id', 'super-admin-virtual');
+                    return true;
+                }
+            }
         }
 
-        setActiveBarUser(user);
-        localStorage.setItem('bar_user_id', user.id);
-        await BarService.updateStaffLastSeen(user.id);
-        return true;
+        // 2. GESTIONE UTENTI STANDARD
+        // Cerca un utente il cui nome inizi con l'input (es. "Mario" trova "Mario Rossi")
+        const targetUser = staff.find(s => s.name.toLowerCase().startsWith(lowerInputName) && !s.name.toLowerCase().includes('cassa'));
+
+        if (!targetUser) return false;
+
+        // Logica Password:
+        // Se l'utente ha una password nel DB -> usa quella
+        // Se NON ha password -> usa il nome (prima parte) in minuscolo
+        const firstName = targetUser.name.split(' ')[0].toLowerCase();
+        const expectedPwd = (targetUser.password && targetUser.password.trim() !== '') 
+            ? targetUser.password 
+            : firstName;
+
+        if (password === expectedPwd) {
+            setActiveBarUser(targetUser);
+            localStorage.setItem('bar_user_id', targetUser.id);
+            await BarService.updateStaffLastSeen(targetUser.id);
+            return true;
+        }
+
+        return false;
     };
 
     const logoutBarUser = () => {
@@ -270,7 +327,6 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
                         audio.volume = 0.5;
                         audio.play().catch(() => {});
-                        // FIX: Check if Notification exists in window (safeguard for iOS/WebView)
                         if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && document.visibilityState === 'hidden') {
                             new Notification(n.title, { body: n.body, icon: '/logo.png' });
                         }
@@ -313,28 +369,24 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const sendNotification = (t: string, b: string, s: string) => BarService.sendNotification(t, b, s);
     const massDelete = (d: string, t: 'orders'|'movements') => BarService.massDelete(d, t);
 
-    // Vehicle Functions (Booking)
     const addVehicle = (v: Omit<Vehicle, 'id'>) => VehicleService.addVehicle(v);
     const updateVehicle = (v: Vehicle) => VehicleService.updateVehicle(v);
     const deleteVehicle = (id: string) => VehicleService.deleteVehicle(id);
     const addBooking = (b: Omit<VehicleBooking, 'id' | 'timestamp'>) => VehicleService.addBooking(b);
     const deleteBooking = (id: string) => VehicleService.deleteBooking(id);
 
-    // Operational Vehicle Functions
     const addOperationalVehicle = (v: Omit<OperationalVehicle, 'id'>) => OperationalVehicleService.addVehicle(v);
     const updateOperationalVehicle = (v: OperationalVehicle) => OperationalVehicleService.updateVehicle(v);
     const deleteOperationalVehicle = (id: string) => OperationalVehicleService.deleteVehicle(id);
     const addVehicleCheck = (c: Omit<VehicleCheck, 'id'>) => OperationalVehicleService.addCheck(c);
     const updateVehicleCheck = (id: string, u: Partial<VehicleCheck>) => OperationalVehicleService.updateCheck(id, u);
 
-    // Laundry Functions
     const addLaundryItem = (i: Omit<LaundryItemDef, 'id'>) => BarService.addLaundryItem(i);
     const updateLaundryItem = (i: LaundryItemDef) => BarService.updateLaundryItem(i);
     const deleteLaundryItem = (id: string) => BarService.deleteLaundryItem(id);
     const addLaundryEntry = (e: Omit<LaundryEntry, 'id'>) => BarService.addLaundryEntry(e);
     const deleteLaundryEntry = (id: string) => BarService.deleteLaundryEntry(id);
 
-    // Intervention Functions
     const addIntervention = (i: Omit<Intervention, 'id'>) => InterventionService.addIntervention(i);
     const updateIntervention = (i: Intervention) => InterventionService.updateIntervention(i);
     const deleteIntervention = (id: string) => InterventionService.deleteIntervention(id);
@@ -344,7 +396,6 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const addDutyOfficer = (name: string) => InterventionService.addOfficer(name);
     const deleteDutyOfficer = (id: string) => InterventionService.deleteOfficer(id);
 
-    // Reminder Functions
     const addReminder = (r: Omit<Reminder, 'id' | 'createdAt' | 'completedDates'>) => ReminderService.addReminder(r);
     const updateReminder = (id: string, r: Partial<Reminder>) => ReminderService.updateReminder(id, r);
     const deleteReminder = (id: string) => ReminderService.deleteReminder(id);
