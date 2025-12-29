@@ -18,6 +18,7 @@ import VehicleBookingView from './components/VehicleBookingView';
 import OperationalVehiclesView from './components/OperationalVehiclesView';
 import LaundryView from './components/LaundryView';
 import InterventionsView from './components/InterventionsView';
+import LoginScreen from './components/LoginScreen';
 import { TILLS } from './constants';
 import { BellIcon } from './components/Icons';
 import { AnalottoProvider, useAnalotto } from './contexts/AnalottoContext';
@@ -41,7 +42,8 @@ const AppContent: React.FC = () => {
         addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
         addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
         vehicles, vehicleBookings, addBooking, deleteBooking,
-        operationalVehicles, vehicleChecks, reminders, toggleReminderCompletion, addVehicleCheck
+        operationalVehicles, vehicleChecks, reminders, toggleReminderCompletion, addVehicleCheck,
+        activeBarUser
     } = useBar();
 
     const { 
@@ -111,8 +113,17 @@ const AppContent: React.FC = () => {
     const handleGoogleLogin = async () => { try { await auth.signInWithPopup(googleProvider); } catch (e: any) { alert("Login fallito: " + e.message); } };
     const handleLogout = async () => { try { await auth.signOut(); setView('selection'); } catch (e) { console.error(e); } };
 
+    // --- RENDER CONTENT ---
+    
+    // 1. Loading
+    if (isLoading) return <div className="flex items-center justify-center min-h-dvh"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
+
+    // 2. Global Login Check
+    if (!activeBarUser) {
+        return <LoginScreen staff={staff} onLoginSuccess={() => setView('selection')} />;
+    }
+
     const renderContent = () => {
-        if (isLoading) return <div className="flex items-center justify-center min-h-dvh"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
         switch (view) {
             case 'till': return <TillView 
                 till={TILLS.find(t=>t.id===selectedTillId)!} 

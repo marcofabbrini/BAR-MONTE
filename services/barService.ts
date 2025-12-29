@@ -190,6 +190,11 @@ export const BarService = {
     addStaff: async (data: any) => { await addDoc(collection(db, 'staff'), data); },
     updateStaff: async (staff: any) => { const { id, ...data } = staff; await updateDoc(doc(db, 'staff', id), data); },
     deleteStaff: async (id: string) => { await deleteDoc(doc(db, 'staff', id)); },
+    
+    // Heartbeat for online status
+    updateStaffLastSeen: async (id: string) => {
+        await updateDoc(doc(db, 'staff', id), { lastSeen: new Date().toISOString() });
+    },
 
     // Laundry Items Configuration
     addLaundryItem: async (data: Omit<LaundryItemDef, 'id'>) => { await addDoc(collection(db, 'laundry_items'), data); },

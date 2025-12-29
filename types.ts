@@ -45,6 +45,8 @@ export interface StaffMember {
     rcSubGroup?: number; // Gruppo di salto 1-8
     icon?: string;
     photoUrl?: string; // Base64 image data
+    password?: string; // Password per accesso
+    lastSeen?: string; // Timestamp ultima attività
 }
 
 export interface TillColors {

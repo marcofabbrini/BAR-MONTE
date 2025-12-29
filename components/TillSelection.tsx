@@ -1,7 +1,7 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder, OperationalVehicle, VehicleCheck, Vehicle } from '../types';
-import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon } from './Icons';
+import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon, BackArrowIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 
 interface TillSelectionProps {
@@ -37,8 +37,8 @@ interface WeatherData {
 
 const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, onSelectOperationalVehicles, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification, reminders = [], onToggleReminder, operationalVehicles = [], vehicles = [], vehicleChecks = [] }) => {
     
-    // Context for Reliable Time
-    const { getNow } = useBar();
+    // Context for Reliable Time & Auth
+    const { getNow, activeBarUser, logoutBarUser, onlineStaffCount } = useBar();
 
     // WEATHER & DATE STATE
     const [currentDateString, setCurrentDateString] = useState<string>('');
@@ -370,6 +370,28 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     return (
         <div className="flex flex-col min-h-dvh relative overflow-hidden font-sans transition-colors duration-500" style={{ backgroundColor }}>
             
+            {/* ONLINE USERS BADGE (TOP LEFT) */}
+            <div className="absolute top-4 left-4 z-50 mt-[env(safe-area-inset-top)] flex flex-col gap-2 items-start">
+                <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-md flex items-center gap-2 border border-green-100">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
+                    <span className="text-[10px] font-black text-slate-700 uppercase tracking-wide">
+                        {onlineStaffCount} Online
+                    </span>
+                </div>
+                
+                {activeBarUser && (
+                    <div className="bg-slate-800 text-white px-3 py-1.5 rounded-full shadow-md flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center text-[10px] overflow-hidden">
+                            {activeBarUser.photoUrl ? <img src={activeBarUser.photoUrl} className="w-full h-full object-cover" /> : (activeBarUser.icon || '👤')}
+                        </div>
+                        <span className="text-[10px] font-bold">{activeBarUser.name}</span>
+                        <button onClick={logoutBarUser} className="ml-1 text-red-400 hover:text-red-300">
+                            <BackArrowIcon className="h-3 w-3 rotate-180" />
+                        </button>
+                    </div>
+                )}
+            </div>
+
             {seasonalityConfig?.animationType !== 'none' && (
                 <div className="emoji-rain-container pointer-events-none">
                     {animatedEmojis.map(emoji => (
@@ -395,16 +417,16 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             {notificationPermission === 'default' && onRequestNotification && (
                 <button 
                     onClick={onRequestNotification}
-                    className="absolute top-4 left-4 bg-white p-2 rounded-full shadow-md text-yellow-500 animate-bounce z-50 hover:bg-yellow-50 transition-colors mt-[env(safe-area-inset-top)]"
+                    className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md text-yellow-500 animate-bounce z-50 hover:bg-yellow-50 transition-colors mt-[env(safe-area-inset-top)]"
                     title="Attiva Notifiche"
                 >
                     <BellIcon className="h-6 w-6" />
                 </button>
             )}
 
-            <div className="flex-grow flex flex-col items-center justify-center p-4 z-10 w-full max-w-7xl mx-auto pb-20">
+            <div className="flex-grow flex flex-col items-center justify-center p-4 z-10 w-full max-w-7xl mx-auto pb-20 pt-16">
                 
-                <div className="mb-4 md:mb-8 relative group transform transition-all duration-500 mt-[env(safe-area-inset-top)]">
+                <div className="mb-4 md:mb-8 relative group transform transition-all duration-500">
                     <img src="/logo.png" alt="Logo" className="h-20 w-auto md:h-32 object-contain drop-shadow-lg hover:scale-105" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 </div>
 

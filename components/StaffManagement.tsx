@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { StaffMember, Shift } from '../types';
-import { EditIcon, TrashIcon, PlusIcon, SaveIcon, UserPlusIcon } from './Icons';
+import { EditIcon, TrashIcon, PlusIcon, SaveIcon, UserPlusIcon, LockIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 
 interface StaffManagementProps {
@@ -62,6 +62,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
     const [rcSubGroup, setRcSubGroup] = useState<number>(1);
     const [icon, setIcon] = useState('');
     const [photoUrl, setPhotoUrl] = useState('');
+    const [password, setPassword] = useState('');
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [isProcessingImg, setIsProcessingImg] = useState(false);
     
@@ -81,6 +82,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         setRcSubGroup(1);
         setIcon('');
         setPhotoUrl('');
+        setPassword('');
         setIsEditing(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
@@ -98,6 +100,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         setRcSubGroup(member.rcSubGroup || 1);
         setIcon(member.icon || '');
         setPhotoUrl(member.photoUrl || '');
+        setPassword(member.password || '');
         setIsModalOpen(true);
     };
 
@@ -170,7 +173,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                 shift, 
                 rcSubGroup, 
                 icon,
-                photoUrl 
+                photoUrl,
+                password: password.trim()
             };
 
             if (isEditing) {
@@ -285,6 +289,20 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                             ))}
                                         </select>
                                     </div>
+
+                                    <div className="col-span-2 border-t pt-4 mt-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                                            <LockIcon className="h-3 w-3" /> Password Accesso
+                                        </label>
+                                        <input 
+                                            type="password" 
+                                            value={password} 
+                                            onChange={(e) => setPassword(e.target.value)} 
+                                            placeholder="Opzionale (vuoto = accesso libero)" 
+                                            className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono tracking-widest"
+                                        />
+                                        <p className="text-[10px] text-slate-400 mt-1">Se impostata, sarà richiesta per accedere.</p>
+                                    </div>
                                 </div>
 
                                 <div className="flex gap-3 pt-2">
@@ -352,6 +370,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                     <span className="text-[10px] bg-purple-50 border border-purple-100 px-2 py-0.5 rounded text-purple-700 font-bold">
                                         Salto {member.rcSubGroup || 1}
                                     </span>
+                                    {member.password && <LockIcon className="h-3 w-3 text-slate-300" title="Password Impostata" />}
                                 </div>
                             </div>
 

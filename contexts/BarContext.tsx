@@ -19,6 +19,12 @@ interface BarContextType {
     generalSettings: GeneralSettings;
     attendanceRecords: AttendanceRecord[];
     
+    // Auth State
+    activeBarUser: StaffMember | null;
+    loginBarUser: (staffId: string, password?: string) => Promise<boolean>;
+    logoutBarUser: () => void;
+    onlineStaffCount: number;
+
     // Vehicles (Booking)
     vehicles: Vehicle[];
     vehicleBookings: VehicleBooking[];
@@ -136,6 +142,10 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [dutyOfficers, setDutyOfficers] = useState<DutyOfficer[]>([]);
     const [reminders, setReminders] = useState<Reminder[]>([]);
 
+    // Logged In Staff
+    const [activeBarUser, setActiveBarUser] = useState<StaffMember | null>(null);
+    const [onlineStaffCount, setOnlineStaffCount] = useState(0);
+
     const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     
@@ -170,6 +180,66 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const getNow = useCallback(() => {
         return new Date(Date.now() + timeOffset);
     }, [timeOffset]);
+
+    // Restore login from localStorage
+    useEffect(() => {
+        const savedUserId = localStorage.getItem('bar_user_id');
+        if (savedUserId && staff.length > 0) {
+            const user = staff.find(s => s.id === savedUserId);
+            if (user) setActiveBarUser(user);
+        }
+    }, [staff]); // Re-run when staff loads
+
+    // Heartbeat Effect (Sends "I am alive" every minute)
+    useEffect(() => {
+        if (!activeBarUser) return;
+        
+        const heartbeat = () => {
+            BarService.updateStaffLastSeen(activeBarUser.id);
+        };
+
+        heartbeat(); // Run immediately
+        const interval = setInterval(heartbeat, 60 * 1000); // And every minute
+        return () => clearInterval(interval);
+    }, [activeBarUser]);
+
+    // Calculate Online Users (Active in last 5 minutes)
+    useEffect(() => {
+        const calculateOnline = () => {
+            const now = new Date().getTime();
+            const fiveMinutes = 5 * 60 * 1000;
+            const count = staff.filter(s => {
+                if (!s.lastSeen) return false;
+                const lastSeenTime = new Date(s.lastSeen).getTime();
+                return (now - lastSeenTime) < fiveMinutes;
+            }).length;
+            setOnlineStaffCount(count);
+        };
+
+        calculateOnline();
+        const interval = setInterval(calculateOnline, 30 * 1000); // Recalculate locally every 30s
+        return () => clearInterval(interval);
+    }, [staff]);
+
+    const loginBarUser = async (staffId: string, password?: string) => {
+        const user = staff.find(s => s.id === staffId);
+        if (!user) return false;
+
+        // If user has a password set, verify it
+        if (user.password && user.password.trim() !== "") {
+            if (user.password !== password) return false;
+        }
+
+        setActiveBarUser(user);
+        localStorage.setItem('bar_user_id', user.id);
+        await BarService.updateStaffLastSeen(user.id);
+        return true;
+    };
+
+    const logoutBarUser = () => {
+        setActiveBarUser(null);
+        localStorage.removeItem('bar_user_id');
+    };
 
     useEffect(() => {
         const unsubs = [
@@ -284,6 +354,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         <BarContext.Provider value={{
             products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
             vehicles, vehicleBookings, operationalVehicles, vehicleChecks, laundryItems, laundryEntries, interventions, interventionTypologies, dutyOfficers, reminders,
+            activeBarUser, loginBarUser, logoutBarUser, onlineStaffCount,
             addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
             addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
             addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
