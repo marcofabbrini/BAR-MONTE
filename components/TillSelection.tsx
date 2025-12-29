@@ -333,17 +333,15 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             if (isHiddenInStorage) {
                 setHidePostIt(true);
             } else {
-                // FIXED TIMER: Doesn't reset because `todayStr` is stable for 24h
+                // FIXED TIMER: Reduced to 2 seconds to feel like "disappears when done" for shift change
                 timer = setTimeout(() => {
                     setHidePostIt(true);
                     try {
                         localStorage.setItem(storageKey, 'true');
                     } catch (e) { 
-                        // If Quota Exceeded, we just don't save the preference. 
-                        // The post-it will reappear on reload, but the app won't crash.
                         console.warn("Could not save post-it preference (Storage Full)", e); 
                     }
-                }, 60000); // 60 seconds
+                }, 2000); 
             }
         } else {
             setHidePostIt(false);
@@ -511,7 +509,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 {/* --- SEZIONE PROMEMORIA (POST-IT REDUCED SIZE) --- */}
                 {allReminders.length > 0 && !hidePostIt && (
                     <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
-                        <div className="bg-yellow-200 p-4 rounded-xl shadow-[5px_5px_15px_rgba(0,0,0,0.15)] relative transform rotate-1 transition-transform hover:rotate-0">
+                        <div className="bg-yellow-200 p-4 rounded-xl shadow-[5px_5px_15px_rgba(0,0,0,0.15)] relative transform rotate-1 transition-transform hover:rotate-0 animate-fade-in">
                             {/* Titolo più piccolo */}
                             <h3 className="text-slate-900 text-sm mb-3 uppercase tracking-tighter text-left pl-2 font-bold leading-none" style={{ fontFamily: '"Fuzzy Bubbles", cursive' }}>
                                 Da fare:

@@ -471,11 +471,15 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                                 ${isSelected ? 'bg-orange-100 border-orange-500 shadow-md transform scale-105' : 'bg-white border-slate-200 hover:border-orange-300'}
                                             `}
                                         >
-                                            <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border border-slate-200 flex items-center justify-center">
+                                            <div className="relative w-10 h-10 rounded-full bg-slate-100 overflow-hidden border border-slate-200 flex items-center justify-center">
                                                 {s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" /> : <span className="text-lg">{s.icon || '👤'}</span>}
+                                                {/* BADGE GRADO AGGIUNTO */}
+                                                <div className="absolute -top-1 -right-1 scale-75 z-10">
+                                                    <GradeBadge grade={s.grade} />
+                                                </div>
                                             </div>
                                             <span className={`text-[9px] font-bold mt-1 text-center w-full truncate ${isSelected ? 'text-orange-800' : 'text-slate-600'}`}>{s.name.split(' ')[0]}</span>
-                                            {s.grade && <span className="text-[8px] bg-slate-100 px-1 rounded text-slate-500">{s.grade}</span>}
+                                            {/* Removed text grade to avoid duplication with badge */}
                                         </button>
                                     )
                                 })}
