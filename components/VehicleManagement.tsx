@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Vehicle, CheckDay } from '../types';
-import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon } from './Icons';
+import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon, ListIcon } from './Icons';
 
 interface VehicleManagementProps {
     vehicles: Vehicle[];
@@ -15,7 +15,8 @@ const emptyVehicle: Omit<Vehicle, 'id'> = {
     model: '',
     fuelType: 'diesel',
     checkDay: 'Lunedì',
-    photoUrl: ''
+    photoUrl: '',
+    customChecklist: []
 };
 
 const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVehicle, onUpdateVehicle, onDeleteVehicle }) => {
@@ -23,18 +24,24 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVe
     const [formData, setFormData] = useState<Omit<Vehicle, 'id'>>(emptyVehicle);
     const [isProcessingImg, setIsProcessingImg] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    
+    // State per nuova voce checklist
+    const [newCheckItem, setNewCheckItem] = useState('');
 
     const checkDays: CheckDay[] = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
     const handleEdit = (v: Vehicle) => {
         setIsEditing(v.id);
         const { id, ...data } = v;
+        // Ensure checklist array exists
+        if (!data.customChecklist) data.customChecklist = [];
         setFormData(data);
     };
 
     const handleCancel = () => {
         setIsEditing(null);
         setFormData(emptyVehicle);
+        setNewCheckItem('');
     };
 
     const handleDelete = async (id: string) => {
@@ -45,6 +52,23 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVe
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    };
+
+    // Checklist logic
+    const handleAddCheckItem = () => {
+        if (!newCheckItem.trim()) return;
+        setFormData(prev => ({
+            ...prev,
+            customChecklist: [...(prev.customChecklist || []), newCheckItem.trim()]
+        }));
+        setNewCheckItem('');
+    };
+
+    const handleRemoveCheckItem = (index: number) => {
+        setFormData(prev => ({
+            ...prev,
+            customChecklist: (prev.customChecklist || []).filter((_, i) => i !== index)
+        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -157,6 +181,33 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVe
                         </div>
                     </div>
 
+                    {/* CHECKLIST SECTION */}
+                    <div className="md:col-span-2 border-t border-slate-100 pt-4 mt-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase block mb-2 flex items-center gap-1">
+                            <ListIcon className="h-4 w-4"/> Lista Controlli Rapidi (es. Livelli, Gomme)
+                        </label>
+                        <div className="flex gap-2 mb-3">
+                            <input 
+                                type="text" 
+                                value={newCheckItem} 
+                                onChange={(e) => setNewCheckItem(e.target.value)} 
+                                placeholder="Nuovo controllo (es. Olio Motore)" 
+                                className="flex-grow border rounded p-2 text-sm focus:ring-2 focus:ring-blue-200 outline-none"
+                                onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); handleAddCheckItem(); }}}
+                            />
+                            <button type="button" onClick={handleAddCheckItem} className="bg-green-500 text-white px-4 rounded font-bold hover:bg-green-600">+</button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {(formData.customChecklist || []).map((item, index) => (
+                                <span key={index} className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 border border-slate-200">
+                                    {item}
+                                    <button type="button" onClick={() => handleRemoveCheckItem(index)} className="text-red-400 hover:text-red-600 font-black">&times;</button>
+                                </span>
+                            ))}
+                            {(formData.customChecklist || []).length === 0 && <span className="text-xs text-slate-400 italic">Nessun controllo inserito.</span>}
+                        </div>
+                    </div>
+
                     <div className="md:col-span-2 flex gap-2 pt-2">
                         {isEditing && <button type="button" onClick={handleCancel} className="flex-1 bg-slate-200 text-slate-700 py-2 rounded font-bold">Annulla</button>}
                         <button type="submit" disabled={isProcessingImg} className="flex-1 bg-slate-800 text-white py-2 rounded font-bold hover:bg-slate-700 flex items-center justify-center gap-2">
@@ -179,6 +230,9 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVe
                             <h4 className="font-bold text-slate-800 truncate">{v.model}</h4>
                             <p className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-1 rounded inline-block">{v.plate}</p>
                             <p className="text-[10px] text-slate-400 uppercase mt-1">{v.fuelType}</p>
+                            {v.customChecklist && v.customChecklist.length > 0 && (
+                                <p className="text-[9px] text-blue-500 font-bold mt-1">{v.customChecklist.length} controlli definiti</p>
+                            )}
                         </div>
                         <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => handleEdit(v)} className="p-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"><EditIcon className="h-4 w-4" /></button>

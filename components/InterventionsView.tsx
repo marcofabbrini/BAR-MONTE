@@ -372,15 +372,27 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                         <div>
                             <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Tipologia</label>
                             <input 
-                                list="typologies" 
                                 value={typology} 
                                 onChange={e => setTypology(e.target.value)} 
-                                className="w-full border rounded p-3 bg-white focus:ring-2 focus:ring-orange-200 outline-none"
-                                placeholder="Seleziona o scrivi..."
+                                className="w-full border rounded p-3 bg-white focus:ring-2 focus:ring-orange-200 outline-none font-bold"
+                                placeholder="Seleziona dalla lista..."
                             />
-                            <datalist id="typologies">
-                                {interventionTypologies.map(t => <option key={t.id} value={t.name} />)}
-                            </datalist>
+                            {/* VERTICAL SCROLLABLE LIST OF TYPOLOGIES */}
+                            <div className="max-h-32 overflow-y-auto border rounded mt-1 bg-slate-50 shadow-inner scrollbar-thin scrollbar-thumb-orange-200">
+                                {interventionTypologies.length > 0 ? (
+                                    interventionTypologies.map(t => (
+                                        <div 
+                                            key={t.id} 
+                                            onClick={() => setTypology(t.name)}
+                                            className="p-2 hover:bg-orange-100 cursor-pointer text-xs border-b border-slate-100 last:border-0 font-medium text-slate-700"
+                                        >
+                                            {t.name}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="p-2 text-xs text-slate-400 italic">Nessuna tipologia disponibile.</div>
+                                )}
+                            </div>
                         </div>
                         
                         <div className="grid grid-cols-4 gap-2 items-end">
@@ -471,7 +483,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                             </div>
                         </div>
 
-                        {/* OFFICER ICON GRID */}
+                        {/* OFFICER ICON GRID - RESIZED AND CONTAINED */}
                         <div>
                             <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Funzionario di Servizio</label>
                             <div className="grid grid-cols-3 gap-3 max-h-40 overflow-y-auto p-1">
@@ -482,14 +494,16 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                             key={o.id}
                                             onClick={() => setOfficerId(o.id)}
                                             className={`
-                                                flex flex-col items-center p-2 rounded-xl border-2 transition-all
-                                                ${isSelected ? 'bg-blue-100 border-blue-500 shadow-md transform scale-105' : 'bg-white border-slate-200 hover:border-blue-300'}
+                                                flex flex-col items-center p-2 rounded-xl border-2 transition-all w-full overflow-hidden
+                                                ${isSelected ? 'bg-blue-100 border-blue-500 shadow-md scale-[1.02]' : 'bg-white border-slate-200 hover:border-blue-300'}
                                             `}
                                         >
-                                            <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center">
-                                                <span className="text-xl">👮‍♂️</span>
+                                            <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
+                                                <span className="text-base">👮‍♂️</span>
                                             </div>
-                                            <span className={`text-[9px] font-bold mt-1 text-center w-full truncate ${isSelected ? 'text-blue-800' : 'text-slate-600'}`}>{o.name}</span>
+                                            <span className={`text-[9px] font-bold mt-1 text-center w-full truncate px-1 ${isSelected ? 'text-blue-800' : 'text-slate-600'}`} title={o.name}>
+                                                {o.name}
+                                            </span>
                                         </button>
                                     )
                                 })}

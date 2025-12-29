@@ -137,6 +137,7 @@ export interface Vehicle {
     fuelType: 'diesel' | 'benzina' | 'elettrica' | 'ibrida';
     checkDay?: CheckDay; // Giorno controllo settimanale
     photoUrl?: string;
+    customChecklist?: string[]; // Lista controlli personalizzati (es. Gomme, Olio, Luci)
 }
 
 export interface VehicleBooking {
