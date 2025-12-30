@@ -138,15 +138,22 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
         return laundryEntries.filter(e => !e.shipmentId);
     }, [laundryEntries]);
 
-    // Calcola il riepilogo totale per la spedizione
+    // Calcola il riepilogo totale per la spedizione RAGGRUPPATO PER NOME PERSONALE
     const shipmentSummary = useMemo(() => {
-        const summary: Record<string, number> = {};
+        const summaryMap: Record<string, number> = {};
+        
         pendingEntries.forEach(entry => {
             entry.items.forEach(item => {
-                summary[item.name] = (summary[item.name] || 0) + item.quantity;
+                // Chiave composta per aggregare per oggetto E persona
+                const key = `${item.name}###${entry.staffName}`;
+                summaryMap[key] = (summaryMap[key] || 0) + item.quantity;
             });
         });
-        return Object.entries(summary).map(([name, totalQuantity]) => ({ name, totalQuantity, returnedQuantity: 0 }));
+
+        return Object.entries(summaryMap).map(([key, totalQuantity]) => {
+            const [name, staffName] = key.split('###');
+            return { name, staffName, totalQuantity, returnedQuantity: 0 };
+        }).sort((a, b) => a.staffName.localeCompare(b.staffName) || a.name.localeCompare(b.name));
     }, [pendingEntries]);
 
     const handleCreateShipment = async () => {
@@ -185,14 +192,18 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
     // --- LOGICA IN ARRIVO (CHECKLIST) ---
     const incomingShipments = useMemo(() => laundryShipments.filter(s => s.status === 'in_transit'), [laundryShipments]);
 
-    const handleCheckItem = async (shipmentId: string, itemName: string, currentReturned: number, total: number) => {
+    const handleCheckItem = async (shipmentId: string, itemName: string, staffName: string, currentReturned: number, total: number) => {
         // Toggle logic: if not fully returned, mark full. If full, mark 0.
         const newReturned = currentReturned < total ? total : 0;
         
         const shipment = laundryShipments.find(s => s.id === shipmentId);
         if(!shipment) return;
 
-        const newItems = shipment.items.map(i => i.name === itemName ? { ...i, returnedQuantity: newReturned } : i);
+        const newItems = shipment.items.map(i => 
+            (i.name === itemName && i.staffName === staffName) 
+            ? { ...i, returnedQuantity: newReturned } 
+            : i
+        );
         
         await updateLaundryShipment(shipmentId, { items: newItems });
     };
@@ -355,6 +366,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
                                     <table className="w-full text-left">
                                         <thead className="bg-slate-50 text-slate-500 uppercase text-xs font-bold border-b border-slate-200 print:bg-white print:text-black print:border-black">
                                             <tr>
+                                                <th className="p-4 print:p-2">Personale</th>
                                                 <th className="p-4 print:p-2">Descrizione Capo</th>
                                                 <th className="p-4 text-right print:p-2">Quantità Totale</th>
                                                 <th className="p-4 text-center print:hidden">Stato</th>
@@ -363,6 +375,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
                                         <tbody className="divide-y divide-slate-100 print:divide-slate-300">
                                             {shipmentSummary.map((item, idx) => (
                                                 <tr key={idx} className="hover:bg-slate-50 print:hover:bg-white">
+                                                    <td className="p-4 font-bold text-slate-600 print:p-2 print:text-black">{item.staffName}</td>
                                                     <td className="p-4 font-bold text-slate-700 print:p-2 print:text-black">{item.name}</td>
                                                     <td className="p-4 text-right font-black text-lg text-slate-800 print:p-2 print:text-black">{item.totalQuantity}</td>
                                                     <td className="p-4 text-center print:hidden">
@@ -373,7 +386,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
                                         </tbody>
                                         <tfoot className="bg-slate-50 border-t border-slate-200 print:bg-white print:border-black">
                                             <tr>
-                                                <td className="p-4 font-black text-slate-800 uppercase print:p-2">TOTALE PEZZI</td>
+                                                <td className="p-4 font-black text-slate-800 uppercase print:p-2" colSpan={2}>TOTALE PEZZI</td>
                                                 <td className="p-4 text-right font-black text-xl text-blue-600 print:p-2 print:text-black">
                                                     {shipmentSummary.reduce((a,b) => a + b.totalQuantity, 0)}
                                                 </td>
@@ -439,6 +452,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
                                         <table className="w-full text-left text-sm">
                                             <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
                                                 <tr>
+                                                    <th className="p-3">Personale</th>
                                                     <th className="p-3">Capo</th>
                                                     <th className="p-3 text-center">Qt. Inviata</th>
                                                     <th className="p-3 text-center">Qt. Rientrata</th>
@@ -450,6 +464,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
                                                     const isComplete = item.returnedQuantity === item.totalQuantity;
                                                     return (
                                                         <tr key={i} className={isComplete ? 'bg-green-50/50' : ''}>
+                                                            <td className="p-3 font-bold text-slate-600">{item.staffName}</td>
                                                             <td className="p-3 font-medium text-slate-700">{item.name}</td>
                                                             <td className="p-3 text-center font-bold">{item.totalQuantity}</td>
                                                             <td className={`p-3 text-center font-bold ${isComplete ? 'text-green-600' : 'text-slate-400'}`}>
@@ -457,7 +472,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
                                                             </td>
                                                             <td className="p-3 text-center">
                                                                 <button 
-                                                                    onClick={() => handleCheckItem(shipment.id, item.name, item.returnedQuantity, item.totalQuantity)}
+                                                                    onClick={() => handleCheckItem(shipment.id, item.name, item.staffName, item.returnedQuantity, item.totalQuantity)}
                                                                     className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isComplete ? 'bg-green-500 text-white shadow-md' : 'bg-slate-200 text-slate-400 hover:bg-green-200'}`}
                                                                 >
                                                                     <CheckIcon className="h-4 w-4" />
@@ -518,7 +533,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
                                         <ul className="text-xs text-slate-600 space-y-1">
                                             {shipment.items.map((item, idx) => (
                                                 <li key={idx} className="flex justify-between border-b border-slate-50 last:border-0 pb-1 last:pb-0">
-                                                    <span>{item.name}</span>
+                                                    <span>{item.name} <span className="text-slate-400">({item.staffName})</span></span>
                                                     <span className="font-bold">x{item.totalQuantity}</span>
                                                 </li>
                                             ))}

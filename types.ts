@@ -239,7 +239,7 @@ export interface LaundryShipment {
     id: string;
     sentDate: string; // YYYY-MM-DD
     timestamp: string; // Full ISO
-    items: { name: string; totalQuantity: number; returnedQuantity: number }[]; // Riepilogo aggregato
+    items: { name: string; staffName: string; totalQuantity: number; returnedQuantity: number }[]; // Riepilogo aggregato con nome
     status: 'in_transit' | 'completed';
     notes?: string;
 }
