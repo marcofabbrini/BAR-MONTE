@@ -1,8 +1,9 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder, OperationalVehicle, VehicleCheck, Vehicle, StaffMember } from '../types';
-import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon, BackArrowIcon, EditIcon, SaveIcon, LockIcon } from './Icons';
+import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon, BackArrowIcon, EditIcon, SaveIcon, LockIcon, UserCircleIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
+import { GradeBadge } from './StaffManagement';
 
 interface TillSelectionProps {
     tills: Till[];
@@ -38,7 +39,7 @@ interface WeatherData {
 const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, onSelectOperationalVehicles, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification, reminders = [], onToggleReminder, operationalVehicles = [], vehicles = [], vehicleChecks = [] }) => {
     
     // Context for Reliable Time & Auth
-    const { getNow, activeBarUser, logoutBarUser, onlineStaffCount, updateStaff } = useBar();
+    const { getNow, activeBarUser, logoutBarUser, onlineStaffCount, updateStaff, availableRoles } = useBar();
 
     // WEATHER & DATE STATE
     const [currentDateString, setCurrentDateString] = useState<string>('');
@@ -55,6 +56,18 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     // PROFILE MODAL STATE
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [profileForm, setProfileForm] = useState<{username: string, password: string, rcSubGroup: number}>({ username: '', password: '', rcSubGroup: 1 });
+
+    // CALCOLA ACCESSO ADMIN (Manager o Superiore)
+    const canAccessAdmin = useMemo(() => {
+        if (!activeBarUser) return false;
+        // Se è super admin virtuale o ha ruolo esplicito
+        if (activeBarUser.role === 'super-admin') return true;
+        
+        // Cerca il livello del ruolo
+        const roleDef = availableRoles.find(r => r.id === activeBarUser.role);
+        // Livello 1 = Standard, Livello 2 = Manager, Livello 3 = Admin, Livello 4 = Super
+        return roleDef ? roleDef.level >= 2 : false;
+    }, [activeBarUser, availableRoles]);
 
     // Inizializza form profilo quando si apre
     useEffect(() => {
@@ -402,7 +415,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     return (
         <div className="flex flex-col min-h-dvh relative overflow-hidden font-sans transition-colors duration-500" style={{ backgroundColor }}>
             
-            {/* ONLINE USERS BADGE (TOP LEFT) */}
+            {/* ONLINE USERS BADGE & USER AVATAR (TOP LEFT) */}
             <div className="absolute top-4 left-4 z-50 mt-[env(safe-area-inset-top)] flex flex-col gap-2 items-start">
                 <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-md flex items-center gap-2 border border-green-100">
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
@@ -412,19 +425,23 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
                 
                 {activeBarUser && (
-                    <div className="bg-slate-800 text-white pl-1 pr-3 py-1 rounded-full shadow-md flex items-center gap-2 group relative">
-                        <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-[10px] overflow-hidden border border-slate-500">
-                            {activeBarUser.photoUrl ? <img src={activeBarUser.photoUrl} className="w-full h-full object-cover" /> : (activeBarUser.icon || '👤')}
+                    <div className="flex items-center gap-2">
+                        <div className="relative group">
+                            <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white shadow-lg flex items-center justify-center overflow-hidden">
+                                {activeBarUser.photoUrl ? (
+                                    <img src={activeBarUser.photoUrl} className="w-full h-full object-cover" />
+                                ) : (
+                                    <span className="text-lg">{activeBarUser.icon || '👤'}</span>
+                                )}
+                            </div>
+                            {activeBarUser.grade && (
+                                <div className="absolute -bottom-1 -right-1 scale-75 z-10">
+                                    <GradeBadge grade={activeBarUser.grade} />
+                                </div>
+                            )}
                         </div>
-                        <span className="text-[10px] font-bold">{activeBarUser.name}</span>
-                        
-                        {/* PERSONALIZZAZIONE PROFILO */}
-                        <button onClick={() => setIsProfileOpen(true)} className="ml-1 text-slate-400 hover:text-white transition-colors p-1" title="Modifica Profilo">
-                            <EditIcon className="h-3 w-3" />
-                        </button>
-
-                        <button onClick={logoutBarUser} className="text-red-400 hover:text-red-300 ml-1 p-1" title="Logout">
-                            <BackArrowIcon className="h-3 w-3 rotate-180" />
+                        <button onClick={logoutBarUser} className="bg-white/20 hover:bg-red-500 text-white p-2 rounded-full backdrop-blur-sm transition-colors shadow-sm">
+                            <BackArrowIcon className="h-4 w-4 rotate-180" />
                         </button>
                     </div>
                 )}
@@ -772,7 +789,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
 
                 {/* --- 3. SEZIONE BASSA --- */}
-                <div className="grid grid-cols-3 gap-3 w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
+                <div className={`grid gap-3 w-full md:w-3/4 lg:w-2/3 px-4 mb-6 ${canAccessAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-3'}`}>
                     <button onClick={onSelectAttendance} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
                         <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
                             📋
@@ -786,13 +803,22 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                         <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Report</span>
                     </button>
-                    
-                    <button onClick={onSelectAdmin} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
+
+                    <button onClick={() => setIsProfileOpen(true)} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
                         <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
-                            🔐
+                            <UserCircleIcon className="h-8 w-8 text-slate-800" />
                         </div>
-                        <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Admin</span>
+                        <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Profilo</span>
                     </button>
+                    
+                    {canAccessAdmin && (
+                        <button onClick={onSelectAdmin} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
+                            <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                                🔐
+                            </div>
+                            <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Admin</span>
+                        </button>
+                    )}
                 </div>
 
                 {/* --- 4. SEZIONE CASSE NON ATTIVE --- */}
