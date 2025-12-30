@@ -1,7 +1,7 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder, OperationalVehicle, VehicleCheck, Vehicle, StaffMember } from '../types';
-import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon, BackArrowIcon, EditIcon, SaveIcon, LockIcon, UserCircleIcon } from './Icons';
+import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon, BackArrowIcon, EditIcon, SaveIcon, LockIcon, UserCircleIcon, LogOutIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 import { GradeBadge } from './StaffManagement';
 
@@ -84,16 +84,23 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     const otherOnlineUsers = useMemo(() => {
         if (!activeBarUser) return [];
         const now = getNow().getTime();
-        const timeoutWindow = 10 * 60 * 1000; // 10 minuti
+        const timeoutWindow = 10 * 60 * 1000; // 10 minuti di tolleranza
         
         return staff.filter(s => {
-            if (s.id === activeBarUser.id) return false; // Escludi me stesso
+            // Escludi me stesso
+            if (s.id === activeBarUser.id) return false; 
+            // Deve avere un lastSeen
             if (!s.lastSeen) return false;
+            
+            // Check timeout
             const lastSeenTime = new Date(s.lastSeen).getTime();
             return (now - lastSeenTime) < timeoutWindow;
         });
-    }, [staff, activeBarUser, getNow]);
+    }, [staff, activeBarUser, getNow]); // getNow cambia ogni 30s (via BarContext o prop drilling se necessario, qui useremo il trigger del timer interno)
 
+    // Force re-calc of online users every 30s using local state trigger if needed, 
+    // but dependency on getNow (from context) or staff updates should be enough.
+    
     const handleSaveProfile = async () => {
         if (!activeBarUser) return;
         try {
@@ -432,12 +439,37 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     return (
         <div className="flex flex-col min-h-dvh relative overflow-hidden font-sans transition-colors duration-500" style={{ backgroundColor }}>
             
-            {/* ONLINE USERS (TOP RIGHT) - GLOW ORANGE */}
-            <div className="absolute top-4 right-4 z-50 mt-[env(safe-area-inset-top)] flex items-center gap-[-8px]">
+            {/* TOP LEFT: MY AVATAR FIRST, THEN OTHERS */}
+            <div className="absolute top-4 left-4 z-50 mt-[env(safe-area-inset-top)] flex items-center -space-x-2 hover:space-x-1 transition-all">
+                {/* 1. MY AVATAR (GREEN GLOW, ON TOP/LEFT) */}
+                {activeBarUser && (
+                    <div className="relative group z-30 flex-shrink-0" onClick={() => setIsProfileOpen(true)}>
+                        <div className="w-12 h-12 rounded-full bg-slate-800 border-2 border-white shadow-[0_0_15px_#4ade80] flex items-center justify-center overflow-hidden cursor-pointer hover:scale-105 transition-transform relative">
+                            {activeBarUser.photoUrl ? (
+                                <img src={activeBarUser.photoUrl} className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="text-2xl">{activeBarUser.icon || '👤'}</span>
+                            )}
+                            {/* Green Dot Indicator */}
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                        </div>
+                        {activeBarUser.grade && (
+                            <div className="absolute -top-1 -right-1 scale-75 z-40 pointer-events-none">
+                                <GradeBadge grade={activeBarUser.grade} />
+                            </div>
+                        )}
+                        {/* Tooltip */}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            Tu
+                        </div>
+                    </div>
+                )}
+
+                {/* 2. OTHER ONLINE USERS (ORANGE GLOW) */}
                 {otherOnlineUsers.slice(0, 4).map((user, idx) => (
                     <div 
                         key={user.id} 
-                        className="w-10 h-10 rounded-full border-2 border-white shadow-[0_0_15px_#f97316] overflow-hidden -ml-3 first:ml-0 bg-slate-100 flex items-center justify-center relative z-10"
+                        className="relative z-20 w-10 h-10 rounded-full border-2 border-white shadow-[0_0_15px_#f97316] overflow-hidden bg-slate-100 flex items-center justify-center group"
                         title={`${user.name} Online`}
                     >
                         {user.photoUrl ? (
@@ -445,48 +477,40 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         ) : (
                             <span className="text-lg">{user.icon || '👤'}</span>
                         )}
-                        {/* Indicatore Stato */}
-                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border border-white rounded-full"></div>
+                        {/* Orange Dot Indicator */}
+                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-orange-500 border border-white rounded-full"></div>
+                        
+                        {/* Tooltip */}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
+                            {user.name.split(' ')[0]}
+                        </div>
                     </div>
                 ))}
                 
-                {/* Contatore rimanenti se > 4 */}
                 {otherOnlineUsers.length > 4 && (
-                    <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-800 text-white font-bold flex items-center justify-center -ml-3 z-0 shadow-md">
+                    <div className="relative z-10 w-10 h-10 rounded-full border-2 border-white bg-slate-800 text-white font-bold flex items-center justify-center shadow-md text-xs">
                         +{otherOnlineUsers.length - 4}
-                    </div>
-                )}
-
-                {/* Testo se nessuno online */}
-                {otherOnlineUsers.length === 0 && (
-                    <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-md flex items-center gap-2 border border-slate-100">
-                        <div className="w-2 h-2 rounded-full bg-slate-400"></div>
-                        <span className="text-[10px] font-bold text-slate-500">Solo Tu</span>
                     </div>
                 )}
             </div>
 
-            {/* USER AVATAR & LOGOUT (TOP LEFT) - GLOW GREEN */}
-            <div className="absolute top-4 left-4 z-50 mt-[env(safe-area-inset-top)] flex items-center gap-2">
-                {activeBarUser && (
-                    <div className="relative group">
-                        {/* Avatar con Glow Fluo (Verde per me) */}
-                        <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white shadow-[0_0_15px_#4ade80] flex items-center justify-center overflow-hidden cursor-pointer" onClick={() => setIsProfileOpen(true)}>
-                            {activeBarUser.photoUrl ? (
-                                <img src={activeBarUser.photoUrl} className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-lg">{activeBarUser.icon || '👤'}</span>
-                            )}
-                        </div>
-                        {activeBarUser.grade && (
-                            <div className="absolute -top-2 -right-2 scale-75 z-10 pointer-events-none">
-                                <GradeBadge grade={activeBarUser.grade} />
-                            </div>
-                        )}
-                    </div>
-                )}
-                <button onClick={logoutBarUser} className="bg-white/20 hover:bg-red-500/80 text-white p-2 rounded-full backdrop-blur-sm transition-colors shadow-sm ml-1" title="Esci">
-                    <span className="text-xl leading-none">🚪</span>
+            {/* TOP RIGHT: ONLINE COUNT + LOGOUT */}
+            <div className="absolute top-4 right-4 z-50 mt-[env(safe-area-inset-top)] flex items-center gap-3">
+                {/* Online Count Badge */}
+                <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-slate-100 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span className="text-xs font-bold text-slate-600">
+                        {otherOnlineUsers.length + 1} Online
+                    </span>
+                </div>
+
+                {/* Logout Button (Red Door Open) */}
+                <button 
+                    onClick={logoutBarUser} 
+                    className="bg-red-500 hover:bg-red-600 text-white p-2.5 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center border-2 border-white/20" 
+                    title="Esci"
+                >
+                    <LogOutIcon className="h-5 w-5 ml-0.5" />
                 </button>
             </div>
 

@@ -208,7 +208,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
     }, [staff]);
 
-    // Heartbeat Effect
+    // Heartbeat Effect (Update Last Seen) - Reduced to 30s
     useEffect(() => {
         if (!activeBarUser || activeBarUser.id === 'super-admin-virtual') return;
         
@@ -217,7 +217,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         };
 
         heartbeat();
-        const interval = setInterval(heartbeat, 60 * 1000);
+        const interval = setInterval(heartbeat, 30 * 1000);
         return () => clearInterval(interval);
     }, [activeBarUser]);
 
@@ -243,13 +243,10 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const loginBarUser = async (username: string, password: string) => {
         const lowerInputName = username.trim().toLowerCase();
         
-        // 1. GESTIONE SUPER ADMIN (Backdoor o Utente Reale)
+        // 1. GESTIONE SUPER ADMIN
         if (lowerInputName === 'admin') {
-            // Cerca se esiste un utente reale chiamato "Admin" o "Super Admin" nel DB
             const dbAdmin = staff.find(s => s.name.toLowerCase() === 'admin' || s.name.toLowerCase() === 'super admin');
-            
             if (dbAdmin) {
-                // Se esiste, usa la sua password. Se non ha password, usa 1234
                 const storedPwd = dbAdmin.password;
                 if (storedPwd && storedPwd.trim() !== '') {
                     if (storedPwd === password) { 
@@ -258,7 +255,6 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                         return true; 
                     }
                 } else {
-                    // Fallback se l'utente esiste ma non ha pwd settata
                     if (password === '1234') { 
                         setActiveBarUser(dbAdmin); 
                         localStorage.setItem('bar_user_id', dbAdmin.id);
@@ -266,7 +262,6 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                     }
                 }
             } else {
-                // Utente virtuale (Primo avvio o Admin non censito)
                 if (password === '1234') {
                     const virtualAdmin: StaffMember = {
                         id: 'super-admin-virtual',
@@ -284,12 +279,16 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
 
         // 2. GESTIONE UTENTI STANDARD
-        // Cerca match per Username specifico OPPURE per Nome Cognome (perché è il default)
+        // Cerca match per Username specifico OPPURE per Nome Cognome (default)
         let targetUser = staff.find(s => 
             (s.username && s.username.toLowerCase() === lowerInputName) || 
-            (s.name.toLowerCase() === lowerInputName) || // Match esatto Nome Cognome
-            (s.name.toLowerCase().startsWith(lowerInputName) && !s.name.toLowerCase().includes('cassa')) // Fallback parziale
+            (s.name.toLowerCase() === lowerInputName)
         );
+
+        // Fallback: cerca per Nome (vecchio metodo) se non trova match esatto
+        if (!targetUser) {
+            targetUser = staff.find(s => s.name.toLowerCase().startsWith(lowerInputName) && !s.name.toLowerCase().includes('cassa'));
+        }
 
         if (!targetUser) return false;
 
@@ -304,6 +303,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         if (password === expectedPwd) {
             setActiveBarUser(targetUser);
             localStorage.setItem('bar_user_id', targetUser.id);
+            // Forza aggiornamento immediato lastSeen
             await BarService.updateStaffLastSeen(targetUser.id);
             return true;
         }
@@ -361,15 +361,11 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Merge static and custom roles
     useEffect(() => {
-        // Map custom roles to match structure
         const mappedCustom = customRoles.map(r => ({
-            id: r.id, // e.g., 'workshop-manager'
+            id: r.id, 
             label: r.label,
             level: r.level
         }));
-        
-        // Remove duplicates if any (based on ID), preferring custom? No, unique IDs expected.
-        // Static roles have specific IDs.
         setAvailableRoles([...USER_ROLES, ...mappedCustom]);
     }, [customRoles]);
 
