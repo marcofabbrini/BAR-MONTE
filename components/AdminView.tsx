@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef, Reminder } from '../types';
 import firebase from 'firebase/compat/app';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon, WrenchIcon, TruckIcon, PinIcon, ShieldCheckIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon, WrenchIcon, TruckIcon, PinIcon, ShieldCheckIcon, InfoIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -70,7 +70,7 @@ interface AdminViewProps {
     onSendNotification?: (title: string, body: string, target?: string) => Promise<void>;
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet' | 'operational_fleet' | 'laundry' | 'reminders' | 'roles'; 
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet' | 'operational_fleet' | 'laundry' | 'reminders' | 'roles' | 'diagnostics'; 
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
@@ -444,6 +444,16 @@ const AdminView: React.FC<AdminViewProps> = ({
         }
     };
 
+    const handleDownloadAttendanceBackup = () => {
+        const dataStr = JSON.stringify(attendanceRecords, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        const exportFileDefaultName = `backup_presenze_${new Date().toISOString().split('T')[0]}.json`;
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+    };
+
     // PULSANTI GRIGLIA ADMIN
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
         <button 
@@ -497,6 +507,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="laundry" label="Lavanderia" icon={<ShirtIcon />} />
                         <TabButton tab="reminders" label="Promemoria" icon={<PinIcon />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon />} />
+                        <TabButton tab="diagnostics" label="Diagnostica" icon={<InfoIcon />} />
                         {(isSuperAdmin || isLocalSuperAdmin) && <TabButton tab="roles" label="Ruoli" icon={<ShieldCheckIcon className="h-8 w-8" />} />}
                     </div>
                 </div>
@@ -549,6 +560,80 @@ const AdminView: React.FC<AdminViewProps> = ({
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                )}
+                
+                {/* --- DIAGNOSTICS & RECOVERY --- */}
+                {activeTab === 'diagnostics' && (
+                    <div className="max-w-4xl mx-auto space-y-6">
+                        <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-xl shadow-md">
+                            <h2 className="text-xl font-bold text-red-800 flex items-center gap-2 mb-2">
+                                <InfoIcon className="h-6 w-6"/> Diagnostica Database
+                            </h2>
+                            <p className="text-sm text-red-700">
+                                Usa questo pannello se sospetti che dei dati siano spariti. Qui vedi il contenuto grezzo del database.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase">Presenze Totali (Raw)</h3>
+                                <p className="text-4xl font-black text-slate-800 mt-2">{attendanceRecords.length}</p>
+                                <p className="text-[10px] text-slate-400 mt-1">Record nel database locale</p>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase">Personale</h3>
+                                <p className="text-4xl font-black text-slate-800 mt-2">{staff.length}</p>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase">Ordini</h3>
+                                <p className="text-4xl font-black text-slate-800 mt-2">{orders.length}</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                            <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+                                <h3 className="font-bold text-slate-700">Anteprima Dati Presenze (Ultimi 20)</h3>
+                                <button 
+                                    onClick={handleDownloadAttendanceBackup}
+                                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm flex items-center gap-2"
+                                >
+                                    <SaveIcon className="h-4 w-4" /> Scarica Backup JSON
+                                </button>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs text-left">
+                                    <thead className="bg-slate-100 text-slate-500 uppercase font-bold">
+                                        <tr>
+                                            <th className="p-3">ID</th>
+                                            <th className="p-3">Data</th>
+                                            <th className="p-3">Turno</th>
+                                            <th className="p-3">Stato</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {attendanceRecords.slice(0, 20).map(r => (
+                                            <tr key={r.id}>
+                                                <td className="p-3 font-mono text-slate-400">{r.id}</td>
+                                                <td className="p-3 font-bold">{r.date}</td>
+                                                <td className="p-3">{r.tillId}</td>
+                                                <td className="p-3">
+                                                    {r.closedAt ? <span className="text-green-600 font-bold">Chiuso</span> : <span className="text-orange-500 font-bold">Aperto</span>}
+                                                    <span className="ml-2 text-slate-400">({r.presentStaffIds.length} presenti)</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {attendanceRecords.length === 0 && (
+                                            <tr>
+                                                <td colSpan={4} className="p-8 text-center text-red-500 font-bold">
+                                                    NESSUN DATO TROVATO. Il database sembra vuoto.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}

@@ -136,6 +136,24 @@ export const UserCircleIcon = ({ className, ...props }: React.SVGProps<SVGSVGEle
     </svg>
 );
 
+export const InfoIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className} 
+        {...props}
+    >
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="16" x2="12" y2="12" />
+        <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+);
+
 export const SettingsIcon = (props: IconProps) => <EmojiIcon emoji="⚙️" {...props} />;
 export const CashIcon = (props: IconProps) => <EmojiIcon emoji="💶" {...props} />;
 export const BanknoteIcon = (props: IconProps) => <EmojiIcon emoji="💶" {...props} />;
@@ -164,7 +182,6 @@ export const RainIcon = (props: IconProps) => <EmojiIcon emoji="🌧️" {...pro
 export const SnowIcon = (props: IconProps) => <EmojiIcon emoji="❄️" {...props} />;
 export const BoltIcon = (props: IconProps) => <EmojiIcon emoji="⚡" {...props} />;
 export const DiceIcon = (props: IconProps) => <EmojiIcon emoji="🎲" {...props} />;
-export const InfoIcon = (props: IconProps) => <EmojiIcon emoji="ℹ️" {...props} />;
 export const WalletIcon = (props: IconProps) => <EmojiIcon emoji="👛" {...props} />;
 export const ClipboardIcon = (props: IconProps) => <EmojiIcon emoji="📋" {...props} />;
 export const PrinterIcon = (props: IconProps) => <EmojiIcon emoji="🖨️" {...props} />;
