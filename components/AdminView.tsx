@@ -402,6 +402,48 @@ const AdminView: React.FC<AdminViewProps> = ({
         }
     };
 
+    const handleMassUserReset = async () => {
+        if (!window.confirm("RESET MASSIVO UTENTI:\n\n1. Tutti gli utenti (escluso Super Admin) diventeranno 'Standard'.\n2. Verrà rimosso l'username 'admin'.\n3. Verrà rimossa la password '3110'.\n\nConfermi l'operazione?")) return;
+
+        let count = 0;
+        try {
+            for (const s of staff) {
+                // SALVA IL SUPER ADMIN
+                if (s.role === 'super-admin') continue;
+
+                let needsUpdate = false;
+                let updatedUser = { ...s };
+
+                // Reset Ruolo
+                if (s.role !== 'standard') {
+                    updatedUser.role = 'standard';
+                    needsUpdate = true;
+                }
+
+                // Rimuovi username 'admin'
+                if (updatedUser.username && updatedUser.username.trim().toLowerCase() === 'admin') {
+                    updatedUser.username = '';
+                    needsUpdate = true;
+                }
+
+                // Rimuovi password '3110'
+                if (updatedUser.password === '3110') {
+                    updatedUser.password = '';
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                    await onUpdateStaff(updatedUser);
+                    count++;
+                }
+            }
+            alert(`Operazione completata con successo.\nUtenti aggiornati: ${count}`);
+        } catch (e) {
+            console.error(e);
+            alert("Si è verificato un errore durante l'aggiornamento massivo.");
+        }
+    };
+
     // PULSANTI GRIGLIA ADMIN
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
         <button 
@@ -811,6 +853,20 @@ const AdminView: React.FC<AdminViewProps> = ({
                                         <button onClick={handleClearLocalCache} className="bg-orange-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-orange-600 shadow-sm text-sm flex items-center justify-center gap-2 w-full md:w-auto">
                                             ⚠️ Svuota Cache Browser (Fix Quota/Crash)
                                         </button>
+                                    </div>
+
+                                    {/* NEW MAINTENANCE AREA */}
+                                    <div className="mt-6 pt-6 border-t border-slate-200">
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Manutenzione Utenti</h4>
+                                        <button 
+                                            onClick={handleMassUserReset}
+                                            className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold text-xs border border-red-200 hover:bg-red-200 flex items-center gap-2"
+                                        >
+                                            <TrashIcon className="h-4 w-4" /> Reset Ruoli & Credenziali (Massivo)
+                                        </button>
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            Imposta tutti gli utenti (no Super Admin) a "Standard" e rimuove credenziali obsolete (admin/3110).
+                                        </p>
                                     </div>
                                 </div>
                             )}
