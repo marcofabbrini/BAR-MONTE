@@ -131,6 +131,7 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
                 extractionSchedule: editSchedule
             });
             setIsEditingInfo(false);
+            setIsInfoOpen(false); // Close modal on save
         } catch (e) {
             console.error(e);
             alert("Errore salvataggio info.");
