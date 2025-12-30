@@ -89,6 +89,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
             staff.forEach(member => {
                 if (filterStaffId !== 'all' && member.id !== filterStaffId) return;
                 if (member.name.toLowerCase().includes('cassa')) return;
+                if (member.role === 'super-admin') return; // EXCLUDE SUPER ADMIN
 
                 // Calcola presenze nel range selezionato
                 const count = attendanceRecords.filter(r => {
@@ -106,7 +107,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                         const status = r.attendanceDetails[member.id];
                         // Solo Presente (P) e Sostituzione (S) pagano l'acqua.
                         // Ferie, Malattia, Riposo, Permesso, Missione NON pagano.
-                        return status === 'present' || status === 'substitution';
+                        return status === 'present' || status === 'substitution' || status === 'sub1' || status === 'sub2' || status === 'sub3';
                     }
 
                     // Fallback per record vecchi (dove la presenza implicava essere lì)

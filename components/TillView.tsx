@@ -161,7 +161,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         let totalCount = 0;
 
         const quotas = staffForShift
-            .filter(s => !s.name.toLowerCase().includes('cassa'))
+            .filter(s => !s.name.toLowerCase().includes('cassa') && s.role !== 'super-admin') // EXCLUDE SUPER ADMIN
             .map(member => {
                 const count = attendanceRecords.filter(r => {
                     const d = new Date(r.date);

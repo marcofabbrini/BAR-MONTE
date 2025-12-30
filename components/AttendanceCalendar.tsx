@@ -180,7 +180,9 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const initialSubNames: Record<string, string> = currentRecord?.substitutionNames || {};
         
         const shift = tillId.replace('T', '').toLowerCase();
-        const shiftStaff = staff.filter(s => s.shift === shift);
+        
+        // EXCLUDE SUPER ADMIN from editing list
+        const shiftStaff = staff.filter(s => s.shift === shift && s.role !== 'super-admin');
         
         // Add virtual rows to processing list with proper typing
         const virtualStaff = virtualSubRows.map(v => ({
@@ -340,8 +342,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         if (!editingTillId) return [];
         const shift = editingTillId.replace('T', '').toLowerCase();
         
-        // 1. Regular Staff sorted
-        const regulars = staff.filter(s => s.shift === shift).sort((a,b) => {
+        // 1. Regular Staff sorted (EXCLUDE SUPER ADMIN)
+        const regulars = staff.filter(s => s.shift === shift && s.role !== 'super-admin').sort((a,b) => {
              const aIsCassa = a.name.toLowerCase().includes('cassa');
              const bIsCassa = b.name.toLowerCase().includes('cassa');
              if (aIsCassa && !bIsCassa) return -1;
@@ -369,7 +371,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const matrixData = useMemo(() => {
         const realStaff = staff
-            .filter(s => s.shift === matrixShift && isRealPerson(s.name))
+            .filter(s => s.shift === matrixShift && isRealPerson(s.name) && s.role !== 'super-admin') // EXCLUDE SUPER ADMIN FROM MATRIX
             .sort((a,b) => {
                 const rankA = getStaffRank(a.grade);
                 const rankB = getStaffRank(b.grade);
