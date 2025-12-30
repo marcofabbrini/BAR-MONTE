@@ -10,7 +10,7 @@ interface LoginScreenProps {
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
-    const { loginBarUser, updateStaff } = useBar();
+    const { loginBarUser, updateStaff, addStaff } = useBar();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -21,27 +21,39 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
         setError('');
         
         // --- MECCANISMO DI RIPRISTINO PASSWORD SUPER ADMIN ---
-        // Se l'utente inserisce "RESET" come nome e "123456" come password,
-        // il sistema cerca il Super Admin e imposta la sua password a "123456".
+        // Se l'utente inserisce "RESET" come nome e "123456" come password:
+        // 1. Se esiste un Super Admin, resetta la password.
+        // 2. Se NON esiste, crea un nuovo utente Super Admin (admin/123456).
         if (username.toUpperCase() === 'RESET' && password === '123456') {
-            const superAdmin = staff.find(s => s.role === 'super-admin');
-            if (superAdmin) {
-                setIsLoggingIn(true);
-                try {
+            setIsLoggingIn(true);
+            try {
+                const superAdmin = staff.find(s => s.role === 'super-admin');
+                
+                if (superAdmin) {
                     await updateStaff({ ...superAdmin, password: '123456' });
                     setError(`✅ Password di ${superAdmin.name} ripristinata a 123456. Ora puoi accedere.`);
-                    setUsername(superAdmin.username || superAdmin.name); // Precompila per comodità
+                    setUsername(superAdmin.username || superAdmin.name); 
                     setPassword('123456');
-                } catch (err) {
-                    console.error(err);
-                    setError("Errore durante il ripristino della password.");
+                } else {
+                    await addStaff({
+                        name: "Super Admin",
+                        username: "admin",
+                        password: "123456",
+                        role: "super-admin",
+                        shift: "a",
+                        grade: "CS",
+                        icon: "🛡️"
+                    });
+                    setError(`✅ Utente 'Super Admin' mancante: ne è stato creato uno nuovo. Usa: admin / 123456`);
+                    setUsername('admin');
+                    setPassword('123456');
                 }
-                setIsLoggingIn(false);
-                return;
-            } else {
-                setError("Nessun utente con ruolo 'Super Admin' trovato.");
-                return;
+            } catch (err) {
+                console.error(err);
+                setError("Errore durante il ripristino/creazione.");
             }
+            setIsLoggingIn(false);
+            return;
         }
         // -----------------------------------------------------
 
@@ -140,4 +152,3 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
 };
 
 export default LoginScreen;
-    
