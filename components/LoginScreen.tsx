@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { StaffMember } from '../types';
 import { useBar } from '../contexts/BarContext';
-import { LockIcon, LockOpenIcon, UserPlusIcon, UsersIcon } from './Icons';
+import { LockIcon } from './Icons';
 
 interface LoginScreenProps {
     staff: StaffMember[];
@@ -41,59 +41,52 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
     return (
         <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
             
-            {/* Background Decor */}
-            <div className="absolute inset-0 z-0 opacity-5 pointer-events-none">
-                <span className="absolute top-10 left-10 text-9xl">🚒</span>
-                <span className="absolute bottom-10 right-10 text-9xl">👨‍🚒</span>
-                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[400px] opacity-10">🔥</span>
-            </div>
-
             {/* LOGIN CARD */}
-            <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full z-10 overflow-hidden border border-slate-200 relative animate-fade-in-up">
-                <div className="bg-orange-600 h-32 flex items-center justify-center relative overflow-hidden">
-                    <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-                    <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-lg transform translate-y-8 border-4 border-white">
-                        <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                        <span className="text-4xl absolute" style={{ opacity: 0 }}>🚒</span> 
+            <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full z-10 overflow-visible border border-slate-200 relative animate-fade-in-up mt-10">
+                
+                {/* Logo Area - Clean & Larger */}
+                <div className="absolute -top-16 left-1/2 transform -translate-x-1/2">
+                    <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-xl border-4 border-slate-50 p-2">
+                        <img src="/logo.png" alt="Logo" className="w-full h-full object-contain drop-shadow-sm" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     </div>
                 </div>
 
-                <div className="pt-12 pb-8 px-8 text-center">
-                    <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter mb-1">VVF</h2>
-                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-8">Montepulciano</p>
+                <div className="pt-20 pb-8 px-8 text-center mt-4">
+                    <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tight mb-1">Vigili del Fuoco</h2>
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-8">Distaccamento Montepulciano</p>
 
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <UsersIcon className="h-5 w-5 text-slate-400 group-focus-within:text-orange-500 transition-colors" />
+                                <span className="text-xl filter drop-shadow-sm">🚨</span>
                             </div>
                             <input 
                                 type="text" 
                                 value={username}
                                 onChange={e => setUsername(e.target.value)}
                                 placeholder="Nome Utente (es. Mario)"
-                                className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 outline-none text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all"
+                                className="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 outline-none text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all"
                                 autoFocus
                             />
                         </div>
 
                         <div className="relative group">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <LockIcon className="h-5 w-5 text-slate-400 group-focus-within:text-orange-500 transition-colors" />
+                                <LockIcon className="h-5 w-5 text-slate-400 group-focus-within:text-red-500 transition-colors" />
                             </div>
                             <input 
                                 type="password" 
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
                                 placeholder="Password"
-                                className="w-full pl-10 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 outline-none text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all"
+                                className="w-full pl-11 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:border-red-500 focus:ring-4 focus:ring-red-100 outline-none text-sm font-bold text-slate-700 bg-slate-50 focus:bg-white transition-all"
                             />
                         </div>
 
                         <button 
                             type="submit"
                             disabled={isLoggingIn}
-                            className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white font-black py-4 rounded-xl shadow-lg shadow-orange-200 transition-transform active:scale-95 text-sm uppercase tracking-wide mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black py-4 rounded-xl shadow-lg shadow-red-200 transition-transform active:scale-95 text-sm uppercase tracking-wide mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                             {isLoggingIn ? 'Accesso in corso...' : 'Accedi'}
                         </button>
@@ -107,14 +100,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
                     )}
                 </div>
                 
-                <div className="bg-slate-50 p-3 text-center border-t border-slate-100">
+                <div className="bg-slate-50 p-4 text-center border-t border-slate-100 rounded-b-3xl">
                     <p className="text-[10px] text-slate-400 font-medium">
                         Password dimenticata? Chiedi al Capo Turno.
                     </p>
                 </div>
             </div>
             
-            <div className="absolute bottom-4 text-center text-slate-400 text-[10px] font-bold opacity-50">
+            <div className="absolute bottom-6 text-center text-slate-400 text-[10px] font-bold opacity-60">
                 Gestionale V4.3 • Accesso Riservato
             </div>
         </div>
