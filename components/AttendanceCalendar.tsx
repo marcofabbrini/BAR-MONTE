@@ -1,5 +1,4 @@
 
-// ... (imports remain the same)
 import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings, AttendanceStatus } from '../types';
 import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon, GridIcon, SettingsIcon, PrinterIcon, WhatsAppIcon, EditIcon } from './Icons';
@@ -39,8 +38,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     const { activeBarUser, availableRoles } = useBar();
     const [currentDate, setCurrentDate] = useState(new Date());
     
-    // ... (rest of the component logic until handleReopen)
-
     // Check permission for Reset Month (Admin Level 3 or higher)
     const canResetMonth = useMemo(() => {
         if (!activeBarUser) return false;
@@ -475,16 +472,6 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                         <BackArrowIcon className="h-5 w-5" /> Indietro
                     </button>
                     <h1 className="text-xl font-bold text-slate-800 ml-4 hidden md:block">Gestione Presenze</h1>
-                    
-                    {canResetMonth && (
-                        <button 
-                            onClick={handleBulkDeleteMonth}
-                            className="ml-auto bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-red-200"
-                            title="Elimina tutte le presenze di questo mese per il turno selezionato"
-                        >
-                            <TrashIcon className="h-4 w-4" /> Reset Mese
-                        </button>
-                    )}
                 </div>
             )}
 
