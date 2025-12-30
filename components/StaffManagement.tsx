@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { StaffMember, Shift } from '../types';
-import { EditIcon, TrashIcon, PlusIcon, SaveIcon, UserPlusIcon, LockIcon } from './Icons';
-import { VVF_GRADES } from '../constants';
+import { StaffMember, Shift, UserRole } from '../types';
+import { EditIcon, TrashIcon, PlusIcon, SaveIcon, UserPlusIcon, LockIcon, ShieldCheckIcon } from './Icons';
+import { VVF_GRADES, USER_ROLES } from '../constants';
+import { useBar } from '../contexts/BarContext';
 
 interface StaffManagementProps {
     staff: StaffMember[];
@@ -56,6 +57,7 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
 };
 
 const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, onUpdateStaff, onDeleteStaff }) => {
+    const { activeBarUser } = useBar();
     const [name, setName] = useState('');
     const [grade, setGrade] = useState('');
     const [shift, setShift] = useState<Shift>('a');
@@ -63,6 +65,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
     const [icon, setIcon] = useState('');
     const [photoUrl, setPhotoUrl] = useState('');
     const [password, setPassword] = useState('');
+    const [role, setRole] = useState<UserRole>('standard');
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [isProcessingImg, setIsProcessingImg] = useState(false);
     
@@ -75,6 +78,19 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
     // Filtri
     const [filterShifts, setFilterShifts] = useState<Set<Shift>>(new Set(['a', 'b', 'c', 'd']));
 
+    // Determine current user's max promotion level
+    const currentUserRoleLevel = USER_ROLES.find(r => r.id === (activeBarUser?.role || 'standard'))?.level || 1;
+
+    const availableRoles = USER_ROLES.filter(r => {
+        // Can only assign roles lower or equal to own level
+        if (r.level > currentUserRoleLevel) return false;
+        
+        // Only actual Super Admin can see 'Super Admin' option (even if level matches)
+        if (r.id === 'super-admin' && activeBarUser?.role !== 'super-admin') return false;
+        
+        return true;
+    });
+
     const resetForm = () => {
         setName('');
         setGrade('');
@@ -83,6 +99,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         setIcon('');
         setPhotoUrl('');
         setPassword('');
+        setRole('standard');
         setIsEditing(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
@@ -101,6 +118,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         setIcon(member.icon || '');
         setPhotoUrl(member.photoUrl || '');
         setPassword(member.password || '');
+        setRole(member.role || 'standard');
         setIsModalOpen(true);
     };
 
@@ -174,7 +192,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                 rcSubGroup, 
                 icon,
                 photoUrl,
-                password: password.trim()
+                password: password.trim(),
+                role
             };
 
             if (isEditing) {
@@ -290,6 +309,22 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         </select>
                                     </div>
 
+                                    <div className="col-span-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                                            <ShieldCheckIcon className="h-3 w-3" /> Livello Accesso
+                                        </label>
+                                        <select 
+                                            value={role} 
+                                            onChange={(e) => setRole(e.target.value as UserRole)} 
+                                            className="w-full mt-1 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 font-bold text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            {availableRoles.map(r => (
+                                                <option key={r.id} value={r.id}>{r.label}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-[10px] text-slate-400 mt-1">Puoi assegnare ruoli fino al tuo livello ({activeBarUser?.role || 'Standard'}).</p>
+                                    </div>
+
                                     <div className="col-span-2 border-t pt-4 mt-2">
                                         <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
                                             <LockIcon className="h-3 w-3" /> Password Accesso
@@ -363,13 +398,18 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{VVF_GRADES.find(g=>g.id===member.grade)?.label || member.grade || 'Personale'}</p>
                                     </div>
                                 </div>
-                                <div className="flex gap-2 items-center mt-2">
+                                <div className="flex gap-2 items-center mt-2 flex-wrap">
                                     <span className="text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-slate-600 font-mono">
                                         {member.shift.toUpperCase()}
                                     </span>
                                     <span className="text-[10px] bg-purple-50 border border-purple-100 px-2 py-0.5 rounded text-purple-700 font-bold">
                                         Salto {member.rcSubGroup || 1}
                                     </span>
+                                    {member.role && member.role !== 'standard' && (
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${member.role === 'super-admin' ? 'bg-red-50 text-red-700 border-red-100' : (member.role === 'admin' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-green-50 text-green-700 border-green-100')}`}>
+                                            <ShieldCheckIcon className="h-3 w-3" /> {member.role === 'super-admin' ? 'S.Admin' : (member.role === 'admin' ? 'Admin' : 'Resp.')}
+                                        </span>
+                                    )}
                                     {member.password && <LockIcon className="h-3 w-3 text-slate-300" title="Password Impostata" />}
                                 </div>
                             </div>

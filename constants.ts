@@ -1,11 +1,18 @@
 
-import { Product, Till, StaffMember, VehicleCompartment } from './types';
+import { Product, Till, StaffMember, VehicleCompartment, UserRole } from './types';
 
 export const TILLS: Till[] = [
     { id: 'TA', name: 'Cassa TA', shift: 'a' },
     { id: 'TB', name: 'Cassa TB', shift: 'b' },
     { id: 'TC', name: 'Cassa TC', shift: 'c' },
     { id: 'TD', name: 'Cassa TD', shift: 'd' },
+];
+
+export const USER_ROLES: { id: UserRole; label: string; level: number }[] = [
+    { id: 'super-admin', label: 'Super Admin', level: 4 },
+    { id: 'admin', label: 'Amministratore', level: 3 },
+    { id: 'manager', label: 'Responsabile Settore', level: 2 },
+    { id: 'standard', label: 'Utente Standard', level: 1 },
 ];
 
 // Dati iniziali per i prodotti
@@ -47,10 +54,10 @@ export const INITIAL_MENU_ITEMS: Product[] = [
 
 // Dati iniziali per il personale con emoji
 export const INITIAL_STAFF_MEMBERS: StaffMember[] = [
-    { id: 'staff-1', name: 'Mario Rossi', shift: 'a', rcSubGroup: 1, icon: '👨‍🍳' },
-    { id: 'staff-2', name: 'Laura Bianchi', shift: 'b', rcSubGroup: 1, icon: '👩‍💼' },
-    { id: 'staff-3', name: 'Paolo Verdi', shift: 'c', rcSubGroup: 1, icon: '👨‍💻' },
-    { id: 'staff-4', name: 'Anna Neri', shift: 'd', rcSubGroup: 1, icon: '👩‍🎨' },
+    { id: 'staff-1', name: 'Mario Rossi', shift: 'a', rcSubGroup: 1, icon: '👨‍🍳', role: 'standard' },
+    { id: 'staff-2', name: 'Laura Bianchi', shift: 'b', rcSubGroup: 1, icon: '👩‍💼', role: 'standard' },
+    { id: 'staff-3', name: 'Paolo Verdi', shift: 'c', rcSubGroup: 1, icon: '👨‍💻', role: 'standard' },
+    { id: 'staff-4', name: 'Anna Neri', shift: 'd', rcSubGroup: 1, icon: '👩‍🎨', role: 'standard' },
 ];
 
 // Configurazione Gradi VVF

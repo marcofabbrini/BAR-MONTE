@@ -50,7 +50,6 @@ export const LockIcon = (props: IconProps) => <EmojiIcon emoji="🔐" {...props}
 export const LockOpenIcon = (props: IconProps) => <EmojiIcon emoji="🔓" {...props} />;
 
 // NEW SVG CHECK ICON
-// Fix: Use SVGProps instead of IconProps to avoid HTMLSpanElement vs SVGSVGElement conflict
 export const CheckIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
     <svg 
         xmlns="http://www.w3.org/2000/svg" 
@@ -64,6 +63,23 @@ export const CheckIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>
         {...props}
     >
         <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+);
+
+export const ShieldCheckIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className} 
+        {...props}
+    >
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <path d="m9 12 2 2 4-4" />
     </svg>
 );
 

@@ -37,6 +37,8 @@ export interface Till {
 
 export type Shift = 'a' | 'b' | 'c' | 'd';
 
+export type UserRole = 'super-admin' | 'admin' | 'manager' | 'standard';
+
 export interface StaffMember {
     id: string;
     name: string;
@@ -47,6 +49,7 @@ export interface StaffMember {
     photoUrl?: string; // Base64 image data
     password?: string; // Password per accesso
     lastSeen?: string; // Timestamp ultima attività
+    role?: UserRole; // Livello di accesso
 }
 
 export interface TillColors {

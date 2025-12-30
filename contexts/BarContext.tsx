@@ -187,7 +187,8 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                     name: 'Super Admin',
                     grade: 'Admin',
                     shift: 'a',
-                    icon: '👑'
+                    icon: '👑',
+                    role: 'super-admin'
                 });
             } else if (staff.length > 0) {
                 const user = staff.find(s => s.id === savedUserId);
@@ -260,7 +261,8 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                         name: 'Super Admin',
                         grade: 'Admin',
                         shift: 'a',
-                        icon: '👑'
+                        icon: '👑',
+                        role: 'super-admin'
                     };
                     setActiveBarUser(virtualAdmin);
                     localStorage.setItem('bar_user_id', 'super-admin-virtual');

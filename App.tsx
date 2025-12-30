@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -67,18 +68,13 @@ const AppContent: React.FC = () => {
         return 'default';
     });
 
-    // Calcolo Super Admin (Firebase Auth OR Local App Login)
+    // Calcolo Super Admin (Firebase Auth OR Local App Login via Role)
     const isSuperAdmin = useMemo(() => {
         // 1. Firebase Google Auth Check (Legacy)
         const firebaseSuper = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
         
-        // 2. Local App Login Check (New)
-        // Check if logged in as the virtual super admin OR as a user named "Super Admin" / "Admin"
-        const localSuper = activeBarUser && (
-            activeBarUser.id === 'super-admin-virtual' || 
-            activeBarUser.name.toLowerCase() === 'super admin' || 
-            activeBarUser.name.toLowerCase() === 'admin'
-        );
+        // 2. Local App Login Check (Role Based)
+        const localSuper = activeBarUser && activeBarUser.role === 'super-admin';
 
         return !!(firebaseSuper || localSuper);
     }, [currentUser, adminList, activeBarUser]);
