@@ -21,7 +21,7 @@ import {
     QuerySnapshot,
     DocumentData
 } from 'firebase/firestore';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, LaundryItemDef, LaundryEntry } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, LaundryItemDef, LaundryEntry, CustomRole } from '../types';
 
 export const BarService = {
     // --- LISTENERS ---
@@ -70,6 +70,12 @@ export const BarService = {
         // Ultimi 50 inserimenti lavanderia
         const q = query(collection(db, 'laundry_entries'), orderBy('timestamp', 'desc'), limit(50));
         return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as LaundryEntry))));
+    },
+
+    // --- NEW: Custom Roles ---
+    subscribeToCustomRoles: (onUpdate: (data: CustomRole[]) => void) => {
+        const q = query(collection(db, 'roles'), orderBy('label', 'asc'));
+        return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as CustomRole))));
     },
 
     // --- SETTINGS LISTENERS ---
@@ -195,6 +201,10 @@ export const BarService = {
     updateStaffLastSeen: async (id: string) => {
         await updateDoc(doc(db, 'staff', id), { lastSeen: new Date().toISOString() });
     },
+
+    // Custom Roles
+    addCustomRole: async (role: Omit<CustomRole, 'id'>) => { await addDoc(collection(db, 'roles'), role); },
+    deleteCustomRole: async (id: string) => { await deleteDoc(doc(db, 'roles', id)); },
 
     // Laundry Items Configuration
     addLaundryItem: async (data: Omit<LaundryItemDef, 'id'>) => { await addDoc(collection(db, 'laundry_items'), data); },

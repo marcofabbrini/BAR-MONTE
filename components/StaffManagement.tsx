@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StaffMember, Shift, UserRole } from '../types';
 import { EditIcon, TrashIcon, PlusIcon, SaveIcon, UserPlusIcon, LockIcon, ShieldCheckIcon } from './Icons';
-import { VVF_GRADES, USER_ROLES } from '../constants';
+import { VVF_GRADES } from '../constants';
 import { useBar } from '../contexts/BarContext';
 
 interface StaffManagementProps {
@@ -57,7 +57,7 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
 };
 
 const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, onUpdateStaff, onDeleteStaff }) => {
-    const { activeBarUser } = useBar();
+    const { activeBarUser, availableRoles } = useBar();
     const [name, setName] = useState('');
     const [grade, setGrade] = useState('');
     const [shift, setShift] = useState<Shift>('a');
@@ -79,9 +79,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
     const [filterShifts, setFilterShifts] = useState<Set<Shift>>(new Set(['a', 'b', 'c', 'd']));
 
     // Determine current user's max promotion level
-    const currentUserRoleLevel = USER_ROLES.find(r => r.id === (activeBarUser?.role || 'standard'))?.level || 1;
+    const currentUserRoleLevel = availableRoles.find(r => r.id === (activeBarUser?.role || 'standard'))?.level || 1;
 
-    const availableRoles = USER_ROLES.filter(r => {
+    const filteredRoles = availableRoles.filter(r => {
         // Can only assign roles lower or equal to own level
         if (r.level > currentUserRoleLevel) return false;
         
@@ -318,7 +318,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                             onChange={(e) => setRole(e.target.value as UserRole)} 
                                             className="w-full mt-1 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 font-bold text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         >
-                                            {availableRoles.map(r => (
+                                            {filteredRoles.map(r => (
                                                 <option key={r.id} value={r.id}>{r.label}</option>
                                             ))}
                                         </select>
@@ -406,8 +406,15 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         Salto {member.rcSubGroup || 1}
                                     </span>
                                     {member.role && member.role !== 'standard' && (
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${member.role === 'super-admin' ? 'bg-red-50 text-red-700 border-red-100' : (member.role === 'admin' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-green-50 text-green-700 border-green-100')}`}>
-                                            <ShieldCheckIcon className="h-3 w-3" /> {member.role === 'super-admin' ? 'S.Admin' : (member.role === 'admin' ? 'Admin' : 'Resp.')}
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${
+                                            member.role === 'super-admin' 
+                                                ? 'bg-red-50 text-red-700 border-red-100' 
+                                                : availableRoles.find(r => r.id === member.role)?.level === 3 
+                                                    ? 'bg-blue-50 text-blue-700 border-blue-100' 
+                                                    : 'bg-green-50 text-green-700 border-green-100' // Level 2 (Manager) and others
+                                        }`}>
+                                            <ShieldCheckIcon className="h-3 w-3" /> 
+                                            {availableRoles.find(r => r.id === member.role)?.label || member.role}
                                         </span>
                                     )}
                                     {member.password && <LockIcon className="h-3 w-3 text-slate-300" title="Password Impostata" />}

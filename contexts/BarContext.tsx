@@ -1,11 +1,12 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef, LaundryEntry, Intervention, InterventionTypology, DutyOfficer, OperationalVehicle, VehicleCheck, Reminder } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef, LaundryEntry, Intervention, InterventionTypology, DutyOfficer, OperationalVehicle, VehicleCheck, Reminder, CustomRole } from '../types';
 import { BarService } from '../services/barService';
 import { VehicleService } from '../services/vehicleService';
 import { InterventionService } from '../services/interventionService';
 import { OperationalVehicleService } from '../services/operationalVehicleService';
 import { ReminderService } from '../services/reminderService';
+import { USER_ROLES } from '../constants';
 
 interface BarContextType {
     products: Product[];
@@ -19,6 +20,12 @@ interface BarContextType {
     generalSettings: GeneralSettings;
     attendanceRecords: AttendanceRecord[];
     
+    // Roles
+    customRoles: CustomRole[];
+    availableRoles: { id: string; label: string; level: number }[];
+    addCustomRole: (role: Omit<CustomRole, 'id'>) => Promise<void>;
+    deleteCustomRole: (id: string) => Promise<void>;
+
     // Auth State
     activeBarUser: StaffMember | null;
     loginBarUser: (username: string, password: string) => Promise<boolean>;
@@ -141,6 +148,10 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [interventionTypologies, setInterventionTypologies] = useState<InterventionTypology[]>([]);
     const [dutyOfficers, setDutyOfficers] = useState<DutyOfficer[]>([]);
     const [reminders, setReminders] = useState<Reminder[]>([]);
+    
+    // Roles
+    const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
+    const [availableRoles, setAvailableRoles] = useState<{ id: string; label: string; level: number }[]>(USER_ROLES);
 
     // Logged In Staff
     const [activeBarUser, setActiveBarUser] = useState<StaffMember | null>(null);
@@ -314,6 +325,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             BarService.subscribeToAttendance(setAttendanceRecords),
             BarService.subscribeToLaundryItems(setLaundryItems),
             BarService.subscribeToLaundryEntries(setLaundryEntries),
+            BarService.subscribeToCustomRoles(setCustomRoles),
             VehicleService.subscribeToVehicles(setVehicles),
             VehicleService.subscribeToBookings(setVehicleBookings),
             OperationalVehicleService.subscribeToVehicles(setOperationalVehicles),
@@ -341,6 +353,20 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsLoading(false);
         return () => unsubs.forEach(u => u());
     }, []);
+
+    // Merge static and custom roles
+    useEffect(() => {
+        // Map custom roles to match structure
+        const mappedCustom = customRoles.map(r => ({
+            id: r.id, // e.g., 'workshop-manager'
+            label: r.label,
+            level: r.level
+        }));
+        
+        // Remove duplicates if any (based on ID), preferring custom? No, unique IDs expected.
+        // Static roles have specific IDs.
+        setAvailableRoles([...USER_ROLES, ...mappedCustom]);
+    }, [customRoles]);
 
     const addProduct = (d: any, e: string) => BarService.addProduct(d, e);
     const updateProduct = (p: any) => BarService.updateProduct(p);
@@ -403,10 +429,15 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const deleteReminder = (id: string) => ReminderService.deleteReminder(id);
     const toggleReminderCompletion = (id: string, date: string, completedDates: string[]) => ReminderService.toggleCompletion(id, date, completedDates);
 
+    // Role Actions
+    const addCustomRole = (r: Omit<CustomRole, 'id'>) => BarService.addCustomRole(r);
+    const deleteCustomRole = (id: string) => BarService.deleteCustomRole(id);
+
     return (
         <BarContext.Provider value={{
             products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
             vehicles, vehicleBookings, operationalVehicles, vehicleChecks, laundryItems, laundryEntries, interventions, interventionTypologies, dutyOfficers, reminders,
+            customRoles, availableRoles, addCustomRole, deleteCustomRole,
             activeBarUser, loginBarUser, logoutBarUser, onlineStaffCount,
             addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
             addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,

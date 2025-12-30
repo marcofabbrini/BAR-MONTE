@@ -37,7 +37,13 @@ export interface Till {
 
 export type Shift = 'a' | 'b' | 'c' | 'd';
 
-export type UserRole = 'super-admin' | 'admin' | 'manager' | 'standard';
+export type UserRole = 'super-admin' | 'admin' | 'manager' | 'standard' | string;
+
+export interface CustomRole {
+    id: string;
+    label: string;
+    level: number; // 1=Standard, 2=Manager, 3=Admin
+}
 
 export interface StaffMember {
     id: string;

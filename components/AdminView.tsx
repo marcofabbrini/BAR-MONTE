@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef, Reminder } from '../types';
 import firebase from 'firebase/compat/app';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon, WrenchIcon, TruckIcon, PinIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon, WrenchIcon, TruckIcon, PinIcon, ShieldCheckIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -70,7 +70,7 @@ interface AdminViewProps {
     onSendNotification?: (title: string, body: string, target?: string) => Promise<void>;
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet' | 'operational_fleet' | 'laundry' | 'reminders'; 
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet' | 'operational_fleet' | 'laundry' | 'reminders' | 'roles'; 
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
@@ -93,6 +93,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     const { laundryItems, addLaundryItem, updateLaundryItem, deleteLaundryItem } = useBar();
     const { interventionTypologies, dutyOfficers, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer } = useBar();
     const { reminders, addReminder, updateReminder, deleteReminder } = useBar();
+    const { customRoles, addCustomRole, deleteCustomRole, activeBarUser } = useBar();
 
     const [activeTab, setActiveTab] = useState<AdminTab>('movements');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -135,8 +136,13 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [remDate, setRemDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD local
     const [editingReminderId, setEditingReminderId] = useState<string | null>(null);
 
+    // Role Form State
+    const [newRoleLabel, setNewRoleLabel] = useState('');
+    const [newRoleLevel, setNewRoleLevel] = useState<number>(1);
+
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
+    const isLocalSuperAdmin = activeBarUser && activeBarUser.role === 'super-admin';
 
     // Gestione Preset Stagionali
     useEffect(() => {
@@ -365,6 +371,25 @@ const AdminView: React.FC<AdminViewProps> = ({
         }
     };
 
+    const handleAddRole = async () => {
+        if(!newRoleLabel.trim()) return;
+        try {
+            await addCustomRole({ label: newRoleLabel.trim(), level: newRoleLevel });
+            setNewRoleLabel('');
+            setNewRoleLevel(1);
+            alert("Nuovo ruolo creato!");
+        } catch (e) {
+            console.error(e);
+            alert("Errore creazione ruolo.");
+        }
+    };
+
+    const handleDeleteRole = async (id: string) => {
+        if(confirm("Eliminare questo ruolo personalizzato?")) {
+            await deleteCustomRole(id);
+        }
+    };
+
     // PULSANTI GRIGLIA ADMIN
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
         <button 
@@ -413,7 +438,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <span className="text-[9px] uppercase text-slate-400 font-bold tracking-wider">Saldo Cassa</span>
                             <span className="text-lg font-black leading-none">€{(currentBalance || 0).toFixed(2)}</span>
                         </div>
-                        <div className="text-right"><p className="text-[9px] text-slate-400 uppercase font-bold">{isSuperAdmin ? 'Super Admin' : 'Admin'}</p><button onClick={onLogout} className="text-[10px] text-red-500 font-bold hover:underline">LOGOUT</button></div>
+                        <div className="text-right"><p className="text-[9px] text-slate-400 uppercase font-bold">{isSuperAdmin || isLocalSuperAdmin ? 'Super Admin' : 'Admin'}</p><button onClick={onLogout} className="text-[10px] text-red-500 font-bold hover:underline">LOGOUT</button></div>
                     </div>
                     
                     {/* GRIGLIA NAVIGAZIONE AGGIORNATA */}
@@ -430,6 +455,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="laundry" label="Lavanderia" icon={<ShirtIcon />} />
                         <TabButton tab="reminders" label="Promemoria" icon={<PinIcon />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon />} />
+                        {(isSuperAdmin || isLocalSuperAdmin) && <TabButton tab="roles" label="Ruoli" icon={<ShieldCheckIcon className="h-8 w-8" />} />}
                     </div>
                 </div>
             </header>
@@ -584,6 +610,69 @@ const AdminView: React.FC<AdminViewProps> = ({
                                     </li>
                                 ))}
                                 {reminders.length === 0 && <li className="p-8 text-center text-slate-400 italic">Nessun promemoria.</li>}
+                            </ul>
+                        </div>
+                    </div>
+                )}
+
+                {/* ROLE MANAGEMENT TAB (SUPER ADMIN ONLY) */}
+                {activeTab === 'roles' && (isSuperAdmin || isLocalSuperAdmin) && (
+                    <div className="max-w-4xl mx-auto space-y-6">
+                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                <ShieldCheckIcon className="h-6 w-6 text-purple-600" /> Aggiungi Nuovo Ruolo
+                            </h2>
+                            <p className="text-sm text-slate-500 mb-4">Crea ruoli personalizzati (es. Responsabile Officina) e assegna un livello di permesso.</p>
+                            
+                            <div className="flex flex-col md:flex-row gap-4">
+                                <div className="flex-grow">
+                                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Nome Ruolo</label>
+                                    <input 
+                                        type="text" 
+                                        value={newRoleLabel} 
+                                        onChange={e => setNewRoleLabel(e.target.value)} 
+                                        placeholder="Es. Responsabile Bar" 
+                                        className="w-full border rounded p-2.5 font-bold" 
+                                    />
+                                </div>
+                                <div className="md:w-1/3">
+                                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Livello Accesso</label>
+                                    <select 
+                                        value={newRoleLevel} 
+                                        onChange={e => setNewRoleLevel(parseInt(e.target.value))} 
+                                        className="w-full border rounded p-2.5 bg-white font-bold"
+                                    >
+                                        <option value={1}>Standard (Utente)</option>
+                                        <option value={2}>Manager (Responsabile)</option>
+                                        <option value={3}>Admin (Amministratore)</option>
+                                    </select>
+                                </div>
+                                <button 
+                                    onClick={handleAddRole} 
+                                    className="bg-purple-600 text-white font-bold px-6 py-2 rounded-lg hover:bg-purple-700 shadow-md h-10 self-end"
+                                >
+                                    Crea
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                            <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b">Ruoli Personalizzati Attivi</h3>
+                            <ul>
+                                {customRoles.map(role => (
+                                    <li key={role.id} className="p-4 flex justify-between items-center border-b last:border-0 hover:bg-slate-50">
+                                        <div>
+                                            <p className="font-bold text-slate-800">{role.label}</p>
+                                            <p className="text-xs text-slate-500">
+                                                Livello: {role.level === 1 ? 'Standard' : (role.level === 2 ? 'Manager' : 'Admin')}
+                                            </p>
+                                        </div>
+                                        <button onClick={() => handleDeleteRole(role.id)} className="text-red-500 hover:bg-red-50 p-2 rounded">
+                                            <TrashIcon className="h-5 w-5" />
+                                        </button>
+                                    </li>
+                                ))}
+                                {customRoles.length === 0 && <li className="p-8 text-center text-slate-400 italic">Nessun ruolo personalizzato.</li>}
                             </ul>
                         </div>
                     </div>
@@ -765,7 +854,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 {sortedAdmins.map((admin, idx) => (
                                     <li key={admin.id} className="p-4 flex justify-between items-center border-b last:border-0">
                                         <div><p className="font-bold text-slate-700">{admin.email} {idx === 0 && <span className="text-red-500 text-xs ml-2">(SUPER)</span>}</p></div>
-                                        {isSuperAdmin && idx !== 0 && (<button onClick={() => onRemoveAdmin(admin.id)} className="text-red-500 hover:bg-red-50 p-2 rounded text-xs font-bold">Rimuovi</button>)}
+                                        {(isSuperAdmin || isLocalSuperAdmin) && idx !== 0 && (<button onClick={() => onRemoveAdmin(admin.id)} className="text-red-500 hover:bg-red-50 p-2 rounded text-xs font-bold">Rimuovi</button>)}
                                     </li>
                                 ))}
                             </ul>
