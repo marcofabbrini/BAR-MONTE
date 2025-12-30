@@ -4,6 +4,7 @@ import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings, Attend
 import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon, GridIcon, SettingsIcon, PrinterIcon, WhatsAppIcon, EditIcon } from './Icons';
 import { GradeBadge } from './StaffManagement';
 import { VVF_GRADES } from '../constants';
+import { useBar } from '../contexts/BarContext';
 
 interface AttendanceCalendarProps {
     attendanceRecords: AttendanceRecord[];
@@ -34,8 +35,18 @@ const STATUS_CONFIG: Record<AttendanceStatus | 'absent', { label: string, short:
 };
 
 const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord, onSaveAttendance, onReopenAttendance, isSuperAdmin, shiftSettings, readOnly, onGoBack }) => {
+    const { activeBarUser, availableRoles } = useBar();
     const [currentDate, setCurrentDate] = useState(new Date());
     
+    // Check permission for Reset Month (Admin Level 3 or higher)
+    const canResetMonth = useMemo(() => {
+        if (!activeBarUser) return false;
+        if (activeBarUser.role === 'super-admin') return true;
+        const roleDef = availableRoles.find(r => r.id === activeBarUser.role);
+        // Level 3 = Admin, Level 4 = Super Admin
+        return roleDef ? roleDef.level >= 3 : false;
+    }, [activeBarUser, availableRoles]);
+
     // Funzione helper spostata qui per essere usata nell'inizializzazione
     const getShiftsForDateSync = (date: Date) => {
         const anchorShift = 'b';
@@ -287,7 +298,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     };
 
     const handleBulkDeleteMonth = async () => {
-        if(!isSuperAdmin || !onDeleteRecord) return;
+        if(!canResetMonth || !onDeleteRecord) return;
         if(!window.confirm(`Sei sicuro di voler ELIMINARE TUTTE le presenze del mese di ${monthNames[currentDate.getMonth()]} per il turno ${matrixShift.toUpperCase()}? Questa operazione è irreversibile.`)) return;
 
         const tillId = `T${matrixShift.toUpperCase()}`;
@@ -450,7 +461,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                     </button>
                     <h1 className="text-xl font-bold text-slate-800 ml-4 hidden md:block">Gestione Presenze</h1>
                     
-                    {isSuperAdmin && (
+                    {canResetMonth && (
                         <button 
                             onClick={handleBulkDeleteMonth}
                             className="ml-auto bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-red-200"
@@ -786,4 +797,3 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 };
 
 export default AttendanceCalendar;
-    

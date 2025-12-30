@@ -141,8 +141,15 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [newRoleLevel, setNewRoleLevel] = useState<number>(1);
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
-    const isSuperAdmin = currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email;
-    const isLocalSuperAdmin = activeBarUser && activeBarUser.role === 'super-admin';
+    
+    // Super Admin Check: Use local role OR firebase email
+    const isSuperAdmin = useMemo(() => {
+        if (activeBarUser?.role === 'super-admin') return true;
+        if (currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email) return true;
+        return false;
+    }, [activeBarUser, currentUser, sortedAdmins]);
+
+    const isLocalSuperAdmin = activeBarUser?.role === 'super-admin';
 
     // Gestione Preset Stagionali
     useEffect(() => {
@@ -208,15 +215,20 @@ const AdminView: React.FC<AdminViewProps> = ({
         else setSelectedOrderIds(new Set(filteredOrders.map(o => o.id)));
     };
 
+    // Get current logged user name/email for logging actions
+    const currentActionUser = useMemo(() => {
+        return currentUser?.email || activeBarUser?.name || 'Admin';
+    }, [currentUser, activeBarUser]);
+
     const handleBulkDelete = async () => {
         if (selectedOrderIds.size === 0) return;
         if (window.confirm(`Sei sicuro di voler annullare ${selectedOrderIds.size} movimenti?`)) {
-            await onDeleteOrders(Array.from(selectedOrderIds), currentUser?.email || 'Admin');
+            await onDeleteOrders(Array.from(selectedOrderIds), currentActionUser);
             setSelectedOrderIds(new Set());
         }
     };
     
-    const handleSingleDelete = async (orderId: string) => { if (window.confirm("Sei sicuro di voler annullare questo movimento?")) await onDeleteOrders([orderId], currentUser?.email || 'Admin'); };
+    const handleSingleDelete = async (orderId: string) => { if (window.confirm("Sei sicuro di voler annullare questo movimento?")) await onDeleteOrders([orderId], currentActionUser); };
     const handlePermanentDelete = async (orderId: string) => { if (window.confirm("ELIMINAZIONE DEFINITIVA. Procedere?")) await onPermanentDeleteOrder(orderId); };
 
     const startEditOrder = (order: Order) => {
@@ -409,20 +421,6 @@ const AdminView: React.FC<AdminViewProps> = ({
         </button>
     );
 
-    if (!isAuthenticated) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-dvh bg-slate-100 p-4">
-                <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border-t-4 border-red-500">
-                    <h2 className="text-2xl font-bold mb-6 text-slate-800">Area Amministrativa</h2>
-                    <div className="flex gap-2">
-                         <button type="button" onClick={onGoBack} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl">Indietro</button>
-                         <button type="button" onClick={onLogin} className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 flex items-center justify-center gap-2 shadow-sm"><GoogleIcon className="h-5 w-5" /> Accedi con Google</button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
     return (
         <div className="min-h-dvh bg-slate-50 flex flex-col font-sans">
             <header className="bg-white border-b border-slate-200 p-3 sticky top-0 z-50 mt-[env(safe-area-inset-top)]">
@@ -432,13 +430,15 @@ const AdminView: React.FC<AdminViewProps> = ({
                             <div className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center">
                                 <BackArrowIcon className="h-5 w-5" />
                             </div>
-                            <span>Esci</span>
+                            <span>Indietro</span>
                          </button>
                         <div className="bg-slate-800 text-white px-4 py-1.5 rounded-full shadow-lg flex flex-col items-center">
                             <span className="text-[9px] uppercase text-slate-400 font-bold tracking-wider">Saldo Cassa</span>
                             <span className="text-lg font-black leading-none">€{(currentBalance || 0).toFixed(2)}</span>
                         </div>
-                        <div className="text-right"><p className="text-[9px] text-slate-400 uppercase font-bold">{isSuperAdmin || isLocalSuperAdmin ? 'Super Admin' : 'Admin'}</p><button onClick={onLogout} className="text-[10px] text-red-500 font-bold hover:underline">LOGOUT</button></div>
+                        <div className="text-right"><p className="text-[9px] text-slate-400 uppercase font-bold">{isSuperAdmin || isLocalSuperAdmin ? 'Super Admin' : 'Admin'}</p>
+                        {/* Logout visual removed as it's now handled by global app logic */}
+                        </div>
                     </div>
                     
                     {/* GRIGLIA NAVIGAZIONE AGGIORNATA */}
