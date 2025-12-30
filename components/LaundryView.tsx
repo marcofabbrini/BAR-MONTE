@@ -1,41 +1,26 @@
-
 import React, { useState, useMemo } from 'react';
-import { StaffMember, Shift, LaundryEntry, LaundryShipment } from '../types';
-import { BackArrowIcon, CheckIcon, FilterIcon, ShirtIcon, PrinterIcon, TrashIcon, SortIcon, ListIcon, TruckIcon, BoxIcon, LockOpenIcon, LockIcon } from './Icons';
-import { GradeBadge } from './StaffManagement';
+import { LaundryItemDef, LaundryEntry, LaundryShipment, Shift } from '../types';
 import { useBar } from '../contexts/BarContext';
+import { BackArrowIcon, ShirtIcon, ListIcon, CheckIcon, BoxIcon, PrinterIcon, LockIcon, TrashIcon, LockOpenIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 
 interface LaundryViewProps {
     onGoBack: () => void;
-    staff: StaffMember[];
+    staff: any[]; // Staff list passed from App but better to use context
 }
 
+// Local interface for item state in form
 interface LaundryItemState {
     id: string;
     name: string;
     quantity: number;
 }
 
-// Fallback items if none are configured in DB
-const DEFAULT_ITEMS_FALLBACK = [
-    "Giacca Intervento",
-    "Sovrapantalone Intervento",
-    "Guanti",
-    "Sottocasco",
-    "Divisa (Giacca)",
-    "Divisa (Pantalone)",
-    "Polo / T-Shirt",
-    "Felpa",
-    "Lenzuolo Singolo",
-    "Federa",
-    "Asciugamano",
-    "Telo Doccia",
-    "Coperta"
-];
+const DEFAULT_ITEMS_FALLBACK = ["Lenzuola", "Federa", "Asciugamano", "Telo Bagno", "Copriletto", "Cuscino", "Tovaglia", "Tovagliolo"];
 
-const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
+const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
     const { 
+        staff,
         laundryItems, 
         laundryEntries, 
         laundryShipments, 
@@ -43,16 +28,13 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
         deleteLaundryEntry, 
         createLaundryShipment, 
         updateLaundryShipment,
+        deleteLaundryShipment,
         activeBarUser,
         availableRoles 
     } = useBar();
 
     // VIEW STATE
     const [activeTab, setActiveTab] = useState<'entry' | 'shipment' | 'incoming' | 'archive'>('entry');
-
-    // UI State for Sections
-    const [isInputOpen, setIsInputOpen] = useState(true); 
-    const [isHistoryOpen, setIsHistoryOpen] = useState(false); 
 
     // Check permissions
     const canSendShipment = useMemo(() => {
@@ -220,6 +202,12 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
     const handleReopenShipment = async (shipmentId: string) => {
         if(confirm("Riaprire questa spedizione? Tornerà nella lista 'In Arrivo' per modifiche.")) {
             await updateLaundryShipment(shipmentId, { status: 'in_transit' });
+        }
+    };
+
+    const handleDeleteShipment = async (shipmentId: string) => {
+        if(confirm("ATTENZIONE: Stai per eliminare definitivamente questa spedizione dall'archivio.\n\nQuesta operazione non può essere annullata. Confermi?")) {
+            await deleteLaundryShipment(shipmentId);
         }
     };
 
@@ -527,6 +515,15 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
                                             >
                                                 <LockOpenIcon className="h-4 w-4" />
                                             </button>
+                                            {canSendShipment && (
+                                                <button
+                                                    onClick={() => handleDeleteShipment(shipment.id)}
+                                                    className="bg-red-100 text-red-600 hover:bg-red-200 p-1.5 rounded-full transition-colors ml-2"
+                                                    title="Elimina definitivamente"
+                                                >
+                                                    <TrashIcon className="h-4 w-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="p-4">

@@ -1,4 +1,3 @@
-
 import { db } from '../firebaseConfig';
 import { 
     collection, 
@@ -7,329 +6,172 @@ import {
     addDoc, 
     updateDoc, 
     deleteDoc, 
-    setDoc, 
+    setDoc,
     query, 
     orderBy, 
-    where, 
-    writeBatch, 
-    runTransaction,
-    getDoc,
-    getDocs,
-    limit,
-    deleteField,
-    DocumentSnapshot,
+    writeBatch,
     QuerySnapshot,
     DocumentData
 } from 'firebase/firestore';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, LaundryItemDef, LaundryEntry, CustomRole, LaundryShipment } from '../types';
+import { 
+    Product, 
+    StaffMember, 
+    Order, 
+    CashMovement, 
+    AdminUser, 
+    TillColors, 
+    SeasonalityConfig, 
+    ShiftSettings, 
+    GeneralSettings, 
+    AttendanceRecord,
+    LaundryItemDef,
+    LaundryEntry,
+    LaundryShipment,
+    CustomRole
+} from '../types';
 
 export const BarService = {
-    // --- LISTENERS ---
-
+    // --- SUBSCRIPTIONS ---
     subscribeToProducts: (onUpdate: (data: Product[]) => void) => {
-        return onSnapshot(collection(db, 'products'), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as Product))));
+        return onSnapshot(collection(db, 'products'), (snapshot: QuerySnapshot<DocumentData>) => {
+            onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Product)));
+        });
     },
-
     subscribeToStaff: (onUpdate: (data: StaffMember[]) => void) => {
-        return onSnapshot(collection(db, 'staff'), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as StaffMember))));
+        return onSnapshot(collection(db, 'staff'), (snapshot: QuerySnapshot<DocumentData>) => {
+            onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as StaffMember)));
+        });
     },
-
     subscribeToOrders: (onUpdate: (data: Order[]) => void) => {
-        // RESTORE HISTORY: Increased limit to 500. 
-        // With memory cache, this is safe and won't cause "Quota Exceeded".
-        return onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc'), limit(500)), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as Order))));
-    },
-
-    subscribeToCashMovements: (onUpdate: (data: CashMovement[]) => void) => {
-        // RESTORE HISTORY: Increased limit to 500.
-        return onSnapshot(query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc'), limit(500)), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement))));
-    },
-
-    subscribeToAdmins: (onUpdate: (data: AdminUser[]) => void) => {
-        return onSnapshot(collection(db, 'admins'), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser))));
-    },
-
-    subscribeToNotifications: (onUpdate: (data: AppNotification | null) => void) => {
-        const sessionStart = new Date().toISOString();
-        const q = query(collection(db, 'notifications'), where('timestamp', '>', sessionStart), orderBy('timestamp', 'desc'));
+        const q = query(collection(db, 'orders'), orderBy('timestamp', 'desc')); 
         return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
-            snapshot.docChanges().forEach((change) => {
-                if (change.type === 'added') {
-                    onUpdate(change.doc.data() as AppNotification);
-                }
-            });
+            onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Order)));
         });
     },
-
-    subscribeToLaundryItems: (onUpdate: (data: LaundryItemDef[]) => void) => {
-        const q = query(collection(db, 'laundry_items'), orderBy('name', 'asc'));
-        return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as LaundryItemDef))));
+    subscribeToCashMovements: (onUpdate: (data: CashMovement[]) => void) => {
+        const q = query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc'));
+        return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+            onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement)));
+        });
     },
-
-    subscribeToLaundryEntries: (onUpdate: (data: LaundryEntry[]) => void) => {
-        // Ultimi 100 inserimenti lavanderia per avere storico, ma serve principalmente per i Pending
-        const q = query(collection(db, 'laundry_entries'), orderBy('timestamp', 'desc'), limit(100));
-        return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as LaundryEntry))));
+    subscribeToAdmins: (onUpdate: (data: AdminUser[]) => void) => {
+        return onSnapshot(collection(db, 'admins'), (snapshot: QuerySnapshot<DocumentData>) => {
+            onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser)));
+        });
     },
-
-    subscribeToLaundryShipments: (onUpdate: (data: LaundryShipment[]) => void) => {
-        // Ultime 20 spedizioni
-        const q = query(collection(db, 'laundry_shipments'), orderBy('timestamp', 'desc'), limit(20));
-        return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as LaundryShipment))));
-    },
-
-    // --- NEW: Custom Roles ---
     subscribeToCustomRoles: (onUpdate: (data: CustomRole[]) => void) => {
-        const q = query(collection(db, 'roles'), orderBy('label', 'asc'));
-        return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as CustomRole))));
+        return onSnapshot(collection(db, 'custom_roles'), (snapshot: QuerySnapshot<DocumentData>) => {
+            onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as CustomRole)));
+        });
     },
-
-    // --- SETTINGS LISTENERS ---
-
     subscribeToTillColors: (onUpdate: (data: TillColors) => void) => {
-        return onSnapshot(doc(db, 'settings', 'tillColors'), (d) => { if(d.exists()) onUpdate(d.data() as TillColors); });
+        return onSnapshot(doc(db, 'settings', 'tillColors'), (doc) => {
+            if (doc.exists()) onUpdate(doc.data() as TillColors);
+        });
     },
-
     subscribeToSeasonality: (onUpdate: (data: SeasonalityConfig) => void) => {
-        return onSnapshot(doc(db, 'settings', 'seasonality'), (d) => { 
-            if(d.exists()) onUpdate(d.data() as SeasonalityConfig);
-            else setDoc(doc(db, 'settings', 'seasonality'), { startDate: '', endDate: '', preset: 'custom', animationType: 'none', emojis: [], opacity: 0.5, backgroundColor: '#f8fafc' });
+        return onSnapshot(doc(db, 'settings', 'seasonality'), (doc) => {
+            if (doc.exists()) onUpdate(doc.data() as SeasonalityConfig);
         });
     },
-
     subscribeToShiftSettings: (onUpdate: (data: ShiftSettings) => void) => {
-        return onSnapshot(doc(db, 'settings', 'shift'), (d) => {
-            if(d.exists()) {
-                onUpdate(d.data() as ShiftSettings);
-            } else {
-                // DEFAULT STABILE: 1 Gennaio 2025 = Turno B
-                setDoc(doc(db, 'settings', 'shift'), { 
-                    anchorDate: '2025-01-01', 
-                    anchorShift: 'b', 
-                    rcAnchorDate: '', 
-                    rcAnchorShift: 'a', 
-                    rcAnchorSubGroup: 1 
-                });
-            }
+        return onSnapshot(doc(db, 'settings', 'shifts'), (doc) => {
+            if (doc.exists()) onUpdate(doc.data() as ShiftSettings);
         });
     },
-
     subscribeToGeneralSettings: (onUpdate: (data: GeneralSettings) => void) => {
-        return onSnapshot(doc(db, 'settings', 'general'), (d) => {
-            if (d.exists()) onUpdate(d.data() as GeneralSettings);
-            else setDoc(doc(db, 'settings', 'general'), { waterQuotaPrice: 0 });
+        return onSnapshot(doc(db, 'settings', 'general'), (doc) => {
+            if (doc.exists()) onUpdate(doc.data() as GeneralSettings);
         });
     },
-
     subscribeToAttendance: (onUpdate: (data: AttendanceRecord[]) => void) => {
-        // Increased limit for attendance to 200 days
-        return onSnapshot(query(collection(db, 'shift_attendance'), orderBy('date', 'desc'), limit(200)), (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as AttendanceRecord))));
+        const q = query(collection(db, 'attendance'), orderBy('date', 'desc'));
+        return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+            onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as AttendanceRecord)));
+        });
+    },
+    
+    // Laundry Subscriptions
+    subscribeToLaundryItems: (onUpdate: (data: LaundryItemDef[]) => void) => {
+        return onSnapshot(collection(db, 'laundry_items'), (s) => onUpdate(s.docs.map(d => ({...d.data(), id: d.id} as LaundryItemDef))));
+    },
+    subscribeToLaundryEntries: (onUpdate: (data: LaundryEntry[]) => void) => {
+        const q = query(collection(db, 'laundry_entries'), orderBy('timestamp', 'desc'));
+        return onSnapshot(q, (s) => onUpdate(s.docs.map(d => ({...d.data(), id: d.id} as LaundryEntry))));
+    },
+    subscribeToLaundryShipments: (onUpdate: (data: LaundryShipment[]) => void) => {
+        const q = query(collection(db, 'laundry_shipments'), orderBy('timestamp', 'desc'));
+        return onSnapshot(q, (s) => onUpdate(s.docs.map(d => ({...d.data(), id: d.id} as LaundryShipment))));
     },
 
-    // --- OPERATIONS ---
+    // --- ACTIONS ---
+    // Product
+    addProduct: async (p: any) => addDoc(collection(db, 'products'), p),
+    updateProduct: async (p: any) => updateDoc(doc(db, 'products', p.id), p),
+    deleteProduct: async (id: string) => deleteDoc(doc(db, 'products', id)),
+    
+    // Staff
+    addStaff: async (s: any) => addDoc(collection(db, 'staff'), s),
+    updateStaff: async (s: any) => updateDoc(doc(db, 'staff', s.id), s),
+    deleteStaff: async (id: string) => deleteDoc(doc(db, 'staff', id)),
 
     // Orders
-    completeOrder: async (newOrderData: Omit<Order, 'id'>) => {
-        try {
-            await runTransaction(db, async (t) => {
-                const productRefs = newOrderData.items.map(item => doc(db, 'products', item.product.id));
-                const productDocs = await Promise.all(productRefs.map(ref => t.get(ref)));
-                
-                productDocs.forEach((docSnap, index) => {
-                    if (!docSnap.exists()) throw new Error(`Prodotto non trovato.`);
-                    const currentStock = Number(docSnap.data().stock) || 0;
-                    t.update(productRefs[index], { stock: currentStock - newOrderData.items[index].quantity });
-                });
-                
-                const orderRef = doc(collection(db, 'orders'));
-                t.set(orderRef, { ...newOrderData, id: orderRef.id });
-            });
-        } catch (error) { 
-            console.error("BarService: Transazione Ordine Fallita:", error); 
-            throw error; 
-        }
-    },
-
-    updateOrder: async (order: Order) => {
-        const { id, ...data } = order;
-        await updateDoc(doc(db, 'orders', id), data);
-    },
-
-    deleteOrders: async (ids: string[], userEmail: string) => {
-        const batch = writeBatch(db);
-        ids.forEach(id => batch.update(doc(db, 'orders', id), { isDeleted: true, deletedBy: userEmail, deletedAt: new Date().toISOString() }));
-        await batch.commit();
-    },
-
-    permanentDeleteOrder: async (id: string) => {
-        await deleteDoc(doc(db, 'orders', id));
-    },
-
-    // Products
-    addProduct: async (data: any, userEmail: string) => {
-        await addDoc(collection(db, 'products'), { ...data, createdAt: new Date().toISOString(), createdBy: userEmail });
-    },
-    updateProduct: async (product: any) => {
-        const { id, ...data } = product;
-        await updateDoc(doc(db, 'products', id), data);
-    },
-    deleteProduct: async (id: string) => {
-        await deleteDoc(doc(db, 'products', id));
-    },
-
-    // Stock
-    stockPurchase: async (productId: string, quantity: number, cost: number) => {
-        const pRef = doc(db, 'products', productId);
-        const pSnap = await getDoc(pRef);
-        if(pSnap.exists()) {
-            const pData = pSnap.data() as Product;
-            await updateDoc(pRef, { stock: pData.stock + quantity, costPrice: cost });
-            await addDoc(collection(db, 'cash_movements'), { 
-                amount: quantity * cost, 
-                reason: `Acquisto Stock: ${pData.name}`, 
-                timestamp: new Date().toISOString(), 
-                type: 'withdrawal', 
-                category: 'bar' 
-            });
-        }
-    },
-    
-    stockCorrection: async (productId: string, stock: number) => {
-        await updateDoc(doc(db, 'products', productId), { stock });
-    },
-
-    // Staff
-    addStaff: async (data: any) => { await addDoc(collection(db, 'staff'), data); },
-    updateStaff: async (staff: any) => { const { id, ...data } = staff; await updateDoc(doc(db, 'staff', id), data); },
-    deleteStaff: async (id: string) => { await deleteDoc(doc(db, 'staff', id)); },
-    
-    // Heartbeat for online status
-    updateStaffLastSeen: async (id: string) => {
-        await updateDoc(doc(db, 'staff', id), { lastSeen: new Date().toISOString() });
-    },
-
-    // Custom Roles
-    addCustomRole: async (role: Omit<CustomRole, 'id'>) => { await addDoc(collection(db, 'roles'), role); },
-    deleteCustomRole: async (id: string) => { await deleteDoc(doc(db, 'roles', id)); },
-
-    // Laundry Items Configuration
-    addLaundryItem: async (data: Omit<LaundryItemDef, 'id'>) => { await addDoc(collection(db, 'laundry_items'), data); },
-    updateLaundryItem: async (item: LaundryItemDef) => { const { id, ...data } = item; await updateDoc(doc(db, 'laundry_items', id), data); },
-    deleteLaundryItem: async (id: string) => { await deleteDoc(doc(db, 'laundry_items', id)); },
-
-    // Laundry Entries (History)
-    addLaundryEntry: async (entry: Omit<LaundryEntry, 'id'>) => { await addDoc(collection(db, 'laundry_entries'), entry); },
-    deleteLaundryEntry: async (id: string) => { await deleteDoc(doc(db, 'laundry_entries', id)); },
-
-    // Laundry Shipments
-    createLaundryShipment: async (shipment: Omit<LaundryShipment, 'id'>, entryIds: string[]) => {
-        try {
-            await runTransaction(db, async (t) => {
-                // 1. Create Shipment
-                const shipmentRef = doc(collection(db, 'laundry_shipments'));
-                t.set(shipmentRef, { ...shipment, id: shipmentRef.id });
-
-                // 2. Update Entries with shipmentId
-                entryIds.forEach(id => {
-                    const entryRef = doc(db, 'laundry_entries', id);
-                    t.update(entryRef, { shipmentId: shipmentRef.id });
-                });
-            });
-        } catch (e) {
-            console.error("Errore creazione spedizione lavanderia:", e);
-            throw e;
-        }
-    },
-
-    updateLaundryShipment: async (id: string, updates: Partial<LaundryShipment>) => {
-        await updateDoc(doc(db, 'laundry_shipments', id), updates);
-    },
+    addOrder: async (o: any) => addDoc(collection(db, 'orders'), o),
+    updateOrder: async (o: any) => updateDoc(doc(db, 'orders', o.id), o),
+    deleteOrder: async (id: string, user: string) => updateDoc(doc(db, 'orders', id), { isDeleted: true, deletedBy: user, deletedAt: new Date().toISOString() }),
+    permanentDeleteOrder: async (id: string) => deleteDoc(doc(db, 'orders', id)),
 
     // Cash
-    addCashMovement: async (data: any) => { await addDoc(collection(db, 'cash_movements'), data); },
-    updateCashMovement: async (movement: any) => { const { id, ...data } = movement; await updateDoc(doc(db, 'cash_movements', id), data); },
-    deleteCashMovement: async (id: string, email: string) => { await updateDoc(doc(db, 'cash_movements', id), { isDeleted: true, deletedBy: email, deletedAt: new Date().toISOString() }); },
-    permanentDeleteMovement: async (id: string) => { await deleteDoc(doc(db, 'cash_movements', id)); },
+    addCashMovement: async (m: any) => addDoc(collection(db, 'cash_movements'), m),
+    updateCashMovement: async (m: any) => updateDoc(doc(db, 'cash_movements', m.id), m),
+    deleteCashMovement: async (id: string, user: string) => updateDoc(doc(db, 'cash_movements', id), { isDeleted: true, deletedBy: user, deletedAt: new Date().toISOString() }),
+    permanentDeleteMovement: async (id: string) => deleteDoc(doc(db, 'cash_movements', id)),
     
-    resetCash: async (type: 'bar' | 'games', allMovements: CashMovement[]) => {
-        const batch = writeBatch(db);
-        const movementsToReset = allMovements.filter(m => {
-            if (type === 'bar') return (m.category === 'bar' || !m.category);
-            if (type === 'games') return (m.category === 'tombola' || m.category === 'analotto');
-            return false;
-        });
-        movementsToReset.forEach(m => batch.update(doc(db, 'cash_movements', m.id), { amount: 0, reason: m.reason + ' (RESET)' }));
-        if (type === 'games') {
-            batch.update(doc(db, 'tombola', 'config'), { jackpot: 0 });
-            batch.update(doc(db, 'analotto', 'config'), { jackpot: 0 });
-        }
-        await batch.commit();
-    },
-
     // Admins
-    addAdmin: async (email: string, addedBy: string) => { await addDoc(collection(db, 'admins'), { email, addedBy, timestamp: new Date().toISOString() }); },
-    removeAdmin: async (id: string) => { await deleteDoc(doc(db, 'admins', id)); },
+    addAdmin: async (email: string) => addDoc(collection(db, 'admins'), { email, timestamp: new Date().toISOString() }),
+    removeAdmin: async (id: string) => deleteDoc(doc(db, 'admins', id)),
+
+    // Roles
+    addCustomRole: async (role: Omit<CustomRole, 'id'>) => addDoc(collection(db, 'custom_roles'), role),
+    deleteCustomRole: async (id: string) => deleteDoc(doc(db, 'custom_roles', id)),
+
+    // Settings
+    updateTillColors: async (colors: TillColors) => setDoc(doc(db, 'settings', 'tillColors'), colors),
+    updateSeasonality: async (cfg: SeasonalityConfig) => setDoc(doc(db, 'settings', 'seasonality'), cfg),
+    updateShiftSettings: async (cfg: ShiftSettings) => setDoc(doc(db, 'settings', 'shifts'), cfg),
+    updateGeneralSettings: async (cfg: GeneralSettings) => setDoc(doc(db, 'settings', 'general'), cfg),
 
     // Attendance
-    saveAttendance: async (
-        tillId: string, 
-        presentStaffIds: string[], 
-        dateOverride?: string, 
-        closedBy?: string, 
-        attendanceDetails?: Record<string, AttendanceStatus>,
-        substitutionNames?: Record<string, string>
-    ) => {
-        const dateToUse = dateOverride || new Date().toISOString().split('T')[0];
-        const docId = `${dateToUse}_${tillId}`; 
-        
-        const dataToSave: any = { 
-            tillId, 
-            date: dateToUse, 
-            timestamp: new Date().toISOString(), 
-            presentStaffIds 
-        };
-
-        if (attendanceDetails) {
-            dataToSave.attendanceDetails = attendanceDetails;
+    saveAttendance: async (record: any) => {
+        if(record.id) {
+            await updateDoc(doc(db, 'attendance', record.id), record);
+        } else {
+            // Check duplicati gestito logicamente in FE o qui con query se necessario
+            await addDoc(collection(db, 'attendance'), record);
         }
-
-        if (substitutionNames) {
-            dataToSave.substitutionNames = substitutionNames;
-        }
-
-        if (closedBy) {
-            dataToSave.closedBy = closedBy;
-            dataToSave.closedAt = new Date().toISOString();
-        }
-
-        await setDoc(doc(db, 'shift_attendance', docId), dataToSave, { merge: true });
     },
-    
-    reopenAttendance: async (id: string) => {
-        await updateDoc(doc(db, 'shift_attendance', id), {
-            closedAt: deleteField(),
-            closedBy: deleteField()
-        });
-    },
+    deleteAttendance: async (id: string) => deleteDoc(doc(db, 'attendance', id)),
+    reopenAttendance: async (id: string) => updateDoc(doc(db, 'attendance', id), { closedAt: null, closedBy: null }),
 
-    deleteAttendance: async (id: string) => { await deleteDoc(doc(db, 'shift_attendance', id)); },
+    // Laundry
+    addLaundryItem: async (item: any) => addDoc(collection(db, 'laundry_items'), item),
+    updateLaundryItem: async (item: any) => updateDoc(doc(db, 'laundry_items', item.id), item),
+    deleteLaundryItem: async (id: string) => deleteDoc(doc(db, 'laundry_items', id)),
 
-    // Settings & Notifications
-    updateTillColors: async (c: TillColors) => { await setDoc(doc(db, 'settings', 'tillColors'), c, { merge: true }); },
-    updateSeasonality: async (cfg: SeasonalityConfig) => { await setDoc(doc(db, 'settings', 'seasonality'), cfg); },
-    updateShiftSettings: async (cfg: ShiftSettings) => { await setDoc(doc(db, 'settings', 'shift'), cfg); },
-    updateGeneralSettings: async (cfg: GeneralSettings) => { await setDoc(doc(db, 'settings', 'general'), cfg, { merge: true }); },
-    
-    sendNotification: async (title: string, body: string, sender: string) => {
-        await addDoc(collection(db, 'notifications'), { title, body, target: 'all', timestamp: new Date().toISOString(), sender });
-    },
+    addLaundryEntry: async (entry: any) => addDoc(collection(db, 'laundry_entries'), entry),
+    deleteLaundryEntry: async (id: string) => deleteDoc(doc(db, 'laundry_entries', id)),
 
-    // Utils
-    massDelete: async (date: string, type: 'orders' | 'movements') => {
-        const q = query(collection(db, type === 'orders' ? 'orders' : 'cash_movements'), where('timestamp', '<=', new Date(date).toISOString()));
-        const s = await getDocs(q);
+    createLaundryShipment: async (shipment: Omit<LaundryShipment, 'id'>, entryIds: string[]) => {
         const batch = writeBatch(db);
-        s.docs.forEach(d => batch.delete(d.ref));
+        const shipRef = doc(collection(db, 'laundry_shipments'));
+        batch.set(shipRef, shipment);
+        
+        entryIds.forEach(id => {
+            const entryRef = doc(db, 'laundry_entries', id);
+            batch.update(entryRef, { shipmentId: shipRef.id });
+        });
         await batch.commit();
-    }
+    },
+    updateLaundryShipment: async (id: string, updates: Partial<LaundryShipment>) => updateDoc(doc(db, 'laundry_shipments', id), updates),
+    deleteLaundryShipment: async (id: string) => deleteDoc(doc(db, 'laundry_shipments', id)),
 };
