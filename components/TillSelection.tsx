@@ -69,14 +69,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return roleDef ? roleDef.level >= 2 : false;
     }, [activeBarUser, availableRoles]);
 
-    // CALCOLA ACCESSO LAVANDERIA (Solo Amministratori Livello 3+ o Super Admin)
-    const canAccessLaundry = useMemo(() => {
-        if (!activeBarUser) return false;
-        if (activeBarUser.role === 'super-admin') return true;
-        const roleDef = availableRoles.find(r => r.id === activeBarUser.role);
-        return roleDef ? roleDef.level >= 3 : false;
-    }, [activeBarUser, availableRoles]);
-
     // Inizializza form profilo SOLO all'apertura del modale (FIX: Previene reset durante la digitazione)
     useEffect(() => {
         if (isProfileOpen && activeBarUser) {
@@ -817,24 +809,22 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                     </button>
 
-                    {/* 4. LAVANDERIA (SOLO AMMINISTRATORI) */}
-                    {canAccessLaundry && (
-                        <button 
-                            onClick={onSelectLaundry}
-                            className="w-full bg-white hover:bg-blue-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border-2 border-blue-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
-                        >
-                            <div className="absolute -bottom-6 -right-6 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
-                                🫧
+                    {/* 4. LAVANDERIA (VISIBILE A TUTTI) */}
+                    <button 
+                        onClick={onSelectLaundry}
+                        className="w-full bg-white hover:bg-blue-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border-2 border-blue-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
+                    >
+                        <div className="absolute -bottom-6 -right-6 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
+                            🫧
+                        </div>
+                        <div className="relative z-10 flex flex-col items-center justify-center gap-2">
+                            <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🫧</span>
+                            <div className="flex flex-col items-center">
+                                <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-blue-600 transition-colors">Lavanderia</span>
+                                <span className="text-[9px] md:text-xs font-bold text-blue-400 uppercase tracking-wider block">Consegna Capi</span>
                             </div>
-                            <div className="relative z-10 flex flex-col items-center justify-center gap-2">
-                                <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🫧</span>
-                                <div className="flex flex-col items-center">
-                                    <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-blue-600 transition-colors">Lavanderia</span>
-                                    <span className="text-[9px] md:text-xs font-bold text-blue-400 uppercase tracking-wider block">Consegna Capi</span>
-                                </div>
-                            </div>
-                        </button>
-                    )}
+                        </div>
+                    </button>
 
                     {/* 5. EXTRA HUB */}
                     <button 

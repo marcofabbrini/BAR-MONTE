@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { StaffMember, Shift, LaundryEntry, LaundryShipment } from '../types';
-import { BackArrowIcon, CheckIcon, FilterIcon, ShirtIcon, PrinterIcon, TrashIcon, SortIcon, ListIcon, TruckIcon, BoxIcon, LockOpenIcon } from './Icons';
+import { BackArrowIcon, CheckIcon, FilterIcon, ShirtIcon, PrinterIcon, TrashIcon, SortIcon, ListIcon, TruckIcon, BoxIcon, LockOpenIcon, LockIcon } from './Icons';
 import { GradeBadge } from './StaffManagement';
 import { useBar } from '../contexts/BarContext';
 import { VVF_GRADES } from '../constants';
@@ -35,7 +35,17 @@ const DEFAULT_ITEMS_FALLBACK = [
 ];
 
 const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
-    const { laundryItems, laundryEntries, laundryShipments, addLaundryEntry, deleteLaundryEntry, createLaundryShipment, updateLaundryShipment } = useBar();
+    const { 
+        laundryItems, 
+        laundryEntries, 
+        laundryShipments, 
+        addLaundryEntry, 
+        deleteLaundryEntry, 
+        createLaundryShipment, 
+        updateLaundryShipment,
+        activeBarUser,
+        availableRoles 
+    } = useBar();
 
     // VIEW STATE
     const [activeTab, setActiveTab] = useState<'entry' | 'shipment' | 'incoming' | 'archive'>('entry');
@@ -43,6 +53,14 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
     // UI State for Sections
     const [isInputOpen, setIsInputOpen] = useState(true); 
     const [isHistoryOpen, setIsHistoryOpen] = useState(false); 
+
+    // Check permissions
+    const canSendShipment = useMemo(() => {
+        if (!activeBarUser) return false;
+        if (activeBarUser.role === 'super-admin') return true;
+        const roleDef = availableRoles.find(r => r.id === activeBarUser.role);
+        return roleDef ? roleDef.level >= 3 : false;
+    }, [activeBarUser, availableRoles]);
 
     // Initialize items state based on context or fallback
     const initialItems = useMemo(() => {
@@ -193,9 +211,6 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
             await updateLaundryShipment(shipmentId, { status: 'in_transit' });
         }
     };
-
-    // Hard delete logic for shipments if needed (Context doesn't expose it directly but update with delete flag logic works or direct firebase delete. Assuming not strictly needed but useful).
-    // Using updateLaundryShipment to potentially flag as deleted isn't standard in BarContext yet, so we just offer Reopen.
 
     const totalInputItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -369,14 +384,22 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
                                 </div>
 
                                 <div className="p-6 bg-slate-50 border-t border-slate-200 print:hidden">
-                                    <button 
-                                        onClick={handleCreateShipment}
-                                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-lg transition-transform active:scale-95"
-                                    >
-                                        <PrinterIcon className="h-6 w-6" /> Invia a Lavanderia & Genera PDF
-                                    </button>
+                                    {canSendShipment ? (
+                                        <button 
+                                            onClick={handleCreateShipment}
+                                            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-lg transition-transform active:scale-95"
+                                        >
+                                            <PrinterIcon className="h-6 w-6" /> Invia a Lavanderia & Genera PDF
+                                        </button>
+                                    ) : (
+                                        <div className="w-full bg-slate-200 text-slate-500 font-bold py-4 rounded-xl shadow-inner flex items-center justify-center gap-2 text-sm uppercase">
+                                            <LockIcon className="h-5 w-5" /> Funzione riservata agli amministratori
+                                        </div>
+                                    )}
                                     <p className="text-[10px] text-center text-slate-400 mt-2">
-                                        Cliccando, i capi verranno segnati come "In Transito", verrà generato il PDF e si aprirà il client di posta.
+                                        {canSendShipment 
+                                            ? 'Cliccando, i capi verranno segnati come "In Transito", verrà generato il PDF e si aprirà il client di posta.'
+                                            : 'Contatta un amministratore o il capo distaccamento per inviare la spedizione.'}
                                     </p>
                                 </div>
 
