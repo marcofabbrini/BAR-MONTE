@@ -1,4 +1,5 @@
 
+// ... (imports remain the same)
 import React, { useState, useMemo } from 'react';
 import { AttendanceRecord, StaffMember, TillColors, Shift, ShiftSettings, AttendanceStatus } from '../types';
 import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon, SaveIcon, BackArrowIcon, LockOpenIcon, GridIcon, SettingsIcon, PrinterIcon, WhatsAppIcon, EditIcon } from './Icons';
@@ -38,6 +39,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     const { activeBarUser, availableRoles } = useBar();
     const [currentDate, setCurrentDate] = useState(new Date());
     
+    // ... (rest of the component logic until handleReopen)
+
     // Check permission for Reset Month (Admin Level 3 or higher)
     const canResetMonth = useMemo(() => {
         if (!activeBarUser) return false;
@@ -151,8 +154,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
     const handleReopen = async (id: string) => {
         if (!onReopenAttendance || readOnly) return;
         if (window.confirm("Vuoi RIAPRIRE questo turno? Il record delle presenze rimarrà salvato, ma il turno risulterà APERTO.")) {
-            await onReopenAttendance(id);
-            setIsEditModalOpen(false);
+            try {
+                await onReopenAttendance(id);
+                // FORCE CLOSE MODAL ON REOPEN TO RETURN TO INITIAL STATE
+                setIsEditModalOpen(false);
+            } catch (error) {
+                console.error("Errore durante la riapertura:", error);
+                alert("Errore durante la riapertura del turno.");
+            }
         }
     };
 
@@ -286,15 +295,21 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         // Use active user name for validation (closing), otherwise keep existing or undefined
         const closingUser = shouldValidate ? (activeBarUser?.name || 'Utente') : (editingRecord?.closedBy ? editingRecord.closedBy : undefined);
 
-        await onSaveAttendance(
-            editingTillId, 
-            presentIds, 
-            editingDate, 
-            closingUser,
-            finalDetails,
-            editingSubNames
-        );
-        setIsEditModalOpen(false);
+        try {
+            await onSaveAttendance(
+                editingTillId, 
+                presentIds, 
+                editingDate, 
+                closingUser,
+                finalDetails,
+                editingSubNames
+            );
+            // FORCE CLOSE MODAL ON SAVE TO RETURN TO CALENDAR
+            setIsEditModalOpen(false);
+        } catch (error) {
+            console.error("Errore durante il salvataggio:", error);
+            alert("Errore nel salvataggio delle presenze. Riprova.");
+        }
     };
 
     const handleBulkDeleteMonth = async () => {
