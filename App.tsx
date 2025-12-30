@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth, googleProvider } from './firebaseConfig';
-import { collection, query, where, getDocs } from 'firebase/firestore';
 import firebase from 'firebase/compat/app'; // For types
 import TillSelection from './components/TillSelection';
 import TillView from './components/TillView';
@@ -85,9 +84,9 @@ const AppContent: React.FC = () => {
             setCurrentUser(user);
             if (user && user.email) {
                 try {
-                    const adminsRef = collection(db, 'admins');
-                    const q = query(adminsRef, where("email", "==", user.email));
-                    const querySnapshot = await getDocs(q);
+                    const adminsRef = db.collection('admins');
+                    const q = adminsRef.where("email", "==", user.email);
+                    const querySnapshot = await q.get();
                     setIsAdmin(!querySnapshot.empty);
                 } catch (error) {
                     console.error("Auth error:", error);

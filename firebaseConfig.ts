@@ -1,7 +1,7 @@
 
 import firebase from "firebase/compat/app";
 import "firebase/compat/auth";
-import { initializeFirestore, memoryLocalCache, memoryLruGarbageCollector } from "firebase/firestore";
+import "firebase/compat/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDVs7kbp_O6oMZ8AetE03S6Wu6cywL_ca0",
@@ -16,17 +16,12 @@ const firebaseConfig = {
 // Initialize Firebase (Compat)
 const app = firebase.initializeApp(firebaseConfig);
 
-// Initialize Firestore (Modular)
-// CRITICAL FIX: Use memoryLocalCache with LRU Garbage Collector.
-// This prevents "Quota Exceeded" by not writing to disk (IndexedDB).
-// Fixed: 'cacheSizeBytes' is the correct property name.
-const db = initializeFirestore(app, {
-  localCache: memoryLocalCache({
-    garbageCollector: memoryLruGarbageCollector({
-        cacheSizeBytes: 5 * 1024 * 1024 // Limit cache to 5MB
-    })
-  }),
-  experimentalForceLongPolling: true 
+// Initialize Firestore (Compat)
+const db = app.firestore();
+
+// Configure cache size (Compat style)
+db.settings({
+    cacheSizeBytes: 5 * 1024 * 1024 // 5MB Limit
 });
 
 // Initialize Auth (Compat)

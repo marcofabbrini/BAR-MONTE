@@ -1,23 +1,11 @@
+
 import { db } from '../firebaseConfig';
-import { 
-    doc, 
-    collection, 
-    onSnapshot, 
-    setDoc, 
-    runTransaction, 
-    addDoc, 
-    updateDoc, 
-    query, 
-    orderBy,
-    DocumentSnapshot,
-    QuerySnapshot
-} from 'firebase/firestore';
 import { AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel } from '../types';
 
 export const AnalottoService = {
     subscribeToConfig: (onUpdate: (config: AnalottoConfig) => void) => {
-        return onSnapshot(doc(db, 'analotto', 'config'), (snapshot: DocumentSnapshot) => {
-            if (snapshot.exists()) {
+        return db.collection('analotto').doc('config').onSnapshot((snapshot) => {
+            if (snapshot.exists) {
                 onUpdate(snapshot.data() as AnalottoConfig);
             } else {
                 const initialConfig: AnalottoConfig = { 
@@ -26,22 +14,20 @@ export const AnalottoService = {
                     rules: "Regolamento Analotto VVF:\n1. Si scelgono da 1 a 10 numeri.\n2. Si sceglie su quali ruote puntare.\n3. L'estrazione avviene settimanalmente.\n4. Il montepremi è costituito dall'80% delle giocate.",
                     extractionSchedule: "Ogni Venerdì sera"
                 };
-                setDoc(doc(db, 'analotto', 'config'), initialConfig);
+                db.collection('analotto').doc('config').set(initialConfig);
             }
         });
     },
 
     subscribeToBets: (onUpdate: (bets: AnalottoBet[]) => void) => {
-        const q = query(collection(db, 'analotto_bets'), orderBy('timestamp', 'desc'));
-        return onSnapshot(q, (snapshot: QuerySnapshot) => {
+        return db.collection('analotto_bets').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
             const bets = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as AnalottoBet));
             onUpdate(bets);
         });
     },
 
     subscribeToExtractions: (onUpdate: (extractions: AnalottoExtraction[]) => void) => {
-        const q = query(collection(db, 'analotto_extractions'), orderBy('timestamp', 'desc'));
-        return onSnapshot(q, (snapshot: QuerySnapshot) => {
+        return db.collection('analotto_extractions').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
             const extractions = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as AnalottoExtraction));
             onUpdate(extractions);
         });
@@ -49,18 +35,18 @@ export const AnalottoService = {
 
     placeBet: async (betData: Omit<AnalottoBet, 'id' | 'timestamp'>) => {
         try {
-            await runTransaction(db, async (t) => {
-                const configRef = doc(db, 'analotto', 'config');
+            await db.runTransaction(async (t) => {
+                const configRef = db.collection('analotto').doc('config');
                 const configSnap = await t.get(configRef);
                 
                 let currentJackpot = 0;
-                if (configSnap.exists()) {
-                    currentJackpot = configSnap.data().jackpot || 0;
+                if (configSnap.exists) {
+                    currentJackpot = configSnap.data()?.jackpot || 0;
                 } else {
                     t.set(configRef, { jackpot: 0 });
                 }
 
-                const betRef = doc(collection(db, 'analotto_bets'));
+                const betRef = db.collection('analotto_bets').doc();
                 t.set(betRef, { ...betData, timestamp: new Date().toISOString() });
 
                 const jackpotPart = betData.amount * 0.8;
@@ -68,7 +54,7 @@ export const AnalottoService = {
 
                 t.set(configRef, { jackpot: currentJackpot + jackpotPart }, { merge: true });
 
-                const cashRef = doc(collection(db, 'cash_movements'));
+                const cashRef = db.collection('cash_movements').doc();
                 t.set(cashRef, { 
                     amount: betData.amount, 
                     reason: `Analotto: Giocata (${betData.playerName})`, 
@@ -77,7 +63,7 @@ export const AnalottoService = {
                     category: 'analotto' 
                 });
                 
-                const barCashRef = doc(collection(db, 'cash_movements'));
+                const barCashRef = db.collection('cash_movements').doc();
                 t.set(barCashRef, { 
                     amount: barPart, 
                     reason: `Utile Analotto (20%)`, 
@@ -94,7 +80,7 @@ export const AnalottoService = {
 
     confirmTicket: async (ticketId: string, numbers: number[], wheels: AnalottoWheel[]) => {
         try {
-            await updateDoc(doc(db, 'analotto_bets', ticketId), {
+            await db.collection('analotto_bets').doc(ticketId).update({
                 numbers,
                 wheels,
                 status: 'active'
@@ -116,12 +102,12 @@ export const AnalottoService = {
                 extractionData[wheel] = Array.from(nums);
             });
 
-            await addDoc(collection(db, 'analotto_extractions'), { 
+            await db.collection('analotto_extractions').add({ 
                 timestamp: new Date().toISOString(), 
                 numbers: extractionData 
             });
             
-            await updateDoc(doc(db, 'analotto', 'config'), { 
+            await db.collection('analotto').doc('config').update({ 
                 lastExtraction: new Date().toISOString() 
             });
         } catch (e) {
@@ -131,15 +117,15 @@ export const AnalottoService = {
     },
 
     updateConfig: async (newConfig: Partial<AnalottoConfig>) => {
-        await setDoc(doc(db, 'analotto', 'config'), newConfig, { merge: true });
+        await db.collection('analotto').doc('config').set(newConfig, { merge: true });
     },
 
     transferFunds: async (amount: number) => {
         if (amount <= 0) return;
         try {
-            await runTransaction(db, async (t) => {
-                t.update(doc(db, 'analotto', 'config'), { jackpot: 0 });
-                const cashRef = doc(collection(db, 'cash_movements'));
+            await db.runTransaction(async (t) => {
+                t.update(db.collection('analotto').doc('config'), { jackpot: 0 });
+                const cashRef = db.collection('cash_movements').doc();
                 t.set(cashRef, { 
                     amount: amount, 
                     reason: `Versamento utile Analotto`, 

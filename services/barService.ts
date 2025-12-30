@@ -1,18 +1,5 @@
+
 import { db } from '../firebaseConfig';
-import { 
-    collection, 
-    doc, 
-    onSnapshot, 
-    addDoc, 
-    updateDoc, 
-    deleteDoc, 
-    setDoc,
-    query, 
-    orderBy, 
-    writeBatch,
-    QuerySnapshot,
-    DocumentData
-} from 'firebase/firestore';
 import { 
     Product, 
     StaffMember, 
@@ -33,145 +20,139 @@ import {
 export const BarService = {
     // --- SUBSCRIPTIONS ---
     subscribeToProducts: (onUpdate: (data: Product[]) => void) => {
-        return onSnapshot(collection(db, 'products'), (snapshot: QuerySnapshot<DocumentData>) => {
+        return db.collection('products').onSnapshot((snapshot) => {
             onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Product)));
         });
     },
     subscribeToStaff: (onUpdate: (data: StaffMember[]) => void) => {
-        return onSnapshot(collection(db, 'staff'), (snapshot: QuerySnapshot<DocumentData>) => {
+        return db.collection('staff').onSnapshot((snapshot) => {
             onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as StaffMember)));
         });
     },
     subscribeToOrders: (onUpdate: (data: Order[]) => void) => {
-        const q = query(collection(db, 'orders'), orderBy('timestamp', 'desc')); 
-        return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+        return db.collection('orders').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
             onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Order)));
         });
     },
     subscribeToCashMovements: (onUpdate: (data: CashMovement[]) => void) => {
-        const q = query(collection(db, 'cash_movements'), orderBy('timestamp', 'desc'));
-        return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+        return db.collection('cash_movements').orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
             onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as CashMovement)));
         });
     },
     subscribeToAdmins: (onUpdate: (data: AdminUser[]) => void) => {
-        return onSnapshot(collection(db, 'admins'), (snapshot: QuerySnapshot<DocumentData>) => {
+        return db.collection('admins').onSnapshot((snapshot) => {
             onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as AdminUser)));
         });
     },
     subscribeToCustomRoles: (onUpdate: (data: CustomRole[]) => void) => {
-        return onSnapshot(collection(db, 'custom_roles'), (snapshot: QuerySnapshot<DocumentData>) => {
+        return db.collection('custom_roles').onSnapshot((snapshot) => {
             onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as CustomRole)));
         });
     },
     subscribeToTillColors: (onUpdate: (data: TillColors) => void) => {
-        return onSnapshot(doc(db, 'settings', 'tillColors'), (doc) => {
-            if (doc.exists()) onUpdate(doc.data() as TillColors);
+        return db.collection('settings').doc('tillColors').onSnapshot((doc) => {
+            if (doc.exists) onUpdate(doc.data() as TillColors);
         });
     },
     subscribeToSeasonality: (onUpdate: (data: SeasonalityConfig) => void) => {
-        return onSnapshot(doc(db, 'settings', 'seasonality'), (doc) => {
-            if (doc.exists()) onUpdate(doc.data() as SeasonalityConfig);
+        return db.collection('settings').doc('seasonality').onSnapshot((doc) => {
+            if (doc.exists) onUpdate(doc.data() as SeasonalityConfig);
         });
     },
     subscribeToShiftSettings: (onUpdate: (data: ShiftSettings) => void) => {
-        return onSnapshot(doc(db, 'settings', 'shifts'), (doc) => {
-            if (doc.exists()) onUpdate(doc.data() as ShiftSettings);
+        return db.collection('settings').doc('shifts').onSnapshot((doc) => {
+            if (doc.exists) onUpdate(doc.data() as ShiftSettings);
         });
     },
     subscribeToGeneralSettings: (onUpdate: (data: GeneralSettings) => void) => {
-        return onSnapshot(doc(db, 'settings', 'general'), (doc) => {
-            if (doc.exists()) onUpdate(doc.data() as GeneralSettings);
+        return db.collection('settings').doc('general').onSnapshot((doc) => {
+            if (doc.exists) onUpdate(doc.data() as GeneralSettings);
         });
     },
     subscribeToAttendance: (onUpdate: (data: AttendanceRecord[]) => void) => {
-        const q = query(collection(db, 'attendance'), orderBy('date', 'desc'));
-        return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+        return db.collection('attendance').orderBy('date', 'desc').onSnapshot((snapshot) => {
             onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as AttendanceRecord)));
         });
     },
     
     // Laundry Subscriptions
     subscribeToLaundryItems: (onUpdate: (data: LaundryItemDef[]) => void) => {
-        return onSnapshot(collection(db, 'laundry_items'), (s) => onUpdate(s.docs.map(d => ({...d.data(), id: d.id} as LaundryItemDef))));
+        return db.collection('laundry_items').onSnapshot((s) => onUpdate(s.docs.map(d => ({...d.data(), id: d.id} as LaundryItemDef))));
     },
     subscribeToLaundryEntries: (onUpdate: (data: LaundryEntry[]) => void) => {
-        const q = query(collection(db, 'laundry_entries'), orderBy('timestamp', 'desc'));
-        return onSnapshot(q, (s) => onUpdate(s.docs.map(d => ({...d.data(), id: d.id} as LaundryEntry))));
+        return db.collection('laundry_entries').orderBy('timestamp', 'desc').onSnapshot((s) => onUpdate(s.docs.map(d => ({...d.data(), id: d.id} as LaundryEntry))));
     },
     subscribeToLaundryShipments: (onUpdate: (data: LaundryShipment[]) => void) => {
-        const q = query(collection(db, 'laundry_shipments'), orderBy('timestamp', 'desc'));
-        return onSnapshot(q, (s) => onUpdate(s.docs.map(d => ({...d.data(), id: d.id} as LaundryShipment))));
+        return db.collection('laundry_shipments').orderBy('timestamp', 'desc').onSnapshot((s) => onUpdate(s.docs.map(d => ({...d.data(), id: d.id} as LaundryShipment))));
     },
 
     // --- ACTIONS ---
     // Product
-    addProduct: async (p: any) => addDoc(collection(db, 'products'), p),
-    updateProduct: async (p: any) => updateDoc(doc(db, 'products', p.id), p),
-    deleteProduct: async (id: string) => deleteDoc(doc(db, 'products', id)),
+    addProduct: async (p: any) => db.collection('products').add(p),
+    updateProduct: async (p: any) => db.collection('products').doc(p.id).update(p),
+    deleteProduct: async (id: string) => db.collection('products').doc(id).delete(),
     
     // Staff
-    addStaff: async (s: any) => addDoc(collection(db, 'staff'), s),
-    updateStaff: async (s: any) => updateDoc(doc(db, 'staff', s.id), s),
-    deleteStaff: async (id: string) => deleteDoc(doc(db, 'staff', id)),
+    addStaff: async (s: any) => db.collection('staff').add(s),
+    updateStaff: async (s: any) => db.collection('staff').doc(s.id).update(s),
+    deleteStaff: async (id: string) => db.collection('staff').doc(id).delete(),
 
     // Orders
-    addOrder: async (o: any) => addDoc(collection(db, 'orders'), o),
-    updateOrder: async (o: any) => updateDoc(doc(db, 'orders', o.id), o),
-    deleteOrder: async (id: string, user: string) => updateDoc(doc(db, 'orders', id), { isDeleted: true, deletedBy: user, deletedAt: new Date().toISOString() }),
-    permanentDeleteOrder: async (id: string) => deleteDoc(doc(db, 'orders', id)),
+    addOrder: async (o: any) => db.collection('orders').add(o),
+    updateOrder: async (o: any) => db.collection('orders').doc(o.id).update(o),
+    deleteOrder: async (id: string, user: string) => db.collection('orders').doc(id).update({ isDeleted: true, deletedBy: user, deletedAt: new Date().toISOString() }),
+    permanentDeleteOrder: async (id: string) => db.collection('orders').doc(id).delete(),
 
     // Cash
-    addCashMovement: async (m: any) => addDoc(collection(db, 'cash_movements'), m),
-    updateCashMovement: async (m: any) => updateDoc(doc(db, 'cash_movements', m.id), m),
-    deleteCashMovement: async (id: string, user: string) => updateDoc(doc(db, 'cash_movements', id), { isDeleted: true, deletedBy: user, deletedAt: new Date().toISOString() }),
-    permanentDeleteMovement: async (id: string) => deleteDoc(doc(db, 'cash_movements', id)),
+    addCashMovement: async (m: any) => db.collection('cash_movements').add(m),
+    updateCashMovement: async (m: any) => db.collection('cash_movements').doc(m.id).update(m),
+    deleteCashMovement: async (id: string, user: string) => db.collection('cash_movements').doc(id).update({ isDeleted: true, deletedBy: user, deletedAt: new Date().toISOString() }),
+    permanentDeleteMovement: async (id: string) => db.collection('cash_movements').doc(id).delete(),
     
     // Admins
-    addAdmin: async (email: string) => addDoc(collection(db, 'admins'), { email, timestamp: new Date().toISOString() }),
-    removeAdmin: async (id: string) => deleteDoc(doc(db, 'admins', id)),
+    addAdmin: async (email: string) => db.collection('admins').add({ email, timestamp: new Date().toISOString() }),
+    removeAdmin: async (id: string) => db.collection('admins').doc(id).delete(),
 
     // Roles
-    addCustomRole: async (role: Omit<CustomRole, 'id'>) => addDoc(collection(db, 'custom_roles'), role),
-    deleteCustomRole: async (id: string) => deleteDoc(doc(db, 'custom_roles', id)),
+    addCustomRole: async (role: Omit<CustomRole, 'id'>) => db.collection('custom_roles').add(role),
+    deleteCustomRole: async (id: string) => db.collection('custom_roles').doc(id).delete(),
 
     // Settings
-    updateTillColors: async (colors: TillColors) => setDoc(doc(db, 'settings', 'tillColors'), colors),
-    updateSeasonality: async (cfg: SeasonalityConfig) => setDoc(doc(db, 'settings', 'seasonality'), cfg),
-    updateShiftSettings: async (cfg: ShiftSettings) => setDoc(doc(db, 'settings', 'shifts'), cfg),
-    updateGeneralSettings: async (cfg: GeneralSettings) => setDoc(doc(db, 'settings', 'general'), cfg),
+    updateTillColors: async (colors: TillColors) => db.collection('settings').doc('tillColors').set(colors),
+    updateSeasonality: async (cfg: SeasonalityConfig) => db.collection('settings').doc('seasonality').set(cfg),
+    updateShiftSettings: async (cfg: ShiftSettings) => db.collection('settings').doc('shifts').set(cfg),
+    updateGeneralSettings: async (cfg: GeneralSettings) => db.collection('settings').doc('general').set(cfg),
 
     // Attendance
     saveAttendance: async (record: any) => {
         if(record.id) {
-            await updateDoc(doc(db, 'attendance', record.id), record);
+            await db.collection('attendance').doc(record.id).set(record, { merge: true });
         } else {
-            // Check duplicati gestito logicamente in FE o qui con query se necessario
-            await addDoc(collection(db, 'attendance'), record);
+            await db.collection('attendance').add(record);
         }
     },
-    deleteAttendance: async (id: string) => deleteDoc(doc(db, 'attendance', id)),
-    reopenAttendance: async (id: string) => updateDoc(doc(db, 'attendance', id), { closedAt: null, closedBy: null }),
+    deleteAttendance: async (id: string) => db.collection('attendance').doc(id).delete(),
+    reopenAttendance: async (id: string) => db.collection('attendance').doc(id).update({ closedAt: null, closedBy: null }),
 
     // Laundry
-    addLaundryItem: async (item: any) => addDoc(collection(db, 'laundry_items'), item),
-    updateLaundryItem: async (item: any) => updateDoc(doc(db, 'laundry_items', item.id), item),
-    deleteLaundryItem: async (id: string) => deleteDoc(doc(db, 'laundry_items', id)),
+    addLaundryItem: async (item: any) => db.collection('laundry_items').add(item),
+    updateLaundryItem: async (item: any) => db.collection('laundry_items').doc(item.id).update(item),
+    deleteLaundryItem: async (id: string) => db.collection('laundry_items').doc(id).delete(),
 
-    addLaundryEntry: async (entry: any) => addDoc(collection(db, 'laundry_entries'), entry),
-    deleteLaundryEntry: async (id: string) => deleteDoc(doc(db, 'laundry_entries', id)),
+    addLaundryEntry: async (entry: any) => db.collection('laundry_entries').add(entry),
+    deleteLaundryEntry: async (id: string) => db.collection('laundry_entries').doc(id).delete(),
 
     createLaundryShipment: async (shipment: Omit<LaundryShipment, 'id'>, entryIds: string[]) => {
-        const batch = writeBatch(db);
-        const shipRef = doc(collection(db, 'laundry_shipments'));
+        const batch = db.batch();
+        const shipRef = db.collection('laundry_shipments').doc();
         batch.set(shipRef, shipment);
         
         entryIds.forEach(id => {
-            const entryRef = doc(db, 'laundry_entries', id);
+            const entryRef = db.collection('laundry_entries').doc(id);
             batch.update(entryRef, { shipmentId: shipRef.id });
         });
         await batch.commit();
     },
-    updateLaundryShipment: async (id: string, updates: Partial<LaundryShipment>) => updateDoc(doc(db, 'laundry_shipments', id), updates),
-    deleteLaundryShipment: async (id: string) => deleteDoc(doc(db, 'laundry_shipments', id)),
+    updateLaundryShipment: async (id: string, updates: Partial<LaundryShipment>) => db.collection('laundry_shipments').doc(id).update(updates),
+    deleteLaundryShipment: async (id: string) => db.collection('laundry_shipments').doc(id).delete(),
 };

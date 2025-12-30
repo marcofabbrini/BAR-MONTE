@@ -1,22 +1,11 @@
 
 import { db } from '../firebaseConfig';
-import { 
-    collection, 
-    doc, 
-    onSnapshot, 
-    addDoc, 
-    deleteDoc, 
-    updateDoc, 
-    QuerySnapshot,
-    DocumentData,
-    arrayUnion,
-    arrayRemove
-} from 'firebase/firestore';
+import firebase from 'firebase/compat/app';
 import { Reminder } from '../types';
 
 export const ReminderService = {
     subscribeToReminders: (onUpdate: (data: Reminder[]) => void) => {
-        return onSnapshot(collection(db, 'reminders'), (s: QuerySnapshot<DocumentData>) => {
+        return db.collection('reminders').onSnapshot((s) => {
             onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as Reminder)));
         });
     },
@@ -27,7 +16,7 @@ export const ReminderService = {
             Object.entries(reminder).filter(([_, v]) => v !== undefined)
         );
 
-        await addDoc(collection(db, 'reminders'), {
+        await db.collection('reminders').add({
             ...cleanReminder,
             completedDates: [],
             createdAt: new Date().toISOString()
@@ -38,24 +27,24 @@ export const ReminderService = {
         const cleanReminder = Object.fromEntries(
             Object.entries(reminder).filter(([_, v]) => v !== undefined)
         );
-        await updateDoc(doc(db, 'reminders', id), cleanReminder);
+        await db.collection('reminders').doc(id).update(cleanReminder);
     },
 
     deleteReminder: async (id: string) => {
-        await deleteDoc(doc(db, 'reminders', id));
+        await db.collection('reminders').doc(id).delete();
     },
 
     toggleCompletion: async (id: string, date: string, currentCompletedDates: string[]) => {
         const isCompleted = currentCompletedDates.includes(date);
-        const ref = doc(db, 'reminders', id);
+        const ref = db.collection('reminders').doc(id);
         
         if (isCompleted) {
-            await updateDoc(ref, {
-                completedDates: arrayRemove(date)
+            await ref.update({
+                completedDates: firebase.firestore.FieldValue.arrayRemove(date)
             });
         } else {
-            await updateDoc(ref, {
-                completedDates: arrayUnion(date)
+            await ref.update({
+                completedDates: firebase.firestore.FieldValue.arrayUnion(date)
             });
         }
     }

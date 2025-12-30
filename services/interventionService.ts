@@ -1,18 +1,5 @@
 
 import { db } from '../firebaseConfig';
-import { 
-    collection, 
-    doc, 
-    onSnapshot, 
-    addDoc, 
-    deleteDoc, 
-    updateDoc,
-    query, 
-    orderBy, 
-    limit,
-    QuerySnapshot,
-    DocumentData
-} from 'firebase/firestore';
 import { Intervention, InterventionTypology, DutyOfficer } from '../types';
 
 export const InterventionService = {
@@ -20,8 +7,7 @@ export const InterventionService = {
     
     subscribeToInterventions: (onUpdate: (data: Intervention[]) => void) => {
         // Ultimi 200 interventi
-        const q = query(collection(db, 'interventions'), orderBy('date', 'desc'), limit(200));
-        return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => {
+        return db.collection('interventions').orderBy('date', 'desc').limit(200).onSnapshot((s) => {
             const items = s.docs.map(d => ({ ...d.data(), id: d.id } as Intervention));
             // Ordinamento lato client per Data + Ora Uscita (per gestire meglio i casi limite)
             items.sort((a, b) => {
@@ -34,15 +20,13 @@ export const InterventionService = {
     },
 
     subscribeToTypologies: (onUpdate: (data: InterventionTypology[]) => void) => {
-        const q = query(collection(db, 'intervention_typologies'), orderBy('name', 'asc'));
-        return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => {
+        return db.collection('intervention_typologies').orderBy('name', 'asc').onSnapshot((s) => {
             onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as InterventionTypology)));
         });
     },
 
     subscribeToOfficers: (onUpdate: (data: DutyOfficer[]) => void) => {
-        const q = query(collection(db, 'duty_officers'), orderBy('name', 'asc'));
-        return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => {
+        return db.collection('duty_officers').orderBy('name', 'asc').onSnapshot((s) => {
             onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as DutyOfficer)));
         });
     },
@@ -50,17 +34,17 @@ export const InterventionService = {
     // --- OPERATIONS ---
 
     addIntervention: async (intervention: Omit<Intervention, 'id'>) => {
-        await addDoc(collection(db, 'interventions'), intervention);
+        await db.collection('interventions').add(intervention);
     },
 
     updateIntervention: async (intervention: Intervention) => {
         const { id, ...data } = intervention;
-        await updateDoc(doc(db, 'interventions', id), data);
+        await db.collection('interventions').doc(id).update(data);
     },
 
     // Soft delete (sets flag)
     deleteIntervention: async (id: string, user: string = 'User') => {
-        await updateDoc(doc(db, 'interventions', id), {
+        await db.collection('interventions').doc(id).update({
             isDeleted: true,
             deletedBy: user,
             deletedAt: new Date().toISOString()
@@ -69,22 +53,22 @@ export const InterventionService = {
 
     // Hard delete (removes document) - Super Admin only
     permanentDeleteIntervention: async (id: string) => {
-        await deleteDoc(doc(db, 'interventions', id));
+        await db.collection('interventions').doc(id).delete();
     },
 
     addTypology: async (name: string) => {
-        await addDoc(collection(db, 'intervention_typologies'), { name });
+        await db.collection('intervention_typologies').add({ name });
     },
 
     deleteTypology: async (id: string) => {
-        await deleteDoc(doc(db, 'intervention_typologies', id));
+        await db.collection('intervention_typologies').doc(id).delete();
     },
 
     addOfficer: async (name: string) => {
-        await addDoc(collection(db, 'duty_officers'), { name });
+        await db.collection('duty_officers').add({ name });
     },
 
     deleteOfficer: async (id: string) => {
-        await deleteDoc(doc(db, 'duty_officers', id));
+        await db.collection('duty_officers').doc(id).delete();
     }
 };
