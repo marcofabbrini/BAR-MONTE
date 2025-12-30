@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { StaffMember, Shift, InterventionTypology, DutyOfficer, Intervention } from '../types';
 import { useBar } from '../contexts/BarContext';
-import { BackArrowIcon, CheckIcon, FireIcon, TrashIcon, PlusIcon, CalendarIcon, ChartBarIcon, TrophyIcon, EditIcon, FilterIcon, SortIcon } from './Icons';
+import { BackArrowIcon, CheckIcon, FireIcon, TrashIcon, PlusIcon, CalendarIcon, ChartBarIcon, TrophyIcon, EditIcon, FilterIcon, SortIcon, WrenchIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 import { GradeBadge } from './StaffManagement';
 
@@ -44,6 +44,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
     const [returnTime, setReturnTime] = useState('');
     
     const [typology, setTypology] = useState('');
+    const [notes, setNotes] = useState(''); // NEW: Note aggiuntive
     
     // Address Parts
     const [addressType, setAddressType] = useState('Via');
@@ -55,6 +56,9 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
     const [locality, setLocality] = useState('');
 
     const [teamLeaderId, setTeamLeaderId] = useState('');
+    const [isExternalLeader, setIsExternalLeader] = useState(false); // NEW: Capo partenza altra sede
+    const [externalLeaderName, setExternalLeaderName] = useState(''); // NEW: Nome capo esterno
+
     const [officerId, setOfficerId] = useState('');
 
     // FILTER STATE
@@ -187,8 +191,8 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
             if (i.shift && shiftCounts[i.shift.toLowerCase()] !== undefined) {
                 shiftCounts[i.shift.toLowerCase()]++;
             }
-            // Count Leaders
-            if (i.teamLeaderId) {
+            // Count Leaders (Se non esterno)
+            if (i.teamLeaderId && i.teamLeaderId !== 'EXTERNAL') {
                 leaderCounts[i.teamLeaderId] = (leaderCounts[i.teamLeaderId] || 0) + 1;
             }
         });
@@ -215,11 +219,14 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         setExitTime('');
         setReturnTime('');
         setTypology('');
+        setNotes(''); // Reset Notes
         setAddressType('Via');
         setStreetName('');
         setCivicNumber('');
         setLocality('');
         setTeamLeaderId('');
+        setIsExternalLeader(false); // Reset External
+        setExternalLeaderName('');  // Reset External Name
         setOfficerId('');
         setMunicipality('MONTEPULCIANO');
         setIsCustomMunicipality(false);
@@ -233,6 +240,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         setExitTime(i.exitTime);
         setReturnTime(i.returnTime);
         setTypology(i.typology);
+        setNotes(i.notes || ''); // Load Notes
         setAddressType(i.addressType || 'Via');
         setStreetName(i.street || '');
         setCivicNumber(i.number || '');
@@ -247,7 +255,18 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         }
 
         setLocality(i.locality || '');
-        setTeamLeaderId(i.teamLeaderId || '');
+        
+        // Handle External Leader
+        if (i.isExternalLeader) {
+            setIsExternalLeader(true);
+            setExternalLeaderName(i.teamLeaderName);
+            setTeamLeaderId('');
+        } else {
+            setIsExternalLeader(false);
+            setTeamLeaderId(i.teamLeaderId || '');
+            setExternalLeaderName('');
+        }
+
         // Trova ID funzionario dal nome (se possibile)
         const off = dutyOfficers.find(o => o.name === i.dutyOfficer);
         setOfficerId(off ? off.id : '');
@@ -274,7 +293,19 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
     const prevStep = () => setStep((prev: number) => prev - 1);
 
     const handleSubmit = async () => {
-        if (!teamLeaderId) return alert("Seleziona il Capo Partenza.");
+        let finalLeaderName = 'Sconosciuto';
+        let finalLeaderId = '';
+
+        if (isExternalLeader) {
+            if (!externalLeaderName.trim()) return alert("Inserisci Grado Nome e Cognome del Capo Partenza esterno.");
+            finalLeaderName = externalLeaderName.trim();
+            finalLeaderId = 'EXTERNAL';
+        } else {
+            if (!teamLeaderId) return alert("Seleziona il Capo Partenza.");
+            const leader = staff.find(s => s.id === teamLeaderId);
+            finalLeaderName = leader?.name || 'Sconosciuto';
+            finalLeaderId = teamLeaderId;
+        }
         
         // Risoluzione Nome Funzionario
         let finalOfficerName = 'N/D';
@@ -283,21 +314,21 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
             if (officer) finalOfficerName = officer.name;
         }
 
-        const leader = staff.find(s => s.id === teamLeaderId);
-        
         const payload = {
             interventionNumber,
             date,
             exitTime,
             returnTime,
             typology,
+            notes: notes.trim(), // Save notes
             addressType,
             street: streetName,
             number: civicNumber,
             municipality,
             locality,
-            teamLeaderId,
-            teamLeaderName: leader?.name || 'Sconosciuto',
+            teamLeaderId: finalLeaderId,
+            teamLeaderName: finalLeaderName,
+            isExternalLeader, // Save flag
             dutyOfficer: finalOfficerName,
             shift: activeShift,
             timestamp: new Date().toISOString()
@@ -378,7 +409,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                 placeholder="Seleziona dalla lista..."
                             />
                             {/* VERTICAL SCROLLABLE LIST OF TYPOLOGIES */}
-                            <div className="max-h-32 overflow-y-auto border rounded mt-1 bg-slate-50 shadow-inner scrollbar-thin scrollbar-thumb-orange-200">
+                            <div className="max-h-32 overflow-y-auto border rounded mt-1 bg-slate-50 shadow-inner scrollbar-thin scrollbar-thumb-orange-200 mb-2">
                                 {interventionTypologies.length > 0 ? (
                                     interventionTypologies.map(t => (
                                         <div 
@@ -392,6 +423,20 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                 ) : (
                                     <div className="p-2 text-xs text-slate-400 italic">Nessuna tipologia disponibile.</div>
                                 )}
+                            </div>
+                            
+                            {/* NEW NOTES FIELD */}
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 uppercase block mb-1 flex items-center gap-1">
+                                    <WrenchIcon className="h-3 w-3"/> Note Aggiuntive
+                                </label>
+                                <textarea 
+                                    value={notes} 
+                                    onChange={e => setNotes(e.target.value)} 
+                                    className="w-full border rounded p-2 bg-white text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                                    placeholder="Dettagli extra sulla tipologia (es. rimozione nido vespe)"
+                                    rows={2}
+                                />
                             </div>
                         </div>
                         
@@ -456,38 +501,61 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                     <div className="space-y-6 animate-fade-in">
                         <h3 className="font-bold text-orange-800 uppercase text-sm border-b border-orange-200 pb-2">Step 3: Personale</h3>
                         
-                        {/* TEAM LEADER AVATAR GRID */}
+                        {/* TEAM LEADER SECTION */}
                         <div>
-                            <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Capo Partenza (Turno {activeShift.toUpperCase()})</label>
-                            <div className="grid grid-cols-4 gap-3 max-h-40 overflow-y-auto p-1">
-                                {eligibleLeaders.map(s => {
-                                    const isSelected = teamLeaderId === s.id;
-                                    return (
-                                        <button 
-                                            key={s.id}
-                                            onClick={() => setTeamLeaderId(s.id)}
-                                            className={`
-                                                flex flex-col items-center p-2 rounded-xl border-2 transition-all
-                                                ${isSelected ? 'bg-orange-100 border-orange-500 shadow-md transform scale-105' : 'bg-white border-slate-200 hover:border-orange-300'}
-                                            `}
-                                        >
-                                            {/* Wrapper RELATIVE senza overflow hidden per contenere il badge */}
-                                            <div className="relative w-10 h-10">
-                                                {/* Avatar Container con overflow hidden per la foto tonda */}
-                                                <div className="w-full h-full rounded-full bg-slate-100 overflow-hidden border border-slate-200 flex items-center justify-center">
-                                                    {s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" /> : <span className="text-lg">{s.icon || '👤'}</span>}
-                                                </div>
-                                                {/* Badge fuori dal container overflow */}
-                                                <div className="absolute -top-2 -right-2 scale-75 z-10">
-                                                    <GradeBadge grade={s.grade} />
-                                                </div>
-                                            </div>
-                                            <span className={`text-[9px] font-bold mt-1 text-center w-full truncate ${isSelected ? 'text-orange-800' : 'text-slate-600'}`}>{s.name.split(' ')[0]}</span>
-                                        </button>
-                                    )
-                                })}
-                                {eligibleLeaders.length === 0 && <p className="text-xs text-red-400 italic col-span-4">Nessun personale idoneo nel turno.</p>}
+                            <div className="flex justify-between items-center mb-2">
+                                <label className="text-xs font-bold text-slate-500 uppercase">Capo Partenza</label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={isExternalLeader} 
+                                        onChange={() => setIsExternalLeader(!isExternalLeader)}
+                                        className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+                                    />
+                                    <span className="text-xs text-slate-600 font-bold">Altra Sede</span>
+                                </label>
                             </div>
+
+                            {isExternalLeader ? (
+                                <input 
+                                    type="text" 
+                                    value={externalLeaderName} 
+                                    onChange={e => setExternalLeaderName(e.target.value)} 
+                                    placeholder="Grado Nome Cognome (es. CR Mario Rossi)" 
+                                    className="w-full border rounded p-3 bg-white text-sm outline-none focus:ring-2 focus:ring-orange-200 font-bold"
+                                    autoFocus
+                                />
+                            ) : (
+                                <div className="grid grid-cols-4 gap-3 max-h-40 overflow-y-auto p-1">
+                                    {eligibleLeaders.map(s => {
+                                        const isSelected = teamLeaderId === s.id;
+                                        return (
+                                            <button 
+                                                key={s.id}
+                                                onClick={() => setTeamLeaderId(s.id)}
+                                                className={`
+                                                    flex flex-col items-center p-2 rounded-xl border-2 transition-all
+                                                    ${isSelected ? 'bg-orange-100 border-orange-500 shadow-md transform scale-105' : 'bg-white border-slate-200 hover:border-orange-300'}
+                                                `}
+                                            >
+                                                {/* Wrapper RELATIVE senza overflow hidden per contenere il badge */}
+                                                <div className="relative w-10 h-10">
+                                                    {/* Avatar Container con overflow hidden per la foto tonda */}
+                                                    <div className="w-full h-full rounded-full bg-slate-100 overflow-hidden border border-slate-200 flex items-center justify-center">
+                                                        {s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" /> : <span className="text-lg">{s.icon || '👤'}</span>}
+                                                    </div>
+                                                    {/* Badge fuori dal container overflow */}
+                                                    <div className="absolute -top-2 -right-2 scale-75 z-10">
+                                                        <GradeBadge grade={s.grade} />
+                                                    </div>
+                                                </div>
+                                                <span className={`text-[9px] font-bold mt-1 text-center w-full truncate ${isSelected ? 'text-orange-800' : 'text-slate-600'}`}>{s.name.split(' ')[0]}</span>
+                                            </button>
+                                        )
+                                    })}
+                                    {eligibleLeaders.length === 0 && <p className="text-xs text-red-400 italic col-span-4">Nessun personale idoneo nel turno.</p>}
+                                </div>
+                            )}
                         </div>
 
                         {/* OFFICER ICON GRID - RESIZED AND CONTAINED */}
@@ -798,6 +866,11 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                                     <span className={`font-bold uppercase text-xs block ${int.isDeleted ? 'line-through text-red-400' : 'text-slate-800'}`}>
                                                         {int.typology}
                                                     </span>
+                                                    {int.notes && (
+                                                        <div className="text-[10px] text-slate-500 italic mt-0.5 bg-slate-50 px-1 rounded inline-block border border-slate-100">
+                                                            Note: {int.notes}
+                                                        </div>
+                                                    )}
                                                     <div className={`text-[11px] mt-1 ${int.isDeleted ? 'text-red-300' : 'text-slate-500'}`}>
                                                         {int.addressType} {int.street} {int.number}, {int.municipality}
                                                     </div>

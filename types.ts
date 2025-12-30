@@ -254,6 +254,7 @@ export interface Intervention {
     returnTime: string; // HH:mm
     
     typology: string; // Nome tipologia
+    notes?: string; // Note aggiuntive sotto la tipologia
     
     // Luogo
     addressType?: string; // Via, Piazza, SS...
@@ -263,8 +264,10 @@ export interface Intervention {
     locality: string;
 
     // Personale
-    teamLeaderId: string; // ID Capo Partenza (CS+)
+    teamLeaderId: string; // ID Capo Partenza (CS+) oppure 'EXTERNAL' se esterno
     teamLeaderName: string; // Denormalized
+    isExternalLeader?: boolean; // Flag per capo partenza altra sede
+    
     dutyOfficer: string; // Nome Funzionario
 
     shift: string; // Turno che ha effettuato l'intervento (A, B, C, D)
