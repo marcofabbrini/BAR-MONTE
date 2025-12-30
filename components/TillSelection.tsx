@@ -463,7 +463,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     </div>
                 )}
 
-                {/* 2. OTHER ONLINE USERS (ORANGE GLOW) */}
+                {/* 2. OTHER ONLINE USERS (NO DOT) */}
                 {otherOnlineUsers.slice(0, 4).map((user, idx) => (
                     <div 
                         key={user.id} 
@@ -475,9 +475,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         ) : (
                             <span className="text-lg">{user.icon || '👤'}</span>
                         )}
-                        {/* Orange Dot Indicator */}
-                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-orange-500 border border-white rounded-full"></div>
-                        
                         {/* Tooltip */}
                         <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">
                             {user.name.split(' ')[0]}

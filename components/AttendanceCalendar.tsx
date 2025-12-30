@@ -270,7 +270,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         setEditingDetails(newDetails);
     };
 
-    const saveEditing = async (shouldValidate: boolean = false) => {
+    const saveEditing = async (shouldValidate: boolean = true) => {
         if (!onSaveAttendance) return;
         
         const presentIds: string[] = [];
@@ -283,8 +283,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             }
         });
 
-        const user = editingRecord?.closedBy || 'Admin';
-        const closingUser = shouldValidate ? user : (editingRecord?.closedBy ? editingRecord.closedBy : undefined);
+        // Use active user name for validation (closing), otherwise keep existing or undefined
+        const closingUser = shouldValidate ? (activeBarUser?.name || 'Utente') : (editingRecord?.closedBy ? editingRecord.closedBy : undefined);
 
         await onSaveAttendance(
             editingTillId, 
@@ -582,17 +582,14 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                                             <LockOpenIcon className="h-4 w-4" /> RIAPRI TURNO
                                         </button>
                                     )}
-                                    <button onClick={() => saveEditing(false)} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-blue-700 ml-auto">
+                                    <button onClick={() => saveEditing(true)} className="bg-blue-600 text-white px-6 py-2 rounded-lg font-bold text-sm flex items-center gap-2 shadow-md hover:bg-blue-700 ml-auto">
                                         <SaveIcon className="h-4 w-4" /> Aggiorna Modifiche
                                     </button>
                                 </div>
                             ) : (
-                                <div className="flex gap-2 w-full">
-                                    <button onClick={() => saveEditing(false)} className="flex-1 bg-slate-200 text-slate-700 px-4 py-3 rounded-lg font-bold text-xs flex items-center justify-center gap-2 hover:bg-slate-300">
-                                        Salva Bozze
-                                    </button>
-                                    <button onClick={() => saveEditing(true)} className="flex-1 bg-green-600 text-white px-4 py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:bg-green-700 uppercase tracking-wide">
-                                        <CheckIcon className="h-4 w-4" /> Conferma e Valida
+                                <div className="w-full">
+                                    <button onClick={() => saveEditing(true)} className="w-full bg-green-600 text-white px-4 py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:bg-green-700 uppercase tracking-wide">
+                                        <CheckIcon className="h-4 w-4" /> Conferma e Valida Presenze
                                     </button>
                                 </div>
                             )}
