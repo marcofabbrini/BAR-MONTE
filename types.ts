@@ -232,6 +232,16 @@ export interface LaundryEntry {
     items: { name: string; quantity: number }[];
     totalItems: number;
     timestamp: string; // Data creazione record ISO
+    shipmentId?: string; // ID Spedizione (se inviato)
+}
+
+export interface LaundryShipment {
+    id: string;
+    sentDate: string; // YYYY-MM-DD
+    timestamp: string; // Full ISO
+    items: { name: string; totalQuantity: number; returnedQuantity: number }[]; // Riepilogo aggregato
+    status: 'in_transit' | 'completed';
+    notes?: string;
 }
 // ==========================
 

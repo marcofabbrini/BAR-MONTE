@@ -21,7 +21,7 @@ import {
     QuerySnapshot,
     DocumentData
 } from 'firebase/firestore';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, LaundryItemDef, LaundryEntry, CustomRole } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, LaundryItemDef, LaundryEntry, CustomRole, LaundryShipment } from '../types';
 
 export const BarService = {
     // --- LISTENERS ---
@@ -67,9 +67,15 @@ export const BarService = {
     },
 
     subscribeToLaundryEntries: (onUpdate: (data: LaundryEntry[]) => void) => {
-        // Ultimi 50 inserimenti lavanderia
-        const q = query(collection(db, 'laundry_entries'), orderBy('timestamp', 'desc'), limit(50));
+        // Ultimi 100 inserimenti lavanderia per avere storico, ma serve principalmente per i Pending
+        const q = query(collection(db, 'laundry_entries'), orderBy('timestamp', 'desc'), limit(100));
         return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as LaundryEntry))));
+    },
+
+    subscribeToLaundryShipments: (onUpdate: (data: LaundryShipment[]) => void) => {
+        // Ultime 20 spedizioni
+        const q = query(collection(db, 'laundry_shipments'), orderBy('timestamp', 'desc'), limit(20));
+        return onSnapshot(q, (s: QuerySnapshot<DocumentData>) => onUpdate(s.docs.map(d => ({ ...d.data(), id: d.id } as LaundryShipment))));
     },
 
     // --- NEW: Custom Roles ---
@@ -214,6 +220,30 @@ export const BarService = {
     // Laundry Entries (History)
     addLaundryEntry: async (entry: Omit<LaundryEntry, 'id'>) => { await addDoc(collection(db, 'laundry_entries'), entry); },
     deleteLaundryEntry: async (id: string) => { await deleteDoc(doc(db, 'laundry_entries', id)); },
+
+    // Laundry Shipments
+    createLaundryShipment: async (shipment: Omit<LaundryShipment, 'id'>, entryIds: string[]) => {
+        try {
+            await runTransaction(db, async (t) => {
+                // 1. Create Shipment
+                const shipmentRef = doc(collection(db, 'laundry_shipments'));
+                t.set(shipmentRef, { ...shipment, id: shipmentRef.id });
+
+                // 2. Update Entries with shipmentId
+                entryIds.forEach(id => {
+                    const entryRef = doc(db, 'laundry_entries', id);
+                    t.update(entryRef, { shipmentId: shipmentRef.id });
+                });
+            });
+        } catch (e) {
+            console.error("Errore creazione spedizione lavanderia:", e);
+            throw e;
+        }
+    },
+
+    updateLaundryShipment: async (id: string, updates: Partial<LaundryShipment>) => {
+        await updateDoc(doc(db, 'laundry_shipments', id), updates);
+    },
 
     // Cash
     addCashMovement: async (data: any) => { await addDoc(collection(db, 'cash_movements'), data); },

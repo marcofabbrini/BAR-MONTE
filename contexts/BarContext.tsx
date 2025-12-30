@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef, LaundryEntry, Intervention, InterventionTypology, DutyOfficer, OperationalVehicle, VehicleCheck, Reminder, CustomRole } from '../types';
+import { Product, StaffMember, Order, CashMovement, TillColors, SeasonalityConfig, ShiftSettings, GeneralSettings, AttendanceRecord, AdminUser, AppNotification, AttendanceStatus, Vehicle, VehicleBooking, LaundryItemDef, LaundryEntry, Intervention, InterventionTypology, DutyOfficer, OperationalVehicle, VehicleCheck, Reminder, CustomRole, LaundryShipment } from '../types';
 import { BarService } from '../services/barService';
 import { VehicleService } from '../services/vehicleService';
 import { InterventionService } from '../services/interventionService';
@@ -43,6 +42,7 @@ interface BarContextType {
     // Laundry
     laundryItems: LaundryItemDef[];
     laundryEntries: LaundryEntry[];
+    laundryShipments: LaundryShipment[];
 
     // Interventions
     interventions: Intervention[];
@@ -104,6 +104,8 @@ interface BarContextType {
     deleteLaundryItem: (id: string) => Promise<void>;
     addLaundryEntry: (e: Omit<LaundryEntry, 'id'>) => Promise<void>;
     deleteLaundryEntry: (id: string) => Promise<void>;
+    createLaundryShipment: (s: Omit<LaundryShipment, 'id'>, entryIds: string[]) => Promise<void>;
+    updateLaundryShipment: (id: string, u: Partial<LaundryShipment>) => Promise<void>;
 
     // Intervention Actions
     addIntervention: (i: Omit<Intervention, 'id'>) => Promise<void>;
@@ -144,6 +146,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [vehicleChecks, setVehicleChecks] = useState<VehicleCheck[]>([]);
     const [laundryItems, setLaundryItems] = useState<LaundryItemDef[]>([]);
     const [laundryEntries, setLaundryEntries] = useState<LaundryEntry[]>([]);
+    const [laundryShipments, setLaundryShipments] = useState<LaundryShipment[]>([]);
     const [interventions, setInterventions] = useState<Intervention[]>([]);
     const [interventionTypologies, setInterventionTypologies] = useState<InterventionTypology[]>([]);
     const [dutyOfficers, setDutyOfficers] = useState<DutyOfficer[]>([]);
@@ -330,6 +333,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             BarService.subscribeToAttendance(setAttendanceRecords),
             BarService.subscribeToLaundryItems(setLaundryItems),
             BarService.subscribeToLaundryEntries(setLaundryEntries),
+            BarService.subscribeToLaundryShipments(setLaundryShipments),
             BarService.subscribeToCustomRoles(setCustomRoles),
             VehicleService.subscribeToVehicles(setVehicles),
             VehicleService.subscribeToBookings(setVehicleBookings),
@@ -415,6 +419,8 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const deleteLaundryItem = (id: string) => BarService.deleteLaundryItem(id);
     const addLaundryEntry = (e: Omit<LaundryEntry, 'id'>) => BarService.addLaundryEntry(e);
     const deleteLaundryEntry = (id: string) => BarService.deleteLaundryEntry(id);
+    const createLaundryShipment = (s: Omit<LaundryShipment, 'id'>, entryIds: string[]) => BarService.createLaundryShipment(s, entryIds);
+    const updateLaundryShipment = (id: string, u: Partial<LaundryShipment>) => BarService.updateLaundryShipment(id, u);
 
     const addIntervention = (i: Omit<Intervention, 'id'>) => InterventionService.addIntervention(i);
     const updateIntervention = (i: Intervention) => InterventionService.updateIntervention(i);
@@ -437,7 +443,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return (
         <BarContext.Provider value={{
             products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
-            vehicles, vehicleBookings, operationalVehicles, vehicleChecks, laundryItems, laundryEntries, interventions, interventionTypologies, dutyOfficers, reminders,
+            vehicles, vehicleBookings, operationalVehicles, vehicleChecks, laundryItems, laundryEntries, laundryShipments, interventions, interventionTypologies, dutyOfficers, reminders,
             customRoles, availableRoles, addCustomRole, deleteCustomRole,
             activeBarUser, loginBarUser, logoutBarUser, onlineStaffCount,
             addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
@@ -445,7 +451,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
             addVehicle, updateVehicle, deleteVehicle, addBooking, deleteBooking,
             addOperationalVehicle, updateOperationalVehicle, deleteOperationalVehicle, addVehicleCheck, updateVehicleCheck,
-            addLaundryItem, updateLaundryItem, deleteLaundryItem, addLaundryEntry, deleteLaundryEntry,
+            addLaundryItem, updateLaundryItem, deleteLaundryItem, addLaundryEntry, deleteLaundryEntry, createLaundryShipment, updateLaundryShipment,
             addIntervention, updateIntervention, deleteIntervention, permanentDeleteIntervention, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer,
             addReminder, updateReminder, deleteReminder, toggleReminderCompletion,
             getNow

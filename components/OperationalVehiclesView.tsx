@@ -110,30 +110,41 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
         const today = getNow();
         const daysMap = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
         const todayName = daysMap[today.getDay()];
+        const todayStr = today.toISOString().split('T')[0];
         
         // LOGICA VISIBILITÀ: Checklist accessibile SOLO se oggi è il giorno di controllo
         const isTodayCheck = vehicle.checkDay === todayName;
 
+        // Check if already checked today
+        const isCheckedToday = vehicleChecks.some(c => c.vehicleId === vehicle.id && c.date === todayStr);
+
         return (
             <div 
-                onClick={() => isTodayCheck && handleSelectVehicle(vehicle)}
+                onClick={() => (isTodayCheck && !isCheckedToday) && handleSelectVehicle(vehicle)}
                 className={`
                     bg-white rounded-2xl shadow-md border overflow-hidden flex flex-col group relative transition-all
-                    ${isTodayCheck 
+                    ${isTodayCheck && !isCheckedToday
                         ? 'cursor-pointer hover:shadow-xl hover:scale-[1.01] border-red-500 ring-2 ring-red-100' 
-                        : 'opacity-80 cursor-not-allowed border-slate-200 grayscale-[0.3]'
+                        : 'opacity-80 border-slate-200 grayscale-[0.3] pointer-events-none'
                     }
                 `}
             >
                 {/* BADGE GIORNO CONTROLLO */}
                 <div className={`
                     absolute top-3 right-3 z-10 font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-lg border
-                    ${isTodayCheck 
-                        ? 'bg-red-600 text-white border-red-400 shadow-[0_0_15px_#ef4444] animate-pulse' 
-                        : 'bg-slate-200 text-slate-500 border-slate-300'
+                    ${isCheckedToday 
+                        ? 'bg-green-600 text-white border-green-400'
+                        : isTodayCheck 
+                            ? 'bg-red-600 text-white border-red-400 shadow-[0_0_15px_#ef4444] animate-pulse' 
+                            : 'bg-slate-200 text-slate-500 border-slate-300'
                     }
                 `}>
-                    {isTodayCheck ? 'DI CONTROLLO OGGI' : `Controllo: ${vehicle.checkDay}`}
+                    {isCheckedToday 
+                        ? 'CONTROLLATO'
+                        : isTodayCheck 
+                            ? 'DI CONTROLLO OGGI' 
+                            : `Controllo: ${vehicle.checkDay}`
+                    }
                 </div>
 
                 <div className={`
@@ -153,7 +164,7 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                 <div className="p-3 md:p-5 flex-grow flex flex-col">
                     <div className="flex justify-between items-start">
                         <h3 className={`${isFeatured ? 'text-2xl' : 'text-sm md:text-lg'} font-black text-slate-800 leading-tight`}>{vehicle.model}</h3>
-                        {isTodayCheck && isFeatured && <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded font-bold uppercase animate-pulse">Prioritario</span>}
+                        {isTodayCheck && isFeatured && !isCheckedToday && <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded font-bold uppercase animate-pulse">Prioritario</span>}
                     </div>
                     
                     <div className="mt-2">
@@ -168,14 +179,17 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                         </div>
                     )}
                     
-                    {/* PULSANTE VISIBILE SOLO SE È IL GIORNO DI CONTROLLO */}
+                    {/* PULSANTE VISIBILE SOLO SE È IL GIORNO DI CONTROLLO E NON ANCORA FATTO */}
                     <div className="mt-2 md:mt-4 pt-2 md:pt-4 border-t border-slate-100 text-center mt-auto min-h-[30px] flex items-center justify-center">
-                        {isTodayCheck ? (
+                        {isCheckedToday ? (
+                            <span className="text-[10px] md:text-xs font-bold text-green-600 uppercase flex items-center gap-1">
+                                <CheckIcon className="h-4 w-4"/> Controllo Effettuato
+                            </span>
+                        ) : isTodayCheck ? (
                             <span className="text-[10px] md:text-xs font-bold text-blue-600 uppercase flex items-center gap-1 animate-pulse">
                                 <CheckIcon className="h-4 w-4"/> Apri Checklist
                             </span>
                         ) : (
-                            // STRICT VISIBILITY: Empty or very subtle indicator, no button.
                             <span className="text-[10px] text-slate-300 opacity-50 select-none">
                                 -
                             </span>
