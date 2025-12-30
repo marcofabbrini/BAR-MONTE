@@ -39,7 +39,7 @@ interface WeatherData {
 const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, onSelectOperationalVehicles, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification, reminders = [], onToggleReminder, operationalVehicles = [], vehicles = [], vehicleChecks = [] }) => {
     
     // Context for Reliable Time & Auth
-    const { getNow, activeBarUser, logoutBarUser, onlineStaffCount, updateStaff, availableRoles } = useBar();
+    const { getNow, activeBarUser, logoutBarUser, staff, updateStaff, availableRoles } = useBar();
 
     // WEATHER & DATE STATE
     const [currentDateString, setCurrentDateString] = useState<string>('');
@@ -69,16 +69,30 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return roleDef ? roleDef.level >= 2 : false;
     }, [activeBarUser, availableRoles]);
 
-    // Inizializza form profilo quando si apre
+    // Inizializza form profilo SOLO all'apertura del modale (FIX: Previene reset durante la digitazione)
     useEffect(() => {
         if (isProfileOpen && activeBarUser) {
             setProfileForm({
-                username: activeBarUser.username || '',
+                username: activeBarUser.username || activeBarUser.name, // Default al nome se username mancante
                 password: activeBarUser.password || '',
                 rcSubGroup: activeBarUser.rcSubGroup || 1
             });
         }
-    }, [isProfileOpen, activeBarUser]);
+    }, [isProfileOpen]); // Rimuovere activeBarUser dalle dipendenze per evitare re-render loop
+
+    // Calcolo Utenti Online (Escluso me stesso)
+    const otherOnlineUsers = useMemo(() => {
+        if (!activeBarUser) return [];
+        const now = getNow().getTime();
+        const timeoutWindow = 10 * 60 * 1000; // 10 minuti
+        
+        return staff.filter(s => {
+            if (s.id === activeBarUser.id) return false; // Escludi me stesso
+            if (!s.lastSeen) return false;
+            const lastSeenTime = new Date(s.lastSeen).getTime();
+            return (now - lastSeenTime) < timeoutWindow;
+        });
+    }, [staff, activeBarUser, getNow]);
 
     const handleSaveProfile = async () => {
         if (!activeBarUser) return;
@@ -418,22 +432,46 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     return (
         <div className="flex flex-col min-h-dvh relative overflow-hidden font-sans transition-colors duration-500" style={{ backgroundColor }}>
             
-            {/* ONLINE USERS BADGE (TOP RIGHT) */}
-            <div className="absolute top-4 right-4 z-50 mt-[env(safe-area-inset-top)]">
-                <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-md flex items-center gap-2 border border-green-100">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
-                    <span className="text-[10px] font-black text-slate-700 uppercase tracking-wide">
-                        {onlineStaffCount} Online
-                    </span>
-                </div>
+            {/* ONLINE USERS (TOP RIGHT) - GLOW ORANGE */}
+            <div className="absolute top-4 right-4 z-50 mt-[env(safe-area-inset-top)] flex items-center gap-[-8px]">
+                {otherOnlineUsers.slice(0, 4).map((user, idx) => (
+                    <div 
+                        key={user.id} 
+                        className="w-10 h-10 rounded-full border-2 border-white shadow-[0_0_15px_#f97316] overflow-hidden -ml-3 first:ml-0 bg-slate-100 flex items-center justify-center relative z-10"
+                        title={`${user.name} Online`}
+                    >
+                        {user.photoUrl ? (
+                            <img src={user.photoUrl} className="w-full h-full object-cover" />
+                        ) : (
+                            <span className="text-lg">{user.icon || '👤'}</span>
+                        )}
+                        {/* Indicatore Stato */}
+                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border border-white rounded-full"></div>
+                    </div>
+                ))}
+                
+                {/* Contatore rimanenti se > 4 */}
+                {otherOnlineUsers.length > 4 && (
+                    <div className="w-10 h-10 rounded-full border-2 border-white bg-slate-800 text-white font-bold flex items-center justify-center -ml-3 z-0 shadow-md">
+                        +{otherOnlineUsers.length - 4}
+                    </div>
+                )}
+
+                {/* Testo se nessuno online */}
+                {otherOnlineUsers.length === 0 && (
+                    <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-md flex items-center gap-2 border border-slate-100">
+                        <div className="w-2 h-2 rounded-full bg-slate-400"></div>
+                        <span className="text-[10px] font-bold text-slate-500">Solo Tu</span>
+                    </div>
+                )}
             </div>
 
-            {/* USER AVATAR & LOGOUT (TOP LEFT) */}
+            {/* USER AVATAR & LOGOUT (TOP LEFT) - GLOW GREEN */}
             <div className="absolute top-4 left-4 z-50 mt-[env(safe-area-inset-top)] flex items-center gap-2">
                 {activeBarUser && (
                     <div className="relative group">
-                        {/* Avatar con Glow Fluo */}
-                        <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white shadow-[0_0_15px_#4ade80] flex items-center justify-center overflow-hidden">
+                        {/* Avatar con Glow Fluo (Verde per me) */}
+                        <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white shadow-[0_0_15px_#4ade80] flex items-center justify-center overflow-hidden cursor-pointer" onClick={() => setIsProfileOpen(true)}>
                             {activeBarUser.photoUrl ? (
                                 <img src={activeBarUser.photoUrl} className="w-full h-full object-cover" />
                             ) : (
@@ -441,7 +479,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             )}
                         </div>
                         {activeBarUser.grade && (
-                            <div className="absolute -top-2 -right-2 scale-75 z-10">
+                            <div className="absolute -top-2 -right-2 scale-75 z-10 pointer-events-none">
                                 <GradeBadge grade={activeBarUser.grade} />
                             </div>
                         )}
@@ -480,7 +518,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                         value={profileForm.username} 
                                         onChange={e => setProfileForm({...profileForm, username: e.target.value})} 
                                         className="w-full border rounded-lg p-2 text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 outline-none"
-                                        placeholder="Username personalizzato"
+                                        placeholder={activeBarUser.name}
                                     />
                                     <p className="text-[9px] text-slate-400 mt-1">Usa questo nome per accedere rapidamente.</p>
                                 </div>

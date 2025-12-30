@@ -284,14 +284,12 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
 
         // 2. GESTIONE UTENTI STANDARD
-        
-        // Prima cerca match esatto per USERNAME (nuova funzionalità)
-        let targetUser = staff.find(s => s.username && s.username.toLowerCase() === lowerInputName);
-
-        // Fallback: cerca per Nome (vecchio metodo) se non trova username
-        if (!targetUser) {
-            targetUser = staff.find(s => s.name.toLowerCase().startsWith(lowerInputName) && !s.name.toLowerCase().includes('cassa'));
-        }
+        // Cerca match per Username specifico OPPURE per Nome Cognome (perché è il default)
+        let targetUser = staff.find(s => 
+            (s.username && s.username.toLowerCase() === lowerInputName) || 
+            (s.name.toLowerCase() === lowerInputName) || // Match esatto Nome Cognome
+            (s.name.toLowerCase().startsWith(lowerInputName) && !s.name.toLowerCase().includes('cassa')) // Fallback parziale
+        );
 
         if (!targetUser) return false;
 
