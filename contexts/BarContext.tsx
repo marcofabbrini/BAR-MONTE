@@ -283,14 +283,20 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
 
         // 2. GESTIONE UTENTI STANDARD
-        // Cerca un utente il cui nome inizi con l'input (es. "Mario" trova "Mario Rossi")
-        const targetUser = staff.find(s => s.name.toLowerCase().startsWith(lowerInputName) && !s.name.toLowerCase().includes('cassa'));
+        
+        // Prima cerca match esatto per USERNAME (nuova funzionalità)
+        let targetUser = staff.find(s => s.username && s.username.toLowerCase() === lowerInputName);
+
+        // Fallback: cerca per Nome (vecchio metodo) se non trova username
+        if (!targetUser) {
+            targetUser = staff.find(s => s.name.toLowerCase().startsWith(lowerInputName) && !s.name.toLowerCase().includes('cassa'));
+        }
 
         if (!targetUser) return false;
 
         // Logica Password:
         // Se l'utente ha una password nel DB -> usa quella
-        // Se NON ha password -> usa il nome (prima parte) in minuscolo
+        // Se NON ha password -> usa il nome (prima parte) in minuscolo come default
         const firstName = targetUser.name.split(' ')[0].toLowerCase();
         const expectedPwd = (targetUser.password && targetUser.password.trim() !== '') 
             ? targetUser.password 
@@ -405,7 +411,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const addOperationalVehicle = (v: Omit<OperationalVehicle, 'id'>) => OperationalVehicleService.addVehicle(v);
     const updateOperationalVehicle = (v: OperationalVehicle) => OperationalVehicleService.updateVehicle(v);
-    const deleteOperationalVehicle = (id: string) => OperationalVehicleService.deleteVehicle(id);
+    const deleteOperationalVehicle = (id: string) => OperationalVehicleService.deleteVehicle(id); 
     const addVehicleCheck = (c: Omit<VehicleCheck, 'id'>) => OperationalVehicleService.addCheck(c);
     const updateVehicleCheck = (id: string, u: Partial<VehicleCheck>) => OperationalVehicleService.updateCheck(id, u);
 

@@ -1,7 +1,7 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
-import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder, OperationalVehicle, VehicleCheck, Vehicle } from '../types';
-import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon, BackArrowIcon } from './Icons';
+import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder, OperationalVehicle, VehicleCheck, Vehicle, StaffMember } from '../types';
+import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon, BackArrowIcon, EditIcon, SaveIcon, LockIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 
 interface TillSelectionProps {
@@ -38,7 +38,7 @@ interface WeatherData {
 const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, onSelectOperationalVehicles, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification, reminders = [], onToggleReminder, operationalVehicles = [], vehicles = [], vehicleChecks = [] }) => {
     
     // Context for Reliable Time & Auth
-    const { getNow, activeBarUser, logoutBarUser, onlineStaffCount } = useBar();
+    const { getNow, activeBarUser, logoutBarUser, onlineStaffCount, updateStaff } = useBar();
 
     // WEATHER & DATE STATE
     const [currentDateString, setCurrentDateString] = useState<string>('');
@@ -51,6 +51,38 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
 
     // POST-IT STATE
     const [hidePostIt, setHidePostIt] = useState(false);
+
+    // PROFILE MODAL STATE
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [profileForm, setProfileForm] = useState<{username: string, password: string, rcSubGroup: number}>({ username: '', password: '', rcSubGroup: 1 });
+
+    // Inizializza form profilo quando si apre
+    useEffect(() => {
+        if (isProfileOpen && activeBarUser) {
+            setProfileForm({
+                username: activeBarUser.username || '',
+                password: activeBarUser.password || '',
+                rcSubGroup: activeBarUser.rcSubGroup || 1
+            });
+        }
+    }, [isProfileOpen, activeBarUser]);
+
+    const handleSaveProfile = async () => {
+        if (!activeBarUser) return;
+        try {
+            await updateStaff({
+                ...activeBarUser,
+                username: profileForm.username.trim(),
+                password: profileForm.password.trim(),
+                rcSubGroup: profileForm.rcSubGroup
+            });
+            setIsProfileOpen(false);
+            alert("Profilo aggiornato con successo!");
+        } catch (e) {
+            console.error(e);
+            alert("Errore aggiornamento profilo.");
+        }
+    };
 
     // Cleanup old keys on mount to prevent Storage Full
     useEffect(() => {
@@ -380,17 +412,93 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
                 
                 {activeBarUser && (
-                    <div className="bg-slate-800 text-white px-3 py-1.5 rounded-full shadow-md flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center text-[10px] overflow-hidden">
+                    <div className="bg-slate-800 text-white pl-1 pr-3 py-1 rounded-full shadow-md flex items-center gap-2 group relative">
+                        <div className="w-6 h-6 rounded-full bg-slate-600 flex items-center justify-center text-[10px] overflow-hidden border border-slate-500">
                             {activeBarUser.photoUrl ? <img src={activeBarUser.photoUrl} className="w-full h-full object-cover" /> : (activeBarUser.icon || '👤')}
                         </div>
                         <span className="text-[10px] font-bold">{activeBarUser.name}</span>
-                        <button onClick={logoutBarUser} className="ml-1 text-red-400 hover:text-red-300">
+                        
+                        {/* PERSONALIZZAZIONE PROFILO */}
+                        <button onClick={() => setIsProfileOpen(true)} className="ml-1 text-slate-400 hover:text-white transition-colors p-1" title="Modifica Profilo">
+                            <EditIcon className="h-3 w-3" />
+                        </button>
+
+                        <button onClick={logoutBarUser} className="text-red-400 hover:text-red-300 ml-1 p-1" title="Logout">
                             <BackArrowIcon className="h-3 w-3 rotate-180" />
                         </button>
                     </div>
                 )}
             </div>
+
+            {/* PROFILE MODAL */}
+            {isProfileOpen && activeBarUser && (
+                <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-slide-up">
+                        <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                                <EditIcon className="h-5 w-5 text-blue-500"/> Il mio Profilo
+                            </h3>
+                            <button onClick={() => setIsProfileOpen(false)} className="text-2xl leading-none text-slate-400 hover:text-slate-600">&times;</button>
+                        </div>
+                        
+                        <div className="p-6 space-y-4">
+                            <div className="flex flex-col items-center mb-4">
+                                <div className="w-20 h-20 rounded-full bg-slate-100 overflow-hidden border-2 border-slate-200 mb-2 flex items-center justify-center text-3xl">
+                                    {activeBarUser.photoUrl ? <img src={activeBarUser.photoUrl} className="w-full h-full object-cover" /> : (activeBarUser.icon || '👤')}
+                                </div>
+                                <span className="font-black text-lg text-slate-800">{activeBarUser.name}</span>
+                                <span className="text-xs font-bold bg-slate-100 px-2 py-0.5 rounded text-slate-500 uppercase">{activeBarUser.grade} - Turno {activeBarUser.shift.toUpperCase()}</span>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Username (Login)</label>
+                                    <input 
+                                        type="text" 
+                                        value={profileForm.username} 
+                                        onChange={e => setProfileForm({...profileForm, username: e.target.value})} 
+                                        className="w-full border rounded-lg p-2 text-sm font-bold text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 outline-none"
+                                        placeholder="Username personalizzato"
+                                    />
+                                    <p className="text-[9px] text-slate-400 mt-1">Usa questo nome per accedere rapidamente.</p>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Password</label>
+                                    <div className="relative">
+                                        <input 
+                                            type="text" 
+                                            value={profileForm.password} 
+                                            onChange={e => setProfileForm({...profileForm, password: e.target.value})} 
+                                            className="w-full border rounded-lg p-2 text-sm font-mono text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 outline-none pr-8"
+                                            placeholder="Password (opzionale)"
+                                        />
+                                        <LockIcon className="absolute right-2 top-2.5 h-4 w-4 text-slate-300" />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Gruppo Salto (Riposo)</label>
+                                    <select 
+                                        value={profileForm.rcSubGroup} 
+                                        onChange={e => setProfileForm({...profileForm, rcSubGroup: parseInt(e.target.value)})} 
+                                        className="w-full border rounded-lg p-2 text-sm font-bold text-purple-700 bg-purple-50 focus:ring-2 focus:ring-purple-200 outline-none border-purple-200"
+                                    >
+                                        {[1,2,3,4,5,6,7,8].map(n => <option key={n} value={n}>Gruppo {n}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-slate-50 border-t border-slate-200 flex gap-2">
+                            <button onClick={() => setIsProfileOpen(false)} className="flex-1 py-2 rounded-lg font-bold text-slate-500 hover:bg-slate-200 text-xs">Annulla</button>
+                            <button onClick={handleSaveProfile} className="flex-1 py-2 rounded-lg font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md text-xs flex items-center justify-center gap-2">
+                                <SaveIcon className="h-4 w-4" /> Salva Modifiche
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {seasonalityConfig?.animationType !== 'none' && (
                 <div className="emoji-rain-container pointer-events-none">

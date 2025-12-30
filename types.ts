@@ -48,6 +48,7 @@ export interface CustomRole {
 export interface StaffMember {
     id: string;
     name: string;
+    username?: string; // Nuovo campo per login personalizzato
     grade?: string; // Grado (es. VESC, CR, CSE)
     shift: Shift;
     rcSubGroup?: number; // Gruppo di salto 1-8
