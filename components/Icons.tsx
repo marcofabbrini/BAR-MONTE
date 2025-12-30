@@ -53,6 +53,23 @@ export const LogOutIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement
     </svg>
 );
 
+export const EyeIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className} 
+        {...props}
+    >
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+        <circle cx="12" cy="12" r="3" />
+    </svg>
+);
+
 export const EditIcon = (props: IconProps) => <EmojiIcon emoji="✏️" {...props} />;
 export const TrashIcon = (props: IconProps) => <EmojiIcon emoji="🗑️" {...props} />;
 export const PlusIcon = (props: IconProps) => <EmojiIcon emoji="➕" {...props} />;
@@ -151,7 +168,6 @@ export const InfoIcon = (props: IconProps) => <EmojiIcon emoji="ℹ️" {...prop
 export const WalletIcon = (props: IconProps) => <EmojiIcon emoji="👛" {...props} />;
 export const ClipboardIcon = (props: IconProps) => <EmojiIcon emoji="📋" {...props} />;
 export const PrinterIcon = (props: IconProps) => <EmojiIcon emoji="🖨️" {...props} />;
-export const EyeIcon = (props: IconProps) => <EmojiIcon emoji="👁️" {...props} />;
 export const BellIcon = (props: IconProps) => <EmojiIcon emoji="🔔" {...props} />;
 export const MegaphoneIcon = (props: IconProps) => <EmojiIcon emoji="📢" {...props} />;
 export const PaletteIcon = (props: IconProps) => <EmojiIcon emoji="🎨" {...props} />;

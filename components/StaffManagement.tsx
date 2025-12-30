@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { StaffMember, Shift, UserRole } from '../types';
-import { EditIcon, TrashIcon, PlusIcon, SaveIcon, UserPlusIcon, LockIcon, ShieldCheckIcon } from './Icons';
+import { EditIcon, TrashIcon, PlusIcon, SaveIcon, UserPlusIcon, LockIcon, ShieldCheckIcon, EyeIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 import { useBar } from '../contexts/BarContext';
 
@@ -59,6 +59,7 @@ export const GradeBadge = ({ grade }: { grade?: string }) => {
 const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, onUpdateStaff, onDeleteStaff }) => {
     const { activeBarUser, availableRoles } = useBar();
     const [name, setName] = useState('');
+    const [username, setUsername] = useState('');
     const [grade, setGrade] = useState('');
     const [shift, setShift] = useState<Shift>('a');
     const [rcSubGroup, setRcSubGroup] = useState<number>(1);
@@ -68,6 +69,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
     const [role, setRole] = useState<UserRole>('standard');
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [isProcessingImg, setIsProcessingImg] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -93,6 +95,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
 
     const resetForm = () => {
         setName('');
+        setUsername('');
         setGrade('');
         setShift('a');
         setRcSubGroup(1);
@@ -101,6 +104,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         setPassword('');
         setRole('standard');
         setIsEditing(null);
+        setShowPassword(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -112,6 +116,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
     const handleOpenEdit = (member: StaffMember) => {
         setIsEditing(member.id);
         setName(member.name);
+        setUsername(member.username || '');
         setGrade(member.grade || '');
         setShift(member.shift);
         setRcSubGroup(member.rcSubGroup || 1);
@@ -187,6 +192,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         try {
             const dataToSave = { 
                 name: name.trim(), 
+                username: username.trim(),
                 grade: grade.trim(), 
                 shift, 
                 rcSubGroup, 
@@ -202,6 +208,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             } else {
                 await onAddStaff(dataToSave);
             }
+            // Close IMMEDIATELY on success
             handleCloseModal();
         } catch (error) { 
             console.error(error); 
@@ -231,7 +238,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             {/* MODALE POPUP */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up relative">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up relative flex flex-col max-h-[90vh]">
                         {/* Header Modale */}
                         <div className="bg-slate-50 border-b border-slate-200 p-4 flex justify-between items-center">
                             <h3 className="font-black text-slate-800 text-lg flex items-center gap-2">
@@ -241,8 +248,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                             <button onClick={handleCloseModal} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
                         </div>
 
-                        {/* Body Form */}
-                        <div className="p-6">
+                        {/* Body Form - Scrollable */}
+                        <div className="p-6 overflow-y-auto">
                             <form onSubmit={handleSubmit} className="flex flex-col gap-6">
                                 {/* AVATAR UPLOAD SECTION */}
                                 <div className="flex flex-col items-center gap-3">
@@ -258,7 +265,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                             <span className="text-white text-xs font-bold">Carica</span>
                                         </div>
                                         
-                                        {/* LIVE PREVIEW BADGE - Adjusted Position */}
+                                        {/* LIVE PREVIEW BADGE */}
                                         {grade && <div className="scale-150 origin-center absolute top-[-4px] right-[-4px] z-20"><GradeBadge grade={grade} /></div>}
                                     </div>
                                     
@@ -279,6 +286,12 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                     <div className="col-span-2">
                                         <label className="text-xs font-bold text-slate-500 uppercase">Cognome e Nome</label>
                                         <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Es. Rossi Mario" required />
+                                    </div>
+
+                                    <div className="col-span-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase">Username (Opzionale)</label>
+                                        <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Se diverso dal nome" />
+                                        <p className="text-[9px] text-slate-400 mt-1">Se impostato, usare questo per il login.</p>
                                     </div>
 
                                     <div className="col-span-2">
@@ -329,14 +342,24 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
                                             <LockIcon className="h-3 w-3" /> Password Accesso
                                         </label>
-                                        <input 
-                                            type="password" 
-                                            value={password} 
-                                            onChange={(e) => setPassword(e.target.value)} 
-                                            placeholder="Opzionale (vuoto = accesso libero)" 
-                                            className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono tracking-widest"
-                                        />
-                                        <p className="text-[10px] text-slate-400 mt-1">Se impostata, sarà richiesta per accedere.</p>
+                                        <div className="relative">
+                                            <input 
+                                                type={showPassword ? "text" : "password"}
+                                                value={password} 
+                                                onChange={(e) => setPassword(e.target.value)} 
+                                                placeholder="Opzionale (vuoto = accesso libero)" 
+                                                className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono tracking-widest"
+                                            />
+                                            <button 
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                                                title={showPassword ? "Nascondi Password" : "Mostra Password"}
+                                            >
+                                                <EyeIcon className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 mt-1">Controlla qui se ci sono spazi indesiderati nella password.</p>
                                     </div>
                                 </div>
 

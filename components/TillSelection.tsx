@@ -110,8 +110,8 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 password: profileForm.password.trim(),
                 rcSubGroup: profileForm.rcSubGroup
             });
-            setIsProfileOpen(false);
-            alert("Profilo aggiornato con successo!");
+            setIsProfileOpen(false); // Close modal first
+            setTimeout(() => alert("Profilo aggiornato con successo!"), 100); // Alert slightly after
         } catch (e) {
             console.error(e);
             alert("Errore aggiornamento profilo.");
@@ -450,6 +450,8 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             ) : (
                                 <span className="text-2xl">{activeBarUser.icon || '👤'}</span>
                             )}
+                            {/* Green Dot Indicator */}
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
                         </div>
                         {activeBarUser.grade && (
                             <div className="absolute -top-1 -right-1 scale-75 z-40 pointer-events-none">
