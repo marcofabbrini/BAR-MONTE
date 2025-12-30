@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { StaffMember, Shift, LaundryEntry, LaundryShipment } from '../types';
-import { BackArrowIcon, CheckIcon, FilterIcon, ShirtIcon, PrinterIcon, TrashIcon, SortIcon, ListIcon, TruckIcon, BoxIcon } from './Icons';
+import { BackArrowIcon, CheckIcon, FilterIcon, ShirtIcon, PrinterIcon, TrashIcon, SortIcon, ListIcon, TruckIcon, BoxIcon, LockOpenIcon } from './Icons';
 import { GradeBadge } from './StaffManagement';
 import { useBar } from '../contexts/BarContext';
 import { VVF_GRADES } from '../constants';
@@ -38,7 +38,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
     const { laundryItems, laundryEntries, laundryShipments, addLaundryEntry, deleteLaundryEntry, createLaundryShipment, updateLaundryShipment } = useBar();
 
     // VIEW STATE
-    const [activeTab, setActiveTab] = useState<'entry' | 'shipment' | 'incoming'>('entry');
+    const [activeTab, setActiveTab] = useState<'entry' | 'shipment' | 'incoming' | 'archive'>('entry');
 
     // UI State for Sections
     const [isInputOpen, setIsInputOpen] = useState(true); 
@@ -185,6 +185,18 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
         }
     };
 
+    // --- LOGICA ARCHIVIO ---
+    const archiveShipments = useMemo(() => laundryShipments.filter(s => s.status === 'completed'), [laundryShipments]);
+
+    const handleReopenShipment = async (shipmentId: string) => {
+        if(confirm("Riaprire questa spedizione? Tornerà nella lista 'In Arrivo' per modifiche.")) {
+            await updateLaundryShipment(shipmentId, { status: 'in_transit' });
+        }
+    };
+
+    // Hard delete logic for shipments if needed (Context doesn't expose it directly but update with delete flag logic works or direct firebase delete. Assuming not strictly needed but useful).
+    // Using updateLaundryShipment to potentially flag as deleted isn't standard in BarContext yet, so we just offer Reopen.
+
     const totalInputItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
     return (
@@ -211,8 +223,8 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
             </header>
 
             {/* TAB BAR (Hidden in Print) */}
-            <div className="bg-white shadow-sm border-b border-slate-200 sticky top-[72px] z-40 print:hidden">
-                <div className="flex justify-center max-w-5xl mx-auto">
+            <div className="bg-white shadow-sm border-b border-slate-200 sticky top-[72px] z-40 print:hidden overflow-x-auto">
+                <div className="flex justify-center max-w-5xl mx-auto min-w-[350px]">
                     <button onClick={() => setActiveTab('entry')} className={`flex-1 py-3 text-xs md:text-sm font-bold uppercase tracking-wide border-b-4 transition-colors ${activeTab === 'entry' ? 'border-blue-600 text-blue-600 bg-blue-50' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
                         📥 Consegna
                     </button>
@@ -221,6 +233,9 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
                     </button>
                     <button onClick={() => setActiveTab('incoming')} className={`flex-1 py-3 text-xs md:text-sm font-bold uppercase tracking-wide border-b-4 transition-colors ${activeTab === 'incoming' ? 'border-green-600 text-green-600 bg-green-50' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
                         🚚 In Arrivo <span className="ml-1 bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded-full text-[10px]">{incomingShipments.length}</span>
+                    </button>
+                    <button onClick={() => setActiveTab('archive')} className={`flex-1 py-3 text-xs md:text-sm font-bold uppercase tracking-wide border-b-4 transition-colors ${activeTab === 'archive' ? 'border-slate-500 text-slate-600 bg-slate-100' : 'border-transparent text-slate-400 hover:text-slate-700'}`}>
+                        📂 Archivio
                     </button>
                 </div>
             </div>
@@ -443,6 +458,48 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack, staff }) => {
                                         ) : (
                                             <p className="text-xs text-slate-400 italic">Spunta tutti i capi per archiviare.</p>
                                         )}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+
+                {/* --- TAB 4: ARCHIVIO --- */}
+                {activeTab === 'archive' && (
+                    <div className="animate-fade-in space-y-6 print:hidden">
+                        {archiveShipments.length === 0 ? (
+                            <div className="text-center py-20 bg-slate-100 rounded-xl border-2 border-dashed border-slate-300">
+                                <p className="text-slate-400 font-bold text-lg">Archivio vuoto.</p>
+                            </div>
+                        ) : (
+                            archiveShipments.map(shipment => (
+                                <div key={shipment.id} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
+                                    <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                                        <div>
+                                            <h3 className="font-bold text-slate-700 text-sm uppercase">Spedizione {new Date(shipment.sentDate).toLocaleDateString()}</h3>
+                                            <p className="text-xs text-slate-400">{shipment.notes || 'Completata'}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <span className="bg-slate-200 text-slate-600 text-xs font-bold px-3 py-1 rounded-full uppercase">Archiviato</span>
+                                            <button 
+                                                onClick={() => handleReopenShipment(shipment.id)}
+                                                className="bg-blue-100 text-blue-600 hover:bg-blue-200 p-1.5 rounded-full transition-colors"
+                                                title="Riapri Spedizione"
+                                            >
+                                                <LockOpenIcon className="h-4 w-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="p-4">
+                                        <ul className="text-xs text-slate-600 space-y-1">
+                                            {shipment.items.map((item, idx) => (
+                                                <li key={idx} className="flex justify-between border-b border-slate-50 last:border-0 pb-1 last:pb-0">
+                                                    <span>{item.name}</span>
+                                                    <span className="font-bold">x{item.totalQuantity}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
                                     </div>
                                 </div>
                             ))
