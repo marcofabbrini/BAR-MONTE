@@ -10,7 +10,7 @@ interface LoginScreenProps {
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
-    const { loginBarUser } = useBar();
+    const { loginBarUser, updateStaff } = useBar();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -20,6 +20,31 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
         e.preventDefault();
         setError('');
         
+        // --- MECCANISMO DI RIPRISTINO PASSWORD SUPER ADMIN ---
+        // Se l'utente inserisce "RESET" come nome e "123456" come password,
+        // il sistema cerca il Super Admin e imposta la sua password a "123456".
+        if (username.toUpperCase() === 'RESET' && password === '123456') {
+            const superAdmin = staff.find(s => s.role === 'super-admin');
+            if (superAdmin) {
+                setIsLoggingIn(true);
+                try {
+                    await updateStaff({ ...superAdmin, password: '123456' });
+                    setError(`✅ Password di ${superAdmin.name} ripristinata a 123456. Ora puoi accedere.`);
+                    setUsername(superAdmin.username || superAdmin.name); // Precompila per comodità
+                    setPassword('123456');
+                } catch (err) {
+                    console.error(err);
+                    setError("Errore durante il ripristino della password.");
+                }
+                setIsLoggingIn(false);
+                return;
+            } else {
+                setError("Nessun utente con ruolo 'Super Admin' trovato.");
+                return;
+            }
+        }
+        // -----------------------------------------------------
+
         if (!username.trim()) {
             setError('Inserisci il nome utente.');
             return;
@@ -88,21 +113,21 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
                             disabled={isLoggingIn}
                             className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black py-4 rounded-xl shadow-lg shadow-red-200 transition-transform active:scale-95 text-sm uppercase tracking-wide mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            {isLoggingIn ? 'Accesso in corso...' : 'Accedi'}
+                            {isLoggingIn ? 'Elaborazione...' : 'Accedi'}
                         </button>
                     </form>
 
                     {error && (
-                        <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg flex items-center gap-2 animate-pulse">
-                            <span className="text-xl">⚠️</span>
-                            <p className="text-xs font-bold text-red-600 text-left leading-tight">{error}</p>
+                        <div className={`mt-4 p-3 border rounded-lg flex items-center gap-2 animate-pulse ${error.includes('✅') ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-100 text-red-600'}`}>
+                            <span className="text-xl">{error.includes('✅') ? 'check' : '⚠️'}</span>
+                            <p className="text-xs font-bold text-left leading-tight">{error}</p>
                         </div>
                     )}
                 </div>
                 
                 <div className="bg-slate-50 p-4 text-center border-t border-slate-100 rounded-b-3xl">
                     <p className="text-[10px] text-slate-400 font-medium">
-                        Password dimenticata? Chiedi al Capo Turno.
+                        Password dimenticata? Contatta un Admin.
                     </p>
                 </div>
             </div>
@@ -115,3 +140,4 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
 };
 
 export default LoginScreen;
+    
