@@ -717,7 +717,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale Bar VVF v4.3 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale VVF Montepulciano v4.3 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );

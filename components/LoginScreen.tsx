@@ -59,7 +59,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
                 </div>
 
                 <div className="pt-12 pb-8 px-8 text-center">
-                    <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter mb-1">Bar VVF</h2>
+                    <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter mb-1">VVF</h2>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-8">Montepulciano</p>
 
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
