@@ -224,22 +224,22 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const getNow = () => now;
 
     // --- ACTIONS IMPLEMENTATION ---
-    const addProduct = (p: Omit<Product, 'id'>, user: string) => BarService.addProduct(p);
+    const addProduct = async (p: Omit<Product, 'id'>, user: string) => { await BarService.addProduct(p); };
     const updateProduct = (p: Product) => BarService.updateProduct(p);
     const deleteProduct = (id: string) => BarService.deleteProduct(id);
 
-    const addStaff = (s: Omit<StaffMember, 'id'>) => BarService.addStaff(s);
+    const addStaff = async (s: Omit<StaffMember, 'id'>) => { await BarService.addStaff(s); };
     const updateStaff = (s: StaffMember) => BarService.updateStaff(s);
     const deleteStaff = (id: string) => BarService.deleteStaff(id);
 
-    const completeOrder = (o: Omit<Order, 'id'>) => BarService.addOrder(o);
+    const completeOrder = async (o: Omit<Order, 'id'>) => { await BarService.addOrder(o); };
     const updateOrder = (o: Order) => BarService.updateOrder(o);
     const deleteOrders = async (ids: string[], user: string) => {
         for (const id of ids) await BarService.deleteOrder(id, user);
     };
     const permanentDeleteOrder = (id: string) => BarService.permanentDeleteOrder(id);
 
-    const addCashMovement = (m: Omit<CashMovement, 'id'>) => BarService.addCashMovement(m);
+    const addCashMovement = async (m: Omit<CashMovement, 'id'>) => { await BarService.addCashMovement(m); };
     const updateCashMovement = (m: CashMovement) => BarService.updateCashMovement(m);
     const deleteCashMovement = (id: string, user: string) => BarService.deleteCashMovement(id, user);
     const permanentDeleteMovement = (id: string) => BarService.permanentDeleteMovement(id);
@@ -275,9 +275,16 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         console.warn("Mass delete logic needs careful implementation.");
     };
 
-    const addAdmin = (email: string, user: string) => BarService.addAdmin(email);
+    const addAdmin = async (email: string, user: string) => { await BarService.addAdmin(email); };
     const removeAdmin = (id: string) => BarService.removeAdmin(id);
 
+    // Settings Wrappers
+    const updateTillColors = async (c: TillColors) => { await BarService.updateTillColors(c); };
+    const updateSeasonality = async (cfg: SeasonalityConfig) => { await BarService.updateSeasonality(cfg); };
+    const updateShiftSettings = async (cfg: ShiftSettings) => { await BarService.updateShiftSettings(cfg); };
+    const updateGeneralSettings = async (cfg: GeneralSettings) => { await BarService.updateGeneralSettings(cfg); };
+
+    // Attendance
     const saveAttendance = async (tillId: string, presentIds: string[], dateOverride?: string, closedBy?: string, details?: Record<string, AttendanceStatus>, substitutionNames?: Record<string, string>) => {
         const recordId = `${dateOverride || new Date().toISOString().split('T')[0]}_${tillId}`;
         const record: AttendanceRecord = {
@@ -295,48 +302,50 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
         await BarService.saveAttendance(record);
     };
+    const reopenAttendance = async (id: string) => { await BarService.reopenAttendance(id); };
+    const deleteAttendance = async (id: string) => { await BarService.deleteAttendance(id); };
 
     // Fleet & Op Vehicles
-    const addVehicle = (v: Omit<Vehicle, 'id'>) => VehicleService.addVehicle(v);
+    const addVehicle = async (v: Omit<Vehicle, 'id'>) => { await VehicleService.addVehicle(v); };
     const updateVehicle = (v: Vehicle) => VehicleService.updateVehicle(v);
     const deleteVehicle = (id: string) => VehicleService.deleteVehicle(id);
-    const addBooking = (b: Omit<VehicleBooking, 'id' | 'timestamp'>) => VehicleService.addBooking(b);
+    const addBooking = async (b: Omit<VehicleBooking, 'id' | 'timestamp'>) => { await VehicleService.addBooking(b); };
     const deleteBooking = (id: string) => VehicleService.deleteBooking(id);
 
-    const addOperationalVehicle = (v: Omit<OperationalVehicle, 'id'>) => OperationalVehicleService.addVehicle(v);
+    const addOperationalVehicle = async (v: Omit<OperationalVehicle, 'id'>) => { await OperationalVehicleService.addVehicle(v); };
     const updateOperationalVehicle = (v: OperationalVehicle) => OperationalVehicleService.updateVehicle(v);
     const deleteOperationalVehicle = (id: string) => OperationalVehicleService.deleteVehicle(id);
-    const addVehicleCheck = (c: Omit<VehicleCheck, 'id'>) => OperationalVehicleService.addCheck(c);
+    const addVehicleCheck = async (c: Omit<VehicleCheck, 'id'>) => { await OperationalVehicleService.addCheck(c); };
     const updateVehicleCheck = (id: string, u: Partial<VehicleCheck>) => OperationalVehicleService.updateCheck(id, u);
 
     // Laundry
-    const addLaundryItem = (i: Omit<LaundryItemDef, 'id'>) => BarService.addLaundryItem(i);
+    const addLaundryItem = async (i: Omit<LaundryItemDef, 'id'>) => { await BarService.addLaundryItem(i); };
     const updateLaundryItem = (i: LaundryItemDef) => BarService.updateLaundryItem(i);
     const deleteLaundryItem = (id: string) => BarService.deleteLaundryItem(id);
-    const addLaundryEntry = (e: Omit<LaundryEntry, 'id'>) => BarService.addLaundryEntry(e);
+    const addLaundryEntry = async (e: Omit<LaundryEntry, 'id'>) => { await BarService.addLaundryEntry(e); };
     const deleteLaundryEntry = (id: string) => BarService.deleteLaundryEntry(id);
-    const createLaundryShipment = (s: Omit<LaundryShipment, 'id'>, entryIds: string[]) => BarService.createLaundryShipment(s, entryIds);
+    const createLaundryShipment = async (s: Omit<LaundryShipment, 'id'>, entryIds: string[]) => { await BarService.createLaundryShipment(s, entryIds); };
     const updateLaundryShipment = (id: string, u: Partial<LaundryShipment>) => BarService.updateLaundryShipment(id, u);
     const deleteLaundryShipment = (id: string) => BarService.deleteLaundryShipment(id);
 
     // Intervention
-    const addIntervention = (i: Omit<Intervention, 'id'>) => InterventionService.addIntervention(i);
+    const addIntervention = async (i: Omit<Intervention, 'id'>) => { await InterventionService.addIntervention(i); };
     const updateIntervention = (i: Intervention) => InterventionService.updateIntervention(i);
     const deleteIntervention = (id: string) => InterventionService.deleteIntervention(id, activeBarUser?.name || 'User');
     const permanentDeleteIntervention = (id: string) => InterventionService.permanentDeleteIntervention(id);
-    const addInterventionTypology = (name: string) => InterventionService.addTypology(name);
+    const addInterventionTypology = async (name: string) => { await InterventionService.addTypology(name); };
     const deleteInterventionTypology = (id: string) => InterventionService.deleteTypology(id);
-    const addDutyOfficer = (name: string) => InterventionService.addOfficer(name);
+    const addDutyOfficer = async (name: string) => { await InterventionService.addOfficer(name); };
     const deleteDutyOfficer = (id: string) => InterventionService.deleteOfficer(id);
 
     // Reminders
-    const addReminder = (r: any) => ReminderService.addReminder(r);
+    const addReminder = async (r: any) => { await ReminderService.addReminder(r); };
     const updateReminder = (id: string, r: any) => ReminderService.updateReminder(id, r);
     const deleteReminder = (id: string) => ReminderService.deleteReminder(id);
     const toggleReminderCompletion = (id: string, date: string, current: string[]) => ReminderService.toggleCompletion(id, date, current);
 
     // Roles
-    const addCustomRole = (r: Omit<CustomRole, 'id'>) => BarService.addCustomRole(r);
+    const addCustomRole = async (r: Omit<CustomRole, 'id'>) => { await BarService.addCustomRole(r); };
     const deleteCustomRole = (id: string) => BarService.deleteCustomRole(id);
 
     const availableRoles = [
