@@ -305,6 +305,9 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     }, [reminders, todayStr, dayOfWeek, dayOfMonth, month, year]);
 
     const vehicleCheckReminders = useMemo(() => {
+        // Mostra i controlli veicoli SOLO dopo le 8 di mattina
+        if (currentTime.getHours() < 8) return [];
+
         const daysMap = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
         const todayName = daysMap[dayOfWeek];
 
@@ -338,7 +341,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         });
 
         return [...opReminders, ...fleetReminders];
-    }, [operationalVehicles, vehicles, vehicleChecks, todayStr, dayOfWeek]);
+    }, [operationalVehicles, vehicles, vehicleChecks, todayStr, dayOfWeek, currentTime]);
 
     const allReminders = useMemo(() => {
         const standardList = standardReminders.map(r => ({
@@ -415,36 +418,38 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     return (
         <div className="flex flex-col min-h-dvh relative overflow-hidden font-sans transition-colors duration-500" style={{ backgroundColor }}>
             
-            {/* ONLINE USERS BADGE & USER AVATAR (TOP LEFT) */}
-            <div className="absolute top-4 left-4 z-50 mt-[env(safe-area-inset-top)] flex flex-col gap-2 items-start">
+            {/* ONLINE USERS BADGE (TOP RIGHT) */}
+            <div className="absolute top-4 right-4 z-50 mt-[env(safe-area-inset-top)]">
                 <div className="bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-md flex items-center gap-2 border border-green-100">
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]"></div>
                     <span className="text-[10px] font-black text-slate-700 uppercase tracking-wide">
                         {onlineStaffCount} Online
                     </span>
                 </div>
-                
+            </div>
+
+            {/* USER AVATAR & LOGOUT (TOP LEFT) */}
+            <div className="absolute top-4 left-4 z-50 mt-[env(safe-area-inset-top)] flex items-center gap-2">
                 {activeBarUser && (
-                    <div className="flex items-center gap-2">
-                        <div className="relative group">
-                            <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white shadow-lg flex items-center justify-center overflow-hidden">
-                                {activeBarUser.photoUrl ? (
-                                    <img src={activeBarUser.photoUrl} className="w-full h-full object-cover" />
-                                ) : (
-                                    <span className="text-lg">{activeBarUser.icon || '👤'}</span>
-                                )}
-                            </div>
-                            {activeBarUser.grade && (
-                                <div className="absolute -bottom-1 -right-1 scale-75 z-10">
-                                    <GradeBadge grade={activeBarUser.grade} />
-                                </div>
+                    <div className="relative group">
+                        {/* Avatar con Glow Fluo */}
+                        <div className="w-10 h-10 rounded-full bg-slate-800 border-2 border-white shadow-[0_0_15px_#4ade80] flex items-center justify-center overflow-hidden">
+                            {activeBarUser.photoUrl ? (
+                                <img src={activeBarUser.photoUrl} className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="text-lg">{activeBarUser.icon || '👤'}</span>
                             )}
                         </div>
-                        <button onClick={logoutBarUser} className="bg-white/20 hover:bg-red-500 text-white p-2 rounded-full backdrop-blur-sm transition-colors shadow-sm">
-                            <BackArrowIcon className="h-4 w-4 rotate-180" />
-                        </button>
+                        {activeBarUser.grade && (
+                            <div className="absolute -top-2 -right-2 scale-75 z-10">
+                                <GradeBadge grade={activeBarUser.grade} />
+                            </div>
+                        )}
                     </div>
                 )}
+                <button onClick={logoutBarUser} className="bg-white/20 hover:bg-red-500/80 text-white p-2 rounded-full backdrop-blur-sm transition-colors shadow-sm ml-1" title="Esci">
+                    <span className="text-xl leading-none">🚪</span>
+                </button>
             </div>
 
             {/* PROFILE MODAL */}
@@ -542,7 +547,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             {notificationPermission === 'default' && onRequestNotification && (
                 <button 
                     onClick={onRequestNotification}
-                    className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md text-yellow-500 animate-bounce z-50 hover:bg-yellow-50 transition-colors mt-[env(safe-area-inset-top)]"
+                    className="absolute top-16 right-4 bg-white p-2 rounded-full shadow-md text-yellow-500 animate-bounce z-50 hover:bg-yellow-50 transition-colors mt-[env(safe-area-inset-top)]"
                     title="Attiva Notifiche"
                 >
                     <BellIcon className="h-6 w-6" />

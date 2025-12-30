@@ -225,11 +225,12 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     useEffect(() => {
         const calculateOnline = () => {
             const now = new Date().getTime();
-            const fiveMinutes = 5 * 60 * 1000;
+            // Aumentato a 10 minuti per maggiore tolleranza
+            const timeoutWindow = 10 * 60 * 1000;
             const count = staff.filter(s => {
                 if (!s.lastSeen) return false;
                 const lastSeenTime = new Date(s.lastSeen).getTime();
-                return (now - lastSeenTime) < fiveMinutes;
+                return (now - lastSeenTime) < timeoutWindow;
             }).length;
             setOnlineStaffCount(count);
         };
