@@ -23,56 +23,58 @@ const TrafficHeader = () => {
     // Genera veicoli statici per evitare re-render, ma con proprietà random
     const trafficItems = useMemo(() => {
         const items = [];
-        const count = 6; // Numero di veicoli contemporanei
+        const count = 8; // Numero di veicoli
 
         for (let i = 0; i < count; i++) {
             const isRight = i % 2 === 0; // Alterna direzione
-            const duration = 8 + Math.random() * 15; // Velocità tra 8s e 23s
-            const delay = Math.random() * 20; // Delay iniziale random per spargerle
-            const scale = 0.8 + Math.random() * 0.4; // Grandezza variabile
+            const isEmergency = Math.random() > 0.75; // 25% probabilità emergenza
 
-            // Logica Colori: Rosso (VVF), Grigio, Celeste
-            const colorVariant = Math.floor(Math.random() * 3); // 0, 1, 2
-            let emoji = '';
-            let filterStyle = '';
+            // Velocità: Emergenza veloce (3-6s), Normali lente (15-25s)
+            const duration = isEmergency ? 3 + Math.random() * 3 : 15 + Math.random() * 10;
+            const delay = Math.random() * 20; // Delay iniziale
+            
+            // Dimensione fissa proporzionata come richiesto
+            const size = 3; // rem
 
-            if (colorVariant === 0) {
-                // Rosso (VVF) - Auto e Pickup (NO CAMION)
-                const vvfTypes = ['🚗', '🛻']; 
-                emoji = vvfTypes[Math.floor(Math.random() * vvfTypes.length)];
-                // Saturazione per renderli più "Rosso Fuoco"
-                filterStyle = 'drop-shadow(2px 4px 6px rgba(0,0,0,0.3)) saturate(1.5)';
-            } else if (colorVariant === 1) {
-                // Grigio
-                const allTypes = ['🚗', '🚙', '🛻'];
-                emoji = allTypes[Math.floor(Math.random() * allTypes.length)];
-                filterStyle = 'grayscale(100%) drop-shadow(2px 4px 6px rgba(0,0,0,0.3))';
+            // Logica Colori (Dominante Rossa)
+            let emoji = '🚗';
+            let filterStyle = 'drop-shadow(2px 4px 6px rgba(0,0,0,0.3))';
+
+            if (isEmergency) {
+                // Veicoli emergenza (Vigili del Fuoco o Auto Civetta Rossa)
+                emoji = Math.random() > 0.5 ? '🚒' : '🚗';
+                filterStyle += ' saturate(2) brightness(1.1)'; // Rosso acceso
             } else {
-                // Celeste
-                const allTypes = ['🚗', '🚙', '🛻'];
-                emoji = allTypes[Math.floor(Math.random() * allTypes.length)];
-                
-                // Ruota hue in base al colore di partenza dell'emoji
-                if (emoji === '🚙') { // Base Blu
-                    filterStyle = 'hue-rotate(20deg) drop-shadow(2px 4px 6px rgba(0,0,0,0.3)) brightness(1.2)';
-                } else { // Base Rossa/Arancio
-                    filterStyle = 'hue-rotate(200deg) drop-shadow(2px 4px 6px rgba(0,0,0,0.3))';
+                const type = Math.floor(Math.random() * 3);
+                if (type === 0) {
+                    emoji = '🚗'; // Auto Rossa
+                    filterStyle += ' saturate(1.2)';
+                } else if (type === 1) {
+                    emoji = '🚙'; // SUV Blu -> Trasformato in Rosso scuro/Bordeaux
+                    // Blue (~240deg) -> Red (~0/360deg). +120deg shift approx.
+                    filterStyle += ' hue-rotate(140deg) brightness(0.8) saturate(1.2)';
+                } else {
+                    emoji = '🛻'; // Pickup (spesso arancio/rosso)
+                    filterStyle += ' sepia(0.3) hue-rotate(-10deg) saturate(1.8)';
                 }
             }
 
             items.push({
                 id: i,
                 emoji,
+                isRight,
+                isEmergency,
                 style: {
                     animation: `drive-${isRight ? 'right' : 'left'} ${duration}s linear infinite`,
-                    animationDelay: `-${delay}s`, // Start mid-animation
+                    animationDelay: `-${delay}s`,
                     filter: filterStyle,
-                    bottom: '3px', // Alzato di 3px rispetto al fondo
+                    bottom: '6px', 
                     position: 'absolute' as 'absolute',
-                    fontSize: `${2 * scale}rem`,
-                    zIndex: 0,
-                    opacity: 0.9,
-                    left: isRight ? '-10%' : '110%' // Starting positions handled by keyframes, but strictly outside
+                    fontSize: `${size}rem`,
+                    zIndex: isEmergency ? 10 : 1,
+                    opacity: 1,
+                    left: isRight ? '-15%' : '115%', // Partenza fuori schermo
+                    transformOrigin: 'center bottom'
                 }
             });
         }
@@ -91,15 +93,29 @@ const TrafficHeader = () => {
                     0% { transform: translateX(0) scaleX(-1); left: -20%; }
                     100% { transform: translateX(0) scaleX(-1); left: 110%; }
                 }
+                @keyframes siren-flash-blue {
+                    0%, 100% { opacity: 0; transform: scale(0.5); }
+                    50% { opacity: 1; transform: scale(1.5); background: radial-gradient(circle, #3b82f6 0%, transparent 70%); }
+                }
+                @keyframes siren-flash-red {
+                    0%, 100% { opacity: 1; transform: scale(1.5); background: radial-gradient(circle, #ef4444 0%, transparent 70%); }
+                    50% { opacity: 0; transform: scale(0.5); }
+                }
                 `}
             </style>
             {trafficItems.map(item => (
-                <div key={item.id} style={item.style} className="absolute leading-none">
+                <div key={item.id} style={item.style} className="absolute leading-none flex justify-center items-center">
                     {item.emoji}
+                    {item.isEmergency && (
+                        <div className="absolute -top-3 w-full flex justify-center gap-1.5 pointer-events-none">
+                            <div className="w-2 h-2 rounded-full animate-[siren-flash-blue_0.2s_infinite]" />
+                            <div className="w-2 h-2 rounded-full animate-[siren-flash-red_0.2s_infinite]" />
+                        </div>
+                    )}
                 </div>
             ))}
-            {/* Road gradient overlay at bottom to blend wheels */}
-            <div className="absolute bottom-0 left-0 w-full h-2 bg-gradient-to-t from-red-900/30 to-transparent"></div>
+            {/* Road gradient overlay */}
+            <div className="absolute bottom-0 left-0 w-full h-3 bg-gradient-to-t from-red-900/40 to-transparent"></div>
         </div>
     );
 };

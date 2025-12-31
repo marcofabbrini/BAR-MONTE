@@ -8,6 +8,107 @@ interface OperationalVehiclesViewProps {
     onGoBack: () => void;
 }
 
+// Extracted Component
+const VehicleCard: React.FC<{ 
+    vehicle: OperationalVehicle; 
+    isFeatured?: boolean; 
+    onSelect: (v: OperationalVehicle) => void 
+}> = ({ vehicle, isFeatured, onSelect }) => {
+    const { vehicleChecks, getNow } = useBar();
+    
+    const today = getNow();
+    const daysMap = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+    const todayName = daysMap[today.getDay()];
+    const todayStr = today.toISOString().split('T')[0];
+    
+    // LOGICA VISIBILITÀ: Checklist accessibile SOLO se oggi è il giorno di controllo
+    const isTodayCheck = vehicle.checkDay === todayName;
+
+    // Check if already checked today
+    const isCheckedToday = vehicleChecks.some(c => c.vehicleId === vehicle.id && c.date === todayStr);
+
+    return (
+        <div 
+            onClick={() => (isTodayCheck && !isCheckedToday) && onSelect(vehicle)}
+            className={`
+                bg-white rounded-2xl shadow-md border overflow-hidden flex flex-col group relative transition-all
+                ${isTodayCheck && !isCheckedToday
+                    ? 'cursor-pointer hover:shadow-xl hover:scale-[1.01] border-red-500 ring-2 ring-red-100' 
+                    : 'opacity-80 border-slate-200 grayscale-[0.3] pointer-events-none'
+                }
+            `}
+        >
+            {/* BADGE GIORNO CONTROLLO */}
+            <div className={`
+                absolute top-3 right-3 z-10 font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-lg border
+                ${isCheckedToday 
+                    ? 'bg-green-600 text-white border-green-400'
+                    : isTodayCheck 
+                        ? 'bg-red-600 text-white border-red-400 shadow-[0_0_15px_#ef4444] animate-pulse' 
+                        : 'bg-slate-200 text-slate-500 border-slate-300'
+                }
+            `}>
+                {isCheckedToday 
+                    ? 'CONTROLLATO'
+                    : isTodayCheck 
+                        ? 'DI CONTROLLO OGGI' 
+                        : `Controllo: ${vehicle.checkDay}`
+                }
+            </div>
+
+            <div className={`
+                ${isFeatured ? 'h-56' : 'h-32'} 
+                bg-slate-100 flex items-center justify-center overflow-hidden relative transition-all
+            `}>
+                {vehicle.photoUrl ? (
+                    <img src={vehicle.photoUrl} alt={vehicle.model} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                ) : (
+                    <span className={`${isFeatured ? 'text-8xl' : 'text-5xl'} filter drop-shadow-md`}>{vehicle.type === 'ALTRO' ? '🚗' : '🚒'}</span>
+                )}
+                <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-2 md:p-4">
+                    <span className="text-[10px] md:text-xs font-black text-white bg-red-600 px-2 py-0.5 rounded uppercase">{vehicle.type === 'ALTRO' ? 'Vettura' : vehicle.type}</span>
+                </div>
+            </div>
+            
+            <div className="p-3 md:p-5 flex-grow flex flex-col">
+                <div className="flex justify-between items-start">
+                    <h3 className={`${isFeatured ? 'text-2xl' : 'text-sm md:text-lg'} font-black text-slate-800 leading-tight`}>{vehicle.model}</h3>
+                    {isTodayCheck && isFeatured && !isCheckedToday && <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded font-bold uppercase animate-pulse">Prioritario</span>}
+                </div>
+                
+                <div className="mt-2">
+                    <span className="text-[10px] md:text-sm font-mono font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 uppercase tracking-wide">
+                        {vehicle.plate}
+                    </span>
+                </div>
+                
+                {vehicle.notes && (
+                    <div className="mt-4 p-2 md:p-3 bg-slate-50 rounded-lg border border-slate-100">
+                        <p className="text-[10px] md:text-xs text-slate-500 italic leading-relaxed line-clamp-2">{vehicle.notes}</p>
+                    </div>
+                )}
+                
+                {/* PULSANTE VISIBILE SOLO SE È IL GIORNO DI CONTROLLO E NON ANCORA FATTO */}
+                <div className="mt-2 md:mt-4 pt-2 md:pt-4 border-t border-slate-100 text-center mt-auto min-h-[30px] flex items-center justify-center">
+                    {isCheckedToday ? (
+                        <span className="text-[10px] md:text-xs font-bold text-green-600 uppercase flex items-center gap-1">
+                            <CheckIcon className="h-4 w-4"/> Controllo Effettuato
+                        </span>
+                    ) : isTodayCheck ? (
+                        <span className="text-[10px] md:text-xs font-bold text-blue-600 uppercase flex items-center gap-1 animate-pulse">
+                            <CheckIcon className="h-4 w-4"/> Apri Checklist
+                        </span>
+                    ) : (
+                        <span className="text-[10px] text-slate-300 opacity-50 select-none">
+                            -
+                        </span>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoBack }) => {
     const { operationalVehicles, vehicles, vehicleChecks, addVehicleCheck, updateVehicleCheck, getNow } = useBar();
     const [selectedVehicle, setSelectedVehicle] = useState<OperationalVehicle | null>(null);
@@ -105,101 +206,6 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
         );
     }
 
-    // Sottocomponente Card per riutilizzo
-    const VehicleCard = ({ vehicle, isFeatured }: { vehicle: OperationalVehicle, isFeatured?: boolean }) => {
-        const today = getNow();
-        const daysMap = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
-        const todayName = daysMap[today.getDay()];
-        const todayStr = today.toISOString().split('T')[0];
-        
-        // LOGICA VISIBILITÀ: Checklist accessibile SOLO se oggi è il giorno di controllo
-        const isTodayCheck = vehicle.checkDay === todayName;
-
-        // Check if already checked today
-        const isCheckedToday = vehicleChecks.some(c => c.vehicleId === vehicle.id && c.date === todayStr);
-
-        return (
-            <div 
-                onClick={() => (isTodayCheck && !isCheckedToday) && handleSelectVehicle(vehicle)}
-                className={`
-                    bg-white rounded-2xl shadow-md border overflow-hidden flex flex-col group relative transition-all
-                    ${isTodayCheck && !isCheckedToday
-                        ? 'cursor-pointer hover:shadow-xl hover:scale-[1.01] border-red-500 ring-2 ring-red-100' 
-                        : 'opacity-80 border-slate-200 grayscale-[0.3] pointer-events-none'
-                    }
-                `}
-            >
-                {/* BADGE GIORNO CONTROLLO */}
-                <div className={`
-                    absolute top-3 right-3 z-10 font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-lg border
-                    ${isCheckedToday 
-                        ? 'bg-green-600 text-white border-green-400'
-                        : isTodayCheck 
-                            ? 'bg-red-600 text-white border-red-400 shadow-[0_0_15px_#ef4444] animate-pulse' 
-                            : 'bg-slate-200 text-slate-500 border-slate-300'
-                    }
-                `}>
-                    {isCheckedToday 
-                        ? 'CONTROLLATO'
-                        : isTodayCheck 
-                            ? 'DI CONTROLLO OGGI' 
-                            : `Controllo: ${vehicle.checkDay}`
-                    }
-                </div>
-
-                <div className={`
-                    ${isFeatured ? 'h-56' : 'h-32'} 
-                    bg-slate-100 flex items-center justify-center overflow-hidden relative transition-all
-                `}>
-                    {vehicle.photoUrl ? (
-                        <img src={vehicle.photoUrl} alt={vehicle.model} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    ) : (
-                        <span className={`${isFeatured ? 'text-8xl' : 'text-5xl'} filter drop-shadow-md`}>{vehicle.type === 'ALTRO' ? '🚗' : '🚒'}</span>
-                    )}
-                    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/60 to-transparent p-2 md:p-4">
-                        <span className="text-[10px] md:text-xs font-black text-white bg-red-600 px-2 py-0.5 rounded uppercase">{vehicle.type === 'ALTRO' ? 'Vettura' : vehicle.type}</span>
-                    </div>
-                </div>
-                
-                <div className="p-3 md:p-5 flex-grow flex flex-col">
-                    <div className="flex justify-between items-start">
-                        <h3 className={`${isFeatured ? 'text-2xl' : 'text-sm md:text-lg'} font-black text-slate-800 leading-tight`}>{vehicle.model}</h3>
-                        {isTodayCheck && isFeatured && !isCheckedToday && <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded font-bold uppercase animate-pulse">Prioritario</span>}
-                    </div>
-                    
-                    <div className="mt-2">
-                        <span className="text-[10px] md:text-sm font-mono font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 uppercase tracking-wide">
-                            {vehicle.plate}
-                        </span>
-                    </div>
-                    
-                    {vehicle.notes && (
-                        <div className="mt-4 p-2 md:p-3 bg-slate-50 rounded-lg border border-slate-100">
-                            <p className="text-[10px] md:text-xs text-slate-500 italic leading-relaxed line-clamp-2">{vehicle.notes}</p>
-                        </div>
-                    )}
-                    
-                    {/* PULSANTE VISIBILE SOLO SE È IL GIORNO DI CONTROLLO E NON ANCORA FATTO */}
-                    <div className="mt-2 md:mt-4 pt-2 md:pt-4 border-t border-slate-100 text-center mt-auto min-h-[30px] flex items-center justify-center">
-                        {isCheckedToday ? (
-                            <span className="text-[10px] md:text-xs font-bold text-green-600 uppercase flex items-center gap-1">
-                                <CheckIcon className="h-4 w-4"/> Controllo Effettuato
-                            </span>
-                        ) : isTodayCheck ? (
-                            <span className="text-[10px] md:text-xs font-bold text-blue-600 uppercase flex items-center gap-1 animate-pulse">
-                                <CheckIcon className="h-4 w-4"/> Apri Checklist
-                            </span>
-                        ) : (
-                            <span className="text-[10px] text-slate-300 opacity-50 select-none">
-                                -
-                            </span>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
             <header className="bg-red-700 text-white px-4 py-4 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)]">
@@ -236,7 +242,7 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                         </div>
                         <div className="flex flex-col gap-6">
                             {featuredVehicles.map(v => (
-                                <VehicleCard key={v.id} vehicle={v} isFeatured={true} />
+                                <VehicleCard key={v.id} vehicle={v} isFeatured={true} onSelect={handleSelectVehicle} />
                             ))}
                         </div>
                     </div>
@@ -254,7 +260,7 @@ const OperationalVehiclesView: React.FC<OperationalVehiclesViewProps> = ({ onGoB
                     {/* IMPORTO GRID-COLS-2 ANCHE SU MOBILE */}
                     <div className="grid grid-cols-2 gap-3 md:gap-6">
                         {gridVehicles.map(v => (
-                            <VehicleCard key={v.id} vehicle={v} />
+                            <VehicleCard key={v.id} vehicle={v} onSelect={handleSelectVehicle} />
                         ))}
                     </div>
                 </div>

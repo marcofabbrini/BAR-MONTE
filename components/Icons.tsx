@@ -4,6 +4,7 @@ import React from 'react';
 interface IconProps extends React.HTMLAttributes<HTMLSpanElement> {
     filled?: boolean;
     className?: string;
+    title?: string;
 }
 
 const EmojiIcon = ({ emoji, className, ...props }: { emoji: string } & IconProps) => (
