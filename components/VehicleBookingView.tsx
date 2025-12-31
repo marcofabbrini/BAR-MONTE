@@ -23,39 +23,43 @@ const TrafficHeader = () => {
     // Genera veicoli statici per evitare re-render, ma con proprietà random
     const trafficItems = useMemo(() => {
         const items = [];
-        const count = 8; // Numero di veicoli
+        const count = 10; // Numero di veicoli
 
         for (let i = 0; i < count; i++) {
             const isRight = i % 2 === 0; // Alterna direzione
-            const isEmergency = Math.random() > 0.75; // 25% probabilità emergenza
+            const isEmergency = Math.random() > 0.8; // 20% probabilità emergenza
 
-            // Velocità: Emergenza veloce (3-6s), Normali lente (15-25s)
-            const duration = isEmergency ? 3 + Math.random() * 3 : 15 + Math.random() * 10;
+            // Velocità: Emergenza veloce (2-5s), Normali lente (12-20s)
+            const duration = isEmergency ? 2 + Math.random() * 3 : 12 + Math.random() * 8;
             const delay = Math.random() * 20; // Delay iniziale
             
-            // Dimensione fissa proporzionata come richiesto
-            const size = 3; // rem
+            // Dimensione ridotta come richiesto
+            const size = 1.8; // rem
 
-            // Logica Colori (Dominante Rossa)
+            // Logica Colori
             let emoji = '🚗';
-            let filterStyle = 'drop-shadow(2px 4px 6px rgba(0,0,0,0.3))';
+            let filterStyle = 'drop-shadow(1px 2px 3px rgba(0,0,0,0.3))';
 
             if (isEmergency) {
                 // Veicoli emergenza (Vigili del Fuoco o Auto Civetta Rossa)
                 emoji = Math.random() > 0.5 ? '🚒' : '🚗';
                 filterStyle += ' saturate(2) brightness(1.1)'; // Rosso acceso
             } else {
-                const type = Math.floor(Math.random() * 3);
+                const type = Math.floor(Math.random() * 4); // 0, 1, 2, 3
                 if (type === 0) {
                     emoji = '🚗'; // Auto Rossa
                     filterStyle += ' saturate(1.2)';
                 } else if (type === 1) {
-                    emoji = '🚙'; // SUV Blu -> Trasformato in Rosso scuro/Bordeaux
-                    // Blue (~240deg) -> Red (~0/360deg). +120deg shift approx.
-                    filterStyle += ' hue-rotate(140deg) brightness(0.8) saturate(1.2)';
+                    emoji = '🚙'; // SUV Blu -> Grigio
+                    filterStyle += ' grayscale(1) brightness(1.2)';
+                } else if (type === 2) {
+                    emoji = '🚗'; // Auto Rossa -> Celeste
+                    // Red hue is 0. Blue is 240. Light blue/Cyan ~180-200.
+                    filterStyle += ' hue-rotate(200deg) brightness(1.2)';
                 } else {
-                    emoji = '🛻'; // Pickup (spesso arancio/rosso)
-                    filterStyle += ' sepia(0.3) hue-rotate(-10deg) saturate(1.8)';
+                    emoji = '🛻'; // Pickup 
+                    // Grigio scuro
+                    filterStyle += ' grayscale(1) brightness(0.8)';
                 }
             }
 
@@ -107,9 +111,10 @@ const TrafficHeader = () => {
                 <div key={item.id} style={item.style} className="absolute leading-none flex justify-center items-center">
                     {item.emoji}
                     {item.isEmergency && (
-                        <div className="absolute -top-3 w-full flex justify-center gap-1.5 pointer-events-none">
-                            <div className="w-2 h-2 rounded-full animate-[siren-flash-blue_0.2s_infinite]" />
-                            <div className="w-2 h-2 rounded-full animate-[siren-flash-red_0.2s_infinite]" />
+                        // Sirene "attaccate" (-top-1)
+                        <div className="absolute -top-1 w-full flex justify-center gap-0.5 pointer-events-none">
+                            <div className="w-1.5 h-1.5 rounded-full animate-[siren-flash-blue_0.2s_infinite]" />
+                            <div className="w-1.5 h-1.5 rounded-full animate-[siren-flash-red_0.2s_infinite]" />
                         </div>
                     )}
                 </div>
