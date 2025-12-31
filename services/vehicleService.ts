@@ -35,6 +35,11 @@ export const VehicleService = {
         });
     },
 
+    updateBooking: async (booking: VehicleBooking) => {
+        const { id, ...data } = booking;
+        await db.collection('vehicle_bookings').doc(id).update(data);
+    },
+
     deleteBooking: async (id: string) => {
         await db.collection('vehicle_bookings').doc(id).delete();
     }

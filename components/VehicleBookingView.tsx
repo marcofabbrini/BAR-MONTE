@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Vehicle, VehicleBooking, StaffMember, Shift, VehicleCheck } from '../types';
-import { BackArrowIcon, CalendarIcon, CheckIcon, TrashIcon, SortIcon, PrinterIcon, TruckIcon } from './Icons';
+import { BackArrowIcon, CalendarIcon, CheckIcon, TrashIcon, SortIcon, PrinterIcon, TruckIcon, EditIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 import { GradeBadge } from './StaffManagement';
 import { useBar } from '../contexts/BarContext';
@@ -21,7 +21,11 @@ interface VehicleBookingViewProps {
 const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({ 
     onGoBack, vehicles, bookings, staff, onAddBooking, onDeleteBooking, isSuperAdmin, vehicleChecks = [], onAddCheck
 }) => {
-    const { getNow } = useBar();
+    const { getNow, updateBooking, activeBarUser } = useBar();
+    
+    // Edit Mode State
+    const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
+
     // Form State
     const [startDate, setStartDate] = useState('');
     const [startTime, setStartTime] = useState('08:00');
@@ -44,9 +48,9 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
     const [staffShiftFilter, setStaffShiftFilter] = useState<Shift | 'all'>('all');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Sorted bookings by date
+    // Sorted bookings by TIMESTAMP DESCENDING (Latest bookings made appear first)
     const sortedBookings = useMemo(() => {
-        return [...bookings].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+        return [...bookings].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }, [bookings]);
 
     // Filtered Staff List (Exclude 'Cassa' and filter by Shift, Sort by Rank)
@@ -74,6 +78,64 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
         });
     }, [staff, staffShiftFilter]);
 
+    const resetForm = () => {
+        setStartDate('');
+        setStartTime('08:00');
+        setEndDate('');
+        setEndTime('18:00');
+        setSelectedVehicle('');
+        setServiceType('Servizio Comando');
+        setDestination('');
+        setIsExternal(false);
+        setInternalStaffId('');
+        setExtGrade('');
+        setExtName('');
+        setExtSurname('');
+        setExtLocation('');
+        setEditingBookingId(null);
+    };
+
+    const handleEdit = (booking: VehicleBooking) => {
+        setEditingBookingId(booking.id);
+        
+        // Parse dates
+        const start = new Date(booking.startDate);
+        const end = new Date(booking.endDate);
+        
+        // Helper per formattare l'orario correttamente HH:mm
+        const formatTime = (date: Date) => {
+            return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        };
+
+        setStartDate(start.toISOString().split('T')[0]);
+        setStartTime(formatTime(start));
+        setEndDate(end.toISOString().split('T')[0]);
+        setEndTime(formatTime(end));
+        
+        setSelectedVehicle(booking.vehicleId);
+        setServiceType(booking.serviceType);
+        setDestination(booking.destination);
+        
+        if (booking.requesterType === 'external') {
+            setIsExternal(true);
+            setExtGrade(booking.externalGrade || '');
+            setExtLocation(booking.externalLocation || '');
+            
+            // Tentativo parsing nome
+            const parts = booking.requesterName.split(' ');
+            if (parts.length >= 2) {
+                setExtName(parts[1] || ''); // Skip Grade
+                setExtSurname(parts.slice(2).join(' ').split('(')[0].trim());
+            }
+        } else {
+            setIsExternal(false);
+            setInternalStaffId(booking.internalStaffId || '');
+        }
+
+        setIsFormOpen(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -95,6 +157,8 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
 
         // --- VERIFICA SOVRAPPOSIZIONE (CONFLICT CHECK) ---
         const hasOverlap = bookings.some(booking => {
+            if (booking.id === editingBookingId) return false; // Ignora se stesso in modifica
+            if (booking.isCancelled) return false; // Ignora cancellati
             if (booking.vehicleId !== selectedVehicle) return false; // Controllo solo lo stesso veicolo
 
             const bStart = new Date(booking.startDate).getTime();
@@ -133,13 +197,12 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
 
         setIsSubmitting(true);
         try {
-            // COSTRUZIONE PAYLOAD SICURA (Evita undefined)
             const basePayload = {
                 vehicleId: selectedVehicle,
                 vehicleName,
                 startDate: startDateTime,
                 endDate: endDateTime,
-                requesterType: isExternal ? 'external' : 'internal', // Cast esplicito sotto
+                requesterType: isExternal ? 'external' : 'internal' as const,
                 requesterName,
                 serviceType: serviceType as any,
                 destination
@@ -150,20 +213,24 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
             if (isExternal) {
                 finalPayload.externalGrade = extGrade || '';
                 finalPayload.externalLocation = extLocation || '';
+                finalPayload.internalStaffId = null;
             } else {
                 finalPayload.internalStaffId = internalStaffId;
+                finalPayload.externalGrade = null;
+                finalPayload.externalLocation = null;
             }
 
-            await onAddBooking(finalPayload);
+            if (editingBookingId) {
+                await updateBooking({ id: editingBookingId, ...finalPayload });
+                alert("Prenotazione aggiornata!");
+            } else {
+                await onAddBooking(finalPayload);
+                alert("Prenotazione confermata!");
+            }
             
             // Reset Form e chiudi
-            setDestination('');
-            setInternalStaffId('');
-            setExtName('');
-            setExtSurname('');
-            setSelectedVehicle(''); // Reset anche veicolo per nuova scelta
-            setIsFormOpen(false); // Chiudi il form dopo successo
-            alert("Prenotazione confermata!");
+            resetForm();
+            setIsFormOpen(false); 
         } catch (error: any) {
             console.error("Booking Error:", error);
             alert("Errore durante la prenotazione: " + (error.message || "Controlla i dati e riprova."));
@@ -172,8 +239,23 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
         }
     };
 
+    const handleCancel = async (id: string) => {
+        if (!confirm("Annullare questa prenotazione? Rimarrà visibile ma barrata.")) return;
+        try {
+            await updateBooking({ 
+                id, 
+                isCancelled: true, 
+                cancelledBy: activeBarUser?.name || 'Utente',
+                cancelledAt: new Date().toISOString()
+            } as VehicleBooking); // Partial update handled by service
+        } catch(e) {
+            console.error(e);
+            alert("Errore annullamento.");
+        }
+    };
+
     const handleDelete = async (id: string) => {
-        if (confirm("Vuoi cancellare questa prenotazione?")) {
+        if (confirm("ELIMINAZIONE DEFINITIVA: Vuoi cancellare totalmente questa prenotazione dal database?")) {
             await onDeleteBooking(id);
         }
     };
@@ -188,8 +270,6 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
         
         if (confirm(`Confermi di aver effettuato il controllo ordinario per ${v.model} (${v.plate})?\n\nVerrà registrato come "Completo" nel registro.`)) {
             try {
-                // Calcolo turno attivo approssimativo (fallback logica) o generico
-                const hour = getNow().getHours();
                 const now = getNow();
                 
                 await onAddCheck({
@@ -197,7 +277,7 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                     vehicleName: `${v.model} (${v.plate})`,
                     date: now.toISOString().split('T')[0],
                     timestamp: now.toISOString(),
-                    shift: '?', // Non critico per automezzi generici
+                    shift: '?', 
                     status: 'ok',
                     missingItems: [],
                     notes: 'Controllo ordinario automezzo (Senza caricamento)'
@@ -212,6 +292,17 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
 
     const todayDayName = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'][getNow().getDay()];
     const todayStr = getNow().toISOString().split('T')[0];
+    const nowTime = getNow().getTime();
+
+    // Check Availability Function
+    const isVehicleOccupied = (vehicleId: string) => {
+        return bookings.some(b => 
+            b.vehicleId === vehicleId && 
+            !b.isCancelled && 
+            nowTime >= new Date(b.startDate).getTime() && 
+            nowTime <= new Date(b.endDate).getTime()
+        );
+    };
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50">
@@ -250,11 +341,14 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                 {/* SEZIONE FORM COLLASSABILE (NASCOSTA IN STAMPA) */}
                 <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden transition-all duration-300 print:hidden">
                     <button 
-                        onClick={() => setIsFormOpen(!isFormOpen)}
+                        onClick={() => {
+                            if(isFormOpen) resetForm();
+                            setIsFormOpen(!isFormOpen);
+                        }}
                         className={`w-full p-4 flex justify-between items-center transition-colors ${isFormOpen ? 'bg-slate-100 border-b border-slate-200' : 'bg-white hover:bg-slate-50'}`}
                     >
                         <h2 className="font-bold text-slate-800 uppercase flex items-center gap-2 text-lg">
-                            <CalendarIcon className="h-6 w-6 text-red-600" /> Nuova Richiesta
+                            <CalendarIcon className="h-6 w-6 text-red-600" /> {editingBookingId ? 'Modifica Prenotazione' : 'Nuova Richiesta'}
                         </h2>
                         <div className={`transform transition-transform duration-300 ${isFormOpen ? 'rotate-180' : 'rotate-0'}`}>
                             <SortIcon className="h-5 w-5 text-slate-400" />
@@ -265,16 +359,16 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                         <div className="animate-slide-up">
                             <form onSubmit={handleSubmit} className="p-6 space-y-8">
                                 
-                                {/* 1. SELEZIONE VEICOLO (GRIGLIA VISUALE) */}
+                                {/* 1. SELEZIONE VEICOLO (GRIGLIA VISUALE RINNOVATA) */}
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 uppercase block mb-3 flex items-center gap-2">
                                         <TruckIcon className="h-4 w-4"/> Seleziona Veicolo *
                                     </label>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                         {vehicles.map(v => {
                                             const isSelected = selectedVehicle === v.id;
+                                            const occupied = isVehicleOccupied(v.id);
                                             const isCheckDay = v.checkDay === todayDayName;
-                                            // Check if already checked today
                                             const isCheckedToday = vehicleChecks.some(c => c.vehicleId === v.id && c.date === todayStr);
 
                                             return (
@@ -282,51 +376,76 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                                     key={v.id}
                                                     onClick={() => setSelectedVehicle(v.id)}
                                                     className={`
-                                                        relative p-2 rounded-xl border-2 cursor-pointer transition-all duration-200 flex flex-col items-center gap-2 text-center group
+                                                        relative p-3 rounded-2xl cursor-pointer transition-all duration-300 flex flex-col items-center gap-3 group
+                                                        border-2 overflow-visible
                                                         ${isSelected 
-                                                            ? 'border-red-500 bg-red-50 shadow-md scale-[1.02]' 
-                                                            : 'border-slate-200 bg-white hover:border-red-300 hover:shadow-sm'
+                                                            ? 'border-blue-500 bg-blue-50 scale-[1.03] shadow-xl z-20' 
+                                                            : 'border-slate-100 bg-white hover:border-slate-300 hover:shadow-lg hover:-translate-y-1'
+                                                        }
+                                                        ${occupied 
+                                                            ? 'shadow-[0_0_15px_rgba(239,68,68,0.4)] border-red-200' 
+                                                            : 'shadow-[0_0_15px_rgba(34,197,94,0.3)]'
                                                         }
                                                     `}
                                                 >
+                                                    {/* Top Status Badge */}
+                                                    <div className={`
+                                                        absolute -top-3 left-1/2 transform -translate-x-1/2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm border whitespace-nowrap z-10
+                                                        ${occupied 
+                                                            ? 'bg-red-100 text-red-600 border-red-200' 
+                                                            : 'bg-green-100 text-green-600 border-green-200'
+                                                        }
+                                                    `}>
+                                                        {occupied ? 'OCCUPATO' : 'DISPONIBILE'}
+                                                    </div>
+
+                                                    {/* Controllo Rapido Badge */}
                                                     {isCheckDay && !isCheckedToday && (
                                                         <div 
-                                                            className="absolute -top-2 -left-2 z-20 bg-yellow-400 text-yellow-900 text-[9px] font-black uppercase px-2 py-1 rounded shadow-md border border-yellow-500 animate-pulse cursor-pointer hover:scale-110 transition-transform flex items-center gap-1"
+                                                            className="absolute -top-2 -right-2 z-20 bg-yellow-400 text-yellow-900 text-[8px] font-black uppercase px-1.5 py-0.5 rounded shadow-md border border-yellow-500 animate-pulse cursor-pointer hover:scale-110 transition-transform"
                                                             onClick={(e) => handleQuickCheck(e, v)}
                                                             title="Clicca per registrare controllo rapido"
                                                         >
-                                                            <span>⚠️ Controllo</span>
-                                                        </div>
-                                                    )}
-                                                    {isCheckDay && isCheckedToday && (
-                                                        <div className="absolute -top-2 -left-2 z-20 bg-green-500 text-white text-[9px] font-black uppercase px-2 py-1 rounded shadow-md border border-green-600 flex items-center gap-1">
-                                                            <CheckIcon className="h-3 w-3"/> OK
+                                                            ⚠️ CHECK
                                                         </div>
                                                     )}
 
+                                                    {/* Selected Check */}
                                                     {isSelected && (
-                                                        <div className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 shadow-sm z-10">
+                                                        <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-0.5 shadow-sm z-10">
                                                             <CheckIcon className="h-3 w-3" />
                                                         </div>
                                                     )}
-                                                    <div className="w-16 h-16 rounded-lg bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200 flex items-center justify-center">
+
+                                                    <div className="w-20 h-20 rounded-xl bg-slate-50 flex-shrink-0 overflow-hidden border border-slate-200 flex items-center justify-center mt-2">
                                                         {v.photoUrl ? (
-                                                            <img src={v.photoUrl} className="w-full h-full object-cover" alt={v.model} />
+                                                            <img src={v.photoUrl} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={v.model} />
                                                         ) : (
-                                                            <span className="text-2xl">🚗</span>
+                                                            <span className="text-4xl filter drop-shadow-sm">🚗</span>
                                                         )}
                                                     </div>
-                                                    <div className="w-full">
-                                                        <div className="font-bold text-slate-800 text-xs truncate leading-tight">{v.model}</div>
-                                                        <div className={`text-[10px] font-mono font-bold mt-1 px-1 rounded inline-block ${isSelected ? 'bg-white text-red-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                            {v.plate}
+                                                    
+                                                    <div className="w-full flex flex-col items-center">
+                                                        <div className="font-bold text-slate-800 text-xs text-center leading-tight mb-2 h-8 flex items-center justify-center w-full px-1">
+                                                            {v.model}
+                                                        </div>
+                                                        
+                                                        {/* TARGA VIGILI DEL FUOCO (VVF Style) */}
+                                                        <div className="flex flex-col items-center justify-center bg-white border border-slate-800 rounded-[3px] shadow-sm h-7 min-w-[75px] px-1 relative mt-1">
+                                                            <span className="text-[4px] text-red-600 font-bold uppercase tracking-wider absolute top-[1px] leading-none">Vigili del Fuoco</span>
+                                                            <div className="flex items-baseline gap-1 mt-1">
+                                                                <span className="text-red-600 font-black text-[11px] leading-none">VF</span>
+                                                                <span className="text-slate-900 font-black text-[11px] leading-none tracking-wider font-mono">
+                                                                    {v.plate.replace(/VF\s?/i, '').trim()}
+                                                                </span>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             );
                                         })}
                                     </div>
-                                    {!selectedVehicle && <p className="text-[10px] text-red-400 mt-1 italic">* Seleziona un mezzo per procedere</p>}
+                                    {!selectedVehicle && <p className="text-[10px] text-red-400 mt-2 italic text-center">* Seleziona un mezzo per procedere</p>}
                                 </div>
 
                                 {/* 2. DATE E ORARI */}
@@ -461,13 +580,24 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                     </div>
                                 </div>
 
-                                <button 
-                                    type="submit" 
-                                    disabled={isSubmitting}
-                                    className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2 mt-4"
-                                >
-                                    {isSubmitting ? 'Salvataggio...' : <><CheckIcon className="h-5 w-5" /> Conferma Prenotazione</>}
-                                </button>
+                                <div className="flex gap-2 mt-4">
+                                    {editingBookingId && (
+                                        <button 
+                                            type="button" 
+                                            onClick={() => { resetForm(); setIsFormOpen(false); }}
+                                            className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold py-4 rounded-xl"
+                                        >
+                                            Annulla
+                                        </button>
+                                    )}
+                                    <button 
+                                        type="submit" 
+                                        disabled={isSubmitting}
+                                        className="flex-[2] bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95 disabled:opacity-50 flex justify-center items-center gap-2"
+                                    >
+                                        {isSubmitting ? 'Salvataggio...' : <><CheckIcon className="h-5 w-5" /> {editingBookingId ? 'Aggiorna Prenotazione' : 'Conferma Prenotazione'}</>}
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     )}
@@ -502,7 +632,7 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                         <th className="p-4 border-b border-slate-200 print:border-black">Automezzo</th>
                                         <th className="p-4 border-b border-slate-200 print:border-black">Tipo Servizio</th>
                                         <th className="p-4 border-b border-slate-200 print:border-black">Destinazione</th>
-                                        <th className="p-4 text-center border-b border-slate-200 print:hidden w-16">Azioni</th>
+                                        <th className="p-4 text-center border-b border-slate-200 print:hidden w-24">Azioni</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 print:divide-black">
@@ -510,13 +640,16 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                         const startDate = new Date(booking.startDate);
                                         const endDate = new Date(booking.endDate);
                                         const isPast = new Date() > endDate;
+                                        const isCancelled = booking.isCancelled;
 
                                         return (
                                             <tr 
                                                 key={booking.id} 
                                                 className={`
                                                     hover:bg-slate-50 transition-colors
-                                                    ${isPast ? 'bg-slate-50/50 text-slate-400 print:text-slate-500' : 'text-slate-800'}
+                                                    ${isCancelled ? 'bg-red-50 text-red-400 line-through decoration-red-400 decoration-2' : ''}
+                                                    ${isPast && !isCancelled ? 'bg-slate-50/50 text-slate-400 print:text-slate-500' : ''}
+                                                    ${!isPast && !isCancelled ? 'text-slate-800' : ''}
                                                     ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30 print:bg-transparent'}
                                                 `}
                                             >
@@ -530,6 +663,7 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                                 </td>
                                                 <td className="p-4 font-bold print:border-b print:border-slate-300">
                                                     {booking.requesterName}
+                                                    {isCancelled && <span className="block text-[9px] no-underline font-normal text-red-600 mt-1">Annullato da: {booking.cancelledBy}</span>}
                                                 </td>
                                                 <td className="p-4 print:border-b print:border-slate-300">
                                                     <span className="font-bold text-slate-700">
@@ -542,12 +676,30 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                                 <td className="p-4 print:border-b print:border-slate-300">
                                                     {booking.destination}
                                                 </td>
-                                                <td className="p-4 text-center print:hidden">
-                                                    {(isSuperAdmin || !isPast) && (
+                                                <td className="p-4 text-center print:hidden whitespace-nowrap">
+                                                    {!isCancelled && !isPast && (
+                                                        <>
+                                                            <button 
+                                                                onClick={() => handleEdit(booking)}
+                                                                className="text-blue-400 hover:text-blue-600 p-2 rounded-full hover:bg-blue-50 transition-colors"
+                                                                title="Modifica"
+                                                            >
+                                                                <EditIcon className="h-4 w-4" />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleCancel(booking.id)}
+                                                                className="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors"
+                                                                title="Annulla"
+                                                            >
+                                                                <span className="font-black text-xs">X</span>
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                    {isSuperAdmin && (
                                                         <button 
                                                             onClick={() => handleDelete(booking.id)}
-                                                            className="text-slate-400 hover:text-red-500 p-2 rounded-full hover:bg-red-50 transition-colors"
-                                                            title="Elimina"
+                                                            className="text-red-300 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors ml-1"
+                                                            title="ELIMINA DEFINITIVAMENTE (Super Admin)"
                                                         >
                                                             <TrashIcon className="h-4 w-4" />
                                                         </button>

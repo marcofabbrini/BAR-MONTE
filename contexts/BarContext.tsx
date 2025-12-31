@@ -90,6 +90,7 @@ interface BarContextType {
     updateVehicle: (v: Vehicle) => Promise<void>;
     deleteVehicle: (id: string) => Promise<void>;
     addBooking: (b: Omit<VehicleBooking, 'id' | 'timestamp'>) => Promise<void>;
+    updateBooking: (b: VehicleBooking) => Promise<void>;
     deleteBooking: (id: string) => Promise<void>;
 
     // Operational Vehicles
@@ -317,6 +318,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const updateVehicle = (v: Vehicle) => VehicleService.updateVehicle(v);
     const deleteVehicle = (id: string) => VehicleService.deleteVehicle(id);
     const addBooking = async (b: Omit<VehicleBooking, 'id' | 'timestamp'>) => { await VehicleService.addBooking(b); };
+    const updateBooking = (b: VehicleBooking) => VehicleService.updateBooking(b);
     const deleteBooking = (id: string) => VehicleService.deleteBooking(id);
 
     const addOperationalVehicle = async (v: Omit<OperationalVehicle, 'id'>) => { await OperationalVehicleService.addVehicle(v); };
@@ -346,8 +348,8 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const deleteDutyOfficer = (id: string) => InterventionService.deleteOfficer(id);
 
     // Reminders
-    const addReminder = async (r: any) => { await ReminderService.addReminder(r); };
-    const updateReminder = (id: string, r: any) => ReminderService.updateReminder(id, r);
+    const addReminder = async (r: Omit<Reminder, 'id' | 'createdAt' | 'completedDates'>) => { await ReminderService.addReminder(r); };
+    const updateReminder = (id: string, r: Partial<Reminder>) => ReminderService.updateReminder(id, r);
     const deleteReminder = (id: string) => ReminderService.deleteReminder(id);
     const toggleReminderCompletion = (id: string, date: string, current: string[]) => ReminderService.toggleCompletion(id, date, current);
 
@@ -408,7 +410,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             addAdmin, removeAdmin,
             updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, updateMonthlyClosure,
             saveAttendance, reopenAttendance, deleteAttendance,
-            addVehicle, updateVehicle, deleteVehicle, addBooking, deleteBooking,
+            addVehicle, updateVehicle, deleteVehicle, addBooking, deleteBooking, updateBooking,
             addOperationalVehicle, updateOperationalVehicle, deleteOperationalVehicle, addVehicleCheck, updateVehicleCheck,
             addLaundryItem, updateLaundryItem, deleteLaundryItem, addLaundryEntry, deleteLaundryEntry, createLaundryShipment, updateLaundryShipment, deleteLaundryShipment,
             addIntervention, updateIntervention, deleteIntervention, permanentDeleteIntervention, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer,

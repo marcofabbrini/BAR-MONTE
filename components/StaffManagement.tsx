@@ -66,7 +66,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
     const [icon, setIcon] = useState('');
     const [photoUrl, setPhotoUrl] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState<UserRole>('standard');
+    const [role, setRole] = useState<UserRole | string>('standard');
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [isProcessingImg, setIsProcessingImg] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -328,7 +328,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         </label>
                                         <select 
                                             value={role} 
-                                            onChange={(e) => setRole(e.target.value as UserRole)} 
+                                            onChange={(e) => setRole(e.target.value)} 
                                             className="w-full mt-1 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 font-bold text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         >
                                             {filteredRoles.map(r => (
