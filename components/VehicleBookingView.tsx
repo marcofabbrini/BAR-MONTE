@@ -430,12 +430,11 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                                             {v.model}
                                                         </div>
                                                         
-                                                        {/* TARGA VIGILI DEL FUOCO (VVF Style) */}
-                                                        <div className="flex flex-col items-center justify-center bg-white border border-slate-800 rounded-[3px] shadow-sm h-7 min-w-[75px] px-1 relative mt-1">
-                                                            <span className="text-[4px] text-red-600 font-bold uppercase tracking-wider absolute top-[1px] leading-none">Vigili del Fuoco</span>
-                                                            <div className="flex items-baseline gap-1 mt-1">
-                                                                <span className="text-red-600 font-black text-[11px] leading-none">VF</span>
-                                                                <span className="text-slate-900 font-black text-[11px] leading-none tracking-wider font-mono">
+                                                        {/* TARGA VIGILI DEL FUOCO COMPATTA */}
+                                                        <div className="flex flex-col items-center justify-center bg-white border border-slate-300 rounded-[2px] h-6 min-w-[60px] px-0.5 relative mt-1 overflow-hidden">
+                                                            <div className="flex items-baseline gap-0.5">
+                                                                <span className="text-red-600 font-black text-[10px] leading-none">VF</span>
+                                                                <span className="text-slate-900 font-black text-[10px] leading-none tracking-tighter font-mono">
                                                                     {v.plate.replace(/VF\s?/i, '').trim()}
                                                                 </span>
                                                             </div>
