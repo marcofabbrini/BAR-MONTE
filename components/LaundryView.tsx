@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { LaundryItemDef, LaundryEntry, LaundryShipment, Shift } from '../types';
 import { useBar } from '../contexts/BarContext';
@@ -17,6 +18,53 @@ interface LaundryItemState {
 }
 
 const DEFAULT_ITEMS_FALLBACK = ["Lenzuola", "Federa", "Asciugamano", "Telo Bagno", "Copriletto", "Cuscino", "Tovaglia", "Tovagliolo"];
+
+// --- BUBBLES ANIMATION COMPONENT ---
+const BubblesHeader = () => {
+    const bubbles = useMemo(() => {
+        return Array.from({ length: 25 }).map((_, i) => ({
+            id: i,
+            size: 10 + Math.random() * 40, // 10px to 50px
+            left: Math.random() * 100,
+            duration: 6 + Math.random() * 8, // 6s to 14s
+            delay: Math.random() * 10,
+            opacity: 0.1 + Math.random() * 0.4
+        }));
+    }, []);
+
+    return (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+            <style>
+                {`
+                @keyframes bubble-rise {
+                    0% { transform: translateY(120%) scale(0.8); opacity: 0; }
+                    10% { opacity: var(--target-opacity); }
+                    50% { transform: translateY(0%) scale(1) translateX(10px); }
+                    100% { transform: translateY(-120%) scale(1.1) translateX(-10px); opacity: 0; }
+                }
+                `}
+            </style>
+            {bubbles.map(b => (
+                <div 
+                    key={b.id}
+                    className="absolute rounded-full"
+                    style={{
+                        width: `${b.size}px`,
+                        height: `${b.size}px`,
+                        left: `${b.left}%`,
+                        bottom: '-50px',
+                        animation: `bubble-rise ${b.duration}s ease-in infinite`,
+                        animationDelay: `-${b.delay}s`,
+                        '--target-opacity': b.opacity,
+                        background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.1))',
+                        boxShadow: 'inset 0 0 6px rgba(255, 255, 255, 0.6), 0 0 10px rgba(255,255,255,0.2)',
+                        border: '1px solid rgba(255,255,255,0.3)'
+                    } as React.CSSProperties}
+                />
+            ))}
+        </div>
+    );
+};
 
 const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
     const { 
@@ -217,10 +265,14 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
         <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
             
             {/* HEADER (Hidden in Print) */}
-            <header className="bg-blue-600 text-white p-4 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)] print:hidden">
+            <header className="bg-blue-600 text-white p-4 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)] print:hidden relative overflow-hidden">
+                
+                {/* BUBBLES BACKGROUND ANIMATION */}
+                <BubblesHeader />
+
                 <button 
                     onClick={onGoBack} 
-                    className="flex items-center gap-2 font-bold text-white/90 hover:text-white transition-colors"
+                    className="flex items-center gap-2 font-bold text-white/90 hover:text-white transition-colors relative z-10"
                 >
                     <div className="w-10 h-10 rounded-full bg-blue-700/40 flex items-center justify-center">
                         <BackArrowIcon className="h-5 w-5" />
@@ -228,12 +280,11 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
                     <span className="text-sm hidden md:inline">Indietro</span>
                 </button>
                 
-                <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest flex items-center gap-3 drop-shadow-md">
-                    <ShirtIcon className="h-8 w-8" />
+                <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest flex items-center gap-3 drop-shadow-md relative z-10">
                     <span>Lavanderia</span>
                 </h1>
                 
-                <div className="w-12 md:w-24"></div> 
+                <div className="w-12 md:w-24 relative z-10"></div> 
             </header>
 
             {/* TAB BAR (Hidden in Print) */}

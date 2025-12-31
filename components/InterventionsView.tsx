@@ -69,6 +69,24 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
     const [filterMunicipality, setFilterMunicipality] = useState('');
     const [filterLeader, setFilterLeader] = useState('');
 
+    // Background Emojis for Header
+    const backgroundEmojis = useMemo(() => {
+        const symbols = ['🔥', '💧', '🚪', '🚒', '🚨', '🧯', '🪜', '🌲', '🏠', '⚡', '🗝️', '🐈', '🐝', '🔧'];
+        return Array.from({ length: 25 }).map((_, i) => ({
+            id: i,
+            symbol: symbols[Math.floor(Math.random() * symbols.length)],
+            style: {
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                fontSize: `${Math.random() * 2 + 1}rem`,
+                animationDelay: `${Math.random() * 3}s`,
+                animationDuration: `${2 + Math.random() * 3}s`,
+                opacity: 0.1 + Math.random() * 0.2, // Opacità bassa per sfondo
+                transform: `rotate(${Math.random() * 360}deg)`
+            }
+        }));
+    }, []);
+
     // SCROLL TO TOP ON MOUNT
     useEffect(() => {
         window.scrollTo(0, 0);
@@ -628,10 +646,23 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
-            <header className="bg-orange-600 text-white p-4 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)]">
+            <header className="bg-orange-600 text-white p-4 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)] relative overflow-hidden">
+                {/* Animated Background */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    {backgroundEmojis.map(item => (
+                        <div 
+                            key={item.id} 
+                            className="absolute animate-pulse select-none" 
+                            style={item.style}
+                        >
+                            {item.symbol}
+                        </div>
+                    ))}
+                </div>
+
                 <button 
                     onClick={onGoBack} 
-                    className="flex items-center gap-2 font-bold text-white/90 hover:text-white transition-colors"
+                    className="flex items-center gap-2 font-bold text-white/90 hover:text-white transition-colors relative z-10"
                 >
                     <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
                         <BackArrowIcon className="h-5 w-5" />
@@ -639,12 +670,11 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                     <span className="text-sm hidden md:inline">Indietro</span>
                 </button>
                 
-                <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest flex items-center gap-3 drop-shadow-md">
-                    <FireIcon className="h-8 w-8" />
+                <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest flex items-center gap-3 drop-shadow-md relative z-10">
                     <span>Registro Interventi</span>
                 </h1>
                 
-                <div className="w-12 md:w-24"></div> 
+                <div className="w-12 md:w-24 relative z-10"></div> 
             </header>
 
             <main className="flex-grow p-4 md:p-8 max-w-5xl mx-auto w-full flex flex-col gap-6">
