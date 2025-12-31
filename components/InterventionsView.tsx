@@ -28,6 +28,60 @@ const MUNICIPALITIES = [
     'ALTRO...'
 ];
 
+// --- EXTINGUISHER ANIMATION COMPONENT ---
+const ExtinguisherHeader = () => {
+    // Genera sbuffi di fumo/CO2
+    const puffs = useMemo(() => {
+        return Array.from({ length: 15 }).map((_, i) => ({
+            id: i,
+            delay: Math.random() * 2, // Delay casuale per flusso continuo
+            size: 10 + Math.random() * 20, // Dimensione variabile
+            duration: 0.8 + Math.random() * 0.5 // Velocità dello sbuffo
+        }));
+    }, []);
+
+    return (
+        <div className="relative flex items-center justify-center w-16 h-16 mr-4">
+            <style>
+                {`
+                @keyframes spray-jet {
+                    0% { transform: translate(0, 0) scale(0.2); opacity: 0.8; }
+                    50% { opacity: 0.6; }
+                    100% { transform: translate(40px, -30px) scale(2.5); opacity: 0; }
+                }
+                @keyframes shake-extinguisher {
+                    0%, 100% { transform: rotate(-15deg); }
+                    50% { transform: rotate(-20deg) translate(-1px, 1px); }
+                }
+                `}
+            </style>
+            
+            {/* ESTINTORE */}
+            <div className="text-5xl z-20 relative" style={{ animation: 'shake-extinguisher 0.2s infinite' }}>
+                🧯
+            </div>
+
+            {/* SBUFFI DI FUMO (Partono dalla bocchetta dell'estintore) */}
+            <div className="absolute top-0 left-8 w-full h-full pointer-events-none z-10">
+                {puffs.map(p => (
+                    <div 
+                        key={p.id}
+                        className="absolute rounded-full bg-white/80 blur-sm"
+                        style={{
+                            width: `${p.size}px`,
+                            height: `${p.size}px`,
+                            left: '0px',
+                            top: '10px',
+                            animation: `spray-jet ${p.duration}s linear infinite`,
+                            animationDelay: `-${p.delay}s`,
+                        }}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+};
+
 const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, isSuperAdmin }) => {
     const { interventions, interventionTypologies, dutyOfficers, addIntervention, updateIntervention, deleteIntervention, permanentDeleteIntervention, getNow } = useBar();
 
@@ -68,24 +122,6 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
     const [filterTypology, setFilterTypology] = useState('');
     const [filterMunicipality, setFilterMunicipality] = useState('');
     const [filterLeader, setFilterLeader] = useState('');
-
-    // Background Emojis for Header
-    const backgroundEmojis = useMemo(() => {
-        const symbols = ['🔥', '💧', '🚪', '🚒', '🚨', '🧯', '🪜', '🌲', '🏠', '⚡', '🗝️', '🐈', '🐝', '🔧'];
-        return Array.from({ length: 25 }).map((_, i) => ({
-            id: i,
-            symbol: symbols[Math.floor(Math.random() * symbols.length)],
-            style: {
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                fontSize: `${Math.random() * 2 + 1}rem`,
-                animationDelay: `${Math.random() * 3}s`,
-                animationDuration: `${2 + Math.random() * 3}s`,
-                opacity: 0.1 + Math.random() * 0.2, // Opacità bassa per sfondo
-                transform: `rotate(${Math.random() * 360}deg)`
-            }
-        }));
-    }, []);
 
     // SCROLL TO TOP ON MOUNT
     useEffect(() => {
@@ -647,19 +683,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
             <header className="bg-orange-600 text-white p-4 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)] relative overflow-hidden">
-                {/* Animated Background */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                    {backgroundEmojis.map(item => (
-                        <div 
-                            key={item.id} 
-                            className="absolute animate-pulse select-none" 
-                            style={item.style}
-                        >
-                            {item.symbol}
-                        </div>
-                    ))}
-                </div>
-
+                
                 <button 
                     onClick={onGoBack} 
                     className="flex items-center gap-2 font-bold text-white/90 hover:text-white transition-colors relative z-10"
@@ -670,9 +694,14 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                     <span className="text-sm hidden md:inline">Indietro</span>
                 </button>
                 
-                <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest flex items-center gap-3 drop-shadow-md relative z-10">
-                    <span>Registro Interventi</span>
-                </h1>
+                <div className="flex items-center gap-3 drop-shadow-md relative z-10">
+                    {/* ANIMATED EXTINGUISHER */}
+                    <ExtinguisherHeader />
+                    
+                    <h1 className="text-xl md:text-2xl font-black uppercase tracking-widest">
+                        <span>Registro Interventi</span>
+                    </h1>
+                </div>
                 
                 <div className="w-12 md:w-24 relative z-10"></div> 
             </header>

@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import React, { useState, Suspense, useMemo } from 'react';
 import { Canvas, useLoader } from '@react-three/fiber';
@@ -8,19 +9,6 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
 import { BackArrowIcon } from './Icons';
 import * as THREE from 'three';
-
-// Augment JSX.IntrinsicElements to include Three.js elements
-declare global {
-    namespace JSX {
-        interface IntrinsicElements {
-            mesh: any;
-            group: any;
-            meshStandardMaterial: any;
-            meshBasicMaterial: any;
-            sphereGeometry: any;
-        }
-    }
-}
 
 // --- TIPI ---
 interface Zone {

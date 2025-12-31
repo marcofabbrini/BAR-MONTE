@@ -22,13 +22,13 @@ const DEFAULT_ITEMS_FALLBACK = ["Lenzuola", "Federa", "Asciugamano", "Telo Bagno
 // --- BUBBLES ANIMATION COMPONENT ---
 const BubblesHeader = () => {
     const bubbles = useMemo(() => {
-        return Array.from({ length: 25 }).map((_, i) => ({
+        return Array.from({ length: 30 }).map((_, i) => ({
             id: i,
             size: 10 + Math.random() * 40, // 10px to 50px
             left: Math.random() * 100,
-            duration: 6 + Math.random() * 8, // 6s to 14s
-            delay: Math.random() * 10,
-            opacity: 0.1 + Math.random() * 0.4
+            duration: 2 + Math.random() * 4, // 2s to 6s (FASTER)
+            delay: Math.random() * 5,
+            opacity: 0.3 + Math.random() * 0.5 // 0.3 to 0.8 (MORE VISIBLE)
         }));
     }, []);
 
@@ -56,9 +56,9 @@ const BubblesHeader = () => {
                         animation: `bubble-rise ${b.duration}s ease-in infinite`,
                         animationDelay: `-${b.delay}s`,
                         '--target-opacity': b.opacity,
-                        background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.1))',
-                        boxShadow: 'inset 0 0 6px rgba(255, 255, 255, 0.6), 0 0 10px rgba(255,255,255,0.2)',
-                        border: '1px solid rgba(255,255,255,0.3)'
+                        background: 'radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.4))',
+                        boxShadow: 'inset 0 0 6px rgba(255, 255, 255, 0.8), 0 0 10px rgba(255,255,255,0.4)',
+                        border: '1.5px solid rgba(255,255,255,0.6)'
                     } as React.CSSProperties}
                 />
             ))}
