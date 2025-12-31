@@ -14,7 +14,8 @@ import {
     LaundryItemDef,
     LaundryEntry,
     LaundryShipment,
-    CustomRole
+    CustomRole,
+    MonthlyClosure
 } from '../types';
 
 export const BarService = {
@@ -74,6 +75,12 @@ export const BarService = {
             onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as AttendanceRecord)));
         });
     },
+    // NEW: Monthly Closures
+    subscribeToMonthlyClosures: (onUpdate: (data: MonthlyClosure[]) => void) => {
+        return db.collection('monthly_closures').onSnapshot((snapshot) => {
+            onUpdate(snapshot.docs.map(d => ({ ...d.data(), id: d.id } as MonthlyClosure)));
+        });
+    },
     
     // Laundry Subscriptions
     subscribeToLaundryItems: (onUpdate: (data: LaundryItemDef[]) => void) => {
@@ -122,6 +129,12 @@ export const BarService = {
     updateSeasonality: async (cfg: SeasonalityConfig) => db.collection('settings').doc('seasonality').set(cfg),
     updateShiftSettings: async (cfg: ShiftSettings) => db.collection('settings').doc('shifts').set(cfg),
     updateGeneralSettings: async (cfg: GeneralSettings) => db.collection('settings').doc('general').set(cfg),
+
+    // Monthly Closure
+    updateMonthlyClosure: async (id: string, data: Partial<MonthlyClosure>) => {
+        // Use set with merge to create if not exists
+        await db.collection('monthly_closures').doc(id).set(data, { merge: true });
+    },
 
     // Attendance
     saveAttendance: async (record: any) => {

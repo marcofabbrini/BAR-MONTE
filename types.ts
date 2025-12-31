@@ -303,6 +303,19 @@ export interface Reminder {
 }
 // ==============================
 
+// === CHIUSURA MENSILE BAR ===
+export interface MonthlyClosure {
+    id: string; // Format: YYYY-MM (e.g. 2023-10)
+    payments: {
+        a: boolean;
+        b: boolean;
+        c: boolean;
+        d: boolean;
+    };
+    notes?: string;
+}
+// ============================
+
 export interface SeasonalityConfig {
     startDate: string;
     endDate: string;

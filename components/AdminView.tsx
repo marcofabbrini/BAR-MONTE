@@ -88,10 +88,10 @@ const AdminView: React.FC<AdminViewProps> = ({
     onSendNotification
 }) => {
     // Access Context methods
-    const { vehicles, addVehicle, updateVehicle, deleteVehicle } = useBar();
-    const { operationalVehicles, addOperationalVehicle, updateOperationalVehicle, deleteOperationalVehicle } = useBar();
-    const { laundryItems, addLaundryItem, updateLaundryItem, deleteLaundryItem } = useBar();
-    const { interventionTypologies, dutyOfficers, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer } = useBar();
+    const { vehicles, vehicleBookings, addVehicle, updateVehicle, deleteVehicle } = useBar();
+    const { operationalVehicles, vehicleChecks, addOperationalVehicle, updateOperationalVehicle, deleteOperationalVehicle } = useBar();
+    const { laundryItems, laundryEntries, laundryShipments, addLaundryItem, updateLaundryItem, deleteLaundryItem } = useBar();
+    const { interventions, interventionTypologies, dutyOfficers, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer } = useBar();
     const { reminders, addReminder, updateReminder, deleteReminder } = useBar();
     const { customRoles, addCustomRole, deleteCustomRole, activeBarUser } = useBar();
 
@@ -454,6 +454,44 @@ const AdminView: React.FC<AdminViewProps> = ({
         linkElement.click();
     };
 
+    const handleExportFullDatabase = () => {
+        if(!window.confirm("Stai per scaricare l'INTERO database in un file JSON. Confermi?")) return;
+
+        const fullBackup = {
+            version: "2.0",
+            exportDate: new Date().toISOString(),
+            collections: {
+                products,
+                staff,
+                orders,
+                cashMovements,
+                adminList,
+                attendanceRecords,
+                vehicles,
+                vehicleBookings,
+                operationalVehicles,
+                vehicleChecks,
+                laundryItems,
+                laundryEntries,
+                laundryShipments,
+                interventions,
+                interventionTypologies,
+                dutyOfficers,
+                reminders,
+                customRoles
+            }
+        };
+
+        const dataStr = JSON.stringify(fullBackup, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        const exportFileDefaultName = `FULL_BACKUP_VVF_${new Date().toISOString().split('T')[0]}.json`;
+        
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+    };
+
     // PULSANTI GRIGLIA ADMIN
     const TabButton = ({ tab, label, icon }: { tab: AdminTab, label: string, icon: React.ReactNode }) => (
         <button 
@@ -594,13 +632,21 @@ const AdminView: React.FC<AdminViewProps> = ({
 
                         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                             <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
-                                <h3 className="font-bold text-slate-700">Anteprima Dati Presenze (Ultimi 20)</h3>
-                                <button 
-                                    onClick={handleDownloadAttendanceBackup}
-                                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm flex items-center gap-2"
-                                >
-                                    <SaveIcon className="h-4 w-4" /> Scarica Backup JSON
-                                </button>
+                                <h3 className="font-bold text-slate-700">Backup & Esportazione</h3>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={handleDownloadAttendanceBackup}
+                                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm flex items-center gap-2"
+                                    >
+                                        <SaveIcon className="h-4 w-4" /> Backup Presenze (JSON)
+                                    </button>
+                                    <button 
+                                        onClick={handleExportFullDatabase}
+                                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-700 shadow-sm flex items-center gap-2"
+                                    >
+                                        <SaveIcon className="h-4 w-4" /> Export DB Completo
+                                    </button>
+                                </div>
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full text-xs text-left">

@@ -3,7 +3,9 @@ import React, { useState, useMemo } from 'react';
 import { Product, StaffMember, Order, Shift, GeneralSettings, TombolaConfig, AnalottoConfig, AttendanceRecord } from '../types';
 import StatisticsView from './StatisticsView';
 import InsightsView from './InsightsView';
-import { BackArrowIcon, StatsIcon, LightbulbIcon } from './Icons';
+import MonthlyClosureView from './MonthlyClosureView';
+import { BackArrowIcon, StatsIcon, LightbulbIcon, WalletIcon } from './Icons';
+import { useBar } from '../contexts/BarContext';
 
 interface ReportsViewProps {
     onGoBack: () => void;
@@ -16,7 +18,7 @@ interface ReportsViewProps {
     attendanceRecords?: AttendanceRecord[];
 }
 
-type ReportTab = 'statistics' | 'insights';
+type ReportTab = 'statistics' | 'monthly_closure' | 'insights';
 
 const ReportsView: React.FC<ReportsViewProps> = ({ 
     onGoBack, 
@@ -28,6 +30,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({
     analottoConfig,
     attendanceRecords
 }) => {
+    const { getNow, monthlyClosures } = useBar();
     const [activeTab, setActiveTab] = useState<ReportTab>('statistics');
     
     const [startDate, setStartDate] = useState('');
@@ -53,12 +56,34 @@ const ReportsView: React.FC<ReportsViewProps> = ({
         });
     }, [orders, startDate, endDate, selectedShift, selectedStaffId, selectedProductId, staff]);
 
+    // CHECK MONTHLY CLOSURE ALERT
+    const showClosureAlert = useMemo(() => {
+        const now = getNow();
+        const day = now.getDate();
+        
+        // Alert active only for the first 7 days of the month
+        if (day > 7) return false;
 
-    const TabButton = ({ tab, label, icon }: { tab: ReportTab, label: string, icon: React.ReactNode }) => (
+        // Calculate target month key (Previous Month)
+        const targetDate = new Date(now);
+        targetDate.setMonth(targetDate.getMonth() - 1);
+        const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+
+        // Check if closed
+        const closure = monthlyClosures.find(c => c.id === monthKey);
+        if (!closure) return true; // Not even created -> Alert
+        
+        // Check if all shifts paid
+        const allPaid = Object.values(closure.payments).every(p => p);
+        return !allPaid;
+    }, [getNow, monthlyClosures]);
+
+
+    const TabButton = ({ tab, label, icon, alert }: { tab: ReportTab, label: string, icon: React.ReactNode, alert?: boolean }) => (
         <button 
             onClick={() => setActiveTab(tab)} 
             className={`
-                flex items-center gap-3 px-6 py-4 text-sm font-bold transition-all duration-200 border-b-2 whitespace-nowrap
+                flex items-center gap-3 px-6 py-4 text-sm font-bold transition-all duration-200 border-b-2 whitespace-nowrap relative
                 ${activeTab === tab 
                     ? 'border-primary text-primary bg-orange-50/50' 
                     : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
@@ -72,6 +97,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({
                 {icon}
             </div>
             {label}
+            {alert && (
+                <span className="absolute top-3 right-2 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse border border-white"></span>
+            )}
         </button>
     );
 
@@ -96,6 +124,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({
                 <div className="bg-white border-b border-slate-200 overflow-x-auto shadow-sm">
                    <div className="flex max-w-7xl mx-auto px-4">
                        <TabButton tab="statistics" label="Statistiche" icon={<StatsIcon className="h-5 w-5" />} />
+                       <TabButton tab="monthly_closure" label="Chiusura Mensile" icon={<WalletIcon className="h-5 w-5" />} alert={showClosureAlert} />
                        <TabButton tab="insights" label="Analisi Intelligente" icon={<LightbulbIcon className="h-5 w-5" />} />
                    </div>
                 </div>
@@ -113,6 +142,9 @@ const ReportsView: React.FC<ReportsViewProps> = ({
                             analottoConfig={analottoConfig}
                             attendanceRecords={attendanceRecords}
                         />
+                    )}
+                    {activeTab === 'monthly_closure' && (
+                        <MonthlyClosureView />
                     )}
                     {activeTab === 'insights' && (
                         <InsightsView 

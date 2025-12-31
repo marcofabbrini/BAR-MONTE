@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { 
     Product, StaffMember, Order, CashMovement, AdminUser, TillColors, 
@@ -6,7 +7,7 @@ import {
     LaundryItemDef, LaundryEntry, LaundryShipment,
     Intervention, InterventionTypology, DutyOfficer,
     Reminder, CustomRole, AppNotification,
-    AttendanceStatus, UserRole
+    AttendanceStatus, UserRole, MonthlyClosure
 } from '../types';
 import { BarService } from '../services/barService';
 import { VehicleService } from '../services/vehicleService';
@@ -39,6 +40,7 @@ interface BarContextType {
     dutyOfficers: DutyOfficer[];
     reminders: Reminder[];
     customRoles: CustomRole[];
+    monthlyClosures: MonthlyClosure[];
     
     // UI
     activeToast: AppNotification | null;
@@ -77,6 +79,7 @@ interface BarContextType {
     updateSeasonality: (cfg: SeasonalityConfig) => Promise<void>;
     updateShiftSettings: (cfg: ShiftSettings) => Promise<void>;
     updateGeneralSettings: (cfg: GeneralSettings) => Promise<void>;
+    updateMonthlyClosure: (id: string, data: Partial<MonthlyClosure>) => Promise<void>;
 
     saveAttendance: (tillId: string, presentStaffIds: string[], dateOverride?: string, closedBy?: string, details?: Record<string, AttendanceStatus>, substitutionNames?: Record<string, string>) => Promise<void>;
     reopenAttendance: (id: string) => Promise<void>;
@@ -160,6 +163,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [dutyOfficers, setDutyOfficers] = useState<DutyOfficer[]>([]);
     const [reminders, setReminders] = useState<Reminder[]>([]);
     const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
+    const [monthlyClosures, setMonthlyClosures] = useState<MonthlyClosure[]>([]);
 
     const [isLoading, setIsLoading] = useState(true);
     const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
@@ -190,6 +194,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const unsubOff = InterventionService.subscribeToOfficers(setDutyOfficers);
         const unsubRem = ReminderService.subscribeToReminders(setReminders);
         const unsubRoles = BarService.subscribeToCustomRoles(setCustomRoles);
+        const unsubClosures = BarService.subscribeToMonthlyClosures(setMonthlyClosures);
 
         const timer = setInterval(() => setNow(new Date()), 30000); // Update "now" every 30s
 
@@ -208,6 +213,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             unsubVeh(); unsubBook(); unsubOpVeh(); unsubChecks();
             unsubLItems(); unsubLEntry(); unsubLShip();
             unsubInt(); unsubIntType(); unsubOff(); unsubRem(); unsubRoles();
+            unsubClosures();
             clearInterval(timer);
         };
     }, []);
@@ -283,6 +289,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const updateSeasonality = async (cfg: SeasonalityConfig) => { await BarService.updateSeasonality(cfg); };
     const updateShiftSettings = async (cfg: ShiftSettings) => { await BarService.updateShiftSettings(cfg); };
     const updateGeneralSettings = async (cfg: GeneralSettings) => { await BarService.updateGeneralSettings(cfg); };
+    const updateMonthlyClosure = async (id: string, data: Partial<MonthlyClosure>) => { await BarService.updateMonthlyClosure(id, data); };
 
     // Attendance
     const saveAttendance = async (tillId: string, presentIds: string[], dateOverride?: string, closedBy?: string, details?: Record<string, AttendanceStatus>, substitutionNames?: Record<string, string>) => {
@@ -391,7 +398,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords,
             vehicles, vehicleBookings, operationalVehicles, vehicleChecks,
             laundryItems, laundryEntries, laundryShipments,
-            interventions, interventionTypologies, dutyOfficers, reminders, customRoles,
+            interventions, interventionTypologies, dutyOfficers, reminders, customRoles, monthlyClosures,
             activeToast, isLoading, setActiveToast, sendNotification,
             addProduct, updateProduct, deleteProduct,
             addStaff, updateStaff, deleteStaff,
@@ -399,7 +406,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash,
             stockPurchase, stockCorrection, massDelete,
             addAdmin, removeAdmin,
-            updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings,
+            updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, updateMonthlyClosure,
             saveAttendance, reopenAttendance, deleteAttendance,
             addVehicle, updateVehicle, deleteVehicle, addBooking, deleteBooking,
             addOperationalVehicle, updateOperationalVehicle, deleteOperationalVehicle, addVehicleCheck, updateVehicleCheck,
