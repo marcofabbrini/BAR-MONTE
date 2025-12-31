@@ -22,19 +22,43 @@ interface VehicleBookingViewProps {
 const TrafficHeader = () => {
     // Genera veicoli statici per evitare re-render, ma con proprietà random
     const trafficItems = useMemo(() => {
-        const carTypes = ['🚗', '🚙', '🛻', '🚒', '🚒', '🚗', '🚙']; // Più vigili del fuoco e auto
         const items = [];
         const count = 6; // Numero di veicoli contemporanei
 
         for (let i = 0; i < count; i++) {
             const isRight = i % 2 === 0; // Alterna direzione
-            const emoji = carTypes[Math.floor(Math.random() * carTypes.length)];
             const duration = 8 + Math.random() * 15; // Velocità tra 8s e 23s
             const delay = Math.random() * 20; // Delay iniziale random per spargerle
-            
-            // Colore random solo per auto civili
-            const hue = (emoji === '🚒') ? 0 : Math.floor(Math.random() * 360);
             const scale = 0.8 + Math.random() * 0.4; // Grandezza variabile
+
+            // Logica Colori: Rosso (VVF), Grigio, Celeste
+            const colorVariant = Math.floor(Math.random() * 3); // 0, 1, 2
+            let emoji = '';
+            let filterStyle = '';
+
+            if (colorVariant === 0) {
+                // Rosso (VVF) - Auto e Pickup (NO CAMION)
+                const vvfTypes = ['🚗', '🛻']; 
+                emoji = vvfTypes[Math.floor(Math.random() * vvfTypes.length)];
+                // Saturazione per renderli più "Rosso Fuoco"
+                filterStyle = 'drop-shadow(2px 4px 6px rgba(0,0,0,0.3)) saturate(1.5)';
+            } else if (colorVariant === 1) {
+                // Grigio
+                const allTypes = ['🚗', '🚙', '🛻'];
+                emoji = allTypes[Math.floor(Math.random() * allTypes.length)];
+                filterStyle = 'grayscale(100%) drop-shadow(2px 4px 6px rgba(0,0,0,0.3))';
+            } else {
+                // Celeste
+                const allTypes = ['🚗', '🚙', '🛻'];
+                emoji = allTypes[Math.floor(Math.random() * allTypes.length)];
+                
+                // Ruota hue in base al colore di partenza dell'emoji
+                if (emoji === '🚙') { // Base Blu
+                    filterStyle = 'hue-rotate(20deg) drop-shadow(2px 4px 6px rgba(0,0,0,0.3)) brightness(1.2)';
+                } else { // Base Rossa/Arancio
+                    filterStyle = 'hue-rotate(200deg) drop-shadow(2px 4px 6px rgba(0,0,0,0.3))';
+                }
+            }
 
             items.push({
                 id: i,
@@ -42,8 +66,8 @@ const TrafficHeader = () => {
                 style: {
                     animation: `drive-${isRight ? 'right' : 'left'} ${duration}s linear infinite`,
                     animationDelay: `-${delay}s`, // Start mid-animation
-                    filter: `hue-rotate(${hue}deg) drop-shadow(2px 4px 6px rgba(0,0,0,0.3))`,
-                    bottom: '0px', 
+                    filter: filterStyle,
+                    bottom: '3px', // Alzato di 3px rispetto al fondo
                     position: 'absolute' as 'absolute',
                     fontSize: `${2 * scale}rem`,
                     zIndex: 0,
@@ -384,7 +408,6 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                 </button>
                 
                 <h1 className="text-xl md:text-3xl font-black uppercase tracking-widest flex items-center gap-3 drop-shadow-lg transform translate-y-0.5 relative z-10">
-                    <span className="text-3xl md:text-5xl filter drop-shadow-sm">🚗</span> 
                     <span>Automezzi</span>
                 </h1>
                 
@@ -464,20 +487,22 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                                         {occupied ? 'OCCUPATO' : 'DISPONIBILE'}
                                                     </div>
 
-                                                    {/* Controllo Rapido Badge (TRIANGOLO + TESTO) */}
+                                                    {/* Controllo Rapido Badge (TRIANGOLO CON OMBRA + TESTO) */}
                                                     {isCheckDay && !isCheckedToday && (
                                                         <div 
-                                                            className="absolute top-1 right-1 z-20 bg-yellow-400 text-yellow-900 text-[9px] font-black uppercase px-2 py-1 rounded shadow-md border border-yellow-500 animate-pulse cursor-pointer hover:scale-105 transition-transform flex items-center gap-1"
+                                                            className="absolute top-2 right-2 z-20 bg-yellow-400 text-yellow-900 text-[10px] font-black uppercase px-3 py-1.5 rounded-lg shadow-[0_4px_10px_rgba(0,0,0,0.3)] border-2 border-yellow-100 animate-pulse cursor-pointer hover:scale-105 transition-transform flex items-center gap-1.5"
                                                             onClick={(e) => handleQuickCheck(e, v)}
                                                             title="Clicca per registrare controllo rapido"
                                                         >
-                                                            <span className="text-xs">⚠️</span> <span>Da controllare</span>
+                                                            {/* Triangolo con ombra specifica per massima visibilità */}
+                                                            <span className="text-sm filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">⚠️</span> 
+                                                            <span className="drop-shadow-sm">Da controllare</span>
                                                         </div>
                                                     )}
 
                                                     {/* Selected Check */}
                                                     {isSelected && (
-                                                        <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-0.5 shadow-sm z-10">
+                                                        <div className="absolute top-2 left-2 bg-blue-500 text-white rounded-full p-0.5 shadow-sm z-10">
                                                             <CheckIcon className="h-3 w-3" />
                                                         </div>
                                                     )}
