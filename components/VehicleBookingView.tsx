@@ -18,6 +18,68 @@ interface VehicleBookingViewProps {
     onAddCheck?: (c: Omit<VehicleCheck, 'id'>) => Promise<void>;
 }
 
+// --- TRAFFIC ANIMATION COMPONENT ---
+const TrafficHeader = () => {
+    // Genera veicoli statici per evitare re-render, ma con proprietà random
+    const trafficItems = useMemo(() => {
+        const carTypes = ['🚗', '🚙', '🛻', '🚒', '🚒', '🚗', '🚙']; // Più vigili del fuoco e auto
+        const items = [];
+        const count = 6; // Numero di veicoli contemporanei
+
+        for (let i = 0; i < count; i++) {
+            const isRight = i % 2 === 0; // Alterna direzione
+            const emoji = carTypes[Math.floor(Math.random() * carTypes.length)];
+            const duration = 8 + Math.random() * 15; // Velocità tra 8s e 23s
+            const delay = Math.random() * 20; // Delay iniziale random per spargerle
+            
+            // Colore random solo per auto civili
+            const hue = (emoji === '🚒') ? 0 : Math.floor(Math.random() * 360);
+            const scale = 0.8 + Math.random() * 0.4; // Grandezza variabile
+
+            items.push({
+                id: i,
+                emoji,
+                style: {
+                    animation: `drive-${isRight ? 'right' : 'left'} ${duration}s linear infinite`,
+                    animationDelay: `-${delay}s`, // Start mid-animation
+                    filter: `hue-rotate(${hue}deg) drop-shadow(2px 4px 6px rgba(0,0,0,0.3))`,
+                    bottom: '0px', 
+                    position: 'absolute' as 'absolute',
+                    fontSize: `${2 * scale}rem`,
+                    zIndex: 0,
+                    opacity: 0.9,
+                    left: isRight ? '-10%' : '110%' // Starting positions handled by keyframes, but strictly outside
+                }
+            });
+        }
+        return items;
+    }, []);
+
+    return (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 w-full h-full">
+            <style>
+                {`
+                @keyframes drive-left {
+                    0% { transform: translateX(0); left: 110%; }
+                    100% { transform: translateX(0); left: -20%; }
+                }
+                @keyframes drive-right {
+                    0% { transform: translateX(0) scaleX(-1); left: -20%; }
+                    100% { transform: translateX(0) scaleX(-1); left: 110%; }
+                }
+                `}
+            </style>
+            {trafficItems.map(item => (
+                <div key={item.id} style={item.style} className="absolute leading-none">
+                    {item.emoji}
+                </div>
+            ))}
+            {/* Road gradient overlay at bottom to blend wheels */}
+            <div className="absolute bottom-0 left-0 w-full h-2 bg-gradient-to-t from-red-900/30 to-transparent"></div>
+        </div>
+    );
+};
+
 const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({ 
     onGoBack, vehicles, bookings, staff, onAddBooking, onDeleteBooking, isSuperAdmin, vehicleChecks = [], onAddCheck
 }) => {
@@ -307,23 +369,26 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
     return (
         <div className="flex flex-col min-h-screen bg-slate-50">
             {/* HEADER MIGLIORATO (NASCOSTO IN STAMPA) */}
-            <header className="bg-red-700 text-white px-4 py-4 md:px-6 md:py-5 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)] print:hidden">
+            <header className="bg-red-700 text-white px-4 py-4 md:px-6 md:py-5 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)] print:hidden relative overflow-hidden">
+                {/* TRAFFIC ANIMATION BACKGROUND */}
+                <TrafficHeader />
+
                 <button 
                     onClick={onGoBack} 
-                    className="flex items-center gap-2 font-bold text-white/90 hover:text-white transition-colors"
+                    className="flex items-center gap-2 font-bold text-white/90 hover:text-white transition-colors relative z-10"
                 >
-                    <div className="w-10 h-10 rounded-full bg-red-800/40 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-red-800/80 flex items-center justify-center backdrop-blur-sm shadow-md border border-white/20">
                         <BackArrowIcon className="h-5 w-5" />
                     </div>
-                    <span className="text-sm hidden md:inline">Indietro</span>
+                    <span className="text-sm hidden md:inline drop-shadow-md">Indietro</span>
                 </button>
                 
-                <h1 className="text-xl md:text-3xl font-black uppercase tracking-widest flex items-center gap-3 drop-shadow-md transform translate-y-0.5">
+                <h1 className="text-xl md:text-3xl font-black uppercase tracking-widest flex items-center gap-3 drop-shadow-lg transform translate-y-0.5 relative z-10">
                     <span className="text-3xl md:text-5xl filter drop-shadow-sm">🚗</span> 
                     <span>Automezzi</span>
                 </h1>
                 
-                <div className="w-12 md:w-24"></div> 
+                <div className="w-12 md:w-24 relative z-10"></div> 
             </header>
 
             <main className="flex-grow p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col gap-6 print:p-0 print:max-w-none">
