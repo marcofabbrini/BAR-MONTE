@@ -44,11 +44,11 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
     const [extLocation, setExtLocation] = useState('');
 
     // UI States
-    const [isFormOpen, setIsFormOpen] = useState(false); // Collapsed by default
+    const [isFormOpen, setIsFormOpen] = useState(true); // Open by default for immediate selection
     const [staffShiftFilter, setStaffShiftFilter] = useState<Shift | 'all'>('all');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Sorted bookings by TIMESTAMP DESCENDING (Latest bookings made appear first)
+    // Sorted bookings by TIMESTAMP DESCENDING
     const sortedBookings = useMemo(() => {
         return [...bookings].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     }, [bookings]);
@@ -230,7 +230,7 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
             
             // Reset Form e chiudi
             resetForm();
-            setIsFormOpen(false); 
+            // Mantieni aperto per comodità
         } catch (error: any) {
             console.error("Booking Error:", error);
             alert("Errore durante la prenotazione: " + (error.message || "Controlla i dati e riprova."));
@@ -342,7 +342,7 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                 <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden transition-all duration-300 print:hidden">
                     <button 
                         onClick={() => {
-                            if(isFormOpen) resetForm();
+                            if(isFormOpen && !editingBookingId) resetForm(); // Only reset if closing and not editing
                             setIsFormOpen(!isFormOpen);
                         }}
                         className={`w-full p-4 flex justify-between items-center transition-colors ${isFormOpen ? 'bg-slate-100 border-b border-slate-200' : 'bg-white hover:bg-slate-50'}`}
@@ -359,12 +359,12 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                         <div className="animate-slide-up">
                             <form onSubmit={handleSubmit} className="p-6 space-y-8">
                                 
-                                {/* 1. SELEZIONE VEICOLO (GRIGLIA VISUALE RINNOVATA) */}
+                                {/* 1. SELEZIONE VEICOLO (GRIGLIA AVATAR COMPATTI) */}
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 uppercase block mb-3 flex items-center gap-2">
                                         <TruckIcon className="h-4 w-4"/> Seleziona Veicolo *
                                     </label>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
                                         {vehicles.map(v => {
                                             const isSelected = selectedVehicle === v.id;
                                             const occupied = isVehicleOccupied(v.id);
@@ -376,68 +376,58 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                                                     key={v.id}
                                                     onClick={() => setSelectedVehicle(v.id)}
                                                     className={`
-                                                        relative p-3 rounded-2xl cursor-pointer transition-all duration-300 flex flex-col items-center gap-3 group
-                                                        border-2 overflow-visible
+                                                        relative flex flex-col items-center justify-center p-2 rounded-xl cursor-pointer transition-all duration-300 group
                                                         ${isSelected 
-                                                            ? 'border-blue-500 bg-blue-50 scale-[1.03] shadow-xl z-20' 
-                                                            : 'border-slate-100 bg-white hover:border-slate-300 hover:shadow-lg hover:-translate-y-1'
-                                                        }
-                                                        ${occupied 
-                                                            ? 'shadow-[0_0_15px_rgba(239,68,68,0.4)] border-red-200' 
-                                                            : 'shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                                                            ? 'scale-105 z-10' 
+                                                            : 'hover:scale-105'
                                                         }
                                                     `}
                                                 >
-                                                    {/* Top Status Badge */}
+                                                    {/* Avatar Circle with Status Ring */}
                                                     <div className={`
-                                                        absolute -top-3 left-1/2 transform -translate-x-1/2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm border whitespace-nowrap z-10
+                                                        w-14 h-14 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 shadow-sm mb-2 relative
                                                         ${occupied 
-                                                            ? 'bg-red-100 text-red-600 border-red-200' 
-                                                            : 'bg-green-100 text-green-600 border-green-200'
+                                                            ? 'ring-4 ring-red-500 ring-offset-2 border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' 
+                                                            : 'ring-4 ring-green-500 ring-offset-2 border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.3)]'
                                                         }
+                                                        ${isSelected ? 'ring-offset-4 ring-blue-500 border-blue-500' : ''}
                                                     `}>
-                                                        {occupied ? 'OCCUPATO' : 'DISPONIBILE'}
+                                                        {v.photoUrl ? (
+                                                            <img src={v.photoUrl} className="w-full h-full object-cover" alt={v.model} />
+                                                        ) : (
+                                                            <span className="text-2xl filter drop-shadow-sm">🚗</span>
+                                                        )}
+                                                        
+                                                        {/* Selected Check Overlay */}
+                                                        {isSelected && (
+                                                            <div className="absolute inset-0 bg-blue-500/30 flex items-center justify-center">
+                                                                <CheckIcon className="h-6 w-6 text-white drop-shadow-md" strokeWidth={4} />
+                                                            </div>
+                                                        )}
                                                     </div>
 
-                                                    {/* Controllo Rapido Badge */}
+                                                    {/* Controllo Rapido Badge (Floating) */}
                                                     {isCheckDay && !isCheckedToday && (
                                                         <div 
-                                                            className="absolute -top-2 -right-2 z-20 bg-yellow-400 text-yellow-900 text-[8px] font-black uppercase px-1.5 py-0.5 rounded shadow-md border border-yellow-500 animate-pulse cursor-pointer hover:scale-110 transition-transform"
+                                                            className="absolute top-0 right-0 z-20 bg-yellow-400 text-yellow-900 text-[8px] font-black uppercase px-1.5 py-0.5 rounded-full shadow-md border border-yellow-500 animate-pulse cursor-pointer hover:scale-110 transition-transform"
                                                             onClick={(e) => handleQuickCheck(e, v)}
                                                             title="Clicca per registrare controllo rapido"
                                                         >
-                                                            ⚠️ CHECK
+                                                            ⚠️
                                                         </div>
                                                     )}
 
-                                                    {/* Selected Check */}
-                                                    {isSelected && (
-                                                        <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-0.5 shadow-sm z-10">
-                                                            <CheckIcon className="h-3 w-3" />
-                                                        </div>
-                                                    )}
-
-                                                    <div className="w-20 h-20 rounded-xl bg-slate-50 flex-shrink-0 overflow-hidden border border-slate-200 flex items-center justify-center mt-2">
-                                                        {v.photoUrl ? (
-                                                            <img src={v.photoUrl} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" alt={v.model} />
-                                                        ) : (
-                                                            <span className="text-4xl filter drop-shadow-sm">🚗</span>
-                                                        )}
-                                                    </div>
-                                                    
-                                                    <div className="w-full flex flex-col items-center">
-                                                        <div className="font-bold text-slate-800 text-xs text-center leading-tight mb-2 h-8 flex items-center justify-center w-full px-1">
+                                                    <div className="w-full flex flex-col items-center gap-1">
+                                                        <span className="text-[10px] font-bold text-slate-700 truncate w-full text-center leading-tight px-1">
                                                             {v.model}
-                                                        </div>
+                                                        </span>
                                                         
                                                         {/* TARGA VIGILI DEL FUOCO COMPATTA */}
-                                                        <div className="flex flex-col items-center justify-center bg-white border border-slate-300 rounded-[2px] h-6 min-w-[60px] px-0.5 relative mt-1 overflow-hidden">
-                                                            <div className="flex items-baseline gap-0.5">
-                                                                <span className="text-red-600 font-black text-[10px] leading-none">VF</span>
-                                                                <span className="text-slate-900 font-black text-[10px] leading-none tracking-tighter font-mono">
-                                                                    {v.plate.replace(/VF\s?/i, '').trim()}
-                                                                </span>
-                                                            </div>
+                                                        <div className="flex flex-row items-center justify-center bg-white border border-slate-800 rounded-[2px] shadow-sm px-1 py-0.5 gap-1 leading-none min-w-[50px]">
+                                                            <span className="text-red-600 font-black text-[9px] leading-none">VF</span>
+                                                            <span className="text-slate-900 font-black text-[9px] leading-none tracking-tighter font-mono">
+                                                                {v.plate.replace(/VF\s?/i, '').trim()}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>

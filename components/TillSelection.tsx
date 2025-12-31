@@ -97,17 +97,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             return (now - lastSeenTime) < timeoutWindow;
         });
     }, [staff, activeBarUser, getNow]);
-
-    // Check Availability Function for Fleet
-    const isVehicleOccupied = (vehicleId: string) => {
-        const nowTime = getNow().getTime();
-        return vehicleBookings.some(b => 
-            b.vehicleId === vehicleId && 
-            !b.isCancelled && 
-            nowTime >= new Date(b.startDate).getTime() && 
-            nowTime <= new Date(b.endDate).getTime()
-        );
-    };
     
     const handleSaveProfile = async () => {
         if (!activeBarUser) return;
@@ -755,56 +744,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* --- NEW SECTION: COMPACT FLEET STATUS GRID --- */}
-                {vehicles.length > 0 && (
-                    <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-4">
-                        <h3 className="text-[10px] font-bold text-slate-400 uppercase mb-2 ml-1 flex items-center gap-1">
-                            <TruckIcon className="h-3 w-3"/> Stato Flotta
-                        </h3>
-                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                            {vehicles.map(v => {
-                                const occupied = isVehicleOccupied(v.id);
-                                return (
-                                    <div 
-                                        key={v.id} 
-                                        className={`
-                                            flex-shrink-0 w-16 h-20 rounded-xl bg-white border-2 flex flex-col items-center justify-center p-1 relative shadow-sm
-                                            ${occupied ? 'border-red-400 shadow-[0_0_8px_rgba(239,68,68,0.3)]' : 'border-slate-100 shadow-[0_0_8px_rgba(34,197,94,0.2)]'}
-                                        `}
-                                    >
-                                        {/* Status Dot */}
-                                        <div className={`absolute top-1 right-1 w-2 h-2 rounded-full ${occupied ? 'bg-red-500' : 'bg-green-500'} ring-1 ring-white`}></div>
-                                        
-                                        {/* Avatar Mini */}
-                                        <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center overflow-hidden mb-1 border border-slate-100">
-                                            {v.photoUrl ? (
-                                                <img src={v.photoUrl} className="w-full h-full object-cover" alt={v.model} />
-                                            ) : (
-                                                <span className="text-xs">🚗</span>
-                                            )}
-                                        </div>
-                                        
-                                        {/* Model Name */}
-                                        <span className="text-[7px] font-bold text-slate-600 truncate w-full text-center leading-tight">
-                                            {v.model}
-                                        </span>
-
-                                        {/* Targa Mini Stretta */}
-                                        <div className="flex flex-col items-center justify-center bg-white border border-slate-300 rounded-[2px] h-3.5 min-w-[34px] px-0.5 mt-1 relative overflow-hidden">
-                                            <div className="flex items-baseline gap-0.5">
-                                                <span className="text-red-600 font-black text-[5px] leading-none">VF</span>
-                                                <span className="text-slate-900 font-black text-[5px] leading-none tracking-tighter font-mono">
-                                                    {v.plate.replace(/VF\s?/i, '').trim()}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
                         </div>
                     </div>
                 )}
