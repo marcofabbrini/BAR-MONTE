@@ -1,7 +1,7 @@
 
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder, OperationalVehicle, VehicleCheck, Vehicle, StaffMember } from '../types';
-import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon, BackArrowIcon, EditIcon, SaveIcon, LockIcon, UserCircleIcon, LogOutIcon } from './Icons';
+import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon, BackArrowIcon, EditIcon, SaveIcon, LockIcon, UserCircleIcon, LogOutIcon, CarIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 import { GradeBadge } from './StaffManagement';
 
@@ -768,40 +768,40 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         </div>
                     </button>
 
-                    {/* 2. MEZZI OPERATIVI */}
+                    {/* 2. MEZZI OPERATIVI (Ripristinato) */}
                     <button 
                         onClick={onSelectOperationalVehicles}
                         className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:shadow-[0_0_25px_rgba(220,38,38,0.5)] border-2 border-red-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
                     >
-                        <div className="absolute top-0 right-0 bg-yellow-400 text-black text-[8px] md:text-[9px] font-black uppercase px-2 py-0.5 rounded-bl-lg shadow-sm z-20 flex items-center gap-1 animate-pulse">
-                            <span>🚧</span> In Agg.
-                        </div>
-
                         <div className="absolute -bottom-6 -right-6 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🚒
                         </div>
                         <div className="relative z-10 flex flex-col items-center justify-center gap-2">
-                            <span className="text-4xl md:text-5xl filter drop-shadow-sm group-hover:scale-110 transition-transform">🚒</span>
+                            <span className="text-4xl md:text-5xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                                🚒
+                            </span>
                             <div className="flex flex-col items-center">
-                                <span className="font-black text-sm md:text-xl uppercase tracking-widest text-red-700 group-hover:text-red-600 transition-colors">Mezzi VVF</span>
+                                <span className="font-black text-sm md:text-xl uppercase tracking-widest text-red-700 group-hover:text-red-600 transition-colors">MEZZI OPERATIVI</span>
                                 <span className="text-[9px] md:text-xs font-bold text-red-400 uppercase tracking-wider block">Checklist & Controlli</span>
                             </div>
                         </div>
                     </button>
 
-                    {/* 3. PRENOTAZIONE MEZZI */}
+                    {/* 3. PRENOTAZIONE MEZZI (Ripristinato) */}
                     <button 
                         onClick={onSelectFleet}
-                        className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.2)] hover:shadow-[0_0_25px_rgba(220,38,38,0.4)] border-2 border-red-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
+                        className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:shadow-[0_0_25px_rgba(220,38,38,0.5)] border-2 border-red-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
                     >
                         <div className="absolute -bottom-6 -right-6 text-7xl opacity-10 group-hover:opacity-20 transform rotate-[-10deg] filter grayscale-0 pointer-events-none transition-all duration-500 group-hover:scale-110 group-hover:rotate-0">
                             🚗
                         </div>
                         <div className="relative z-10 flex flex-col items-center justify-center gap-2">
-                            <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform drop-shadow-sm filter">🚗</span>
+                            <span className="text-4xl md:text-5xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                                🚗
+                            </span>
                             <div className="flex flex-col items-center">
-                                <span className="font-black text-sm md:text-xl uppercase tracking-widest text-slate-800 group-hover:text-red-600 transition-colors">Automezzi</span>
-                                <span className="text-[9px] md:text-xs font-bold text-red-400 uppercase tracking-wider block">Prenotazioni</span>
+                                <span className="font-black text-sm md:text-xl uppercase tracking-widest text-red-700 group-hover:text-red-600 transition-colors">PRENOTAZIONE</span>
+                                <span className="text-[9px] md:text-xs font-bold text-red-400 uppercase tracking-wider block">Mezzi di Servizio</span>
                             </div>
                         </div>
                     </button>
@@ -826,7 +826,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     {/* 5. EXTRA HUB */}
                     <button 
                         onClick={onSelectGames}
-                        className="col-span-2 w-full bg-white hover:bg-green-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] border-2 border-green-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
+                        className="w-full bg-white hover:bg-green-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] border-2 border-green-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center col-span-2 md:col-span-1"
                     >
                         {tombolaNumberCount > 0 && (
                             <div className="absolute top-4 right-4 bg-red-600 text-white text-xs font-black w-6 h-6 flex items-center justify-center rounded-full shadow-md animate-bounce z-20 border-2 border-white">

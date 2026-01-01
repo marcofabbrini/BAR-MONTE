@@ -70,7 +70,7 @@ interface AdminViewProps {
     onSendNotification?: (title: string, body: string, target?: string) => Promise<void>;
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet' | 'operational_fleet' | 'laundry' | 'reminders' | 'control_panel'; 
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'calendar' | 'fleet_hub' | 'laundry' | 'reminders' | 'control_panel'; 
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
@@ -104,6 +104,9 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [massDeleteDate, setMassDeleteDate] = useState('');
     const [colors, setColors] = useState<TillColors>(tillColors);
     const [newAdminEmail, setNewAdminEmail] = useState('');
+
+    // Fleet Hub State
+    const [fleetTab, setFleetTab] = useState<'service' | 'operational'>('service');
 
     // Accordion State
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -539,12 +542,9 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="products" label="Prodotti" icon={<LogoIcon />} />
                         <TabButton tab="calendar" label="Turnario" icon={<CalendarIcon />} />
                         <TabButton tab="staff" label="Staff" icon={<StaffIcon />} />
-                        <TabButton tab="admins" label="Admin" icon={<LockIcon />} />
-                        <TabButton tab="fleet" label="Automezzi" icon={<CarIcon />} />
-                        <TabButton tab="operational_fleet" label="Mezzi Op." icon={<TruckIcon />} />
+                        <TabButton tab="fleet_hub" label="Gestione Automezzi" icon={<TruckIcon />} />
                         <TabButton tab="laundry" label="Lavanderia" icon={<ShirtIcon />} />
                         <TabButton tab="reminders" label="Promemoria" icon={<PinIcon />} />
-                        <TabButton tab="settings" label="Config" icon={<SettingsIcon />} />
                         <TabButton tab="control_panel" label="Pannello di Controllo" icon={<WrenchIcon className="h-8 w-8" />} />
                     </div>
                 </div>
@@ -584,7 +584,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                                                 {order.deletedBy && <div className="text-[9px] text-red-500 italic mt-1">Del: {order.deletedBy}</div>}
                                             </td>
                                             <td className="p-3"><div className={`text-xs font-bold ${order.isDeleted ? 'text-red-800 line-through' : 'text-slate-700'}`}>{order.staffName}</div><div className="text-[10px] text-slate-400 uppercase">Cassa {order.tillId}</div></td>
-                                            <td className="p-3 text-right font-bold text-slate-800">{editingOrderId === order.id ? <input type="number" step="0.01" value={editForm.total} onChange={e => setEditForm({...editForm, total: parseFloat(e.target.value)})} className="border rounded px-1 w-20 text-right" /> : <span className={order.isDeleted ? 'line-through opacity-50' : ''}>€{order.total.toFixed(2)}</span>}</td>
+                                            <td className="p-3 text-right font-bold text-slate-800">{editingOrderId === order.id ? <input type="number" step="0.01" value={editForm.total} onChange={e => setEditForm({...editForm, total: parseFloat(e.target.value)})} className="border rounded px-1 w-20 text-right" /> : <span className="font-mono">€{order.total.toFixed(2)}</span>}</td>
                                             <td className="p-3 text-center">{order.isDeleted ? <span className="text-red-500 font-bold text-[10px] uppercase border border-red-200 bg-red-100 px-1 rounded">ANNULLATO</span> : <span className="text-green-500 font-bold text-[10px] uppercase">OK</span>}</td>
                                             <td className="p-3 flex justify-center gap-2">
                                                 {editingOrderId === order.id ? <button onClick={saveEditOrder}><SaveIcon className="h-5 w-5 text-green-600" /></button> : <>
@@ -601,10 +601,69 @@ const AdminView: React.FC<AdminViewProps> = ({
                     </div>
                 )}
                 
-                {/* --- CONTROL PANEL (DIAGNOSTICS & ROLES) --- */}
+                {/* --- FLEET MANAGEMENT HUB --- */}
+                {activeTab === 'fleet_hub' && (
+                    <div className="space-y-6">
+                        <div className="flex justify-center gap-2 mb-6">
+                            <button 
+                                onClick={() => setFleetTab('service')}
+                                className={`px-6 py-2 rounded-full font-bold transition-all shadow-sm ${fleetTab === 'service' ? 'bg-red-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}
+                            >
+                                <span className="mr-2">🚗</span> Mezzi di Servizio
+                            </button>
+                            <button 
+                                onClick={() => setFleetTab('operational')}
+                                className={`px-6 py-2 rounded-full font-bold transition-all shadow-sm ${fleetTab === 'operational' ? 'bg-red-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}
+                            >
+                                <span className="mr-2">🚒</span> Mezzi Operativi
+                            </button>
+                        </div>
+
+                        {fleetTab === 'service' ? (
+                            <VehicleManagement vehicles={vehicles} onAddVehicle={addVehicle} onUpdateVehicle={updateVehicle} onDeleteVehicle={deleteVehicle} vehicleChecks={vehicleChecks} />
+                        ) : (
+                            <OperationalVehicleManagement vehicles={operationalVehicles} onAddVehicle={addOperationalVehicle} onUpdateVehicle={updateOperationalVehicle} onDeleteVehicle={deleteOperationalVehicle} vehicleChecks={vehicleChecks} />
+                        )}
+                    </div>
+                )}
+
+                {activeTab === 'laundry' && <LaundryManagement items={laundryItems} onAddItem={addLaundryItem} onUpdateItem={updateLaundryItem} onDeleteItem={deleteLaundryItem} />}
+                
                 {activeTab === 'control_panel' && (
                     <div className="max-w-4xl mx-auto space-y-6">
-                        {/* 1. DIAGNOSTICS */}
+                        {/* 1. ADMINS (EMAIL GOOGLE) */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('admins')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <LockIcon className="h-5 w-5 text-slate-600" /> Gestione Amministratori (Google)
+                                </h2>
+                                <span>{expandedSection === 'admins' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'admins' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100">
+                                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-4">
+                                        <h2 className="text-lg font-bold text-slate-800 mb-4">Nuovo Admin</h2>
+                                        <form onSubmit={handleAddAdminSubmit} className="flex gap-2">
+                                            <input type="email" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="email@gmail.com" className="flex-grow border rounded-lg p-2 bg-slate-50" required />
+                                            <button type="submit" className="bg-green-500 text-white font-bold px-4 rounded-lg">Aggiungi</button>
+                                        </form>
+                                    </div>
+                                    <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                                        <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b">Lista Amministratori</h3>
+                                        <ul>
+                                            {sortedAdmins.map((admin, idx) => (
+                                                <li key={admin.id} className="p-4 flex justify-between items-center border-b last:border-0">
+                                                    <div><p className="font-bold text-slate-700">{admin.email} {idx === 0 && <span className="text-red-500 text-xs ml-2">(SUPER)</span>}</p></div>
+                                                    {(isSuperAdmin || isLocalSuperAdmin) && idx !== 0 && (<button onClick={() => onRemoveAdmin(admin.id)} className="text-red-500 hover:bg-red-50 p-2 rounded text-xs font-bold">Rimuovi</button>)}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 2. DIAGNOSTICS */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('diagnostics')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
@@ -694,7 +753,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             )}
                         </div>
 
-                        {/* 2. ROLE MANAGEMENT (SUPER ADMIN ONLY) */}
+                        {/* 3. ROLE MANAGEMENT (SUPER ADMIN ONLY) */}
                         {(isSuperAdmin || isLocalSuperAdmin) && (
                             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                                 <button onClick={() => toggleSection('roles')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
@@ -766,6 +825,176 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 )}
                             </div>
                         )}
+                        
+                        {/* 4. CONFIGURAZIONE INTERVENTI */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('interventions')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <FireIcon className="h-5 w-5 text-orange-500" /> Configurazione Interventi
+                                </h2>
+                                <span>{expandedSection === 'interventions' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'interventions' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* TIPOLOGIE */}
+                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <h3 className="text-xs font-bold uppercase">Tipologie Intervento</h3>
+                                            <button 
+                                                onClick={handleLoadStandardTypologies}
+                                                className="bg-blue-500 hover:bg-blue-600 text-white p-1 rounded-full shadow-sm"
+                                                title="Carica Lista Standard"
+                                            >
+                                                <ListIcon className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                        <div className="flex gap-2 mb-2">
+                                            <input type="text" value={newTypology} onChange={e => setNewTypology(e.target.value)} placeholder="Es. Incendio, Soccorso..." className="border rounded p-1 text-sm flex-grow" />
+                                            <button onClick={handleAddTypology} className="bg-green-500 text-white px-2 rounded font-bold">+</button>
+                                        </div>
+                                        <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
+                                            {interventionTypologies.map(t => (
+                                                <li key={t.id} className="flex justify-between items-center bg-white p-1 rounded shadow-sm">
+                                                    <span>{t.name}</span>
+                                                    <button onClick={() => deleteInterventionTypology(t.id)} className="text-red-500 font-bold">×</button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    
+                                    {/* FUNZIONARI */}
+                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <h3 className="text-xs font-bold uppercase mb-2">Funzionari di Servizio</h3>
+                                        <div className="flex gap-2 mb-2">
+                                            <input type="text" value={newOfficer} onChange={e => setNewOfficer(e.target.value)} placeholder="Nome Funzionario" className="border rounded p-1 text-sm flex-grow" />
+                                            <button onClick={handleAddOfficer} className="bg-green-500 text-white px-2 rounded font-bold">+</button>
+                                        </div>
+                                        <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
+                                            {dutyOfficers.map(o => (
+                                                <li key={o.id} className="flex justify-between items-center bg-white p-1 rounded shadow-sm">
+                                                    <span>{o.name}</span>
+                                                    <button onClick={() => deleteDutyOfficer(o.id)} className="text-red-500 font-bold">×</button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 5. CONFIGURAZIONE COLORI CASSE */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('colors')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <PaletteIcon className="h-5 w-5 text-indigo-500" /> Colori Casse & Temi
+                                </h2>
+                                <span>{expandedSection === 'colors' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'colors' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                        {tills.map(till => (
+                                            <div key={till.id}>
+                                                <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Cassa {till.id}</label>
+                                                <input type="color" value={colors[till.id] || '#000000'} onChange={(e) => handleColorChange(till.id, e.target.value)} className="w-full h-10 p-1 rounded border cursor-pointer" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <button onClick={saveSettings} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm w-full md:w-auto">Salva Colori</button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 6. STAGIONALITÀ & EFFETTI */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('seasonality')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <SparklesIcon className="h-5 w-5 text-yellow-500" /> Stagionalità & Effetti
+                                </h2>
+                                <span>{expandedSection === 'seasonality' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'seasonality' && (
+                                <div className="p-6 bg-slate-50 animate-fade-in border-t border-slate-100">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Inizio</label><input type="date" value={seasonStart} onChange={e => setSeasonStart(e.target.value)} className="w-full border p-2 rounded" /></div>
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Fine</label><input type="date" value={seasonEnd} onChange={e => setSeasonEnd(e.target.value)} className="w-full border p-2 rounded" /></div>
+                                        <div className="md:col-span-2"><label className="text-xs font-bold text-slate-500 block mb-1">Preset</label><select value={seasonPreset} onChange={e => setSeasonPreset(e.target.value as any)} className="w-full border p-2 rounded"><option value="custom">Personalizzato</option><option value="christmas">Natale</option><option value="easter">Pasqua</option><option value="summer">Estate</option><option value="halloween">Halloween</option></select></div>
+                                        <div className="md:col-span-2"><label className="text-xs font-bold text-slate-500 block mb-1">Emoji (separate da virgola)</label><input type="text" value={seasonEmojis} onChange={e => setSeasonEmojis(e.target.value)} className="w-full border p-2 rounded" /></div>
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Animazione</label><select value={seasonAnim} onChange={e => setSeasonAnim(e.target.value as any)} className="w-full border p-2 rounded"><option value="none">Nessuna</option><option value="snow">Neve (Giù)</option><option value="rain">Pioggia (Veloce)</option><option value="float">Fluttuante (Su)</option></select></div>
+                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Colore Sfondo</label><input type="color" value={seasonBg} onChange={e => setSeasonBg(e.target.value)} className="w-full h-10 p-1 rounded border cursor-pointer" /></div>
+                                    </div>
+                                    <button onClick={handleSaveSeasonality} className="bg-yellow-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-yellow-600 shadow-sm text-sm">Salva Stagionalità</button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 7. CONFIGURAZIONE GENERALE */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('general')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <SettingsIcon className="h-5 w-5 text-slate-600" /> Configurazione Generale & Manutenzione
+                                </h2>
+                                <span>{expandedSection === 'general' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'general' && (
+                                <div className="p-6 bg-slate-50 animate-fade-in border-t border-slate-100">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 block mb-1">Prezzo Quota Acqua (€)</label>
+                                            <input 
+                                                type="number" 
+                                                step="0.01" 
+                                                value={waterPrice} 
+                                                onChange={e => setWaterPrice(parseFloat(e.target.value))} 
+                                                className="w-full border p-2 rounded bg-white" 
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col md:flex-row gap-3 mt-4 items-center">
+                                        <button onClick={handleSaveGeneral} className="bg-slate-700 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 shadow-sm text-sm w-full md:w-auto">
+                                            Salva Generale
+                                        </button>
+                                        <button onClick={handleClearLocalCache} className="bg-orange-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-orange-600 shadow-sm text-sm flex items-center justify-center gap-2 w-full md:w-auto">
+                                            ⚠️ Svuota Cache Browser (Fix Quota/Crash)
+                                        </button>
+                                    </div>
+
+                                    {/* NEW MAINTENANCE AREA */}
+                                    <div className="mt-6 pt-6 border-t border-slate-200">
+                                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Manutenzione Utenti</h4>
+                                        <button 
+                                            onClick={handleMassUserReset}
+                                            className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold text-xs border border-red-200 hover:bg-red-200 flex items-center gap-2"
+                                        >
+                                            <TrashIcon className="h-4 w-4" /> Reset Ruoli & Credenziali (Massivo)
+                                        </button>
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            Imposta tutti gli utenti (no Super Admin) a "Standard" e rimuove credenziali obsolete (admin/3110).
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 8. NOTIFICHE */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('notifications')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <BellIcon className="h-5 w-5 text-red-500" /> Invia Notifica Push
+                                </h2>
+                                <span>{expandedSection === 'notifications' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'notifications' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100 space-y-3">
+                                    <input type="text" placeholder="Titolo Notifica" value={notifTitle} onChange={e => setNotifTitle(e.target.value)} className="w-full border p-2 rounded font-bold" />
+                                    <textarea placeholder="Messaggio..." value={notifBody} onChange={e => setNotifBody(e.target.value)} className="w-full border p-2 rounded h-20" />
+                                    <button onClick={handleSendNotif} className="bg-red-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-600 shadow-md w-full md:w-auto">
+                                        Invia a Tutti
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
                     </div>
                 )}
                 
@@ -774,10 +1003,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
                 {activeTab === 'calendar' && <ShiftCalendar onGoBack={() => {}} tillColors={tillColors} shiftSettings={shiftSettings} />} 
-                {activeTab === 'fleet' && <VehicleManagement vehicles={vehicles} onAddVehicle={addVehicle} onUpdateVehicle={updateVehicle} onDeleteVehicle={deleteVehicle} vehicleChecks={vehicleChecks} />}
-                {activeTab === 'operational_fleet' && <OperationalVehicleManagement vehicles={operationalVehicles} onAddVehicle={addOperationalVehicle} onUpdateVehicle={updateOperationalVehicle} onDeleteVehicle={deleteOperationalVehicle} vehicleChecks={vehicleChecks} />}
-                {activeTab === 'laundry' && <LaundryManagement items={laundryItems} onAddItem={addLaundryItem} onUpdateItem={updateLaundryItem} onDeleteItem={deleteLaundryItem} />}
-                
                 {activeTab === 'reminders' && (
                     <div className="max-w-4xl mx-auto space-y-6">
                         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -871,204 +1096,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                             </ul>
                         </div>
                     </div>
-                )}
-
-                {activeTab === 'settings' && (
-                    <div className="space-y-4 max-w-4xl mx-auto">
-                        {/* 0. CONFIGURAZIONE INTERVENTI */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                            <button onClick={() => toggleSection('interventions')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
-                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
-                                    <FireIcon className="h-5 w-5 text-orange-500" /> Configurazione Interventi
-                                </h2>
-                                <span>{expandedSection === 'interventions' ? '−' : '+'}</span>
-                            </button>
-                            {expandedSection === 'interventions' && (
-                                <div className="p-6 animate-fade-in border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* TIPOLOGIE */}
-                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <h3 className="text-xs font-bold uppercase">Tipologie Intervento</h3>
-                                            <button 
-                                                onClick={handleLoadStandardTypologies}
-                                                className="bg-blue-500 hover:bg-blue-600 text-white p-1 rounded-full shadow-sm"
-                                                title="Carica Lista Standard"
-                                            >
-                                                <ListIcon className="h-3 w-3" />
-                                            </button>
-                                        </div>
-                                        <div className="flex gap-2 mb-2">
-                                            <input type="text" value={newTypology} onChange={e => setNewTypology(e.target.value)} placeholder="Es. Incendio, Soccorso..." className="border rounded p-1 text-sm flex-grow" />
-                                            <button onClick={handleAddTypology} className="bg-green-500 text-white px-2 rounded font-bold">+</button>
-                                        </div>
-                                        <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
-                                            {interventionTypologies.map(t => (
-                                                <li key={t.id} className="flex justify-between items-center bg-white p-1 rounded shadow-sm">
-                                                    <span>{t.name}</span>
-                                                    <button onClick={() => deleteInterventionTypology(t.id)} className="text-red-500 font-bold">×</button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                    
-                                    {/* FUNZIONARI */}
-                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                        <h3 className="text-xs font-bold uppercase mb-2">Funzionari di Servizio</h3>
-                                        <div className="flex gap-2 mb-2">
-                                            <input type="text" value={newOfficer} onChange={e => setNewOfficer(e.target.value)} placeholder="Nome Funzionario" className="border rounded p-1 text-sm flex-grow" />
-                                            <button onClick={handleAddOfficer} className="bg-green-500 text-white px-2 rounded font-bold">+</button>
-                                        </div>
-                                        <ul className="text-xs space-y-1 max-h-32 overflow-y-auto">
-                                            {dutyOfficers.map(o => (
-                                                <li key={o.id} className="flex justify-between items-center bg-white p-1 rounded shadow-sm">
-                                                    <span>{o.name}</span>
-                                                    <button onClick={() => deleteDutyOfficer(o.id)} className="text-red-500 font-bold">×</button>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 1. CONFIGURAZIONE COLORI CASSE */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                            <button onClick={() => toggleSection('colors')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
-                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
-                                    <PaletteIcon className="h-5 w-5 text-indigo-500" /> Colori Casse & Temi
-                                </h2>
-                                <span>{expandedSection === 'colors' ? '−' : '+'}</span>
-                            </button>
-                            {expandedSection === 'colors' && (
-                                <div className="p-6 animate-fade-in border-t border-slate-100">
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                                        {tills.map(till => (
-                                            <div key={till.id}>
-                                                <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Cassa {till.id}</label>
-                                                <input type="color" value={colors[till.id] || '#000000'} onChange={(e) => handleColorChange(till.id, e.target.value)} className="w-full h-10 p-1 rounded border cursor-pointer" />
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <button onClick={saveSettings} className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm w-full md:w-auto">Salva Colori</button>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 2. STAGIONALITÀ & EFFETTI */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                            <button onClick={() => toggleSection('seasonality')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
-                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
-                                    <SparklesIcon className="h-5 w-5 text-yellow-500" /> Stagionalità & Effetti
-                                </h2>
-                                <span>{expandedSection === 'seasonality' ? '−' : '+'}</span>
-                            </button>
-                            {expandedSection === 'seasonality' && (
-                                <div className="p-6 bg-slate-50 animate-fade-in border-t border-slate-100">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Inizio</label><input type="date" value={seasonStart} onChange={e => setSeasonStart(e.target.value)} className="w-full border p-2 rounded" /></div>
-                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Fine</label><input type="date" value={seasonEnd} onChange={e => setSeasonEnd(e.target.value)} className="w-full border p-2 rounded" /></div>
-                                        <div className="md:col-span-2"><label className="text-xs font-bold text-slate-500 block mb-1">Preset</label><select value={seasonPreset} onChange={e => setSeasonPreset(e.target.value as any)} className="w-full border p-2 rounded"><option value="custom">Personalizzato</option><option value="christmas">Natale</option><option value="easter">Pasqua</option><option value="summer">Estate</option><option value="halloween">Halloween</option></select></div>
-                                        <div className="md:col-span-2"><label className="text-xs font-bold text-slate-500 block mb-1">Emoji (separate da virgola)</label><input type="text" value={seasonEmojis} onChange={e => setSeasonEmojis(e.target.value)} className="w-full border p-2 rounded" /></div>
-                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Animazione</label><select value={seasonAnim} onChange={e => setSeasonAnim(e.target.value as any)} className="w-full border p-2 rounded"><option value="none">Nessuna</option><option value="snow">Neve (Giù)</option><option value="rain">Pioggia (Veloce)</option><option value="float">Fluttuante (Su)</option></select></div>
-                                        <div><label className="text-xs font-bold text-slate-500 block mb-1">Colore Sfondo</label><input type="color" value={seasonBg} onChange={e => setSeasonBg(e.target.value)} className="w-full h-10 p-1 rounded border cursor-pointer" /></div>
-                                    </div>
-                                    <button onClick={handleSaveSeasonality} className="bg-yellow-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-yellow-600 shadow-sm text-sm">Salva Stagionalità</button>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 3. CONFIGURAZIONE GENERALE */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                            <button onClick={() => toggleSection('general')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
-                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
-                                    <SettingsIcon className="h-5 w-5 text-slate-600" /> Configurazione Generale & Manutenzione
-                                </h2>
-                                <span>{expandedSection === 'general' ? '−' : '+'}</span>
-                            </button>
-                            {expandedSection === 'general' && (
-                                <div className="p-6 bg-slate-50 animate-fade-in border-t border-slate-100">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-slate-500 block mb-1">Prezzo Quota Acqua (€)</label>
-                                            <input 
-                                                type="number" 
-                                                step="0.01" 
-                                                value={waterPrice} 
-                                                onChange={e => setWaterPrice(parseFloat(e.target.value))} 
-                                                className="w-full border p-2 rounded bg-white" 
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col md:flex-row gap-3 mt-4 items-center">
-                                        <button onClick={handleSaveGeneral} className="bg-slate-700 text-white px-6 py-2 rounded-lg font-bold hover:bg-slate-800 shadow-sm text-sm w-full md:w-auto">
-                                            Salva Generale
-                                        </button>
-                                        <button onClick={handleClearLocalCache} className="bg-orange-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-orange-600 shadow-sm text-sm flex items-center justify-center gap-2 w-full md:w-auto">
-                                            ⚠️ Svuota Cache Browser (Fix Quota/Crash)
-                                        </button>
-                                    </div>
-
-                                    {/* NEW MAINTENANCE AREA */}
-                                    <div className="mt-6 pt-6 border-t border-slate-200">
-                                        <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Manutenzione Utenti</h4>
-                                        <button 
-                                            onClick={handleMassUserReset}
-                                            className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold text-xs border border-red-200 hover:bg-red-200 flex items-center gap-2"
-                                        >
-                                            <TrashIcon className="h-4 w-4" /> Reset Ruoli & Credenziali (Massivo)
-                                        </button>
-                                        <p className="text-[10px] text-slate-400 mt-1">
-                                            Imposta tutti gli utenti (no Super Admin) a "Standard" e rimuove credenziali obsolete (admin/3110).
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 4. NOTIFICHE */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                            <button onClick={() => toggleSection('notifications')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
-                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
-                                    <BellIcon className="h-5 w-5 text-red-500" /> Invia Notifica Push
-                                </h2>
-                                <span>{expandedSection === 'notifications' ? '−' : '+'}</span>
-                            </button>
-                            {expandedSection === 'notifications' && (
-                                <div className="p-6 animate-fade-in border-t border-slate-100 space-y-3">
-                                    <input type="text" placeholder="Titolo Notifica" value={notifTitle} onChange={e => setNotifTitle(e.target.value)} className="w-full border p-2 rounded font-bold" />
-                                    <textarea placeholder="Messaggio..." value={notifBody} onChange={e => setNotifBody(e.target.value)} className="w-full border p-2 rounded h-20" />
-                                    <button onClick={handleSendNotif} className="bg-red-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-600 shadow-md w-full md:w-auto">
-                                        Invia a Tutti
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-
-                    </div>
-                )}
-                
-                {/* ADMINS MANAGEMENT */}
-                {activeTab === 'admins' && (
-                     <div className="max-w-2xl mx-auto space-y-6">
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <h2 className="text-lg font-bold text-slate-800 mb-4">Nuovo Admin</h2>
-                            <form onSubmit={handleAddAdminSubmit} className="flex gap-2">
-                                <input type="email" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="email@gmail.com" className="flex-grow border rounded-lg p-2 bg-slate-50" required />
-                                <button type="submit" className="bg-green-500 text-white font-bold px-4 rounded-lg">Aggiungi</button>
-                            </form>
-                        </div>
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b">Lista Amministratori</h3>
-                            <ul>
-                                {sortedAdmins.map((admin, idx) => (
-                                    <li key={admin.id} className="p-4 flex justify-between items-center border-b last:border-0">
-                                        <div><p className="font-bold text-slate-700">{admin.email} {idx === 0 && <span className="text-red-500 text-xs ml-2">(SUPER)</span>}</p></div>
-                                        {(isSuperAdmin || isLocalSuperAdmin) && idx !== 0 && (<button onClick={() => onRemoveAdmin(admin.id)} className="text-red-500 hover:bg-red-50 p-2 rounded text-xs font-bold">Rimuovi</button>)}
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                     </div>
                 )}
             </main>
         </div>
