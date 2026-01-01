@@ -71,6 +71,24 @@ export const EyeIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) 
     </svg>
 );
 
+export const FirstAidIcon = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        viewBox="0 0 24 24" 
+        fill="none" 
+        stroke="currentColor" 
+        strokeWidth="2" 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        className={className} 
+        {...props}
+    >
+        <path d="M2 12h20" />
+        <path d="M12 2v20" />
+        <path d="M5 5h14v14H5z" strokeWidth="2" />
+    </svg>
+);
+
 export const EditIcon = (props: IconProps) => <EmojiIcon emoji="✏️" {...props} />;
 export const TrashIcon = (props: IconProps) => <EmojiIcon emoji="🗑️" {...props} />;
 export const PlusIcon = (props: IconProps) => <EmojiIcon emoji="➕" {...props} />;

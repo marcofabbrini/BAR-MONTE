@@ -190,12 +190,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         e.preventDefault();
         if (!name.trim()) return;
         try {
+            // Se il ruolo è super-admin, il rcSubGroup non è applicabile (o lo settiamo a 0/default)
+            // Se non è super-admin, usa il valore del form
+            const finalRcSubGroup = role === 'super-admin' ? 0 : rcSubGroup;
+
             const dataToSave = { 
                 name: name.trim(), 
                 username: username.trim(),
                 grade: grade.trim(), 
                 shift, 
-                rcSubGroup, 
+                rcSubGroup: finalRcSubGroup, 
                 icon,
                 photoUrl,
                 password: password.trim(),
@@ -313,14 +317,18 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                             <option value="d">D</option>
                                         </select>
                                     </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Salto (1-8)</label>
-                                        <select value={rcSubGroup} onChange={(e) => setRcSubGroup(parseInt(e.target.value))} className="w-full mt-1 bg-purple-50 text-purple-700 font-bold border border-purple-200 rounded-lg px-3 py-2.5">
-                                            {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                                                <option key={num} value={num}>Gr. {num}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    
+                                    {/* HIDE SALTO IF SUPER ADMIN */}
+                                    {role !== 'super-admin' && (
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Salto (1-8)</label>
+                                            <select value={rcSubGroup} onChange={(e) => setRcSubGroup(parseInt(e.target.value))} className="w-full mt-1 bg-purple-50 text-purple-700 font-bold border border-purple-200 rounded-lg px-3 py-2.5">
+                                                {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
+                                                    <option key={num} value={num}>Gr. {num}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
 
                                     <div className="col-span-2">
                                         <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
@@ -425,9 +433,12 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                     <span className="text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-slate-600 font-mono">
                                         {member.shift.toUpperCase()}
                                     </span>
-                                    <span className="text-[10px] bg-purple-50 border border-purple-100 px-2 py-0.5 rounded text-purple-700 font-bold">
-                                        Salto {member.rcSubGroup || 1}
-                                    </span>
+                                    {/* HIDE SALTO IF SUPER ADMIN */}
+                                    {member.role !== 'super-admin' && (
+                                        <span className="text-[10px] bg-purple-50 border border-purple-100 px-2 py-0.5 rounded text-purple-700 font-bold">
+                                            Salto {member.rcSubGroup || 1}
+                                        </span>
+                                    )}
                                     {member.role && member.role !== 'standard' && (
                                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${
                                             member.role === 'super-admin' 

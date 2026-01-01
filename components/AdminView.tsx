@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef, Reminder } from '../types';
 import firebase from 'firebase/compat/app';
-import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon, WrenchIcon, TruckIcon, PinIcon, ShieldCheckIcon, InfoIcon } from './Icons';
+import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon, WrenchIcon, TruckIcon, PinIcon, ShieldCheckIcon, InfoIcon, FirstAidIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
 import StockControl from './StockControl';
@@ -545,7 +545,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="laundry" label="Lavanderia" icon={<ShirtIcon />} />
                         <TabButton tab="reminders" label="Promemoria" icon={<PinIcon />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon />} />
-                        <TabButton tab="diagnostics" label="Diagnostica" icon={<InfoIcon />} />
+                        <TabButton tab="diagnostics" label="Diagnostica" icon={<FirstAidIcon className="h-8 w-8" />} />
                         {(isSuperAdmin || isLocalSuperAdmin) && <TabButton tab="roles" label="Ruoli" icon={<ShieldCheckIcon className="h-8 w-8" />} />}
                     </div>
                 </div>
@@ -689,8 +689,8 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
                 {activeTab === 'calendar' && <ShiftCalendar onGoBack={() => {}} tillColors={tillColors} shiftSettings={shiftSettings} />} 
-                {activeTab === 'fleet' && <VehicleManagement vehicles={vehicles} onAddVehicle={addVehicle} onUpdateVehicle={updateVehicle} onDeleteVehicle={deleteVehicle} />}
-                {activeTab === 'operational_fleet' && <OperationalVehicleManagement vehicles={operationalVehicles} onAddVehicle={addOperationalVehicle} onUpdateVehicle={updateOperationalVehicle} onDeleteVehicle={deleteOperationalVehicle} />}
+                {activeTab === 'fleet' && <VehicleManagement vehicles={vehicles} onAddVehicle={addVehicle} onUpdateVehicle={updateVehicle} onDeleteVehicle={deleteVehicle} vehicleChecks={vehicleChecks} />}
+                {activeTab === 'operational_fleet' && <OperationalVehicleManagement vehicles={operationalVehicles} onAddVehicle={addOperationalVehicle} onUpdateVehicle={updateOperationalVehicle} onDeleteVehicle={deleteOperationalVehicle} vehicleChecks={vehicleChecks} />}
                 {activeTab === 'laundry' && <LaundryManagement items={laundryItems} onAddItem={addLaundryItem} onUpdateItem={updateLaundryItem} onDeleteItem={deleteLaundryItem} />}
                 
                 {activeTab === 'reminders' && (

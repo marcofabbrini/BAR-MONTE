@@ -1,6 +1,6 @@
 
-import React, { useState, useRef } from 'react';
-import { OperationalVehicle, OperationalVehicleType, CheckDay, VehicleCompartment } from '../types';
+import React, { useState, useRef, useMemo } from 'react';
+import { OperationalVehicle, OperationalVehicleType, CheckDay, VehicleCompartment, VehicleCheck } from '../types';
 import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon, BoxIcon, CalendarIcon, ListIcon } from './Icons';
 import { APS_VF30217_LOADOUT, POL_VF29068_LOADOUT, CAPU_VF18427_LOADOUT, ABP_VF22456_LOADOUT } from '../constants';
 
@@ -9,6 +9,7 @@ interface OperationalVehicleManagementProps {
     onAddVehicle: (v: Omit<OperationalVehicle, 'id'>) => Promise<void>;
     onUpdateVehicle: (v: OperationalVehicle) => Promise<void>;
     onDeleteVehicle: (id: string) => Promise<void>;
+    vehicleChecks?: VehicleCheck[];
 }
 
 const emptyVehicle: Omit<OperationalVehicle, 'id'> = {
@@ -28,7 +29,7 @@ interface NewItemInput {
     expirationDate: string;
 }
 
-const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> = ({ vehicles, onAddVehicle, onUpdateVehicle, onDeleteVehicle }) => {
+const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> = ({ vehicles, onAddVehicle, onUpdateVehicle, onDeleteVehicle, vehicleChecks = [] }) => {
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [formData, setFormData] = useState<Omit<OperationalVehicle, 'id'>>(emptyVehicle);
     const [isProcessingImg, setIsProcessingImg] = useState(false);
@@ -276,6 +277,13 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
         }
     };
 
+    // Filter History: Only show checks where the vehicleId exists in the current vehicle list (Operational)
+    const opHistory = useMemo(() => {
+        return vehicleChecks
+            .filter(c => vehicles.some(v => v.id === c.vehicleId))
+            .sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }, [vehicleChecks, vehicles]);
+
     return (
         <div className="max-w-5xl mx-auto space-y-8">
             <div className="bg-white p-6 rounded-xl shadow-lg border border-slate-200">
@@ -495,7 +503,6 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
                 </form>
             </div>
 
-            {/* LISTA VEICOLI ESISTENTI */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {vehicles.map(v => (
                     <div key={v.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4 group relative overflow-hidden">
@@ -533,6 +540,52 @@ const OperationalVehicleManagement: React.FC<OperationalVehicleManagementProps> 
                     </div>
                 ))}
                 {vehicles.length === 0 && <p className="col-span-full text-center text-slate-400 italic py-10">Nessun mezzo operativo inserito.</p>}
+            </div>
+
+            {/* STORICO CONTROLLI (OPERATIONAL) */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
+                <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-700 uppercase flex items-center gap-2">
+                        <CalendarIcon className="h-5 w-5 text-slate-500"/> Storico Controlli (Mezzi Operativi)
+                    </h3>
+                    <span className="text-xs font-bold bg-white px-2 py-1 rounded border">{opHistory.length} Record</span>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                    {opHistory.length === 0 ? (
+                        <p className="text-center text-slate-400 italic py-8 text-sm">Nessun controllo registrato.</p>
+                    ) : (
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-100 text-slate-600 text-xs uppercase sticky top-0">
+                                <tr>
+                                    <th className="p-3">Data</th>
+                                    <th className="p-3">Mezzo</th>
+                                    <th className="p-3 text-center">Stato</th>
+                                    <th className="p-3">Note</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {opHistory.map(check => (
+                                    <tr key={check.id} className="hover:bg-slate-50">
+                                        <td className="p-3 whitespace-nowrap text-xs text-slate-500">
+                                            {new Date(check.date).toLocaleDateString()}
+                                        </td>
+                                        <td className="p-3 font-bold text-slate-700">
+                                            {check.vehicleName}
+                                        </td>
+                                        <td className="p-3 text-center">
+                                            <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${check.status === 'ok' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                {check.status === 'ok' ? 'OK' : 'Mancanze'}
+                                            </span>
+                                        </td>
+                                        <td className="p-3 text-xs text-slate-500 italic truncate max-w-xs">
+                                            {check.notes || '-'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
             </div>
         </div>
     );

@@ -1,13 +1,14 @@
 
-import React, { useState, useRef } from 'react';
-import { Vehicle, CheckDay } from '../types';
-import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon, ListIcon } from './Icons';
+import React, { useState, useRef, useMemo } from 'react';
+import { Vehicle, CheckDay, VehicleCheck } from '../types';
+import { EditIcon, TrashIcon, PlusIcon, SaveIcon, TruckIcon, ListIcon, CalendarIcon } from './Icons';
 
 interface VehicleManagementProps {
     vehicles: Vehicle[];
     onAddVehicle: (v: Omit<Vehicle, 'id'>) => Promise<void>;
     onUpdateVehicle: (v: Vehicle) => Promise<void>;
     onDeleteVehicle: (id: string) => Promise<void>;
+    vehicleChecks?: VehicleCheck[];
 }
 
 const emptyVehicle: Omit<Vehicle, 'id'> = {
@@ -19,7 +20,7 @@ const emptyVehicle: Omit<Vehicle, 'id'> = {
     customChecklist: []
 };
 
-const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVehicle, onUpdateVehicle, onDeleteVehicle }) => {
+const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVehicle, onUpdateVehicle, onDeleteVehicle, vehicleChecks = [] }) => {
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [formData, setFormData] = useState<Omit<Vehicle, 'id'>>(emptyVehicle);
     const [isProcessingImg, setIsProcessingImg] = useState(false);
@@ -128,6 +129,13 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVe
         }
     };
 
+    // Filter History: Only show checks where the vehicleId exists in the current vehicle list (Fleet)
+    const fleetHistory = useMemo(() => {
+        return vehicleChecks
+            .filter(c => vehicles.some(v => v.id === c.vehicleId))
+            .sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    }, [vehicleChecks, vehicles]);
+
     return (
         <div className="max-w-4xl mx-auto space-y-8">
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
@@ -229,7 +237,7 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVe
                         <div className="flex-grow min-w-0">
                             <h4 className="font-bold text-slate-800 truncate">{v.model}</h4>
                             <p className="text-xs font-mono font-bold text-slate-600 bg-slate-100 px-1 rounded inline-block">{v.plate}</p>
-                            <p className="text-[10px] text-slate-400 uppercase mt-1">{v.fuelType}</p>
+                            <p className="text-xs text-slate-400 uppercase mt-1">{v.fuelType}</p>
                             {v.customChecklist && v.customChecklist.length > 0 && (
                                 <p className="text-[9px] text-blue-500 font-bold mt-1">{v.customChecklist.length} controlli definiti</p>
                             )}
@@ -241,6 +249,52 @@ const VehicleManagement: React.FC<VehicleManagementProps> = ({ vehicles, onAddVe
                     </div>
                 ))}
                 {vehicles.length === 0 && <p className="col-span-full text-center text-slate-400 italic">Nessun veicolo presente.</p>}
+            </div>
+
+            {/* STORICO CONTROLLI (FLEET) */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mt-8">
+                <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-700 uppercase flex items-center gap-2">
+                        <CalendarIcon className="h-5 w-5 text-slate-500"/> Storico Controlli (Vetture)
+                    </h3>
+                    <span className="text-xs font-bold bg-white px-2 py-1 rounded border">{fleetHistory.length} Record</span>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                    {fleetHistory.length === 0 ? (
+                        <p className="text-center text-slate-400 italic py-8 text-sm">Nessun controllo registrato.</p>
+                    ) : (
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-100 text-slate-600 text-xs uppercase sticky top-0">
+                                <tr>
+                                    <th className="p-3">Data</th>
+                                    <th className="p-3">Veicolo</th>
+                                    <th className="p-3 text-center">Stato</th>
+                                    <th className="p-3">Note</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {fleetHistory.map(check => (
+                                    <tr key={check.id} className="hover:bg-slate-50">
+                                        <td className="p-3 whitespace-nowrap text-xs text-slate-500">
+                                            {new Date(check.date).toLocaleDateString()}
+                                        </td>
+                                        <td className="p-3 font-bold text-slate-700">
+                                            {check.vehicleName}
+                                        </td>
+                                        <td className="p-3 text-center">
+                                            <span className={`px-2 py-1 rounded text-[10px] font-black uppercase ${check.status === 'ok' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                {check.status === 'ok' ? 'OK' : 'Issue'}
+                                            </span>
+                                        </td>
+                                        <td className="p-3 text-xs text-slate-500 italic truncate max-w-xs">
+                                            {check.notes || '-'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
             </div>
         </div>
     );
