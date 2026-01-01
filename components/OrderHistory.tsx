@@ -163,7 +163,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                 <div className="mt-4 pt-3 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
                     <span className="text-sm font-medium text-slate-500">{filteredOrders.length} movimenti</span>
                     <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                        <span className="text-lg font-bold text-slate-800">Totale: <span className="text-primary">€{filteredTotal.toFixed(2)}</span></span>
+                        <span className="text-lg font-bold text-slate-800">Totale Bar: <span className="text-primary">€{filteredTotal.toFixed(2)}</span></span>
                         <button 
                             onClick={handlePrint} 
                             className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"
@@ -180,38 +180,60 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
             <div className="space-y-4 max-h-[500px] overflow-y-auto">
                 {groupedOrders.length === 0 && <div className="text-center text-slate-400 mt-10"><p>Nessun ordine trovato.</p></div>}
                 
-                {groupedOrders.map(([name, data]) => (
-                    <div key={name} className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
-                        <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-2">
-                            <div>
-                                <p className="text-lg font-black text-slate-800">{name}</p>
-                                <p className="text-xs text-slate-500">{data.orders.length} ordini</p>
+                {groupedOrders.map(([name, data]) => {
+                    const totalDue = data.total + data.waterCost;
+                    return (
+                        <div key={name} className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
+                            <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-2">
+                                <div>
+                                    <p className="text-lg font-black text-slate-800">{name}</p>
+                                    <p className="text-xs text-slate-500">{data.orders.length} ordini + Quote Acqua</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs text-slate-400 font-bold uppercase">Totale Complessivo</p>
+                                    <p className="text-xl font-black text-primary">€{totalDue.toFixed(2)}</p>
+                                </div>
                             </div>
-                            <p className="text-lg font-bold text-primary">€{data.total.toFixed(2)}</p>
-                        </div>
-                        <ul className="space-y-2 mb-2">
-                            {data.orders.map(order => (
-                                <li key={order.id} className="flex flex-col text-xs text-slate-600 border-b border-slate-50 pb-1 last:border-0 last:pb-0">
-                                    <div className="flex justify-between w-full font-bold">
-                                        <span>{new Date(order.timestamp).toLocaleDateString()}</span>
-                                        <span>€{order.total.toFixed(2)}</span>
+                            
+                            <div className="space-y-2 mb-3 bg-slate-50 p-2 rounded">
+                                {/* Bar Detail */}
+                                <div className="flex justify-between text-xs text-slate-600">
+                                    <span>Consumazioni Bar</span>
+                                    <span className="font-bold">€{data.total.toFixed(2)}</span>
+                                </div>
+                                {/* Water Detail */}
+                                {data.waterQuotas > 0 && (
+                                    <div className="flex justify-between text-xs text-blue-600">
+                                        <span>Quote Acqua ({data.waterQuotas})</span>
+                                        <span className="font-bold">€{data.waterCost.toFixed(2)}</span>
                                     </div>
-                                    <div className="text-slate-400 italic">
-                                        {order.items.map(i => `${i.quantity} ${i.product.name}`).join(', ')}
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                        {data.waterQuotas > 0 && (
-                            <div className="mt-2 pt-2 border-t border-blue-100 flex justify-between items-center bg-blue-50 px-2 py-1 rounded">
-                                <span className="text-xs font-bold text-blue-700 flex items-center gap-1">🥛 Quote Acqua ({data.waterQuotas})</span>
-                                <span className="text-xs font-black text-blue-800">
-                                    {data.waterCost > 0 ? `€${data.waterCost.toFixed(2)}` : '€0.00'}
+                                )}
+                            </div>
+
+                            <ul className="space-y-2 mb-2 pl-2 border-l-2 border-slate-100">
+                                {data.orders.map(order => (
+                                    <li key={order.id} className="flex flex-col text-xs text-slate-500 pb-1">
+                                        <div className="flex justify-between w-full">
+                                            <span>{new Date(order.timestamp).toLocaleDateString()}</span>
+                                            <span>€{order.total.toFixed(2)}</span>
+                                        </div>
+                                        <div className="text-[10px] italic opacity-70">
+                                            {order.items.map(i => `${i.quantity} ${i.product.name}`).join(', ')}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+
+                            {/* TOTALONE EVIDENZIATO */}
+                            <div className="mt-2 pt-3 border-t-2 border-slate-100 flex justify-between items-center bg-yellow-50 px-3 py-2 rounded-lg">
+                                <span className="text-sm font-black text-slate-800 uppercase tracking-wide">TOTALE DA VERSARE</span>
+                                <span className="text-lg font-black text-red-600">
+                                    €{totalDue.toFixed(2)}
                                 </span>
                             </div>
-                        )}
-                    </div>
-                ))}
+                        </div>
+                    );
+                })}
             </div>
 
             {/* VISTA DI STAMPA DETTAGLIATA (Print Only) */}
@@ -235,9 +257,14 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                                 <div key={name} className="break-inside-avoid">
                                     <div className="flex justify-between items-center bg-gray-100 border-b border-gray-300 py-2 px-2 mb-2">
                                         <h3 className="font-black text-lg uppercase">{name}</h3>
-                                        <div className="flex gap-4">
-                                            {data.waterCost > 0 && <span className="text-sm text-blue-600 font-bold">Acqua: €{data.waterCost.toFixed(2)}</span>}
-                                            <span className="font-mono font-bold text-lg">Totale: €{totalWithWater.toFixed(2)}</span>
+                                        <div className="flex gap-4 items-center">
+                                            <div className="text-right text-xs">
+                                                <span className="block text-gray-500">Bar: €{data.total.toFixed(2)}</span>
+                                                {data.waterCost > 0 && <span className="block text-blue-600 font-bold">Acqua: €{data.waterCost.toFixed(2)}</span>}
+                                            </div>
+                                            <div className="bg-white px-2 py-1 border border-black rounded">
+                                                <span className="font-black text-lg">TOT: €{totalWithWater.toFixed(2)}</span>
+                                            </div>
                                         </div>
                                     </div>
                                     
@@ -273,7 +300,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                                                 <tr className="border-b border-blue-200 bg-blue-50/30">
                                                     <td className="py-2 align-top text-blue-500 font-bold">RIEPILOGO</td>
                                                     <td className="py-2 align-top font-bold text-slate-700 flex items-center gap-2">
-                                                        <span>🥛 Quote Acqua ({data.waterQuotas} presenze effettive)</span>
+                                                        <span>🥛 Quote Acqua ({data.waterQuotas} presenze)</span>
                                                     </td>
                                                     <td className="py-2 align-top text-right font-black text-blue-700">
                                                         €{data.waterCost.toFixed(2)}
@@ -281,6 +308,13 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                                                 </tr>
                                             )}
                                         </tbody>
+                                        {/* Footer Row per Utente */}
+                                        <tfoot>
+                                            <tr className="bg-gray-50 font-bold">
+                                                <td colSpan={2} className="py-2 text-right uppercase text-xs pt-3">Totale da Versare (Bar + Acqua):</td>
+                                                <td className="py-2 text-right text-base font-black pt-3">€{totalWithWater.toFixed(2)}</td>
+                                            </tr>
+                                        </tfoot>
                                     </table>
                                 </div>
                             );
@@ -293,7 +327,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                             Gestione Bar VVF
                         </div>
                         <div className="text-right">
-                            <p className="text-sm font-bold uppercase text-gray-600">Totale Complessivo (con Acqua)</p>
+                            <p className="text-sm font-bold uppercase text-gray-600">Totale Complessivo Periodo</p>
                             <p className="text-4xl font-black tracking-tight">
                                 €{groupedOrders.reduce((acc, [, data]) => acc + data.total + data.waterCost, 0).toFixed(2)}
                             </p>

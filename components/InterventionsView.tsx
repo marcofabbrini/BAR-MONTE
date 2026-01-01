@@ -194,11 +194,11 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         return Array.from(set).sort();
     }, [interventions]);
 
-    // CALCOLO PROGRESSIVI DINAMICI
-    // Mappa ID intervento -> Numero Progressivo per quel turno
+    // CALCOLO PROGRESSIVI DINAMICI (GLOBAL COUNTER)
+    // Mappa ID intervento -> Numero Progressivo Unico
     const progressiveMap = useMemo(() => {
         const map = new Map<string, number>();
-        const counters: Record<string, number> = { a: 0, b: 0, c: 0, d: 0 };
+        let globalCounter = 0;
 
         // Ordina dal più vecchio al più nuovo per assegnare i numeri 1, 2, 3...
         // Filtra solo quelli non cancellati per il conteggio
@@ -212,11 +212,8 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
             });
 
         sortedAsc.forEach(int => {
-            const s = int.shift ? int.shift.toLowerCase() : 'a';
-            if (counters[s] !== undefined) {
-                counters[s]++;
-                map.set(int.id, counters[s]);
-            }
+            globalCounter++;
+            map.set(int.id, globalCounter);
         });
 
         return map;
