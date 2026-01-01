@@ -99,6 +99,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
     
     const [typology, setTypology] = useState('');
     const [notes, setNotes] = useState(''); // NEW: Note aggiuntive
+    const [requester, setRequester] = useState(''); // NEW: Nome Richiedente
     
     // Address Parts
     const [addressType, setAddressType] = useState('Via');
@@ -273,6 +274,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         setReturnTime('');
         setTypology('');
         setNotes(''); // Reset Notes
+        setRequester(''); // Reset Requester
         setAddressType('Via');
         setStreetName('');
         setCivicNumber('');
@@ -294,6 +296,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         setReturnTime(i.returnTime);
         setTypology(i.typology);
         setNotes(i.notes || ''); // Load Notes
+        setRequester(i.requesterName || ''); // Load Requester
         setAddressType(i.addressType || 'Via');
         setStreetName(i.street || '');
         setCivicNumber(i.number || '');
@@ -374,6 +377,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
             returnTime,
             typology,
             notes: notes.trim(), // Save notes
+            requesterName: requester.trim(), // Save requester
             addressType,
             street: streetName,
             number: civicNumber,
@@ -491,6 +495,18 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                     rows={2}
                                 />
                             </div>
+                        </div>
+
+                        {/* NEW REQUESTER FIELD */}
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Nome Richiedente</label>
+                            <input 
+                                type="text" 
+                                value={requester} 
+                                onChange={e => setRequester(e.target.value)} 
+                                className="w-full border rounded p-3 bg-white text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                                placeholder="Nome e Cognome (es. Mario Rossi)"
+                            />
                         </div>
                         
                         <div className="grid grid-cols-4 gap-2 items-end">
@@ -927,6 +943,11 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                                     {int.notes && (
                                                         <div className="text-[10px] text-slate-500 italic mt-0.5 bg-slate-50 px-1 rounded inline-block border border-slate-100">
                                                             Note: {int.notes}
+                                                        </div>
+                                                    )}
+                                                    {int.requesterName && (
+                                                        <div className="text-[10px] text-blue-600 font-bold mt-0.5">
+                                                            Richiedente: {int.requesterName}
                                                         </div>
                                                     )}
                                                     <div className={`text-[11px] mt-1 ${int.isDeleted ? 'text-red-300' : 'text-slate-500'}`}>

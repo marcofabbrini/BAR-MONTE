@@ -274,6 +274,7 @@ export interface Intervention {
     returnTime: string;
     typology: string;
     notes?: string;
+    requesterName?: string;
     addressType?: string;
     street?: string;
     number?: string;
