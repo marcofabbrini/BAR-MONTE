@@ -70,7 +70,7 @@ interface AdminViewProps {
     onSendNotification?: (title: string, body: string, target?: string) => Promise<void>;
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'calendar' | 'fleet_hub' | 'laundry' | 'reminders' | 'control_panel'; 
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'fleet_hub' | 'control_panel'; 
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
@@ -358,6 +358,8 @@ const AdminView: React.FC<AdminViewProps> = ({
         if (rem.monthlyDetail) setRemMonthlyDetail(rem.monthlyDetail);
         if (rem.date) setRemDate(rem.date);
         
+        // Ensure section is open
+        if (expandedSection !== 'reminders') setExpandedSection('reminders');
         window.scrollTo(0,0);
     };
 
@@ -540,11 +542,8 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon />} />
                         <TabButton tab="stock" label="Stock" icon={<BoxIcon />} />
                         <TabButton tab="products" label="Prodotti" icon={<LogoIcon />} />
-                        <TabButton tab="calendar" label="Turnario" icon={<CalendarIcon />} />
                         <TabButton tab="staff" label="Staff" icon={<StaffIcon />} />
                         <TabButton tab="fleet_hub" label="Gestione Automezzi" icon={<TruckIcon />} />
-                        <TabButton tab="laundry" label="Lavanderia" icon={<ShirtIcon />} />
-                        <TabButton tab="reminders" label="Promemoria" icon={<PinIcon />} />
                         <TabButton tab="control_panel" label="Pannello di Controllo" icon={<WrenchIcon className="h-8 w-8" />} />
                     </div>
                 </div>
@@ -626,8 +625,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                         )}
                     </div>
                 )}
-
-                {activeTab === 'laundry' && <LaundryManagement items={laundryItems} onAddItem={addLaundryItem} onUpdateItem={updateLaundryItem} onDeleteItem={deleteLaundryItem} />}
                 
                 {activeTab === 'control_panel' && (
                     <div className="max-w-4xl mx-auto space-y-6">
@@ -826,7 +823,141 @@ const AdminView: React.FC<AdminViewProps> = ({
                             </div>
                         )}
                         
-                        {/* 4. CONFIGURAZIONE INTERVENTI */}
+                        {/* 4. TURNARIO */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('calendar')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <CalendarIcon className="h-5 w-5 text-blue-500" /> Gestione Turnario
+                                </h2>
+                                <span>{expandedSection === 'calendar' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'calendar' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100">
+                                    <ShiftCalendar onGoBack={() => {}} tillColors={tillColors} shiftSettings={shiftSettings} />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 5. GESTIONE CAPI LAVANDERIA */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('laundry_items')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <ShirtIcon className="h-5 w-5 text-blue-500" /> Gestione Capi Lavanderia
+                                </h2>
+                                <span>{expandedSection === 'laundry_items' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'laundry_items' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100">
+                                    <LaundryManagement items={laundryItems} onAddItem={addLaundryItem} onUpdateItem={updateLaundryItem} onDeleteItem={deleteLaundryItem} />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 6. GESTIONE PROMEMORIA */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('reminders')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <PinIcon className="h-5 w-5 text-yellow-500" /> Gestione Promemoria
+                                </h2>
+                                <span>{expandedSection === 'reminders' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'reminders' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100 space-y-6">
+                                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                                        <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                            {editingReminderId ? 'Modifica Promemoria' : 'Nuovo Promemoria'}
+                                        </h2>
+                                        <div className="flex flex-col gap-4">
+                                            <input 
+                                                type="text" 
+                                                placeholder="Testo Promemoria" 
+                                                value={remText} 
+                                                onChange={e => setRemText(e.target.value)} 
+                                                className="border rounded p-3 text-sm"
+                                            />
+                                            <div className="flex flex-wrap gap-4">
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input type="radio" checked={remType === 'recurring'} onChange={() => setRemType('recurring')} className="text-yellow-500" />
+                                                    <span className="text-sm font-bold">Settimanale</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input type="radio" checked={remType === 'monthly'} onChange={() => setRemType('monthly')} className="text-yellow-500" />
+                                                    <span className="text-sm font-bold">Mensile</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input type="radio" checked={remType === 'spot'} onChange={() => setRemType('spot')} className="text-yellow-500" />
+                                                    <span className="text-sm font-bold">Spot (Data Singola)</span>
+                                                </label>
+                                            </div>
+                                            
+                                            {remType === 'recurring' && (
+                                                <select value={remDay} onChange={e => setRemDay(parseInt(e.target.value))} className="border rounded p-2 text-sm bg-white">
+                                                    {['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'].map((d, i) => (
+                                                        <option key={i} value={i}>{d}</option>
+                                                    ))}
+                                                </select>
+                                            )}
+
+                                            {remType === 'monthly' && (
+                                                <select value={remMonthlyDetail} onChange={e => setRemMonthlyDetail(e.target.value as any)} className="border rounded p-2 text-sm bg-white">
+                                                    <option value="first-day">Primo giorno del mese (1°)</option>
+                                                    <option value="last-day">Ultimo giorno del mese</option>
+                                                </select>
+                                            )}
+
+                                            {remType === 'spot' && (
+                                                <input type="date" value={remDate} onChange={e => setRemDate(e.target.value)} className="border rounded p-2 text-sm" />
+                                            )}
+
+                                            <div className="flex gap-2">
+                                                <button onClick={handleSaveReminder} className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 rounded shadow-sm">
+                                                    {editingReminderId ? 'Aggiorna Promemoria' : 'Aggiungi Promemoria'}
+                                                </button>
+                                                {editingReminderId && (
+                                                    <button onClick={handleCancelEditReminder} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold rounded">
+                                                        Annulla
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                        <div className="bg-slate-50 p-4 border-b border-slate-200">
+                                            <h3 className="font-bold text-slate-700">Elenco Promemoria Attivi</h3>
+                                        </div>
+                                        <ul className="divide-y divide-slate-100">
+                                            {reminders.map(rem => (
+                                                <li key={rem.id} className="p-4 flex justify-between items-center hover:bg-slate-50">
+                                                    <div>
+                                                        <p className="font-bold text-slate-800">{rem.text}</p>
+                                                        <p className="text-xs text-slate-500">
+                                                            {rem.type === 'recurring' 
+                                                                ? `Ogni ${['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'][rem.dayOfWeek || 0]}`
+                                                                : rem.type === 'monthly'
+                                                                    ? (rem.monthlyDetail === 'first-day' ? 'Primo giorno del mese' : 'Ultimo giorno del mese')
+                                                                    : (rem.date ? `Il ${new Date(rem.date).toLocaleDateString()}` : 'Data non valida')
+                                                            }
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => handleEditReminder(rem)} className="text-blue-500 hover:bg-blue-50 p-2 rounded">
+                                                            <EditIcon className="h-5 w-5" />
+                                                        </button>
+                                                        <button onClick={() => handleDeleteReminder(rem.id)} className="text-red-500 hover:bg-red-50 p-2 rounded">
+                                                            <TrashIcon className="h-5 w-5" />
+                                                        </button>
+                                                    </div>
+                                                </li>
+                                            ))}
+                                            {reminders.length === 0 && <li className="p-8 text-center text-slate-400 italic">Nessun promemoria.</li>}
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        
+                        {/* 7. CONFIGURAZIONE INTERVENTI */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('interventions')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
@@ -882,7 +1013,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             )}
                         </div>
 
-                        {/* 5. CONFIGURAZIONE COLORI CASSE */}
+                        {/* 8. CONFIGURAZIONE COLORI CASSE */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('colors')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
@@ -905,7 +1036,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             )}
                         </div>
 
-                        {/* 6. STAGIONALITÀ & EFFETTI */}
+                        {/* 9. STAGIONALITÀ & EFFETTI */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('seasonality')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
@@ -928,7 +1059,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             )}
                         </div>
 
-                        {/* 7. CONFIGURAZIONE GENERALE */}
+                        {/* 10. CONFIGURAZIONE GENERALE */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('general')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
@@ -976,7 +1107,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                             )}
                         </div>
 
-                        {/* 8. NOTIFICHE */}
+                        {/* 11. NOTIFICHE */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('notifications')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
@@ -1002,101 +1133,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}
                 {activeTab === 'cash' && <CashManagement orders={orders} movements={cashMovements} onAddMovement={onAddCashMovement} onUpdateMovement={onUpdateMovement} onDeleteMovement={onDeleteMovement} onPermanentDeleteMovement={onPermanentDeleteMovement} onResetCash={onResetCash} isSuperAdmin={isSuperAdmin} currentUser={currentUser} />}
-                {activeTab === 'calendar' && <ShiftCalendar onGoBack={() => {}} tillColors={tillColors} shiftSettings={shiftSettings} />} 
-                {activeTab === 'reminders' && (
-                    <div className="max-w-4xl mx-auto space-y-6">
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                <PinIcon className="h-6 w-6 text-yellow-500" /> {editingReminderId ? 'Modifica Promemoria' : 'Nuovo Promemoria'}
-                            </h2>
-                            <div className="flex flex-col gap-4">
-                                <input 
-                                    type="text" 
-                                    placeholder="Testo Promemoria" 
-                                    value={remText} 
-                                    onChange={e => setRemText(e.target.value)} 
-                                    className="border rounded p-3 text-sm"
-                                />
-                                <div className="flex flex-wrap gap-4">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" checked={remType === 'recurring'} onChange={() => setRemType('recurring')} className="text-yellow-500" />
-                                        <span className="text-sm font-bold">Settimanale</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" checked={remType === 'monthly'} onChange={() => setRemType('monthly')} className="text-yellow-500" />
-                                        <span className="text-sm font-bold">Mensile</span>
-                                    </label>
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input type="radio" checked={remType === 'spot'} onChange={() => setRemType('spot')} className="text-yellow-500" />
-                                        <span className="text-sm font-bold">Spot (Data Singola)</span>
-                                    </label>
-                                </div>
-                                
-                                {remType === 'recurring' && (
-                                    <select value={remDay} onChange={e => setRemDay(parseInt(e.target.value))} className="border rounded p-2 text-sm bg-white">
-                                        {['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'].map((d, i) => (
-                                            <option key={i} value={i}>{d}</option>
-                                        ))}
-                                    </select>
-                                )}
-
-                                {remType === 'monthly' && (
-                                    <select value={remMonthlyDetail} onChange={e => setRemMonthlyDetail(e.target.value as any)} className="border rounded p-2 text-sm bg-white">
-                                        <option value="first-day">Primo giorno del mese (1°)</option>
-                                        <option value="last-day">Ultimo giorno del mese</option>
-                                    </select>
-                                )}
-
-                                {remType === 'spot' && (
-                                    <input type="date" value={remDate} onChange={e => setRemDate(e.target.value)} className="border rounded p-2 text-sm" />
-                                )}
-
-                                <div className="flex gap-2">
-                                    <button onClick={handleSaveReminder} className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 rounded shadow-sm">
-                                        {editingReminderId ? 'Aggiorna Promemoria' : 'Aggiungi Promemoria'}
-                                    </button>
-                                    {editingReminderId && (
-                                        <button onClick={handleCancelEditReminder} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-600 font-bold rounded">
-                                            Annulla
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                            <div className="bg-slate-50 p-4 border-b border-slate-200">
-                                <h3 className="font-bold text-slate-700">Elenco Promemoria Attivi</h3>
-                            </div>
-                            <ul className="divide-y divide-slate-100">
-                                {reminders.map(rem => (
-                                    <li key={rem.id} className="p-4 flex justify-between items-center hover:bg-slate-50">
-                                        <div>
-                                            <p className="font-bold text-slate-800">{rem.text}</p>
-                                            <p className="text-xs text-slate-500">
-                                                {rem.type === 'recurring' 
-                                                    ? `Ogni ${['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'][rem.dayOfWeek || 0]}`
-                                                    : rem.type === 'monthly'
-                                                        ? (rem.monthlyDetail === 'first-day' ? 'Primo giorno del mese' : 'Ultimo giorno del mese')
-                                                        : (rem.date ? `Il ${new Date(rem.date).toLocaleDateString()}` : 'Data non valida')
-                                                }
-                                            </p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => handleEditReminder(rem)} className="text-blue-500 hover:bg-blue-50 p-2 rounded">
-                                                <EditIcon className="h-5 w-5" />
-                                            </button>
-                                            <button onClick={() => handleDeleteReminder(rem.id)} className="text-red-500 hover:bg-red-50 p-2 rounded">
-                                                <TrashIcon className="h-5 w-5" />
-                                            </button>
-                                        </div>
-                                    </li>
-                                ))}
-                                {reminders.length === 0 && <li className="p-8 text-center text-slate-400 italic">Nessun promemoria.</li>}
-                            </ul>
-                        </div>
-                    </div>
-                )}
+                {/* CALENDAR, LAUNDRY AND REMINDERS TABS REMOVED - NOW IN CONTROL PANEL */}
             </main>
         </div>
     );
