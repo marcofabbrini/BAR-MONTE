@@ -157,12 +157,14 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         // Prima prova a filtrare per grado
         const leaders = staff.filter(s => {
             const grade = s.grade || '';
+            // Exclude Super Admin from automatic list
+            if (s.role === 'super-admin') return false;
             return ['CS', 'CQE', 'CR', 'CRE'].includes(grade) && s.shift === activeShift;
         }).sort((a,b) => a.name.localeCompare(b.name));
 
-        // Se non trova nessuno (es. gradi non settati), ritorna tutto lo staff del turno (esclusa cassa)
+        // Se non trova nessuno (es. gradi non settati), ritorna tutto lo staff del turno (esclusa cassa e super admin)
         if (leaders.length === 0) {
-            return staff.filter(s => s.shift === activeShift && !s.name.toLowerCase().includes('cassa')).sort((a,b) => a.name.localeCompare(b.name));
+            return staff.filter(s => s.shift === activeShift && !s.name.toLowerCase().includes('cassa') && s.role !== 'super-admin').sort((a,b) => a.name.localeCompare(b.name));
         }
         return leaders;
     }, [staff, activeShift]);

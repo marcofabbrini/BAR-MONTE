@@ -308,15 +308,18 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         </select>
                                     </div>
 
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Turno</label>
-                                        <select value={shift} onChange={(e) => setShift(e.target.value as Shift)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 font-bold uppercase">
-                                            <option value="a">A</option>
-                                            <option value="b">B</option>
-                                            <option value="c">C</option>
-                                            <option value="d">D</option>
-                                        </select>
-                                    </div>
+                                    {/* HIDE SHIFT IF SUPER ADMIN */}
+                                    {role !== 'super-admin' && (
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Turno</label>
+                                            <select value={shift} onChange={(e) => setShift(e.target.value as Shift)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 font-bold uppercase">
+                                                <option value="a">A</option>
+                                                <option value="b">B</option>
+                                                <option value="c">C</option>
+                                                <option value="d">D</option>
+                                            </select>
+                                        </div>
+                                    )}
                                     
                                     {/* HIDE SALTO IF SUPER ADMIN */}
                                     {role !== 'super-admin' && (

@@ -110,6 +110,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
     const filteredStaff = useMemo(() => {
         return staff.filter(s => {
             if (s.name.toLowerCase().includes('cassa')) return false;
+            if (s.role === 'super-admin') return false; // EXCLUDE SUPER ADMIN
             if (staffShiftFilter !== 'all' && s.shift !== staffShiftFilter) return false;
             return true;
         }).sort((a, b) => {

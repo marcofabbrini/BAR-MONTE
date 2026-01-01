@@ -166,6 +166,9 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
             // Escludi utenti "Cassa"
             if (s.name.toLowerCase().includes('cassa')) return false;
             
+            // Escludi SUPER ADMIN
+            if (s.role === 'super-admin') return false;
+
             // Filtra per turno se selezionato
             if (staffShiftFilter !== 'all' && s.shift !== staffShiftFilter) return false;
             

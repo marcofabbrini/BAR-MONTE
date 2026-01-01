@@ -68,10 +68,11 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings, att
         // Trova il record presenze di oggi per il turno attivo
         const todayRecord = attendanceRecords?.find(r => r.date === todayStr && r.tillId === tillId);
 
-        // Filtra solo staff del turno attivo ED escludi utenti con nome "Cassa"
+        // Filtra solo staff del turno attivo ED escludi utenti con nome "Cassa" e SUPER ADMIN
         let filtered = staff.filter(s => 
             s.shift === activeShift && 
-            !s.name.toLowerCase().includes('cassa')
+            !s.name.toLowerCase().includes('cassa') &&
+            s.role !== 'super-admin'
         );
         
         // SE ESISTE IL RECORD: Filtra ulteriormente per mostrare solo i PRESENTI
@@ -198,7 +199,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings, att
 
     // Filtra lista staff globale per mostrare solo il turno corrente (Per la selezione manuale)
     const currentShiftStaffList = useMemo(() => {
-        return staff.filter(s => s.shift === activeShift && !s.name.toLowerCase().includes('cassa'));
+        return staff.filter(s => s.shift === activeShift && !s.name.toLowerCase().includes('cassa') && s.role !== 'super-admin');
     }, [staff, activeShift]);
 
     return (

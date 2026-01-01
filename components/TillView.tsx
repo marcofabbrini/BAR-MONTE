@@ -80,7 +80,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
 
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
-    const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift), [allStaff, till.shift]);
+    const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift && s.role !== 'super-admin'), [allStaff, till.shift]);
     
     useEffect(() => {
         if (isShiftValidated && existingAttendanceRecord) {
