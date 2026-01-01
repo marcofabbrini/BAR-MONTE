@@ -70,7 +70,7 @@ interface AdminViewProps {
     onSendNotification?: (title: string, body: string, target?: string) => Promise<void>;
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet' | 'operational_fleet' | 'laundry' | 'reminders' | 'roles' | 'diagnostics'; 
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'settings' | 'admins' | 'calendar' | 'fleet' | 'operational_fleet' | 'laundry' | 'reminders' | 'control_panel'; 
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
@@ -545,8 +545,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="laundry" label="Lavanderia" icon={<ShirtIcon />} />
                         <TabButton tab="reminders" label="Promemoria" icon={<PinIcon />} />
                         <TabButton tab="settings" label="Config" icon={<SettingsIcon />} />
-                        <TabButton tab="diagnostics" label="Diagnostica" icon={<FirstAidIcon className="h-8 w-8" />} />
-                        {(isSuperAdmin || isLocalSuperAdmin) && <TabButton tab="roles" label="Ruoli" icon={<ShieldCheckIcon className="h-8 w-8" />} />}
+                        <TabButton tab="control_panel" label="Pannello di Controllo" icon={<WrenchIcon className="h-8 w-8" />} />
                     </div>
                 </div>
             </header>
@@ -602,85 +601,171 @@ const AdminView: React.FC<AdminViewProps> = ({
                     </div>
                 )}
                 
-                {/* --- DIAGNOSTICS & RECOVERY --- */}
-                {activeTab === 'diagnostics' && (
+                {/* --- CONTROL PANEL (DIAGNOSTICS & ROLES) --- */}
+                {activeTab === 'control_panel' && (
                     <div className="max-w-4xl mx-auto space-y-6">
-                        <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-xl shadow-md">
-                            <h2 className="text-xl font-bold text-red-800 flex items-center gap-2 mb-2">
-                                <InfoIcon className="h-6 w-6"/> Diagnostica Database
-                            </h2>
-                            <p className="text-sm text-red-700">
-                                Usa questo pannello se sospetti che dei dati siano spariti. Qui vedi il contenuto grezzo del database.
-                            </p>
-                        </div>
+                        {/* 1. DIAGNOSTICS */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('diagnostics')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <FirstAidIcon className="h-5 w-5 text-red-500" /> Diagnostica & Database
+                                </h2>
+                                <span>{expandedSection === 'diagnostics' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'diagnostics' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100">
+                                    <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-xl shadow-md mb-6">
+                                        <h2 className="text-xl font-bold text-red-800 flex items-center gap-2 mb-2">
+                                            <InfoIcon className="h-6 w-6"/> Diagnostica Database
+                                        </h2>
+                                        <p className="text-sm text-red-700">
+                                            Usa questo pannello se sospetti che dei dati siano spariti. Qui vedi il contenuto grezzo del database.
+                                        </p>
+                                    </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
-                                <h3 className="text-xs font-bold text-slate-500 uppercase">Presenze Totali (Raw)</h3>
-                                <p className="text-4xl font-black text-slate-800 mt-2">{attendanceRecords.length}</p>
-                                <p className="text-[10px] text-slate-400 mt-1">Record nel database locale</p>
-                            </div>
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
-                                <h3 className="text-xs font-bold text-slate-500 uppercase">Personale</h3>
-                                <p className="text-4xl font-black text-slate-800 mt-2">{staff.length}</p>
-                            </div>
-                            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
-                                <h3 className="text-xs font-bold text-slate-500 uppercase">Ordini</h3>
-                                <p className="text-4xl font-black text-slate-800 mt-2">{orders.length}</p>
-                            </div>
-                        </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                                            <h3 className="text-xs font-bold text-slate-500 uppercase">Presenze Totali (Raw)</h3>
+                                            <p className="text-4xl font-black text-slate-800 mt-2">{attendanceRecords.length}</p>
+                                            <p className="text-[10px] text-slate-400 mt-1">Record nel database locale</p>
+                                        </div>
+                                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                                            <h3 className="text-xs font-bold text-slate-500 uppercase">Personale</h3>
+                                            <p className="text-4xl font-black text-slate-800 mt-2">{staff.length}</p>
+                                        </div>
+                                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 text-center">
+                                            <h3 className="text-xs font-bold text-slate-500 uppercase">Ordini</h3>
+                                            <p className="text-4xl font-black text-slate-800 mt-2">{orders.length}</p>
+                                        </div>
+                                    </div>
 
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                            <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
-                                <h3 className="font-bold text-slate-700">Backup & Esportazione</h3>
-                                <div className="flex gap-2">
-                                    <button 
-                                        onClick={handleDownloadAttendanceBackup}
-                                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm flex items-center gap-2"
-                                    >
-                                        <SaveIcon className="h-4 w-4" /> Backup Presenze (JSON)
-                                    </button>
-                                    <button 
-                                        onClick={handleExportFullDatabase}
-                                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-700 shadow-sm flex items-center gap-2"
-                                    >
-                                        <SaveIcon className="h-4 w-4" /> Export DB Completo
-                                    </button>
+                                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                                        <div className="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center">
+                                            <h3 className="font-bold text-slate-700">Backup & Esportazione</h3>
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={handleDownloadAttendanceBackup}
+                                                    className="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm flex items-center gap-2"
+                                                >
+                                                    <SaveIcon className="h-4 w-4" /> Backup Presenze (JSON)
+                                                </button>
+                                                <button 
+                                                    onClick={handleExportFullDatabase}
+                                                    className="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-green-700 shadow-sm flex items-center gap-2"
+                                                >
+                                                    <SaveIcon className="h-4 w-4" /> Export DB Completo
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-xs text-left">
+                                                <thead className="bg-slate-100 text-slate-500 uppercase font-bold">
+                                                    <tr>
+                                                        <th className="p-3">ID</th>
+                                                        <th className="p-3">Data</th>
+                                                        <th className="p-3">Turno</th>
+                                                        <th className="p-3">Stato</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {attendanceRecords.slice(0, 20).map(r => (
+                                                        <tr key={r.id}>
+                                                            <td className="p-3 font-mono text-slate-400">{r.id}</td>
+                                                            <td className="p-3 font-bold">{r.date}</td>
+                                                            <td className="p-3">{r.tillId}</td>
+                                                            <td className="p-3">
+                                                                {r.closedAt ? <span className="text-green-600 font-bold">Chiuso</span> : <span className="text-orange-500 font-bold">Aperto</span>}
+                                                                <span className="ml-2 text-slate-400">({r.presentStaffIds.length} presenti)</span>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    {attendanceRecords.length === 0 && (
+                                                        <tr>
+                                                            <td colSpan={4} className="p-8 text-center text-red-500 font-bold">
+                                                                NESSUN DATO TROVATO. Il database sembra vuoto.
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-xs text-left">
-                                    <thead className="bg-slate-100 text-slate-500 uppercase font-bold">
-                                        <tr>
-                                            <th className="p-3">ID</th>
-                                            <th className="p-3">Data</th>
-                                            <th className="p-3">Turno</th>
-                                            <th className="p-3">Stato</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {attendanceRecords.slice(0, 20).map(r => (
-                                            <tr key={r.id}>
-                                                <td className="p-3 font-mono text-slate-400">{r.id}</td>
-                                                <td className="p-3 font-bold">{r.date}</td>
-                                                <td className="p-3">{r.tillId}</td>
-                                                <td className="p-3">
-                                                    {r.closedAt ? <span className="text-green-600 font-bold">Chiuso</span> : <span className="text-orange-500 font-bold">Aperto</span>}
-                                                    <span className="ml-2 text-slate-400">({r.presentStaffIds.length} presenti)</span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {attendanceRecords.length === 0 && (
-                                            <tr>
-                                                <td colSpan={4} className="p-8 text-center text-red-500 font-bold">
-                                                    NESSUN DATO TROVATO. Il database sembra vuoto.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                            )}
                         </div>
+
+                        {/* 2. ROLE MANAGEMENT (SUPER ADMIN ONLY) */}
+                        {(isSuperAdmin || isLocalSuperAdmin) && (
+                            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                                <button onClick={() => toggleSection('roles')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                    <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                        <ShieldCheckIcon className="h-5 w-5 text-purple-600" /> Gestione Ruoli & Permessi
+                                    </h2>
+                                    <span>{expandedSection === 'roles' ? '−' : '+'}</span>
+                                </button>
+                                {expandedSection === 'roles' && (
+                                    <div className="p-6 animate-fade-in border-t border-slate-100">
+                                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-6">
+                                            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                                Aggiungi Nuovo Ruolo
+                                            </h2>
+                                            <p className="text-sm text-slate-500 mb-4">Crea ruoli personalizzati (es. Responsabile Officina) e assegna un livello di permesso.</p>
+                                            
+                                            <div className="flex flex-col md:flex-row gap-4">
+                                                <div className="flex-grow">
+                                                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Nome Ruolo</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={newRoleLabel} 
+                                                        onChange={e => setNewRoleLabel(e.target.value)} 
+                                                        placeholder="Es. Responsabile Bar" 
+                                                        className="w-full border rounded p-2.5 font-bold" 
+                                                    />
+                                                </div>
+                                                <div className="md:w-1/3">
+                                                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Livello Accesso</label>
+                                                    <select 
+                                                        value={newRoleLevel} 
+                                                        onChange={e => setNewRoleLevel(parseInt(e.target.value))} 
+                                                        className="w-full border rounded p-2.5 bg-white font-bold"
+                                                    >
+                                                        <option value={1}>Standard (Utente)</option>
+                                                        <option value={2}>Manager (Responsabile)</option>
+                                                        <option value={3}>Admin (Amministratore)</option>
+                                                    </select>
+                                                </div>
+                                                <button 
+                                                    onClick={handleAddRole} 
+                                                    className="bg-purple-600 text-white font-bold px-6 py-2 rounded-lg hover:bg-purple-700 shadow-md h-10 self-end"
+                                                >
+                                                    Crea
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                                            <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b">Ruoli Personalizzati Attivi</h3>
+                                            <ul>
+                                                {customRoles.map(role => (
+                                                    <li key={role.id} className="p-4 flex justify-between items-center border-b last:border-0 hover:bg-slate-50">
+                                                        <div>
+                                                            <p className="font-bold text-slate-800">{role.label}</p>
+                                                            <p className="text-xs text-slate-500">
+                                                                Livello: {role.level === 1 ? 'Standard' : (role.level === 2 ? 'Manager' : 'Admin')}
+                                                            </p>
+                                                        </div>
+                                                        <button onClick={() => handleDeleteRole(role.id)} className="text-red-500 hover:bg-red-50 p-2 rounded">
+                                                            <TrashIcon className="h-5 w-5" />
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                                {customRoles.length === 0 && <li className="p-8 text-center text-slate-400 italic">Nessun ruolo personalizzato.</li>}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
                 
@@ -783,69 +868,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                                     </li>
                                 ))}
                                 {reminders.length === 0 && <li className="p-8 text-center text-slate-400 italic">Nessun promemoria.</li>}
-                            </ul>
-                        </div>
-                    </div>
-                )}
-
-                {/* ROLE MANAGEMENT TAB (SUPER ADMIN ONLY) */}
-                {activeTab === 'roles' && (isSuperAdmin || isLocalSuperAdmin) && (
-                    <div className="max-w-4xl mx-auto space-y-6">
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                <ShieldCheckIcon className="h-6 w-6 text-purple-600" /> Aggiungi Nuovo Ruolo
-                            </h2>
-                            <p className="text-sm text-slate-500 mb-4">Crea ruoli personalizzati (es. Responsabile Officina) e assegna un livello di permesso.</p>
-                            
-                            <div className="flex flex-col md:flex-row gap-4">
-                                <div className="flex-grow">
-                                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Nome Ruolo</label>
-                                    <input 
-                                        type="text" 
-                                        value={newRoleLabel} 
-                                        onChange={e => setNewRoleLabel(e.target.value)} 
-                                        placeholder="Es. Responsabile Bar" 
-                                        className="w-full border rounded p-2.5 font-bold" 
-                                    />
-                                </div>
-                                <div className="md:w-1/3">
-                                    <label className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Livello Accesso</label>
-                                    <select 
-                                        value={newRoleLevel} 
-                                        onChange={e => setNewRoleLevel(parseInt(e.target.value))} 
-                                        className="w-full border rounded p-2.5 bg-white font-bold"
-                                    >
-                                        <option value={1}>Standard (Utente)</option>
-                                        <option value={2}>Manager (Responsabile)</option>
-                                        <option value={3}>Admin (Amministratore)</option>
-                                    </select>
-                                </div>
-                                <button 
-                                    onClick={handleAddRole} 
-                                    className="bg-purple-600 text-white font-bold px-6 py-2 rounded-lg hover:bg-purple-700 shadow-md h-10 self-end"
-                                >
-                                    Crea
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b">Ruoli Personalizzati Attivi</h3>
-                            <ul>
-                                {customRoles.map(role => (
-                                    <li key={role.id} className="p-4 flex justify-between items-center border-b last:border-0 hover:bg-slate-50">
-                                        <div>
-                                            <p className="font-bold text-slate-800">{role.label}</p>
-                                            <p className="text-xs text-slate-500">
-                                                Livello: {role.level === 1 ? 'Standard' : (role.level === 2 ? 'Manager' : 'Admin')}
-                                            </p>
-                                        </div>
-                                        <button onClick={() => handleDeleteRole(role.id)} className="text-red-500 hover:bg-red-50 p-2 rounded">
-                                            <TrashIcon className="h-5 w-5" />
-                                        </button>
-                                    </li>
-                                ))}
-                                {customRoles.length === 0 && <li className="p-8 text-center text-slate-400 italic">Nessun ruolo personalizzato.</li>}
                             </ul>
                         </div>
                     </div>
