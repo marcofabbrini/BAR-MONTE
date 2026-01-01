@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { useBar } from '../contexts/BarContext';
-import { MonthlyClosure, Shift } from '../types';
+import { MonthlyClosure, Shift, AttendanceStatus } from '../types';
 import { CheckIcon, WalletIcon } from './Icons';
 
 const MonthlyClosureView: React.FC = () => {
@@ -12,7 +12,9 @@ const MonthlyClosureView: React.FC = () => {
         updateMonthlyClosure, 
         getNow, 
         activeBarUser,
-        availableRoles 
+        availableRoles,
+        attendanceRecords,
+        generalSettings
     } = useBar();
 
     // TARGET DATE: PREVIOUS MONTH
@@ -33,14 +35,17 @@ const MonthlyClosureView: React.FC = () => {
         };
     }, [monthlyClosures, monthKey]);
 
-    // Calculate revenue per shift for the target month
+    // Calculate revenue per shift for the target month (Bar Orders + Water Quotas)
     const shiftRevenues = useMemo(() => {
         const revenues = { a: 0, b: 0, c: 0, d: 0 };
         const startStr = `${monthKey}-01`;
         const nextMonth = new Date(targetDate);
         nextMonth.setMonth(nextMonth.getMonth() + 1);
         const endStr = nextMonth.toISOString().split('T')[0];
+        
+        const waterPrice = generalSettings?.waterQuotaPrice || 0;
 
+        // 1. BAR ORDERS REVENUE
         orders.forEach(o => {
             if (o.isDeleted) return;
             
@@ -61,8 +66,50 @@ const MonthlyClosureView: React.FC = () => {
                 }
             }
         });
+
+        // 2. WATER QUOTAS REVENUE
+        attendanceRecords.forEach(r => {
+            // Filtra per data nel mese target
+            if (r.date >= startStr && r.date < endStr) {
+                const shift = r.tillId.replace('T', '').toLowerCase() as Shift;
+                
+                if (revenues[shift] !== undefined) {
+                    // Calcola numero di paganti per questo giorno/turno
+                    const idsToCheck = r.attendanceDetails ? Object.keys(r.attendanceDetails) : r.presentStaffIds;
+                    
+                    let payingCount = 0;
+                    idsToCheck.forEach(id => {
+                        const member = staff.find(s => s.id === id);
+                        if (!member) return;
+                        
+                        // Esclusioni standard (Cassa, Super Admin)
+                        if (member.name.toLowerCase().includes('cassa')) return;
+                        if (member.role === 'super-admin') return;
+
+                        let isPaying = false;
+                        
+                        if (r.attendanceDetails && r.attendanceDetails[id]) {
+                            const status = r.attendanceDetails[id];
+                            // Status che pagano l'acqua: Presente, Sostituzione, Missione (se presente in sede)
+                            // Malattia, Ferie, Riposo, Permesso NON pagano
+                            if (['present', 'substitution', 'sub1', 'sub2', 'sub3'].includes(status as string)) {
+                                isPaying = true;
+                            }
+                        } else if (r.presentStaffIds.includes(id)) {
+                            // Fallback per vecchi record senza dettagli
+                            isPaying = true;
+                        }
+
+                        if (isPaying) payingCount++;
+                    });
+
+                    revenues[shift] += (payingCount * waterPrice);
+                }
+            }
+        });
+
         return revenues;
-    }, [orders, staff, monthKey, targetDate]);
+    }, [orders, staff, monthKey, targetDate, attendanceRecords, generalSettings]);
 
     // Check Permissions (Capo Distaccamento / Admin / SuperAdmin)
     const canManageClosure = useMemo(() => {
@@ -119,7 +166,7 @@ const MonthlyClosureView: React.FC = () => {
                                 </div>
                                 
                                 <div className="text-center py-2">
-                                    <p className="text-xs text-slate-400 font-bold uppercase">Totale Dovuto</p>
+                                    <p className="text-xs text-slate-400 font-bold uppercase">Totale Dovuto (Bar + H2O)</p>
                                     <p className={`text-2xl font-black ${isPaid ? 'text-slate-400 line-through decoration-2' : 'text-slate-800'}`}>
                                         €{amount.toFixed(2)}
                                     </p>
@@ -146,9 +193,9 @@ const MonthlyClosureView: React.FC = () => {
                 <div className="mt-8 p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-500">
                     <p className="font-bold uppercase mb-1">Nota Operativa:</p>
                     <p>
+                        Il totale calcolato include le <b>consumazioni bar</b> e le <b>quote acqua</b> calcolate sulle presenze effettive del mese.<br/>
                         La chiusura mensile deve essere confermata dal Capo Distaccamento o da un amministratore. 
-                        Una volta che tutti i turni hanno saldato il conto, l'icona di allerta nel menu principale scomparirà. 
-                        L'allerta scompare automaticamente dopo la prima settimana del mese successivo.
+                        Una volta che tutti i turni hanno saldato il conto, l'icona di allerta nel menu principale scomparirà.
                     </p>
                 </div>
             </div>
