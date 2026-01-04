@@ -129,13 +129,12 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         window.scrollTo(0, 0);
     }, []);
 
-    // CALCOLO TURNO ATTIVO (Logica condivisa)
-    const activeShift = useMemo(() => {
-        const now = getNow();
-        const hour = now.getHours();
+    // Helper per calcolare il turno da una data/ora specifica
+    const calculateShift = (targetDate: Date) => {
+        const hour = targetDate.getHours();
         
         // Data operativa
-        const calculationDate = new Date(now);
+        const calculationDate = new Date(targetDate);
         if (hour < 8) calculationDate.setDate(calculationDate.getDate() - 1);
         calculationDate.setHours(12, 0, 0, 0);
 
@@ -151,24 +150,40 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         if (hour >= 20 || hour < 8) shiftIndex = (shiftIndex - 1 + 4) % 4;
 
         return shifts[shiftIndex] as Shift;
+    };
+
+    // CALCOLO TURNO ATTUALE (Sistema) - Per la UI generale
+    const currentSystemShift = useMemo(() => {
+        return calculateShift(getNow());
     }, [getNow]);
 
-    // FILTRO CAPO PARTENZA (CS, CQE, CR, CRE) con FALLBACK
+    // CALCOLO TURNO DEL FORM (Dinamico in base a data/ora inserita)
+    const formShift = useMemo(() => {
+        if (!date) return currentSystemShift;
+        // Se non c'è ora di uscita, usiamo le 12:00 come default per la data selezionata
+        const timeStr = exitTime || '12:00'; 
+        const dateTimeStr = `${date}T${timeStr}`;
+        const targetDate = new Date(dateTimeStr);
+        return calculateShift(targetDate);
+    }, [date, exitTime, currentSystemShift]);
+
+    // FILTRO CAPO PARTENZA (CS, CQE, CR, CRE)
+    // Basato su formShift per permettere selezione corretta anche per interventi passati
     const eligibleLeaders = useMemo(() => {
         // Prima prova a filtrare per grado
         const leaders = staff.filter(s => {
             const grade = s.grade || '';
             // Exclude Super Admin from automatic list
             if (s.role === 'super-admin') return false;
-            return ['CS', 'CQE', 'CR', 'CRE'].includes(grade) && s.shift === activeShift;
+            return ['CS', 'CQE', 'CR', 'CRE'].includes(grade) && s.shift === formShift;
         }).sort((a,b) => a.name.localeCompare(b.name));
 
         // Se non trova nessuno (es. gradi non settati), ritorna tutto lo staff del turno (esclusa cassa e super admin)
         if (leaders.length === 0) {
-            return staff.filter(s => s.shift === activeShift && !s.name.toLowerCase().includes('cassa') && s.role !== 'super-admin').sort((a,b) => a.name.localeCompare(b.name));
+            return staff.filter(s => s.shift === formShift && !s.name.toLowerCase().includes('cassa') && s.role !== 'super-admin').sort((a,b) => a.name.localeCompare(b.name));
         }
         return leaders;
-    }, [staff, activeShift]);
+    }, [staff, formShift]);
 
     // LISTE UNIVIOCHE PER FILTRI (POPOLATE DALLO STORICO + CONFIGURAZIONI)
     const uniqueTypologies = useMemo(() => {
@@ -387,7 +402,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
             teamLeaderName: finalLeaderName,
             isExternalLeader, // Save flag
             dutyOfficer: finalOfficerName,
-            shift: activeShift,
+            shift: formShift, // Use calculated shift based on input date/time
             timestamp: new Date().toISOString()
         };
 
@@ -451,6 +466,13 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                 ⚠️ Nota: L'orario di rientro è precedente all'uscita. Si assume che l'intervento sia terminato il giorno successivo.
                             </p>
                         )}
+                        {/* INDICATORE TURNO CALCOLATO */}
+                        <div className="mt-4 p-2 bg-slate-100 rounded text-center border border-slate-200">
+                            <span className="text-xs text-slate-500">In base a data e ora, stai registrando per il turno:</span>
+                            <span className="block font-black text-lg text-slate-800 uppercase mt-1">
+                                {formShift}
+                            </span>
+                        </div>
                     </div>
                 );
             case 2:
@@ -568,7 +590,12 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
             case 3:
                 return (
                     <div className="space-y-6 animate-fade-in">
-                        <h3 className="font-bold text-orange-800 uppercase text-sm border-b border-orange-200 pb-2">Step 3: Personale</h3>
+                        <div className="flex justify-between items-center border-b border-orange-200 pb-2">
+                            <h3 className="font-bold text-orange-800 uppercase text-sm">Step 3: Personale</h3>
+                            <span className="text-[10px] bg-slate-100 px-2 py-1 rounded border font-bold text-slate-500">
+                                Turno {formShift.toUpperCase()}
+                            </span>
+                        </div>
                         
                         {/* TEAM LEADER SECTION */}
                         <div>
@@ -622,7 +649,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                             </button>
                                         )
                                     })}
-                                    {eligibleLeaders.length === 0 && <p className="text-xs text-red-400 italic col-span-4">Nessun personale idoneo nel turno.</p>}
+                                    {eligibleLeaders.length === 0 && <p className="text-xs text-red-400 italic col-span-4">Nessun personale idoneo nel turno {formShift.toUpperCase()}.</p>}
                                 </div>
                             )}
                         </div>
@@ -738,7 +765,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                 Nuovo Intervento
                             </h2>
                             <p className="text-xs md:text-sm text-slate-500 font-bold uppercase tracking-wide">
-                                Registra uscita squadra turno {activeShift.toUpperCase()}
+                                Registra uscita squadra turno {currentSystemShift.toUpperCase()}
                             </p>
                         </div>
 
