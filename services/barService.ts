@@ -1,5 +1,6 @@
 
 import { db } from '../firebaseConfig';
+import firebase from 'firebase/compat/app';
 import { 
     Product, 
     StaffMember, 
@@ -104,8 +105,26 @@ export const BarService = {
     updateStaff: async (s: any) => db.collection('staff').doc(s.id).update(s),
     deleteStaff: async (id: string) => db.collection('staff').doc(id).delete(),
 
-    // Orders
-    addOrder: async (o: any) => db.collection('orders').add(o),
+    // Orders - Updated to handle stock reduction
+    addOrder: async (o: any) => {
+        const batch = db.batch();
+        const orderRef = db.collection('orders').doc();
+        batch.set(orderRef, o);
+
+        // Update stock for each item
+        if (o.items && Array.isArray(o.items)) {
+            o.items.forEach((item: any) => {
+                if (item.product && item.product.id) {
+                    const productRef = db.collection('products').doc(item.product.id);
+                    batch.update(productRef, {
+                        stock: firebase.firestore.FieldValue.increment(-item.quantity)
+                    });
+                }
+            });
+        }
+
+        await batch.commit();
+    },
     updateOrder: async (o: any) => db.collection('orders').doc(o.id).update(o),
     deleteOrder: async (id: string, user: string) => db.collection('orders').doc(id).update({ isDeleted: true, deletedBy: user, deletedAt: new Date().toISOString() }),
     permanentDeleteOrder: async (id: string) => db.collection('orders').doc(id).delete(),
