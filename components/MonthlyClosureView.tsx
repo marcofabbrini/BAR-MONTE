@@ -17,10 +17,14 @@ const MonthlyClosureView: React.FC = () => {
         generalSettings
     } = useBar();
 
-    // TARGET DATE: PREVIOUS MONTH
+    // TARGET DATE LOGIC:
+    // If today is <= 7th of month -> We probably want to close the PREVIOUS month.
+    // If today is > 7th -> We want to see the accumulated total for the CURRENT month.
     const targetDate = useMemo(() => {
-        const d = getNow();
-        d.setMonth(d.getMonth() - 1);
+        const d = new Date(getNow()); // Clone to avoid mutation issues
+        if (d.getDate() <= 7) {
+            d.setMonth(d.getMonth() - 1);
+        }
         return d;
     }, [getNow]);
 
@@ -38,14 +42,19 @@ const MonthlyClosureView: React.FC = () => {
     // Calculate revenue per shift for the target month (Bar Orders + Water Quotas)
     const shiftRevenues = useMemo(() => {
         const revenues = { a: 0, b: 0, c: 0, d: 0 };
+        
+        // Define exact start and end of the target month
+        // Start: 1st of month at 00:00:00
         const startStr = `${monthKey}-01`;
+        
+        // End: 1st of NEXT month
         const nextMonth = new Date(targetDate);
         nextMonth.setMonth(nextMonth.getMonth() + 1);
         const endStr = nextMonth.toISOString().split('T')[0];
         
         const waterPrice = generalSettings?.waterQuotaPrice || 0;
 
-        // 1. BAR ORDERS REVENUE
+        // 1. BAR ORDERS REVENUE (Strictly filtered by date)
         orders.forEach(o => {
             if (o.isDeleted) return;
             
@@ -56,6 +65,7 @@ const MonthlyClosureView: React.FC = () => {
             }
             const orderDateStr = orderDate.toISOString().split('T')[0];
 
+            // Strict check: Order Operational Date must be within the target month
             if (orderDateStr >= startStr && orderDateStr < endStr) {
                 const member = staff.find(s => s.id === o.staffId);
                 if (member && member.shift) {
@@ -67,7 +77,7 @@ const MonthlyClosureView: React.FC = () => {
             }
         });
 
-        // 2. WATER QUOTAS REVENUE
+        // 2. WATER QUOTAS REVENUE (Strictly filtered by date)
         attendanceRecords.forEach(r => {
             // Filtra per data nel mese target
             if (r.date >= startStr && r.date < endStr) {
@@ -193,9 +203,9 @@ const MonthlyClosureView: React.FC = () => {
                 <div className="mt-8 p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-500">
                     <p className="font-bold uppercase mb-1">Nota Operativa:</p>
                     <p>
-                        Il totale calcolato include le <b>consumazioni bar</b> e le <b>quote acqua</b> calcolate sulle presenze effettive del mese.<br/>
+                        Il totale visualizzato è la somma esatta di tutti gli ordini registrati e delle quote acqua maturate 
+                        nel mese di <b>{monthLabel}</b>. Non include residui di mesi precedenti.<br/>
                         La chiusura mensile deve essere confermata dal Capo Distaccamento o da un amministratore. 
-                        Una volta che tutti i turni hanno saldato il conto, l'icona di allerta nel menu principale scomparirà.
                     </p>
                 </div>
             </div>

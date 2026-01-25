@@ -33,8 +33,15 @@ const ReportsView: React.FC<ReportsViewProps> = ({
     const { getNow, monthlyClosures } = useBar();
     const [activeTab, setActiveTab] = useState<ReportTab>('statistics');
     
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
+    // DEFAULT FILTERS: CURRENT MONTH (1st to Today)
+    const [startDate, setStartDate] = useState(() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    });
+    const [endDate, setEndDate] = useState(() => {
+        return new Date().toISOString().split('T')[0];
+    });
+
     const [selectedShift, setSelectedShift] = useState<Shift | 'all'>('all');
     const [selectedStaffId, setSelectedStaffId] = useState<string>('all');
     const [selectedProductId, setSelectedProductId] = useState<string>('all');
