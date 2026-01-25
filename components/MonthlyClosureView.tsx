@@ -1,8 +1,8 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useBar } from '../contexts/BarContext';
-import { MonthlyClosure, Shift, AttendanceStatus } from '../types';
-import { CheckIcon, WalletIcon } from './Icons';
+import { MonthlyClosure, Shift } from '../types';
+import { CheckIcon, WalletIcon, CalendarIcon, FilterIcon } from './Icons';
 
 const MonthlyClosureView: React.FC = () => {
     const { 
@@ -17,21 +17,34 @@ const MonthlyClosureView: React.FC = () => {
         generalSettings
     } = useBar();
 
-    // TARGET DATE LOGIC:
-    // If today is <= 7th of month -> We probably want to close the PREVIOUS month.
-    // If today is > 7th -> We want to see the accumulated total for the CURRENT month.
-    const targetDate = useMemo(() => {
-        const d = new Date(getNow()); // Clone to avoid mutation issues
+    // --- DATE SELECTION STATE ---
+    // Inizializza con la logica "intelligente": primi 7 giorni = mese scorso, altrimenti mese corrente.
+    const [selectedDate, setSelectedDate] = useState<Date>(() => {
+        const d = new Date(getNow());
         if (d.getDate() <= 7) {
             d.setMonth(d.getMonth() - 1);
         }
         return d;
-    }, [getNow]);
+    });
 
-    const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
-    const monthLabel = targetDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+    const currentYear = selectedDate.getFullYear();
+    const currentMonth = selectedDate.getMonth(); // 0-11
 
-    // Retrieve current closure status or default
+    // Genera lista anni (es. 2024, 2025, 2026)
+    const availableYears = useMemo(() => {
+        const y = new Date().getFullYear();
+        return [y - 1, y, y + 1];
+    }, []);
+
+    const monthNames = [
+        "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", 
+        "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+    ];
+
+    const monthKey = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    const monthLabel = selectedDate.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+
+    // Retrieve closure status for the SELECTED month
     const closureStatus = useMemo(() => {
         return monthlyClosures.find(c => c.id === monthKey) || {
             id: monthKey,
@@ -39,22 +52,20 @@ const MonthlyClosureView: React.FC = () => {
         };
     }, [monthlyClosures, monthKey]);
 
-    // Calculate revenue per shift for the target month (Bar Orders + Water Quotas)
+    // Calculate revenue per shift for the SELECTED month (Bar Orders + Water Quotas)
     const shiftRevenues = useMemo(() => {
         const revenues = { a: 0, b: 0, c: 0, d: 0 };
         
-        // Define exact start and end of the target month
-        // Start: 1st of month at 00:00:00
+        // Define exact start and end of the SELECTED month
         const startStr = `${monthKey}-01`;
         
-        // End: 1st of NEXT month
-        const nextMonth = new Date(targetDate);
-        nextMonth.setMonth(nextMonth.getMonth() + 1);
-        const endStr = nextMonth.toISOString().split('T')[0];
+        // End: 1st of NEXT month relative to selected date
+        const nextMonthDate = new Date(currentYear, currentMonth + 1, 1);
+        const endStr = nextMonthDate.toISOString().split('T')[0];
         
         const waterPrice = generalSettings?.waterQuotaPrice || 0;
 
-        // 1. BAR ORDERS REVENUE (Strictly filtered by date)
+        // 1. BAR ORDERS REVENUE (Strictly filtered by selected date range)
         orders.forEach(o => {
             if (o.isDeleted) return;
             
@@ -77,7 +88,7 @@ const MonthlyClosureView: React.FC = () => {
             }
         });
 
-        // 2. WATER QUOTAS REVENUE (Strictly filtered by date)
+        // 2. WATER QUOTAS REVENUE (Strictly filtered by selected date range)
         attendanceRecords.forEach(r => {
             // Filtra per data nel mese target
             if (r.date >= startStr && r.date < endStr) {
@@ -92,8 +103,11 @@ const MonthlyClosureView: React.FC = () => {
                         const member = staff.find(s => s.id === id);
                         if (!member) return;
                         
-                        // Esclusioni standard (Cassa, Super Admin)
+                        // --- ESCLUSIONE RIGOROSA CASSA COMUNE ---
+                        // Verifica che il nome non contenga "Cassa" (case insensitive) per evitare di addebitare l'acqua alla cassa comune
                         if (member.name.toLowerCase().includes('cassa')) return;
+                        
+                        // Esclusione Super Admin
                         if (member.role === 'super-admin') return;
 
                         let isPaying = false;
@@ -119,15 +133,13 @@ const MonthlyClosureView: React.FC = () => {
         });
 
         return revenues;
-    }, [orders, staff, monthKey, targetDate, attendanceRecords, generalSettings]);
+    }, [orders, staff, monthKey, currentYear, currentMonth, attendanceRecords, generalSettings]);
 
     // Check Permissions (Capo Distaccamento / Admin / SuperAdmin)
     const canManageClosure = useMemo(() => {
         if (!activeBarUser) return false;
         if (activeBarUser.role === 'super-admin') return true;
         const roleDef = availableRoles.find(r => r.id === activeBarUser.role);
-        // Level 3+ usually admins, but maybe level 2 (managers/capo) can do this?
-        // Assuming Admin+ for financial closure confirmation.
         return roleDef ? roleDef.level >= 3 : false;
     }, [activeBarUser, availableRoles]);
 
@@ -138,15 +150,68 @@ const MonthlyClosureView: React.FC = () => {
         await updateMonthlyClosure(monthKey, { payments: newPayments });
     };
 
+    const handleMonthSelect = (mIndex: number) => {
+        const newDate = new Date(selectedDate);
+        newDate.setMonth(mIndex);
+        setSelectedDate(newDate);
+    };
+
+    const handleYearSelect = (year: number) => {
+        const newDate = new Date(selectedDate);
+        newDate.setFullYear(year);
+        setSelectedDate(newDate);
+    };
+
     const isFullyClosed = Object.values(closureStatus.payments).every(v => v);
 
     return (
         <div className="space-y-6 animate-fade-in">
+            
+            {/* SELETTORE PERIODO */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+                        <CalendarIcon className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wide">Periodo Riferimento</h2>
+                        <div className="flex gap-2 mt-1">
+                            <select 
+                                value={currentMonth} 
+                                onChange={(e) => handleMonthSelect(parseInt(e.target.value))}
+                                className="font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-200 cursor-pointer"
+                            >
+                                {monthNames.map((m, i) => (
+                                    <option key={i} value={i}>{m}</option>
+                                ))}
+                            </select>
+                            <select 
+                                value={currentYear} 
+                                onChange={(e) => handleYearSelect(parseInt(e.target.value))}
+                                className="font-bold text-slate-800 bg-slate-50 border border-slate-200 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-200 cursor-pointer"
+                            >
+                                {availableYears.map(y => (
+                                    <option key={y} value={y}>{y}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-lg border border-indigo-100">
+                    <FilterIcon className="h-4 w-4 text-indigo-400" />
+                    <span className="text-xs text-indigo-800 font-medium">
+                        Visualizzi i dati di: <b>{monthLabel.toUpperCase()}</b>
+                    </span>
+                </div>
+            </div>
+
+            {/* SCHEDA PRINCIPALE */}
             <div className="bg-white p-6 rounded-xl shadow-md border-t-4 border-indigo-600">
                 <div className="flex justify-between items-center mb-6">
                     <div>
-                        <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Chiusura Mensile Bar</h2>
-                        <p className="text-sm font-bold text-indigo-600 uppercase">{monthLabel}</p>
+                        <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Stato Chiusura</h2>
+                        <p className="text-xs text-slate-400 font-bold">Totali calcolati sulle vendite e presenze effettive</p>
                     </div>
                     {isFullyClosed ? (
                         <div className="bg-green-100 text-green-700 px-4 py-2 rounded-full font-bold text-xs uppercase flex items-center gap-2 border border-green-200">
@@ -202,11 +267,11 @@ const MonthlyClosureView: React.FC = () => {
 
                 <div className="mt-8 p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-500">
                     <p className="font-bold uppercase mb-1">Nota Operativa:</p>
-                    <p>
-                        Il totale visualizzato è la somma esatta di tutti gli ordini registrati e delle quote acqua maturate 
-                        nel mese di <b>{monthLabel}</b>. Non include residui di mesi precedenti.<br/>
-                        La chiusura mensile deve essere confermata dal Capo Distaccamento o da un amministratore. 
-                    </p>
+                    <ul className="list-disc pl-4 space-y-1">
+                        <li>Il totale visualizzato è la somma esatta di tutti gli ordini registrati e delle quote acqua maturate nel mese selezionato.</li>
+                        <li><b>Esclusione Cassa Comune:</b> Le quote acqua vengono calcolate solo per il personale effettivo. Gli utenti "Cassa" sono automaticamente esclusi dal conteggio.</li>
+                        <li>La chiusura mensile deve essere confermata dal Capo Distaccamento o da un amministratore.</li>
+                    </ul>
                 </div>
             </div>
         </div>
