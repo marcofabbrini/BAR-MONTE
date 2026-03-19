@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, TombolaConfig, TombolaTicket, AttendanceRecord, GeneralSettings, AttendanceStatus } from '../types';
+import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, TombolaConfig, TombolaTicket, AttendanceRecord, GeneralSettings, AttendanceStatus, LotteryConfig, LotteryTicket } from '../types';
 import { VVF_GRADES } from '../constants';
 import OrderSummary from './OrderSummary';
 import OrderHistory from './OrderHistory';
@@ -23,17 +23,41 @@ interface TillViewProps {
     tombolaConfig?: TombolaConfig;
     tombolaTickets?: TombolaTicket[];
     onBuyTombolaTicket?: (staffId: string, quantity: number) => Promise<void>;
+    lotteryConfig?: LotteryConfig;
+    lotteryTickets?: LotteryTicket[];
+    onBuyLotteryTicket?: (staffId: string, quantity: number) => Promise<void>;
     attendanceRecords?: AttendanceRecord[];
     generalSettings?: GeneralSettings;
 }
 
-const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttendance, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet, tombolaConfig, tombolaTickets, onBuyTombolaTicket, attendanceRecords, generalSettings }) => {
+const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttendance, products, allStaff, allOrders, onCompleteOrder, tillColors, onSaveAttendance, onPlaceAnalottoBet, tombolaConfig, tombolaTickets, onBuyTombolaTicket, lotteryConfig, lotteryTickets, onBuyLotteryTicket, attendanceRecords, generalSettings }) => {
     const { getNow } = useBar();
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isAnimatingSelection, setIsAnimatingSelection] = useState(false);
+
+    // LOTTERY FAKE PRODUCT
+    const lotteryProduct: Product | null = useMemo(() => {
+        if (!lotteryConfig?.isActive) return null;
+        return {
+            id: 'LOTTERY_TICKET_FAKE_ID',
+            name: 'Biglietto Lotteria',
+            price: lotteryConfig.ticketPrice,
+            stock: 9999,
+            category: 'Extra',
+            icon: '🎟️',
+            isFavorite: true
+        };
+    }, [lotteryConfig]);
+
+    const displayProducts = useMemo(() => {
+        if (lotteryProduct) {
+            return [lotteryProduct, ...products];
+        }
+        return products;
+    }, [products, lotteryProduct]);
 
     // PRESENZE STATE
     const [presentStaffIds, setPresentStaffIds] = useState<string[]>([]);
@@ -144,8 +168,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         });
     };
 
-    const favoriteProducts = useMemo(() => sortProductsBySales(products.filter(p => p.isFavorite)), [products, productPopularity]);
-    const otherProducts = useMemo(() => sortProductsBySales(products.filter(p => !p.isFavorite)), [products, productPopularity]);
+    const favoriteProducts = useMemo(() => sortProductsBySales(displayProducts.filter(p => p.isFavorite)), [displayProducts, productPopularity]);
+    const otherProducts = useMemo(() => sortProductsBySales(displayProducts.filter(p => !p.isFavorite)), [displayProducts, productPopularity]);
 
     const cartTotal = useMemo(() => currentOrder.reduce((sum, item) => sum + item.product.price * item.quantity, 0), [currentOrder]);
     const cartItemCount = useMemo(() => currentOrder.reduce((sum, item) => sum + item.quantity, 0), [currentOrder]);
@@ -199,18 +223,23 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
     }, [products]);
 
     const updateQuantity = useCallback((productId: string, newQuantity: number) => {
-        const productInStock = products.find(p => p.id === productId);
+        const productInStock = displayProducts.find(p => p.id === productId);
         const stock = productInStock ? productInStock.stock : 0;
         setCurrentOrder(prevOrder => {
             if (newQuantity <= 0) return prevOrder.filter(item => item.product.id !== productId);
             return prevOrder.map(item => item.product.id === productId ? { ...item, quantity: Math.min(newQuantity, stock) } : item);
         });
-    }, [products]);
+    }, [displayProducts]);
 
     const clearOrder = useCallback(() => { setCurrentOrder([]); setIsCartOpen(false); }, []);
 
     const completeOrder = useCallback(async () => {
         if (currentOrder.length === 0 || !selectedStaffId) return;
+        
+        // Extract lottery tickets from the order
+        const lotteryItem = currentOrder.find(item => item.product.id === 'LOTTERY_TICKET_FAKE_ID');
+        const regularItems = currentOrder.filter(item => item.product.id !== 'LOTTERY_TICKET_FAKE_ID');
+        
         const newOrder: Omit<Order, 'id'> = {
             items: currentOrder.map(item => ({ product: item.product, quantity: item.quantity })),
             total: cartTotal,
@@ -221,6 +250,12 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         };
         try {
             setIsCartOpen(false); 
+            
+            // Process lottery tickets if any
+            if (lotteryItem && onBuyLotteryTicket) {
+                await onBuyLotteryTicket(selectedStaffId, lotteryItem.quantity);
+            }
+            
             await onCompleteOrder(newOrder);
             clearOrder();
         } catch (error: any) {

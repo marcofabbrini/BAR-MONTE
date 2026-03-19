@@ -528,7 +528,7 @@ const VehicleChecklist: React.FC<{
                                             <div className="text-xs text-slate-600 italic bg-slate-50 p-2 rounded border border-slate-100 flex justify-between items-start group">
                                                 <span>{check.notes || 'Nessuna nota.'}</span>
                                                 <button 
-                                                    onClick={() => { setEditingCheckId(check.id); setEditNote(check.notes); }}
+                                                    onClick={() => { setEditingCheckId(check.id); setEditNote(check.notes || ''); }}
                                                     className="opacity-0 group-hover:opacity-100 text-blue-400 hover:text-blue-600 transition-opacity"
                                                 >
                                                     <EditIcon className="h-3 w-3" />

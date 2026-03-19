@@ -114,7 +114,7 @@ export const BarService = {
         // Update stock for each item
         if (o.items && Array.isArray(o.items)) {
             o.items.forEach((item: any) => {
-                if (item.product && item.product.id) {
+                if (item.product && item.product.id && item.product.id !== 'LOTTERY_TICKET_FAKE_ID') {
                     const productRef = db.collection('products').doc(item.product.id);
                     batch.update(productRef, {
                         stock: firebase.firestore.FieldValue.increment(-item.quantity)

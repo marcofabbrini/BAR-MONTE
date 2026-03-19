@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef, Reminder } from '../types';
+import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef, Reminder, LotteryConfig } from '../types';
 import firebase from 'firebase/compat/app';
 import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon, WrenchIcon, TruckIcon, PinIcon, ShieldCheckIcon, InfoIcon, FirstAidIcon } from './Icons';
 import ProductManagement from './ProductManagement';
@@ -53,6 +53,9 @@ interface AdminViewProps {
     tombolaConfig?: TombolaConfig;
     onNavigateToTombola: () => void;
 
+    lotteryConfig?: LotteryConfig;
+    onUpdateLotteryConfig?: (cfg: LotteryConfig) => Promise<void>;
+
     seasonalityConfig?: SeasonalityConfig;
     onUpdateSeasonality: (cfg: SeasonalityConfig) => Promise<void>;
 
@@ -81,6 +84,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
     isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin,
     tombolaConfig, onNavigateToTombola,
+    lotteryConfig, onUpdateLotteryConfig,
     seasonalityConfig, onUpdateSeasonality,
     shiftSettings, onUpdateShiftSettings,
     attendanceRecords, onDeleteAttendance, onSaveAttendance, onReopenAttendance,
@@ -142,6 +146,13 @@ const AdminView: React.FC<AdminViewProps> = ({
     // Role Form State
     const [newRoleLabel, setNewRoleLabel] = useState('');
     const [newRoleLevel, setNewRoleLevel] = useState<number>(1);
+
+    // Lottery Form State
+    const [lotteryActive, setLotteryActive] = useState(lotteryConfig?.isActive || false);
+    const [lotteryPrice, setLotteryPrice] = useState(lotteryConfig?.ticketPrice || 1);
+    const [lotteryDate, setLotteryDate] = useState(lotteryConfig?.extractionDate || '');
+    const [lotteryPrizes, setLotteryPrizes] = useState(lotteryConfig?.prizes || []);
+    const [lotteryNumbers, setLotteryNumbers] = useState(lotteryConfig?.extractedNumbers?.join(', ') || '');
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     
@@ -274,6 +285,19 @@ const AdminView: React.FC<AdminViewProps> = ({
             waterQuotaPrice: waterPrice
         });
         alert("Configurazione generale salvata!");
+    };
+
+    const handleSaveLottery = async () => {
+        if(!onUpdateLotteryConfig) return;
+        const numbers = lotteryNumbers.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+        await onUpdateLotteryConfig({
+            isActive: lotteryActive,
+            ticketPrice: lotteryPrice,
+            extractionDate: lotteryDate,
+            prizes: lotteryPrizes,
+            extractedNumbers: numbers
+        });
+        alert("Configurazione Lotteria salvata!");
     };
 
     const handleSendNotif = async () => {
@@ -1121,6 +1145,60 @@ const AdminView: React.FC<AdminViewProps> = ({
                                     <textarea placeholder="Messaggio..." value={notifBody} onChange={e => setNotifBody(e.target.value)} className="w-full border p-2 rounded h-20" />
                                     <button onClick={handleSendNotif} className="bg-red-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-red-600 shadow-md w-full md:w-auto">
                                         Invia a Tutti
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 12. LOTTERIA */}
+                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                            <button onClick={() => toggleSection('lottery')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
+                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                                    <GamepadIcon className="h-5 w-5 text-green-500" /> Configurazione Lotteria
+                                </h2>
+                                <span>{expandedSection === 'lottery' ? '−' : '+'}</span>
+                            </button>
+                            {expandedSection === 'lottery' && (
+                                <div className="p-6 animate-fade-in border-t border-slate-100 space-y-4 bg-slate-50">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <input type="checkbox" checked={lotteryActive} onChange={e => setLotteryActive(e.target.checked)} className="w-5 h-5 text-green-600 rounded" />
+                                        <label className="font-bold text-slate-700">Lotteria Attiva</label>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 block mb-1">Costo Biglietto (€)</label>
+                                            <input type="number" step="0.5" value={lotteryPrice} onChange={e => setLotteryPrice(parseFloat(e.target.value))} className="w-full border p-2 rounded bg-white" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 block mb-1">Data Estrazione</label>
+                                            <input type="date" value={lotteryDate} onChange={e => setLotteryDate(e.target.value)} className="w-full border p-2 rounded bg-white" />
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="text-xs font-bold text-slate-500 block mb-1">Numeri Estratti (separati da virgola)</label>
+                                            <input type="text" value={lotteryNumbers} onChange={e => setLotteryNumbers(e.target.value)} placeholder="Es: 12, 45, 89" className="w-full border p-2 rounded bg-white" />
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mt-4">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Premi</label>
+                                            <button onClick={() => setLotteryPrizes([...lotteryPrizes, { id: Date.now().toString(), name: '' }])} className="bg-green-500 text-white px-2 py-1 rounded text-xs font-bold">+ Aggiungi Premio</button>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {lotteryPrizes.map((prize, idx) => (
+                                                <div key={prize.id} className="flex gap-2 items-center bg-white p-2 rounded border">
+                                                    <span className="font-bold text-slate-400 w-6">{idx + 1}.</span>
+                                                    <input type="text" value={prize.name} onChange={e => { const newPrizes = [...lotteryPrizes]; newPrizes[idx].name = e.target.value; setLotteryPrizes(newPrizes); }} placeholder="Descrizione Premio" className="flex-grow border-b px-2 py-1 text-sm" />
+                                                    <input type="number" value={prize.winningNumber || ''} onChange={e => { const newPrizes = [...lotteryPrizes]; newPrizes[idx].winningNumber = parseInt(e.target.value) || undefined; setLotteryPrizes(newPrizes); }} placeholder="N. Vincitore" className="w-24 border-b px-2 py-1 text-sm" />
+                                                    <button onClick={() => setLotteryPrizes(lotteryPrizes.filter(p => p.id !== prize.id))} className="text-red-500 font-bold px-2">×</button>
+                                                </div>
+                                            ))}
+                                            {lotteryPrizes.length === 0 && <p className="text-xs text-slate-400 italic">Nessun premio configurato.</p>}
+                                        </div>
+                                    </div>
+
+                                    <button onClick={handleSaveLottery} className="mt-4 bg-green-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-green-700 shadow-sm w-full md:w-auto">
+                                        Salva Configurazione Lotteria
                                     </button>
                                 </div>
                             )}

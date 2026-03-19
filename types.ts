@@ -334,3 +334,26 @@ export interface AppNotification {
     body: string;
     timestamp: string;
 }
+
+export interface LotteryPrize {
+    id: string;
+    name: string;
+    winningNumber?: number;
+}
+
+export interface LotteryConfig {
+    isActive: boolean;
+    ticketPrice: number;
+    extractionDate: string;
+    prizes: LotteryPrize[];
+    extractedNumbers: number[];
+}
+
+export interface LotteryTicket {
+    id: string;
+    playerId: string;
+    playerName: string;
+    ticketNumber: number;
+    purchaseTime: string;
+    pricePaid: number;
+}

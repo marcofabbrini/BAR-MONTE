@@ -18,13 +18,15 @@ import OperationalVehiclesView from './components/OperationalVehiclesView';
 import LaundryView from './components/LaundryView';
 import InterventionsView from './components/InterventionsView';
 import LoginScreen from './components/LoginScreen';
+import LotteryView from './components/LotteryView';
 import { TILLS } from './constants';
 import { BellIcon } from './components/Icons';
 import { AnalottoProvider, useAnalotto } from './contexts/AnalottoContext';
 import { TombolaProvider, useTombola } from './contexts/TombolaContext';
 import { BarProvider, useBar } from './contexts/BarContext';
+import { LotteryProvider, useLottery } from './contexts/LotteryContext';
 
-type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice' | 'attendance_view' | '3d_viewer' | 'vehicle_booking' | 'operational_vehicles' | 'laundry' | 'interventions';
+type View = 'selection' | 'till' | 'reports' | 'admin' | 'tombola' | 'games' | 'calendar' | 'analotto' | 'dice' | 'attendance_view' | '3d_viewer' | 'vehicle_booking' | 'operational_vehicles' | 'laundry' | 'interventions' | 'lottery';
 
 const AppContent: React.FC = () => {
     const [view, setView] = useState<View>('selection');
@@ -58,6 +60,11 @@ const AppContent: React.FC = () => {
         startGame: handleTombolaStartInternal, manualExtraction: handleManualTombolaExtraction,
         updateConfig: handleUpdateTombolaConfig, transferFunds: handleTransferTombolaFunds
     } = useTombola();
+
+    const {
+        config: lotteryConfig, tickets: lotteryTickets,
+        buyTicket: handleBuyLotteryTicket, updateConfig: handleUpdateLotteryConfig
+    } = useLottery();
 
     // FIX IPHONE CRASH: Check if 'Notification' exists in window before accessing .permission
     const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
@@ -146,10 +153,17 @@ const AppContent: React.FC = () => {
                 tombolaConfig={tombolaConfig} 
                 tombolaTickets={tombolaTickets} 
                 onBuyTombolaTicket={handleBuyTombolaTicket} 
+                lotteryConfig={lotteryConfig}
+                lotteryTickets={lotteryTickets}
+                onBuyLotteryTicket={async (staffId, quantity) => {
+                    const member = staff.find(s => s.id === staffId);
+                    if (member) await handleBuyLotteryTicket(staffId, member.name, quantity);
+                }}
                 attendanceRecords={attendanceRecords}
                 generalSettings={generalSettings}
             />;
             case 'reports': return <ReportsView onGoBack={() => setView('selection')} products={products} staff={staff} orders={orders} generalSettings={generalSettings} attendanceRecords={attendanceRecords} />;
+            case 'lottery': return <LotteryView onGoBack={() => setView('games')} config={lotteryConfig} tickets={lotteryTickets} staff={staff} />;
             case 'tombola': 
                 if (!tombolaConfig) return <div className="flex items-center justify-center min-h-dvh"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
                 return <TombolaView 
@@ -162,7 +176,7 @@ const AppContent: React.FC = () => {
             />;
             case 'analotto': return <AnalottoView onGoBack={() => setView('selection')} config={analottoConfig} bets={analottoBets} extractions={analottoExtractions} staff={staff} onPlaceBet={handlePlaceAnalottoBet} onRunExtraction={handleAnalottoExtraction} isSuperAdmin={isSuperAdmin} onTransferFunds={(amount) => handleTransferAnalottoFunds(amount)} onUpdateConfig={handleUpdateAnalottoConfig} onConfirmTicket={handleConfirmAnalottoTicket} />;
             case 'dice': return <DiceGame onGoBack={() => setView('selection')} staff={staff} shiftSettings={shiftSettings} attendanceRecords={attendanceRecords} />;
-            case 'games': return <GamesHub onGoBack={() => setView('selection')} onPlayTombola={() => setView('tombola')} onPlayAnalotto={() => setView('analotto')} onPlayDice={() => setView('dice')} onOpen3DViewer={() => setView('3d_viewer')} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} />;
+            case 'games': return <GamesHub onGoBack={() => setView('selection')} onPlayTombola={() => setView('tombola')} onPlayAnalotto={() => setView('analotto')} onPlayDice={() => setView('dice')} onOpen3DViewer={() => setView('3d_viewer')} onPlayLottery={() => setView('lottery')} tombolaConfig={tombolaConfig} analottoConfig={analottoConfig} lotteryConfig={lotteryConfig} />;
             case 'calendar': return <ShiftCalendar onGoBack={() => setView('selection')} tillColors={tillColors} shiftSettings={shiftSettings} />;
             case '3d_viewer': return <InteractiveModelViewer onGoBack={() => setView('games')} />;
             case 'attendance_view': return <AttendanceCalendar 
@@ -200,6 +214,7 @@ const AppContent: React.FC = () => {
                 isAuthenticated={true} currentUser={currentUser} onLogin={handleGoogleLogin} onLogout={handleLogout}
                 adminList={adminList} onAddAdmin={(e) => addAdmin(e, currentUser?.email||'')} onRemoveAdmin={removeAdmin}
                 tombolaConfig={tombolaConfig} onNavigateToTombola={() => setView('tombola')}
+                lotteryConfig={lotteryConfig} onUpdateLotteryConfig={handleUpdateLotteryConfig}
                 seasonalityConfig={seasonalityConfig} onUpdateSeasonality={updateSeasonality}
                 shiftSettings={shiftSettings} onUpdateShiftSettings={updateShiftSettings}
                 attendanceRecords={attendanceRecords} onDeleteAttendance={deleteAttendance} onSaveAttendance={(t, i, d, c, det, sub) => saveAttendance(t, i, d, c, det, sub)} onReopenAttendance={reopenAttendance}
@@ -259,7 +274,9 @@ const App: React.FC = () => {
         <BarProvider>
             <AnalottoProvider>
                 <TombolaProvider>
-                    <AppContent />
+                    <LotteryProvider>
+                        <AppContent />
+                    </LotteryProvider>
                 </TombolaProvider>
             </AnalottoProvider>
         </BarProvider>
