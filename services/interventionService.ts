@@ -6,8 +6,8 @@ export const InterventionService = {
     // --- LISTENERS ---
     
     subscribeToInterventions: (onUpdate: (data: Intervention[]) => void) => {
-        // Ultimi 200 interventi
-        return db.collection('interventions').orderBy('date', 'desc').limit(200).onSnapshot((s) => {
+        // Ultimi 1500 interventi
+        return db.collection('interventions').orderBy('date', 'desc').limit(1500).onSnapshot((s) => {
             const items = s.docs.map(d => ({ ...d.data(), id: d.id } as Intervention));
             // Ordinamento lato client per Data + Ora Uscita (per gestire meglio i casi limite)
             items.sort((a, b) => {
