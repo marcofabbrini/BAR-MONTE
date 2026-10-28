@@ -1,0 +1,58 @@
+name: Pubblica GESDI su marcofabbrini.com/vvf/gestionali
+
+on:
+  push:
+    branches: [main, migrazione-php-mysql]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-gestionali
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installa dipendenze
+        run: npm ci
+
+      - name: Controlli (TypeScript + test migrazione)
+        run: |
+          npx tsc --noEmit
+          node tests/migrate.test.mjs
+
+      - name: Compila e crea il pacchetto
+        run: npm run package:deploy
+
+      - name: Genera api/config.php dai secret
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASS: ${{ secrets.DB_PASS }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          RESET_TOKEN: ${{ secrets.RESET_TOKEN }}
+        run: node tools/write-config.mjs deploy/gestionali/api/config.php
+
+      - name: Carica via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ secrets.FTP_PROTOCOL || 'ftps' }}
+          port: ${{ secrets.FTP_PORT || '' }}
+          local-dir: ./deploy/gestionali/
+          server-dir: ${{ secrets.FTP_SERVER_DIR }}

@@ -124,3 +124,33 @@ personalizzati con il livello scelto.
 
 Ripeti i punti 1 e 2: ricarica il contenuto di `deploy/gestionali/` **senza** sovrascrivere `api/config.php`
 (non è nel pacchetto, quindi non rischi di cancellarlo). Il database non si tocca.
+
+## Pubblicazione automatica (GitHub Actions + FTP)
+
+Il workflow `.github/workflows/deploy.yml` compila l'app, genera `api/config.php` dai secret e
+carica tutto via FTP in `/vvf/gestionali/`. Parte a ogni push su `main` (e su
+`migrazione-php-mysql`, finché la migrazione non è unita) oppure a mano da
+**Actions → Pubblica GESDI → Run workflow**. Prima di caricare esegue `tsc` e il test della migrazione.
+
+Secret da inserire in **Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secret | Contenuto | Obbligatorio |
+|---|---|---|
+| `DB_HOST` | host MySQL (dal pannello hosting; spesso non è `localhost`) | sì |
+| `DB_PORT` | porta (default 3306) | no |
+| `DB_NAME` | `Sql837388_4` | sì |
+| `DB_USER` | utente MySQL (`Sql837388`) | sì |
+| `DB_PASS` | password MySQL | sì |
+| `FTP_SERVER` | host FTP | sì |
+| `FTP_USERNAME` / `FTP_PASSWORD` | credenziali FTP | sì |
+| `FTP_SERVER_DIR` | cartella di destinazione, con la `/` finale, es. `/vvf/gestionali/` (relativa alla radice dell'account FTP) | sì |
+| `FTP_PROTOCOL` | `ftps` (default), `ftp` o `ftps-legacy` se l'hosting non supporta FTPS esplicito | no |
+| `FTP_PORT` | solo se non standard | no |
+| `GEMINI_API_KEY` | attiva l'analisi AI | no |
+| `RESET_TOKEN` | attiva il reset di emergenza del Super Admin; svuotalo dopo l'uso | no |
+
+Note:
+- `config.php` viene creato ad ogni deploy: per cambiare una credenziale modifica il secret e rilancia il workflow.
+- I dati nel database non vengono toccati dal deploy (le tabelle si creano da sole alla prima richiesta).
+- Il file `.ftp-deploy-sync-state.json` che l'action lascia sul server serve a caricare solo i file cambiati; è bloccato dal web da `.htaccess`.
+- Il primo deploy carica tutto; se interrotto a metà, rilancialo.
