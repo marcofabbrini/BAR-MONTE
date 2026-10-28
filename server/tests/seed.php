@@ -19,6 +19,8 @@ Store::commit([], [
     $mk('u-mgr', ['name' => 'Marco Manager', 'password' => 'mgrpw', 'role' => 'manager', 'shift' => 'c']),
     $mk('u-std', ['name' => 'Mario Rossi', 'username' => 'mario', 'password' => 'mariopw', 'role' => 'standard', 'shift' => 'a']),
     $mk('u-free', ['name' => 'Libero Accesso', 'role' => 'standard', 'shift' => 'd']),
+    $mk('u-aaa-omonimo', ['name' => 'Pippo Omonimo', 'role' => 'standard', 'shift' => 'd']),
+    $mk('u-zzz-omonimo', ['name' => 'Pippo Omonimo', 'password' => 'pippopw', 'role' => 'standard', 'shift' => 'd']),
     $mk('u-freemgr', ['name' => 'Manager Senza Password', 'role' => 'manager', 'shift' => 'd']),
 ], null);
 // Utente importato dalla vecchia app: password in chiaro (verrà convertita in hash al primo login).

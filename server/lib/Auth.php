@@ -126,6 +126,11 @@ final class Auth
             if (!Config::get('allow_passwordless', true)) {
                 return false;
             }
+            // Un account senza password accetta solo il campo password vuoto: se qualcuno
+            // digita una password, sta cercando un altro account con lo stesso nome.
+            if ($given !== '') {
+                return false;
+            }
             return Policy::userLevel($staff) <= (int) Config::get('passwordless_max_level', 1);
         }
         if (Policy::isHash($stored)) {

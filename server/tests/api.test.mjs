@@ -73,6 +73,12 @@ await test('login per nome (senza username) con password', async () => {
 await test('accesso libero consentito a utente standard senza password', async () => {
     const r = await new Client().login('Libero Accesso', ''); assert.equal(r.status, 200); assert.equal(r.user.hasPassword, false);
 });
+await test('omonimi: con password si entra nell\'account giusto, non in quello senza password', async () => {
+    const r = await new Client().login('Pippo Omonimo', 'pippopw'); assert.equal(r.status, 200); assert.equal(r.user.id, 'u-zzz-omonimo');
+});
+await test('omonimi: password errata non entra nell\'account senza password', async () => {
+    const r = await new Client().login('Pippo Omonimo', 'sbagliata'); assert.equal(r.status, 401);
+});
 await test('accesso libero NEGATO a manager senza password', async () => {
     const r = await new Client().login('Manager Senza Password', ''); assert.equal(r.status, 401);
 });
