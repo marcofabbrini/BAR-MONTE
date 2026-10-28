@@ -1,5 +1,5 @@
 
-import { db } from '../firebaseConfig';
+import { db } from '../lib/db';
 import { OperationalVehicle, VehicleCheck } from '../types';
 
 export const OperationalVehicleService = {

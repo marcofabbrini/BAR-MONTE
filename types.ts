@@ -29,7 +29,10 @@ export interface StaffMember {
     icon?: string;
     role?: UserRole | string;
     username?: string;
+    /** Mai valorizzata in lettura: il server non invia password. Si imposta solo in scrittura. */
     password?: string;
+    /** Calcolata dal server: indica se l'utente ha una password impostata. */
+    hasPassword?: boolean;
     photoUrl?: string;
     grade?: string;
     lastSeen?: string;
@@ -356,4 +359,9 @@ export interface LotteryTicket {
     ticketNumber: number;
     purchaseTime: string;
     pricePaid: number;
+}
+
+/** Operatore autenticato: `email` contiene l'etichetta (nome) usata nei log di chi esegue le azioni. */
+export interface AuthUser {
+    email?: string | null;
 }

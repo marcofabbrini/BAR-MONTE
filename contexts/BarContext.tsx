@@ -15,6 +15,7 @@ import { OperationalVehicleService } from '../services/operationalVehicleService
 import { InterventionService } from '../services/interventionService';
 import { ReminderService } from '../services/reminderService';
 import { USER_ROLES } from '../constants';
+import { AuthApi, ApiError } from '../lib/db';
 
 interface BarContextType {
     // Data
@@ -199,15 +200,6 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
         const timer = setInterval(() => setNow(new Date()), 30000); // Update "now" every 30s
 
-        // Load Auth from LocalStorage
-        const savedUser = localStorage.getItem('bar_user_id');
-        if(savedUser) {
-            // We need staff loaded first, but effect runs parallel.
-            // We'll fix this by checking in the staff subscription or separately
-        }
-
-        setIsLoading(false);
-
         return () => {
             unsubProducts(); unsubStaff(); unsubOrders(); unsubCash(); unsubAdmins();
             unsubColors(); unsubSeas(); unsubShifts(); unsubGeneral(); unsubAtt();
@@ -219,13 +211,25 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         };
     }, []);
 
-    // Sync Auth State with Staff List
+    // Sessione: al caricamento chiede al server se c'è già un accesso valido (cookie di sessione).
     useEffect(() => {
-        const savedUserId = localStorage.getItem('bar_user_id');
-        if (savedUserId && staff.length > 0) {
-            const user = staff.find(s => s.id === savedUserId);
-            if (user) setActiveBarUser(user);
-        }
+        let cancelled = false;
+        AuthApi.me()
+            .then(user => { if (!cancelled && user) setActiveBarUser(user); })
+            .finally(() => { if (!cancelled) setIsLoading(false); });
+        // Sessione scaduta o chiusa altrove: torna alla schermata di login.
+        const offUnauthorized = AuthApi.onUnauthorized(() => setActiveBarUser(null));
+        return () => { cancelled = true; offUnauthorized(); };
+    }, []);
+
+    // Tiene aggiornato l'utente attivo (es. ruolo cambiato da un amministratore).
+    useEffect(() => {
+        setActiveBarUser(current => {
+            if (!current) return current;
+            const fresh = staff.find(s => s.id === current.id);
+            if (!fresh || JSON.stringify(fresh) === JSON.stringify(current)) return current;
+            return fresh;
+        });
     }, [staff]);
 
     const getNow = () => now;
@@ -370,29 +374,23 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     // Auth
+    // Il controllo di nome utente e password avviene sul server.
+    // Restituisce false per credenziali errate; per altri problemi (es. troppi tentativi,
+    // server non raggiungibile) lancia un errore con messaggio leggibile.
     const loginBarUser = async (username: string, pass: string): Promise<boolean> => {
-        // Case insensitive username match
-        const user = staff.find(s => 
-            (s.username?.toLowerCase() === username.toLowerCase() || s.name.toLowerCase() === username.toLowerCase())
-        );
-        
-        if (user) {
-            // Simple password check (if set)
-            if (user.password && user.password !== pass) return false;
-            
-            // Success
+        try {
+            const user = await AuthApi.login(username, pass);
             setActiveBarUser(user);
-            localStorage.setItem('bar_user_id', user.id);
-            // Update last seen
-            await BarService.updateStaff({ ...user, lastSeen: new Date().toISOString() });
             return true;
+        } catch (e) {
+            if (e instanceof ApiError && e.status === 401) return false;
+            throw e;
         }
-        return false;
     };
 
     const logoutBarUser = () => {
         setActiveBarUser(null);
-        localStorage.removeItem('bar_user_id');
+        void AuthApi.logout();
     };
 
     return (

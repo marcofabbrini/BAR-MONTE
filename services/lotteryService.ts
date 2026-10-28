@@ -1,4 +1,4 @@
-import { db } from '../firebaseConfig';
+import { db } from '../lib/db';
 import { LotteryConfig, LotteryTicket } from '../types';
 
 export const LotteryService = {

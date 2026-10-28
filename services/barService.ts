@@ -1,6 +1,5 @@
 
-import { db } from '../firebaseConfig';
-import firebase from 'firebase/compat/app';
+import { db, FieldValue } from '../lib/db';
 import { 
     Product, 
     StaffMember, 
@@ -117,7 +116,7 @@ export const BarService = {
                 if (item.product && item.product.id && item.product.id !== 'LOTTERY_TICKET_FAKE_ID') {
                     const productRef = db.collection('products').doc(item.product.id);
                     batch.update(productRef, {
-                        stock: firebase.firestore.FieldValue.increment(-item.quantity)
+                        stock: FieldValue.increment(-item.quantity)
                     });
                 }
             });

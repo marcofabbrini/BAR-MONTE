@@ -71,8 +71,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings, att
         // Filtra solo staff del turno attivo ED escludi utenti con nome "Cassa" e SUPER ADMIN
         let filtered = staff.filter(s => 
             s.shift === activeShift && 
-            !s.name.toLowerCase().includes('cassa') &&
-            s.role !== 'super-admin'
+            !s.name.toLowerCase().includes('cassa')
         );
         
         // SE ESISTE IL RECORD: Filtra ulteriormente per mostrare solo i PRESENTI
@@ -199,7 +198,7 @@ const DiceGame: React.FC<DiceGameProps> = ({ onGoBack, staff, shiftSettings, att
 
     // Filtra lista staff globale per mostrare solo il turno corrente (Per la selezione manuale)
     const currentShiftStaffList = useMemo(() => {
-        return staff.filter(s => s.shift === activeShift && !s.name.toLowerCase().includes('cassa') && s.role !== 'super-admin');
+        return staff.filter(s => s.shift === activeShift && !s.name.toLowerCase().includes('cassa'));
     }, [staff, activeShift]);
 
     return (

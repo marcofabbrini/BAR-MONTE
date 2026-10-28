@@ -1,5 +1,5 @@
 
-import { db } from '../firebaseConfig';
+import { db } from '../lib/db';
 import { Intervention, InterventionTypology, DutyOfficer } from '../types';
 
 export const InterventionService = {

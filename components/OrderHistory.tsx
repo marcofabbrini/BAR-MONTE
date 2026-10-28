@@ -89,7 +89,6 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
             staff.forEach(member => {
                 if (filterStaffId !== 'all' && member.id !== filterStaffId) return;
                 if (member.name.toLowerCase().includes('cassa')) return;
-                if (member.role === 'super-admin') return; // EXCLUDE SUPER ADMIN
 
                 // Calcola presenze nel range selezionato
                 const count = attendanceRecords.filter(r => {

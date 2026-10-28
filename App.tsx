@@ -1,7 +1,5 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { db, auth, googleProvider } from './firebaseConfig';
-import firebase from 'firebase/compat/app'; // For types
 import TillSelection from './components/TillSelection';
 import TillView from './components/TillView';
 import ReportsView from './components/ReportsView';
@@ -20,6 +18,7 @@ import InterventionsView from './components/InterventionsView';
 import LoginScreen from './components/LoginScreen';
 import LotteryView from './components/LotteryView';
 import { TILLS } from './constants';
+import { AuthUser } from './types';
 import { BellIcon } from './components/Icons';
 import { AnalottoProvider, useAnalotto } from './contexts/AnalottoContext';
 import { TombolaProvider, useTombola } from './contexts/TombolaContext';
@@ -32,10 +31,6 @@ const AppContent: React.FC = () => {
     const [view, setView] = useState<View>('selection');
     const [selectedTillId, setSelectedTillId] = useState<string | null>(null);
     
-    // Auth State (Firebase)
-    const [currentUser, setCurrentUser] = useState<firebase.User | null>(null);
-    const [isAdmin, setIsAdmin] = useState(false);
-
     // --- CONTEXT HOOKS ---
     const { 
         products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
@@ -74,35 +69,11 @@ const AppContent: React.FC = () => {
         return 'default';
     });
 
-    // Calcolo Super Admin (Firebase Auth OR Local App Login via Role)
-    const isSuperAdmin = useMemo(() => {
-        // 1. Firebase Google Auth Check (Legacy)
-        const firebaseSuper = currentUser && adminList.length > 0 && currentUser.email === adminList.sort((a,b) => a.timestamp.localeCompare(b.timestamp))[0].email;
-        
-        // 2. Local App Login Check (Role Based)
-        const localSuper = activeBarUser && activeBarUser.role === 'super-admin';
+    // Operatore con cui si è fatto login: la sua etichetta compare nei log delle azioni.
+    const currentUser = useMemo<AuthUser | null>(() => activeBarUser ? { email: activeBarUser.name } : null, [activeBarUser]);
 
-        return !!(firebaseSuper || localSuper);
-    }, [currentUser, adminList, activeBarUser]);
-
-    // Auth Listener
-    useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged(async (user) => {
-            setCurrentUser(user);
-            if (user && user.email) {
-                try {
-                    const adminsRef = db.collection('admins');
-                    const q = adminsRef.where("email", "==", user.email);
-                    const querySnapshot = await q.get();
-                    setIsAdmin(!querySnapshot.empty);
-                } catch (error) {
-                    console.error("Auth error:", error);
-                    setIsAdmin(false);
-                }
-            } else { setIsAdmin(false); }
-        });
-        return () => unsubscribe();
-    }, []);
+    // Super Admin: ruolo dell'utente con cui si è fatto login (verificato anche dal server).
+    const isSuperAdmin = useMemo(() => !!(activeBarUser && activeBarUser.role === 'super-admin'), [activeBarUser]);
 
     const requestNotificationPermission = async () => {
         if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -124,9 +95,6 @@ const AppContent: React.FC = () => {
         await sendNotification("TOMBOLA INIZIATA! 🎟️", "L'estrazione è partita. Corri a controllare la tua cartella!", "Sistema");
     };
 
-    const handleGoogleLogin = async () => { try { await auth.signInWithPopup(googleProvider); } catch (e: any) { alert("Login fallito: " + e.message); } };
-    const handleLogout = async () => { try { await auth.signOut(); setView('selection'); } catch (e) { console.error(e); } };
-
     // --- RENDER CONTENT ---
     
     // 1. Loading
@@ -134,7 +102,7 @@ const AppContent: React.FC = () => {
 
     // 2. Global Login Check
     if (!activeBarUser) {
-        return <LoginScreen staff={staff} onLoginSuccess={() => setView('selection')} />;
+        return <LoginScreen onLoginSuccess={() => setView('selection')} />;
     }
 
     const renderContent = () => {
@@ -211,7 +179,7 @@ const AppContent: React.FC = () => {
                 onAddStaff={addStaff} onUpdateStaff={updateStaff} onDeleteStaff={deleteStaff}
                 onAddCashMovement={addCashMovement} onUpdateMovement={updateCashMovement} onDeleteMovement={deleteCashMovement} onPermanentDeleteMovement={permanentDeleteMovement}
                 onStockPurchase={stockPurchase} onStockCorrection={stockCorrection} onResetCash={resetCash} onMassDelete={massDelete}
-                isAuthenticated={true} currentUser={currentUser} onLogin={handleGoogleLogin} onLogout={handleLogout}
+                isAuthenticated={true} currentUser={currentUser} onLogin={() => {}} onLogout={() => setView('selection')}
                 adminList={adminList} onAddAdmin={(e) => addAdmin(e, currentUser?.email||'')} onRemoveAdmin={removeAdmin}
                 tombolaConfig={tombolaConfig} onNavigateToTombola={() => setView('tombola')}
                 lotteryConfig={lotteryConfig} onUpdateLotteryConfig={handleUpdateLotteryConfig}

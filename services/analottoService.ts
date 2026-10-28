@@ -1,5 +1,5 @@
 
-import { db } from '../firebaseConfig';
+import { db } from '../lib/db';
 import { AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel } from '../types';
 
 export const AnalottoService = {
