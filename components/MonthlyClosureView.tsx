@@ -107,9 +107,6 @@ const MonthlyClosureView: React.FC = () => {
                         // Verifica che il nome non contenga "Cassa" (case insensitive) per evitare di addebitare l'acqua alla cassa comune
                         if (member.name.toLowerCase().includes('cassa')) return;
                         
-                        // Esclusione Super Admin
-                        if (member.role === 'super-admin') return;
-
                         let isPaying = false;
                         
                         if (r.attendanceDetails && r.attendanceDetails[id]) {

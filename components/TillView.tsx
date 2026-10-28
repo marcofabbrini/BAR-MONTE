@@ -104,7 +104,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
 
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
-    const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift && s.role !== 'super-admin'), [allStaff, till.shift]);
+    const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift), [allStaff, till.shift]);
     
     useEffect(() => {
         if (isShiftValidated && existingAttendanceRecord) {
@@ -185,7 +185,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         let totalCount = 0;
 
         const quotas = staffForShift
-            .filter(s => !s.name.toLowerCase().includes('cassa') && s.role !== 'super-admin') // EXCLUDE SUPER ADMIN
+            .filter(s => !s.name.toLowerCase().includes('cassa'))
             .map(member => {
                 const count = attendanceRecords.filter(r => {
                     const d = new Date(r.date);

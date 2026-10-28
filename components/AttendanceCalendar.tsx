@@ -371,7 +371,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const matrixData = useMemo(() => {
         const realStaff = staff
-            .filter(s => s.shift === matrixShift && isRealPerson(s.name) && s.role !== 'super-admin') // EXCLUDE SUPER ADMIN FROM MATRIX
+            .filter(s => s.shift === matrixShift && isRealPerson(s.name))
             .sort((a,b) => {
                 const rankA = getStaffRank(a.grade);
                 const rankB = getStaffRank(b.grade);
