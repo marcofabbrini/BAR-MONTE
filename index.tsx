@@ -57,3 +57,10 @@ root.render(
     </ErrorBoundary>
   </React.StrictMode>
 );
+
+// App installabile (PWA): il service worker non tocca mai le chiamate ai dati (/api/).
+if ('serviceWorker' in navigator && window.isSecureContext) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch((err) => console.warn('Service worker non registrato:', err));
+  });
+}
