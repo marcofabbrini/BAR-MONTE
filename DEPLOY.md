@@ -128,8 +128,7 @@ Ripeti i punti 1 e 2: ricarica il contenuto di `deploy/gestionali/` **senza** so
 ## Pubblicazione automatica (GitHub Actions + FTP)
 
 Il workflow `.github/workflows/deploy.yml` compila l'app, genera `api/config.php` dai secret e
-carica tutto via FTP in `/vvf/gestionali/`. Parte a ogni push su `main` (e su
-`migrazione-php-mysql`, finché la migrazione non è unita) oppure a mano da
+carica tutto via FTP in `/vvf/gestionali/`. Parte a ogni push su `main` oppure a mano da
 **Actions → Pubblica GESDI → Run workflow**. Prima di caricare esegue `tsc` e il test della migrazione.
 
 Secret da inserire in **Settings → Secrets and variables → Actions → New repository secret**:

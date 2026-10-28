@@ -2,7 +2,7 @@ name: Pubblica GESDI su marcofabbrini.com/vvf/gestionali
 
 on:
   push:
-    branches: [main, migrazione-php-mysql]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -56,14 +56,3 @@ jobs:
           port: ${{ secrets.FTP_PORT || '' }}
           local-dir: ./deploy/gestionali/
           server-dir: ${{ secrets.FTP_SERVER_DIR }}
-
-      - name: Diagnostica FTP (solo se il deploy fallisce)
-        if: failure()
-        continue-on-error: true
-        env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-          FTP_SERVER_DIR: ${{ secrets.FTP_SERVER_DIR }}
-          FTP_PROTOCOL: ${{ secrets.FTP_PROTOCOL || 'ftps' }}
-        run: bash tools/ftp-diag.sh
