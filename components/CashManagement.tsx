@@ -1,7 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Order, CashMovement } from '../types';
-import firebase from 'firebase/compat/app';
+import { Order, CashMovement, AuthUser } from '../types';
 import { TrashIcon } from './Icons';
 
 interface CashManagementProps {
@@ -13,7 +12,7 @@ interface CashManagementProps {
     onPermanentDeleteMovement: (id: string) => Promise<void>;
     onResetCash: (type: 'bar' | 'games') => Promise<void>;
     isSuperAdmin: boolean;
-    currentUser: firebase.User | null;
+    currentUser: AuthUser | null;
 }
 
 const CashManagement: React.FC<CashManagementProps> = ({ orders, movements, onAddMovement, onUpdateMovement, onDeleteMovement, onPermanentDeleteMovement, onResetCash, isSuperAdmin, currentUser }) => {

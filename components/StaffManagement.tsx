@@ -70,6 +70,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
     const [isEditing, setIsEditing] = useState<string | null>(null);
     const [isProcessingImg, setIsProcessingImg] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    // Il server non invia mai le password: il campo si compila solo per cambiarla.
+    const [clearPassword, setClearPassword] = useState(false);
+    const [hadPassword, setHadPassword] = useState(false);
     
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -105,6 +108,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         setRole('standard');
         setIsEditing(null);
         setShowPassword(false);
+        setClearPassword(false);
+        setHadPassword(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -122,7 +127,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         setRcSubGroup(member.rcSubGroup || 1);
         setIcon(member.icon || '');
         setPhotoUrl(member.photoUrl || '');
-        setPassword(member.password || '');
+        setPassword('');
+        setClearPassword(false);
+        setHadPassword(!!member.hasPassword);
         setRole(member.role || 'standard');
         setIsModalOpen(true);
     };
@@ -202,9 +209,11 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                 rcSubGroup: finalRcSubGroup, 
                 icon,
                 photoUrl,
-                password: password.trim(),
                 role
-            };
+            } as Omit<StaffMember, 'id'>;
+            // Password: inviata solo se compilata (o se si chiede di rimuoverla).
+            if (password.trim()) dataToSave.password = password.trim();
+            else if (clearPassword) dataToSave.password = '';
 
             if (isEditing) {
                 const memberToUpdate = staff.find(m => m.id === isEditing);
@@ -358,7 +367,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                                 type={showPassword ? "text" : "password"}
                                                 value={password} 
                                                 onChange={(e) => setPassword(e.target.value)} 
-                                                placeholder="Opzionale (vuoto = accesso libero)" 
+                                                placeholder={hadPassword ? "Lascia vuoto per non modificarla" : "Opzionale (vuoto = accesso libero)"} 
                                                 className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono tracking-widest"
                                             />
                                             <button 
@@ -370,7 +379,17 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                                 <EyeIcon className="h-5 w-5" />
                                             </button>
                                         </div>
-                                        <p className="text-[10px] text-slate-400 mt-1">Controlla qui se ci sono spazi indesiderati nella password.</p>
+                                        <p className="text-[10px] text-slate-400 mt-1">
+                                            {hadPassword
+                                                ? "La password attuale è protetta e non è visibile: compila il campo solo per cambiarla."
+                                                : "Senza password è consentito l'accesso libero solo agli Utenti Standard; gli altri ruoli richiedono sempre una password."}
+                                        </p>
+                                        {hadPassword && (
+                                            <label className="flex items-center gap-2 mt-2 text-xs text-slate-600 cursor-pointer">
+                                                <input type="checkbox" checked={clearPassword} onChange={(e) => setClearPassword(e.target.checked)} />
+                                                Rimuovi la password (accesso libero)
+                                            </label>
+                                        )}
                                     </div>
                                 </div>
 
@@ -454,7 +473,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                             {availableRoles.find(r => r.id === member.role)?.label || member.role}
                                         </span>
                                     )}
-                                    {member.password && <LockIcon className="h-3 w-3 text-slate-300" title="Password Impostata" />}
+                                    {member.hasPassword && <LockIcon className="h-3 w-3 text-slate-300" title="Password Impostata" />}
                                 </div>
                             </div>
 

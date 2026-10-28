@@ -56,19 +56,20 @@ La richiesta dell'utente è: "${userQuery}"
 Per favore, rispondi alla richiesta dell'utente basandoti ESCLUSIVAMENTE sui dati forniti. Sii breve, professionale e vai dritto al punto. Se i dati non sono sufficienti per rispondere, indicalo chiaramente. Formatta la tua risposta in modo chiaro e leggibile.
 `;
             
-            const response = await fetch('/api/analyze', {
+            // L'analisi passa dal server (la chiave API di Gemini sta in server/config.php).
+            const response = await fetch('api/index.php?action=analyze', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
+                credentials: 'same-origin',
                 body: JSON.stringify({ prompt: fullPrompt }),
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                // Gestione specifica per errore API Key
-                if (response.status === 500 && errorData.message && errorData.message.includes("API_KEY")) {
-                    throw new Error("CONFIGURAZIONE MANCANTE: La chiave API di Gemini non è impostata su Vercel. Vai su Settings > Environment Variables e aggiungi 'API_KEY'.");
+                const errorData = await response.json().catch(() => ({} as any));
+                if (response.status === 503 && errorData.error === 'ai-disabled') {
+                    throw new Error("ANALISI AI NON ATTIVA: manca la chiave API di Gemini. Inseriscila in 'gemini_api_key' nel file config.php sul server.");
                 }
                 throw new Error(errorData.message || `Errore del server: ${response.status}`);
             }

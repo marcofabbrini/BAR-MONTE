@@ -74,7 +74,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         if (isProfileOpen && activeBarUser) {
             setProfileForm({
                 username: activeBarUser.username || activeBarUser.name, // Default al nome se username mancante
-                password: activeBarUser.password || '',
+                password: '', // la password attuale non è leggibile: si compila solo per cambiarla
                 rcSubGroup: activeBarUser.rcSubGroup || 1
             });
         }
@@ -101,10 +101,12 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     const handleSaveProfile = async () => {
         if (!activeBarUser) return;
         try {
+            const newPassword = profileForm.password.trim();
             await updateStaff({
                 ...activeBarUser,
                 username: profileForm.username.trim(),
-                password: profileForm.password.trim(),
+                // Inviata solo se compilata: altrimenti il server mantiene quella attuale.
+                ...(newPassword ? { password: newPassword } : {}),
                 rcSubGroup: profileForm.rcSubGroup
             });
             setIsProfileOpen(false); // Close modal first
@@ -543,11 +545,12 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                                     <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Password</label>
                                     <div className="relative">
                                         <input 
-                                            type="text" 
+                                            type="password" 
+                                            autoComplete="new-password"
                                             value={profileForm.password} 
                                             onChange={e => setProfileForm({...profileForm, password: e.target.value})} 
                                             className="w-full border rounded-lg p-2 text-sm font-mono text-slate-700 bg-white focus:ring-2 focus:ring-blue-200 outline-none pr-8"
-                                            placeholder="Password (opzionale)"
+                                            placeholder={activeBarUser?.hasPassword ? "Lascia vuoto per non cambiarla" : "Password (opzionale)"}
                                         />
                                         <LockIcon className="absolute right-2 top-2.5 h-4 w-4 text-slate-300" />
                                     </div>
@@ -611,7 +614,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             <div className="flex-grow flex flex-col items-center justify-center p-4 z-10 w-full max-w-7xl mx-auto pb-20 pt-16">
                 
                 <div className="mb-4 md:mb-8 relative group transform transition-all duration-500">
-                    <img src="/logo.png" alt="Logo" className="h-20 w-auto md:h-32 object-contain drop-shadow-lg hover:scale-105" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                    <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Logo" className="h-20 w-auto md:h-32 object-contain drop-shadow-lg hover:scale-105" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 </div>
 
                 <div className="text-center mb-8 md:mb-10">

@@ -1,6 +1,5 @@
 
-import { db } from '../firebaseConfig';
-import firebase from 'firebase/compat/app';
+import { db, FieldValue } from '../lib/db';
 import { Reminder } from '../types';
 
 export const ReminderService = {
@@ -40,11 +39,11 @@ export const ReminderService = {
         
         if (isCompleted) {
             await ref.update({
-                completedDates: firebase.firestore.FieldValue.arrayRemove(date)
+                completedDates: FieldValue.arrayRemove(date)
             });
         } else {
             await ref.update({
-                completedDates: firebase.firestore.FieldValue.arrayUnion(date)
+                completedDates: FieldValue.arrayUnion(date)
             });
         }
     }

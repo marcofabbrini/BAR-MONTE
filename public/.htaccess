@@ -1,0 +1,10 @@
+# App GESDI: la pagina principale non va tenuta in cache, così gli aggiornamenti arrivano subito.
+# (I file in /assets hanno un nome con impronta digitale e possono restare in cache.)
+<IfModule mod_headers.c>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+  Header set X-Content-Type-Options "nosniff"
+  Header set Referrer-Policy "same-origin"
+</IfModule>
+AddDefaultCharset UTF-8

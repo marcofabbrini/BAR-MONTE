@@ -1,7 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef, Reminder, LotteryConfig } from '../types';
-import firebase from 'firebase/compat/app';
+import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef, Reminder, LotteryConfig, AuthUser } from '../types';
 import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon, WrenchIcon, TruckIcon, PinIcon, ShieldCheckIcon, InfoIcon, FirstAidIcon } from './Icons';
 import ProductManagement from './ProductManagement';
 import StaffManagement from './StaffManagement';
@@ -43,7 +42,7 @@ interface AdminViewProps {
     onMassDelete: (date: string, type: 'orders' | 'movements') => Promise<void>;
     
     isAuthenticated: boolean;
-    currentUser: firebase.User | null;
+    currentUser: AuthUser | null;
     onLogin: () => void;
     onLogout: () => void;
     adminList: AdminUser[];
@@ -156,10 +155,9 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     
-    // Super Admin Check: Use local role OR firebase email
+    // Super Admin Check: ruolo dell'utente con cui si è fatto login
     const isSuperAdmin = useMemo(() => {
         if (activeBarUser?.role === 'super-admin') return true;
-        if (currentUser && sortedAdmins.length > 0 && currentUser.email === sortedAdmins[0].email) return true;
         return false;
     }, [activeBarUser, currentUser, sortedAdmins]);
 
@@ -432,7 +430,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     };
 
     const handleMassUserReset = async () => {
-        if (!window.confirm("RESET MASSIVO UTENTI:\n\n1. Tutti gli utenti (escluso Super Admin) diventeranno 'Standard'.\n2. Verrà rimosso l'username 'admin'.\n3. Verrà rimossa la password '3110'.\n\nConfermi l'operazione?")) return;
+        if (!window.confirm("RESET MASSIVO UTENTI:\n\n1. Tutti gli utenti (escluso Super Admin) diventeranno 'Standard'.\n2. Verrà rimosso l'username 'admin'.\n\nConfermi l'operazione?")) return;
 
         let count = 0;
         try {
@@ -452,12 +450,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                 // Rimuovi username 'admin'
                 if (updatedUser.username && updatedUser.username.trim().toLowerCase() === 'admin') {
                     updatedUser.username = '';
-                    needsUpdate = true;
-                }
-
-                // Rimuovi password '3110'
-                if (updatedUser.password === '3110') {
-                    updatedUser.password = '';
                     needsUpdate = true;
                 }
 

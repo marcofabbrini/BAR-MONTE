@@ -1,5 +1,5 @@
 
-import { db } from '../firebaseConfig';
+import { db } from '../lib/db';
 import { TombolaConfig, TombolaTicket, TombolaWin } from '../types';
 
 const shuffleArray = (array: any[]) => {
