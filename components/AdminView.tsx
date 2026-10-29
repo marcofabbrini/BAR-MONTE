@@ -1,4 +1,5 @@
 
+import { useScrollTop } from '../utils/useScrollTop';
 import TenantManagement from './TenantManagement';
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef, Reminder, LotteryConfig, AuthUser } from '../types';
@@ -114,6 +115,7 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     // Fleet Hub State
     const [fleetTab, setFleetTab] = useState<'service' | 'operational'>(moduleEnabled('vehicle_booking') ? 'service' : 'operational');
+    useScrollTop(activeTab, fleetTab);
 
     // Accordion State
     const [expandedSection, setExpandedSection] = useState<string | null>(null);

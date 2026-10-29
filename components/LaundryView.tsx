@@ -1,4 +1,5 @@
 
+import { useScrollTop } from '../utils/useScrollTop';
 import React, { useState, useMemo } from 'react';
 import { LaundryItemDef, LaundryEntry, LaundryShipment, Shift } from '../types';
 import { useBar } from '../contexts/BarContext';
@@ -86,6 +87,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
 
     // VIEW STATE
     const [activeTab, setActiveTab] = useState<'entry' | 'shipment' | 'incoming' | 'archive'>('entry');
+    useScrollTop(activeTab);
 
     // Check permissions
     const canSendShipment = useMemo(() => {

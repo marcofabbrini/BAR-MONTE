@@ -1,4 +1,5 @@
 
+import { useScrollTop } from '../utils/useScrollTop';
 import React, { useState, useMemo, useEffect } from 'react';
 import { AnalottoConfig, AnalottoBet, AnalottoExtraction, AnalottoWheel, StaffMember } from '../types';
 import { BackArrowIcon, CheckIcon, BanknoteIcon, InfoIcon, EditIcon } from './Icons';
@@ -25,6 +26,7 @@ const AnalottoView: React.FC<AnalottoViewProps> = ({ onGoBack, config, bets, ext
     const [betAmount, setBetAmount] = useState(1);
     const [selectedPlayerId, setSelectedPlayerId] = useState<string>('');
     const [viewMode, setViewMode] = useState<'play' | 'extractions'>('play');
+    useScrollTop(viewMode);
     
     // Ticket Completamento
     const [ticketToCompleteId, setTicketToCompleteId] = useState<string | null>(null);
