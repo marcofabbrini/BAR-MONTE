@@ -10,7 +10,7 @@ export const ReminderService = {
     },
 
     addReminder: async (reminder: Omit<Reminder, 'id' | 'createdAt' | 'completedDates'>) => {
-        // Remove undefined fields to prevent Firestore errors
+        // Remove undefined fields to avoid sending undefined values
         const cleanReminder = Object.fromEntries(
             Object.entries(reminder).filter(([_, v]) => v !== undefined)
         );

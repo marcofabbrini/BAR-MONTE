@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { useBar } from '../contexts/BarContext';
 import { MonthlyClosure, Shift } from '../types';
 import { CheckIcon, WalletIcon, CalendarIcon, FilterIcon } from './Icons';
+import { isCashbox } from '../utils/staff';
 
 const MonthlyClosureView: React.FC = () => {
     const { 
@@ -105,7 +106,7 @@ const MonthlyClosureView: React.FC = () => {
                         
                         // --- ESCLUSIONE RIGOROSA CASSA COMUNE ---
                         // Verifica che il nome non contenga "Cassa" (case insensitive) per evitare di addebitare l'acqua alla cassa comune
-                        if (member.name.toLowerCase().includes('cassa')) return;
+                        if (isCashbox(member)) return;
                         
                         let isPaying = false;
                         

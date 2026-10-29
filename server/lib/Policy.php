@@ -119,8 +119,70 @@ final class Policy
                 return;
 
             default:
+                self::authorizeByTable($c, $myLevel, $existing, $new);
                 return;
         }
+    }
+
+    /**
+     * Livello minimo richiesto per creare / modificare / eliminare, per collezione.
+     * Rispecchia i permessi che l'interfaccia già applicava (pannello Admin dal livello 2,
+     * chiusure mensili, lavanderia e reset presenze dal livello 3): ora li fa rispettare il server.
+     * Le collezioni non elencate restano aperte a tutti gli utenti collegati
+     * (vendite al bar, presenze, prenotazioni, interventi, giochi, promemoria...).
+     */
+    private const TABLE_RULES = [
+        //                           creare modificare eliminare
+        'settings'                => [2, 2, 3],
+        'products'                => [2, 2, 2],
+        'orders'                  => [1, 2, 3],
+        'cash_movements'          => [1, 2, 3],
+        'vehicles'                => [2, 2, 3],
+        'operational_vehicles'    => [2, 2, 3],
+        'intervention_typologies' => [2, 2, 2],
+        'duty_officers'           => [2, 2, 2],
+        'laundry_items'           => [2, 2, 2],
+        'laundry_shipments'       => [3, 1, 3],
+        'monthly_closures'        => [3, 3, 3],
+        'attendance'              => [1, 1, 3],
+        'interventions'           => [1, 1, 3],
+    ];
+
+    private static function authorizeByTable(string $c, int $myLevel, ?stdClass $existing, ?stdClass $new): void
+    {
+        $rule = self::TABLE_RULES[$c] ?? null;
+        if ($rule === null) {
+            return;
+        }
+        if ($new === null) {
+            $need = $rule[2];
+        } elseif ($existing === null) {
+            $need = $rule[0];
+        } else {
+            $need = $rule[1];
+        }
+        if ($myLevel >= $need) {
+            return;
+        }
+        // Eccezione: chi vende al bar scala le scorte (campo "stock") senza poter cambiare il resto del prodotto.
+        if ($c === 'products' && $existing !== null && $new !== null && self::onlyStockChanged($existing, $new)) {
+            return;
+        }
+        self::deny('Permessi insufficienti per questa operazione.');
+    }
+
+    private static function onlyStockChanged(stdClass $old, stdClass $new): bool
+    {
+        $keys = array_unique(array_merge(array_keys(get_object_vars($old)), array_keys(get_object_vars($new))));
+        foreach ($keys as $k) {
+            if ($k === 'stock') {
+                continue;
+            }
+            if (json_encode($old->$k ?? null) !== json_encode($new->$k ?? null)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static function authorizeStaff(array $actor, int $myLevel, string $id, string $op, ?stdClass $existing, ?stdClass $new): void

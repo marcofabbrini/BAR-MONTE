@@ -96,16 +96,31 @@ Il database ora è raggiungibile da internet, quindi alcune cose sono state mess
 | Il controllo di nome/password lo faceva il browser | Lo fa il **server**, con sessione (cookie sicuro) e blocco dopo troppi tentativi |
 | Scorciatoia "RESET / 123456" nel login | **Rimossa** (permetteva a chiunque di diventare Super Admin). Sostituita da `reset_superadmin.php` con token |
 | Utente senza password: entra col solo nome | Resta valido **solo per gli Utenti Standard**; manager e admin senza password non possono accedere (config: `allow_passwordless`, `passwordless_max_level`) |
-| Chiunque poteva scrivere ovunque | Il server impedisce di creare/modificare utenti sopra il proprio livello, di toccare un Super Admin se non lo si è, e di gestire `admins`/ruoli senza i permessi |
+| Chiunque poteva scrivere ovunque | Il server impedisce di creare/modificare utenti sopra il proprio livello, di toccare un Super Admin se non lo si è, e di gestire `admins`/ruoli senza i permessi. In più applica i livelli per collezione (vedi sotto) |
 | Accesso con Google (Firebase Auth) | **Rimosso**: si usa solo il login dell'app. L'elenco "admins" resta visibile ma non ha più effetto sull'accesso |
 | Aggiornamenti istantanei (Firestore) | Aggiornamento automatico ogni ~3 secondi (subito dopo le proprie azioni) |
 | Analisi AI su Vercel | Passa dal server PHP: inserisci la chiave Gemini in `gemini_api_key` di `config.php` (vuota = funzione disattivata) |
+
+Livelli richiesti dal server (tabella `TABLE_RULES` in `server/lib/Policy.php`):
+
+| Dati | Creare | Modificare | Eliminare |
+|---|---|---|---|
+| Impostazioni | Responsabile (2) | Responsabile (2) | Amministratore (3) |
+| Prodotti | 2 | 2 (tutti possono solo scalare le scorte vendendo) | 2 |
+| Ordini, movimenti di cassa | tutti | 2 | 3 |
+| Mezzi, mezzi operativi | 2 | 2 | 3 |
+| Tipologie interventi, ufficiali di servizio, anagrafica lavanderia | 2 | 2 | 2 |
+| Spedizioni lavanderia | 3 | tutti | 3 |
+| Chiusure mensili | 3 | 3 | 3 |
+| Presenze, interventi | tutti | tutti | 3 |
+| Tutto il resto (prenotazioni, controlli mezzi, giochi, promemoria...) | tutti | tutti | tutti |
 
 Ruoli (invariati): Utente Standard = 1, Responsabile = 2, Amministratore = 3, Super Admin = 4, più i ruoli
 personalizzati con il livello scelto.
 
 ## 7. Dopo il collaudo
 
+- Le "casse" (es. Cassa Comune A) si riconoscono dalla casella *È una cassa* nella scheda utente; per i dati importati vale il nome che inizia con "Cassa".
 - Controlla da *Admin → Staff* chi non ha la password (manca l'icona del lucchetto) e impostala.
 - Verifica che `reset_token` sia vuoto.
 - Assicurati che il sito sia raggiungibile **solo in HTTPS** (abilita il redirect dal pannello dell'hosting).

@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Order, StaffMember, AttendanceRecord, GeneralSettings } from '../types';
 import { PrinterIcon } from './Icons';
+import { isCashbox } from '../utils/staff';
 
 interface OrderHistoryProps {
     orders: Order[];
@@ -88,7 +89,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
         if (attendanceRecords && startDate) {
             staff.forEach(member => {
                 if (filterStaffId !== 'all' && member.id !== filterStaffId) return;
-                if (member.name.toLowerCase().includes('cassa')) return;
+                if (isCashbox(member)) return;
 
                 // Calcola presenze nel range selezionato
                 const count = attendanceRecords.filter(r => {

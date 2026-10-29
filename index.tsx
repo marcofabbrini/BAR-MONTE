@@ -5,8 +5,7 @@ import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
-// FIX QUOTA EXCEEDED: Tentativo di pulizia preventiva se lo storage è corrotto o pieno
-// Also attempts to clear IndexedDB if possible on startup
+// Se lo storage del browser è pieno o corrotto, lo svuota all'avvio
 async function tryClearStorage() {
     try {
         const testKey = '__test__';
@@ -19,25 +18,6 @@ async function tryClearStorage() {
             console.warn("Storage pieno rilevato all'avvio. Eseguo pulizia automatica.");
             localStorage.clear();
             sessionStorage.clear();
-            
-            // Try to clear IndexedDB databases used by Firebase
-            if (window.indexedDB && window.indexedDB.databases) {
-                try {
-                    const dbs = await window.indexedDB.databases();
-                    for (const db of dbs) {
-                        // Nuke common Firebase IndexedDB names
-                        if(db.name && (
-                            db.name.includes('firebase') || 
-                            db.name.includes('firestore') || 
-                            db.name.includes('gapi')
-                        )) {
-                            window.indexedDB.deleteDatabase(db.name);
-                        }
-                    }
-                } catch(err) {
-                    console.error("Failed to clear IndexedDB", err);
-                }
-            }
         }
     }
 }

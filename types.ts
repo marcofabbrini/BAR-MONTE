@@ -29,6 +29,8 @@ export interface StaffMember {
     icon?: string;
     role?: UserRole | string;
     username?: string;
+    /** Utente tecnico "cassa" (non è una persona). Se assente vale la regola sul nome: vedi utils/staff.ts */
+    isCashbox?: boolean;
     /** Mai valorizzata in lettura: il server non invia password. Si imposta solo in scrittura. */
     password?: string;
     /** Calcolata dal server: indica se l'utente ha una password impostata. */

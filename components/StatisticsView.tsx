@@ -4,6 +4,7 @@ import { Order, Product, StaffMember, Shift, GeneralSettings, TombolaConfig, Ana
 import BarChart from './BarChart';
 import LineChart from './LineChart';
 import { LogoIcon, DropletIcon, LayersIcon, ChartBarIcon, GamepadIcon, FilterIcon, BanknoteIcon } from './Icons';
+import { isCashbox } from '../utils/staff';
 
 interface StatisticsViewProps {
     filteredOrders: Order[];
@@ -82,7 +83,7 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ filteredOrders, allProd
                 if (selectedStaffId !== 'all' && id !== selectedStaffId) return;
                 
                 // Cassa non paga
-                if (id.includes('Cassa') || id.includes('cassa')) return;
+                if (isCashbox(allStaff.find(s => s.id === id))) return;
 
                 let isPaying = false;
                 if (record.attendanceDetails && record.attendanceDetails[id]) {
