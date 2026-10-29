@@ -166,6 +166,9 @@ final class Tenant
 
     private static ?string $id = null;
 
+    /** @var array<string,mixed>|null Configurazione effettiva della sede (moduli, comuni, meteo). */
+    private static ?array $config = null;
+
     public static function valid(mixed $slug): bool
     {
         return is_string($slug) && preg_match('/^[a-z0-9][a-z0-9-]{0,30}$/', $slug) === 1;
@@ -197,5 +200,38 @@ final class Tenant
     public static function clear(): void
     {
         self::$id = null;
+        self::$config = null;
+    }
+
+    public static function current(): ?string
+    {
+        return self::$id;
+    }
+
+    /** @param array<string,mixed>|null $config */
+    public static function setConfig(?array $config): void
+    {
+        self::$config = $config;
+    }
+
+    /** @return array<string,mixed>|null null = non caricata (moduli tutti attivi) */
+    public static function config(): ?array
+    {
+        return self::$config;
+    }
+
+    /** Esegue $fn nel contesto di un'altra sede e poi ripristina quella precedente. */
+    public static function with(string $slug, callable $fn): mixed
+    {
+        $prevId = self::$id;
+        $prevConfig = self::$config;
+        self::set($slug);
+        self::$config = null;
+        try {
+            return $fn();
+        } finally {
+            self::$id = $prevId;
+            self::$config = $prevConfig;
+        }
     }
 }

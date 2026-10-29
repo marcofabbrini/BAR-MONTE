@@ -15,8 +15,10 @@ if (PHP_VERSION_ID < 80100) {
 
 require __DIR__ . '/lib/bootstrap.php';
 require __DIR__ . '/lib/Db.php';
+require __DIR__ . '/lib/Modules.php';
 require __DIR__ . '/lib/Policy.php';
 require __DIR__ . '/lib/Store.php';
+require __DIR__ . '/lib/Tenants.php';
 require __DIR__ . '/lib/Auth.php';
 require __DIR__ . '/lib/Gemini.php';
 
@@ -41,6 +43,37 @@ function handle(string $action): array
         case 'auth.me': {
             $u = Auth::currentUser();
             return ['user' => $u === null ? null : Auth::publicUser($u), 'tenant' => $u === null ? null : Auth::tenantInfo()];
+        }
+
+        case 'tenant.public': {
+            // Nome della sede per la schermata di login (nessun dato riservato).
+            $b = Http::body();
+            $slug = isset($b->tenant) && is_string($b->tenant) ? $b->tenant : null;
+            return ['name' => Tenants::publicName($slug)];
+        }
+
+        case 'tenants.list':
+            Auth::requirePlatformAdmin();
+            return ['tenants' => Tenants::list(), 'modules' => array_map(
+                static fn($d) => ['label' => $d[0], 'requires' => $d[2]], Modules::DEFS
+            )];
+
+        case 'tenants.create': {
+            Auth::requirePlatformAdmin();
+            $b = Http::body();
+            return ['tenant' => Tenants::create($b->id ?? null, $b->name ?? null, $b->config ?? null, $b->adminUser ?? null, $b->adminPassword ?? null)];
+        }
+
+        case 'tenants.update': {
+            Auth::requirePlatformAdmin();
+            $b = Http::body();
+            return ['tenant' => Tenants::update($b->id ?? null, $b->name ?? null, $b->config ?? null)];
+        }
+
+        case 'tenants.setAdmin': {
+            Auth::requirePlatformAdmin();
+            $b = Http::body();
+            return Tenants::setSuperAdmin($b->id ?? null, $b->username ?? null, $b->password ?? null);
         }
 
         case 'sync':

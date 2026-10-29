@@ -96,6 +96,10 @@ final class Policy
     {
         $myLevel = self::userLevel($actor['data']);
 
+        if (!Modules::isEnabled($c)) {
+            self::deny('Modulo non attivo per questa sede.');
+        }
+
         switch ($c) {
             case 'admins':
                 if ($myLevel < 4) {

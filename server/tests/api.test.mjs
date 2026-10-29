@@ -482,11 +482,127 @@ await test('sede: auth.me restituisce la sede della sessione', async () => {
     assert.equal(me.tenant.id, 'altra'); assert.equal(me.user.id, 'a-mario');
 });
 await test('sede: limite tentativi separato per sede', async () => {
-    for (let i = 0; i < 11; i++) await new Client().call('auth.login', { username: 'capo', password: 'x', tenant: 'altra' });
+    for (let i = 0; i < 10; i++) await new Client().call('auth.login', { username: 'capo', password: 'x', tenant: 'altra' });
     assert.equal((await new Client().call('auth.login', { username: 'capo', password: 'altrapw1', tenant: 'altra' })).status, 429);
     // lo stesso username nella sede predefinita non è bloccato dagli errori fatti nell'altra
     assert.equal((await new Client().call('auth.login', { username: 'anna', password: 'annapw' })).status, 200);
 });
+
+
+
+// ---- Passo 3: moduli per sede e gestione sedi -------------------------------------------
+const lib = new Client(); await lib.login('Libero Accesso', ''); await sup.login('admin', 'superpw');
+const platform = async () => sup; // Super Admin della sede predefinita
+const cfgOf = (modules, extra = {}) => ({ modules, displayName: '', municipalities: ['ROMA', 'roma', 'Latina'], weather: { label: 'Roma', lat: 41.9, lon: 12.5 }, ...extra });
+await test('sedi: solo il Super Admin della sede predefinita le gestisce', async () => {
+    assert.equal((await new Client().call('tenants.list')).status, 401);
+    assert.equal((await lib.call('tenants.list')).status, 403);
+    const adm = new Client(); await adm.call('auth.login', { username: 'anna', password: 'annapw' });
+    assert.equal((await adm.call('tenants.list')).status, 403);
+    const other = new Client(); await other.call('auth.login', { username: 'mario', password: 'altrapw', tenant: 'altra' });
+    assert.equal((await other.call('tenants.list')).status, 403);
+    assert.equal((await other.call('tenants.create', { id: 'x1', name: 'X', adminUser: 'x', adminPassword: 'password1' })).status, 403);
+    const p = await platform(); const r = await p.call('tenants.list');
+    assert.equal(r.status, 200);
+    const ids = r.tenants.map(t => t.id); assert.ok(ids.includes('montepulciano') && ids.includes('altra'));
+    const mp = r.tenants.find(t => t.id === 'montepulciano');
+    assert.equal(mp.isDefault, true); assert.ok(mp.staffCount >= 5);
+    assert.ok(Object.values(mp.config.modules).every(v => v === true)); // sede storica: tutto attivo
+    assert.ok(mp.config.municipalities.includes('MONTEPULCIANO'));
+});
+await test('sedi: creazione con moduli, Super Admin di sede e login', async () => {
+    const p = await platform();
+    const mods = { bar: false, games: false, calendar: true, vehicle_booking: true, operational_vehicles: false, laundry: true, interventions: false };
+    const r = await p.call('tenants.create', { id: 'roma1', name: 'VVF Roma 1', config: cfgOf(mods), adminUser: 'capo.roma', adminPassword: 'password1' });
+    assert.equal(r.status, 200, JSON.stringify(r));
+    assert.deepEqual(r.tenant.config.municipalities, ['ROMA', 'LATINA']);
+    const c = new Client();
+    const l = await c.call('auth.login', { username: 'capo.roma', password: 'password1', tenant: 'roma1' });
+    assert.equal(l.status, 200); assert.equal(l.tenant.id, 'roma1'); assert.equal(l.tenant.config.modules.bar, false);
+    assert.equal(l.user.role, 'super-admin');
+    // non esiste nella sede storica
+    assert.equal((await new Client().call('auth.login', { username: 'capo.roma', password: 'password1' })).status, 401);
+    assert.equal((await p.call('tenants.create', { id: 'roma1', name: 'dup', adminUser: 'a', adminPassword: 'password1' })).status, 409);
+});
+await test('sedi: validazione di codice, nome, password e moduli', async () => {
+    const p = await platform();
+    for (const bad of [{ id: 'Roma 1' }, { id: '../x' }, { id: '' }, { name: '' }, { adminPassword: 'corta' }, { config: { modules: { inesistente: true } } }, { config: { modules: { games: true, bar: false } } }, { config: { weather: { lat: 999, lon: 0 } } }]) {
+        const r = await p.call('tenants.create', { id: 'ok1', name: 'Ok', adminUser: 'u', adminPassword: 'password1', ...bad });
+        assert.equal(r.status, 422, JSON.stringify(bad) + ' -> ' + JSON.stringify(r));
+    }
+    assert.equal((await p.call('auth.login', { username: 'u', password: 'password1', tenant: 'ok1' })).status, 401);
+});
+await test('moduli: collezioni di un modulo spento sono vuote e non scrivibili', async () => {
+    const c = new Client(); await c.call('auth.login', { username: 'capo.roma', password: 'password1', tenant: 'roma1' });
+    // bar spento
+    assert.equal((await c.commit([set('products', 'p1', { name: 'Caffè', price: 1 })])).status, 403);
+    assert.deepEqual(await c.query('products'), []);
+    assert.equal((await c.call('getDoc', { c: 'products', id: 'p1' })).exists, false);
+    // lavanderia accesa
+    assert.equal((await c.commit([set('laundry_items', 'l1', { name: 'Tuta' })])).status, 200);
+    assert.equal((await c.query('laundry_items')).length, 1);
+    // staff sempre disponibile
+    assert.ok((await c.query('staff')).length >= 1);
+});
+await test('moduli: anche il Super Admin della sede non può scrivere su un modulo spento (nemmeno via sync)', async () => {
+    const c = new Client(); await c.call('auth.login', { username: 'capo.roma', password: 'password1', tenant: 'roma1' });
+    const sy = await c.call('sync', { subs: [{ id: 1, kind: 'collection', collection: 'orders', rev: null }] });
+    assert.equal(sy.status, 200); assert.deepEqual(sy.results[0].docs ?? [], []);
+    assert.equal((await c.commit([set('orders', 'o1', { total: 1 })])).status, 403);
+    assert.equal((await c.commit([set('interventions', 'i1', { x: 1 })])).status, 403);
+});
+await test('moduli: modifica configurazione, riattivazione e dati conservati', async () => {
+    const p = await platform();
+    const r = await p.call('tenants.update', { id: 'roma1', name: 'VVF Roma 1 bis', config: cfgOf({ bar: true, games: false, calendar: true, vehicle_booking: true, operational_vehicles: false, laundry: false, interventions: false }) });
+    assert.equal(r.status, 200); assert.equal(r.tenant.name, 'VVF Roma 1 bis');
+    const c = new Client(); await c.call('auth.login', { username: 'capo.roma', password: 'password1', tenant: 'roma1' });
+    assert.equal((await c.commit([set('products', 'p1', { name: 'Caffè', price: 1 })])).status, 200);
+    assert.deepEqual(await c.query('laundry_items'), []);                 // spenta: nascosta, non cancellata
+    await p.call('tenants.update', { id: 'roma1', name: 'VVF Roma 1', config: cfgOf({ bar: true, games: false, calendar: true, vehicle_booking: true, operational_vehicles: false, laundry: true, interventions: false }) });
+    assert.equal((await c.query('laundry_items')).length, 1);             // riattivata: i dati ci sono ancora
+    assert.equal((await p.call('tenants.update', { id: 'nonesiste', name: 'x', config: {} })).status, 404);
+});
+await test('moduli: la sede storica (config assente) ha tutto attivo e le altre sedi non sono toccate', async () => {
+    assert.equal((await lib.commit([set('gentest_ok', 'a', { v: 1 })])).status, 200);
+    const c = new Client(); await c.call('auth.login', { username: 'mario', password: 'altrapw', tenant: 'altra' });
+    assert.equal((await c.call('getQuery', { collection: 'products' })).status, 200); // moduli attivi: nessun blocco
+    assert.notEqual((await c.commit([set('products', 'p9', { name: 'Tè', price: 1 })])).error, undefined); // solo i permessi di ruolo
+});
+await test('sedi: reimpostare il Super Admin di una sede (crea o promuove) e chiude le sessioni', async () => {
+    const p = await platform();
+    const old = new Client(); await old.call('auth.login', { username: 'capo.roma', password: 'password1', tenant: 'roma1' });
+    let r = await p.call('tenants.setAdmin', { id: 'roma1', username: 'capo.roma', password: 'nuovapass1' });
+    assert.equal(r.status, 200); assert.equal(r.created, false);
+    assert.equal((await old.call('auth.me')).user, null);
+    assert.equal((await new Client().call('auth.login', { username: 'capo.roma', password: 'password1', tenant: 'roma1' })).status, 401);
+    assert.equal((await new Client().call('auth.login', { username: 'capo.roma', password: 'nuovapass1', tenant: 'roma1' })).status, 200);
+    r = await p.call('tenants.setAdmin', { id: 'roma1', username: 'secondo', password: 'password22' });
+    assert.equal(r.created, true);
+    assert.equal((await p.call('tenants.setAdmin', { id: 'roma1', username: 'x', password: 'corta' })).status, 422);
+    assert.equal((await p.call('tenants.setAdmin', { id: 'zzz', username: 'x', password: 'password1' })).status, 404);
+    // la sede storica non è stata toccata
+    assert.equal((await sup.call('auth.me')).user.id, 'u-super');
+});
+await test('sedi: flag piattaforma e email lavanderia nella configurazione', async () => {
+    const l = await sup.call('auth.me'); assert.equal(l.tenant.platform, true);
+    const o = new Client(); const r = await o.call('auth.login', { username: 'capo.roma', password: 'nuovapass1', tenant: 'roma1' });
+    assert.equal(r.tenant.platform, false); assert.equal(r.tenant.config.laundryEmail, '');
+    const p = await platform();
+    const bad = await p.call('tenants.update', { id: 'roma1', name: 'VVF Roma 1', config: cfgOf({ bar: true, games: false, calendar: true, vehicle_booking: true, operational_vehicles: false, laundry: true, interventions: false }, { laundryEmail: 'non-una-email' }) });
+    assert.equal(bad.status, 422);
+    const ok = await p.call('tenants.update', { id: 'roma1', name: 'VVF Roma 1', config: cfgOf({ bar: true, games: false, calendar: true, vehicle_booking: true, operational_vehicles: false, laundry: true, interventions: false }, { laundryEmail: 'lav@esempio.it' }) });
+    assert.equal(ok.tenant.config.laundryEmail, 'lav@esempio.it');
+    const mp = (await p.call('tenants.list')).tenants.find(t => t.id === 'montepulciano');
+    assert.equal(mp.config.laundryEmail, 'marcofabbrini@gmail.com'); // valore storico della sede principale
+});
+await test('sedi: tenant.public restituisce solo il nome (anche senza accesso)', async () => {
+    const r = await new Client().call('tenant.public', { tenant: 'roma1' });
+    assert.equal(r.status, 200); assert.equal(r.name, 'VVF Roma 1');
+    assert.equal((await new Client().call('tenant.public', {})).name, 'Distaccamento VVF Montepulciano');
+    assert.equal((await new Client().call('tenant.public', { tenant: 'inesistente' })).name, null);
+    assert.equal((await new Client().call('tenant.public', { tenant: "x' OR 1=1" })).name, null);
+});
+
 
 console.log(results.join('\n'));
 console.log(`\n${passed}/${results.length} test superati`);

@@ -1,9 +1,11 @@
 
+import { useScrollTop } from '../utils/useScrollTop';
 import React, { useState, useMemo } from 'react';
 import { LaundryItemDef, LaundryEntry, LaundryShipment, Shift } from '../types';
 import { useBar } from '../contexts/BarContext';
 import { BackArrowIcon, ShirtIcon, ListIcon, CheckIcon, BoxIcon, PrinterIcon, LockIcon, TrashIcon, LockOpenIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
+import { sedeFullName, sedeShortName } from '../utils/tenant';
 import { isCashbox } from '../utils/staff';
 
 interface LaundryViewProps {
@@ -79,11 +81,13 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
         updateLaundryShipment,
         deleteLaundryShipment,
         activeBarUser,
-        availableRoles 
+        availableRoles,
+        tenant
     } = useBar();
 
     // VIEW STATE
     const [activeTab, setActiveTab] = useState<'entry' | 'shipment' | 'incoming' | 'archive'>('entry');
+    useScrollTop(activeTab);
 
     // Check permissions
     const canSendShipment = useMemo(() => {
@@ -206,9 +210,9 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
                 await createLaundryShipment(shipmentData, entryIds);
                 
                 // 1. Apri Client Posta
-                const subject = encodeURIComponent(`Ritiro Lavanderia VVF Montepulciano - ${now.toLocaleDateString()}`);
-                const body = encodeURIComponent(`In allegato il riepilogo dei capi consegnati in data odierna.\n\nDistaccamento VVF Montepulciano`);
-                window.open(`mailto:marcofabbrini@gmail.com?subject=${subject}&body=${body}`);
+                const subject = encodeURIComponent(`Ritiro Lavanderia ${sedeFullName(tenant)} - ${now.toLocaleDateString()}`);
+                const body = encodeURIComponent(`In allegato il riepilogo dei capi consegnati in data odierna.\n\n${sedeFullName(tenant)}`);
+                window.open(`mailto:${tenant?.config?.laundryEmail ?? ''}?subject=${subject}&body=${body}`);
 
                 // 2. Apri Stampa (PDF)
                 setTimeout(() => window.print(), 1000);
@@ -381,7 +385,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
                         
                         {/* PRINT HEADER */}
                         <div className="hidden print:block mb-8 text-center border-b-2 border-black pb-4">
-                            <h1 className="text-2xl font-black uppercase">Distaccamento VVF Montepulciano</h1>
+                            <h1 className="text-2xl font-black uppercase">{sedeFullName(tenant)}</h1>
                             <h2 className="text-xl font-bold uppercase mt-2">Distinta Spedizione Lavanderia</h2>
                             <p className="text-sm mt-4">Data Invio: <b>{new Date().toLocaleDateString('it-IT')}</b></p>
                         </div>

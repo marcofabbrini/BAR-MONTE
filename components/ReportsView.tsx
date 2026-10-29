@@ -1,4 +1,5 @@
 
+import { useScrollTop } from '../utils/useScrollTop';
 import React, { useState, useMemo } from 'react';
 import { Product, StaffMember, Order, Shift, GeneralSettings, TombolaConfig, AnalottoConfig, AttendanceRecord } from '../types';
 import StatisticsView from './StatisticsView';
@@ -32,6 +33,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({
 }) => {
     const { getNow, monthlyClosures } = useBar();
     const [activeTab, setActiveTab] = useState<ReportTab>('statistics');
+    useScrollTop(activeTab);
     
     // DEFAULT FILTERS: CURRENT MONTH (1st to Today)
     const [startDate, setStartDate] = useState(() => {

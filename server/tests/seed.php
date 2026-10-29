@@ -3,6 +3,7 @@ declare(strict_types=1);
 /** Prepara utenti di prova per i test (CLI). Uso: GESTIONALE_CONFIG=... php tests/seed.php */
 require __DIR__ . '/../lib/bootstrap.php';
 require __DIR__ . '/../lib/Db.php';
+require __DIR__ . '/../lib/Modules.php';
 require __DIR__ . '/../lib/Policy.php';
 require __DIR__ . '/../lib/Store.php';
 

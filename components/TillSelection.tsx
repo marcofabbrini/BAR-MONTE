@@ -1,4 +1,5 @@
 
+import { sedeShortName } from '../utils/tenant';
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder, OperationalVehicle, VehicleCheck, Vehicle, StaffMember } from '../types';
 import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon, BackArrowIcon, EditIcon, SaveIcon, LockIcon, UserCircleIcon, LogOutIcon, CarIcon } from './Icons';
@@ -39,7 +40,9 @@ interface WeatherData {
 const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSelectReports, onSelectAdmin, onSelectGames, onSelectCalendar, onSelectAttendance, onSelectFleet, onSelectLaundry, onSelectInterventions, onSelectOperationalVehicles, tillColors, seasonalityConfig, shiftSettings, tombolaConfig, isSuperAdmin, notificationPermission, onRequestNotification, reminders = [], onToggleReminder, operationalVehicles = [], vehicles = [], vehicleChecks = [] }) => {
     
     // Context for Reliable Time & Auth
-    const { getNow, activeBarUser, logoutBarUser, staff, updateStaff, availableRoles, vehicleBookings } = useBar();
+    const { getNow, activeBarUser, logoutBarUser, staff, updateStaff, availableRoles, vehicleBookings, tenant, moduleEnabled } = useBar();
+    const weatherSpot = tenant?.config?.weather ?? null;
+    const shortName = sedeShortName(tenant);
 
     // WEATHER & DATE STATE
     const [currentDateString, setCurrentDateString] = useState<string>('');
@@ -191,12 +194,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         return () => clearInterval(timer);
     }, [getNow]);
 
-    // Fetch Weather for Montepulciano (SI)
+    // Meteo del luogo della sede (se configurato)
     useEffect(() => {
+        if (!weatherSpot) { setWeather(null); return; }
         const fetchWeather = async () => {
             try {
                 if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-                const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=43.1017&longitude=11.7868&current_weather=true');
+                const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${weatherSpot.lat}&longitude=${weatherSpot.lon}&current_weather=true`);
                 if (!response.ok) return;
                 const data = await response.json();
                 if (data.current_weather) {
@@ -208,7 +212,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
         fetchWeather();
         const interval = setInterval(fetchWeather, 30 * 60 * 1000);
         return () => clearInterval(interval);
-    }, []);
+    }, [weatherSpot?.lat, weatherSpot?.lon]);
 
     const formatCountdown = (ms: number) => {
         const h = Math.floor(ms / (1000 * 60 * 60));
@@ -620,7 +624,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 <div className="text-center mb-8 md:mb-10">
                     <h1 className="flex flex-col items-center leading-none">
                         <span className="text-3xl md:text-5xl lg:text-6xl font-black text-slate-800 tracking-tighter mb-2 drop-shadow-sm transition-all">DISTACCAMENTO VVF</span>
-                        <span className="text-xl md:text-3xl lg:text-4xl font-extrabold text-primary tracking-tight drop-shadow-sm transition-all">Montepulciano</span>
+                        <span className="text-xl md:text-3xl lg:text-4xl font-extrabold text-primary tracking-tight drop-shadow-sm transition-all">{shortName}</span>
                     </h1>
                     
                     <div className="mt-4 px-6 py-2 rounded-full inline-flex items-center gap-3 md:gap-4 bg-white/50 backdrop-blur-sm shadow-sm border border-white/40">
@@ -642,7 +646,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
 
                 {/* --- 1. SEZIONE CASSA ATTIVA (TOP) --- */}
-                {activeTill && (
+                {moduleEnabled('bar') && activeTill && (
                     <div className="grid grid-cols-1 w-full md:w-3/4 lg:w-2/3 mb-6 px-4 transition-all">
                         <div key={activeTill.id} className="h-40 md:h-64 flex gap-2 scale-[1.02] z-10 transition-all duration-500">
                             
@@ -755,6 +759,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 <div className="w-full md:w-3/4 lg:w-2/3 px-4 grid grid-cols-2 gap-3 md:gap-4 mb-4">
                     
                     {/* 1. INTERVENTI */}
+                    {moduleEnabled('interventions') && (
                     <button 
                         onClick={onSelectInterventions}
                         className="w-full bg-white hover:bg-orange-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(249,115,22,0.3)] hover:shadow-[0_0_25px_rgba(249,115,22,0.5)] border-2 border-orange-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
@@ -770,8 +775,10 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             </div>
                         </div>
                     </button>
+                    )}
 
                     {/* 2. MEZZI OPERATIVI (Ripristinato) */}
+                    {moduleEnabled('operational_vehicles') && (
                     <button 
                         onClick={onSelectOperationalVehicles}
                         className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:shadow-[0_0_25px_rgba(220,38,38,0.5)] border-2 border-red-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
@@ -789,8 +796,10 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             </div>
                         </div>
                     </button>
+                    )}
 
                     {/* 3. PRENOTAZIONE MEZZI (Ripristinato) */}
+                    {moduleEnabled('vehicle_booking') && (
                     <button 
                         onClick={onSelectFleet}
                         className="w-full bg-white hover:bg-red-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:shadow-[0_0_25px_rgba(220,38,38,0.5)] border-2 border-red-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
@@ -808,8 +817,10 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             </div>
                         </div>
                     </button>
+                    )}
 
                     {/* 4. LAVANDERIA (VISIBILE A TUTTI) */}
+                    {moduleEnabled('laundry') && (
                     <button 
                         onClick={onSelectLaundry}
                         className="w-full bg-white hover:bg-blue-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:shadow-[0_0_25px_rgba(37,99,235,0.5)] border-2 border-blue-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center"
@@ -825,8 +836,10 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             </div>
                         </div>
                     </button>
+                    )}
 
                     {/* 5. EXTRA HUB */}
+                    {moduleEnabled('games') && (
                     <button 
                         onClick={onSelectGames}
                         className="w-full bg-white hover:bg-green-50 text-slate-800 rounded-2xl shadow-[0_0_15px_rgba(34,197,94,0.3)] hover:shadow-[0_0_25px_rgba(34,197,94,0.5)] border-2 border-green-50 p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-32 flex items-center justify-center col-span-2 md:col-span-1"
@@ -847,6 +860,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                             </div>
                         </div>
                     </button>
+                    )}
 
                 </div>
 
@@ -859,12 +873,14 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Presenze</span>
                     </button>
 
+                    {moduleEnabled('bar') && (
                     <button onClick={onSelectReports} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
                         <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
                             📊
                         </div>
                         <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Report</span>
                     </button>
+                    )}
 
                     <button onClick={() => setIsProfileOpen(true)} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
                         <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
@@ -884,7 +900,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
 
                 {/* --- 4. SEZIONE CASSE NON ATTIVE --- */}
-                {isSuperAdmin && inactiveTills.length > 0 && (
+                {moduleEnabled('bar') && isSuperAdmin && inactiveTills.length > 0 && (
                     <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
                         <div className="grid grid-cols-3 gap-3">
                             {inactiveTills.map(till => (
@@ -913,7 +929,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
             </div>
 
             <div className="fixed bottom-0 left-0 w-full bg-white/95 backdrop-blur-md border-t border-slate-200 py-3 text-center z-50 shadow-lg pb-[env(safe-area-inset-bottom)]">
-                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale VVF Montepulciano v4.3 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
+                <p className="text-[10px] md:text-xs text-slate-400 font-medium">Gestionale VVF {shortName} v4.3 | <span className="font-bold text-slate-500">Fabbrini M.</span></p>
             </div>
         </div>
     );

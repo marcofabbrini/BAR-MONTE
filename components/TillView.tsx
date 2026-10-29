@@ -1,4 +1,5 @@
 
+import { useScrollTop } from '../utils/useScrollTop';
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, TombolaConfig, TombolaTicket, AttendanceRecord, GeneralSettings, AttendanceStatus, LotteryConfig, LotteryTicket } from '../types';
 import { VVF_GRADES } from '../constants';
@@ -35,6 +36,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
     const { getNow } = useBar();
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
+    useScrollTop(activeTab);
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isAnimatingSelection, setIsAnimatingSelection] = useState(false);

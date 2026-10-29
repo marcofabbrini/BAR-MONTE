@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import { AuthApi } from '../lib/db';
+import React, { useState, useEffect } from 'react';
 import { useBar } from '../contexts/BarContext';
 import { LockIcon } from './Icons';
 
@@ -13,6 +14,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [sedeName, setSedeName] = useState<string | null>(null);
+
+    // Nome della sede indicata nel link (?sede=...); senza, quella predefinita.
+    useEffect(() => {
+        let off = false;
+        AuthApi.publicName().then(n => { if (!off) setSedeName(n ?? ''); });
+        return () => { off = true; };
+    }, []);
 
     // Il controllo delle credenziali avviene sul server.
     // (Il vecchio ripristino "RESET / 123456" è stato rimosso: con il database online
@@ -56,7 +65,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
                 <div className="pt-20 pb-8 px-8 text-center mt-4">
                     <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tight mb-1">Vigili del Fuoco</h2>
-                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-8">Distaccamento Montepulciano</p>
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-8 min-h-[1rem]">{sedeName ?? ''}</p>
 
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                         <div className="relative group">
