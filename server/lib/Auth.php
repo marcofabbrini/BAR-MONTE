@@ -15,13 +15,31 @@ final class Auth
     /** @var array{id:string,data:stdClass}|null|false */
     private static array|null|false $current = false;
 
-    /** @var array{id:string,name:string}|null Sede della sessione corrente. */
+    /** @var array{id:string,name:string,config:array<string,mixed>}|null Sede della sessione corrente. */
     private static ?array $tenant = null;
 
     /** Sede dell'utente collegato (dopo currentUser()/login()). */
     public static function tenantInfo(): ?array
     {
         return self::$tenant;
+    }
+
+    /** Imposta sede e configurazione (moduli) per la richiesta in corso. @param array<string,mixed> $row */
+    private static function useTenant(array $row): void
+    {
+        Tenant::set((string) $row['id']);
+        self::$tenant = Tenants::info($row);
+        Tenant::setConfig(self::$tenant['config']);
+    }
+
+    /** Solo il Super Admin della sede predefinita gestisce le sedi. */
+    public static function requirePlatformAdmin(): array
+    {
+        $u = self::requireUser();
+        if (Tenant::current() !== Tenant::defaultSlug() || Policy::userLevel($u['data']) < 4) {
+            throw new ApiException(403, 'forbidden', 'Solo l\'amministratore di piattaforma può gestire le sedi.');
+        }
+        return $u;
     }
 
     /** Chiave per il limite di tentativi: separata per sede. */
@@ -66,7 +84,7 @@ final class Auth
         $hash = hash('sha256', $token);
         $now = Db::now();
         $sess = Db::one(
-            'SELECT s.user_id, s.tenant_id, s.last_seen, s.expires_at, t.name AS tenant_name
+            'SELECT s.user_id, s.tenant_id, s.last_seen, s.expires_at, t.name AS tenant_name, t.config AS tenant_config
              FROM gd_sessions s JOIN gd_tenants t ON t.id = s.tenant_id
              WHERE s.token_hash = ? AND s.expires_at > ?',
             [$hash, $now]
@@ -74,8 +92,7 @@ final class Auth
         if ($sess === null || !Tenant::valid($sess['tenant_id'])) {
             return null;
         }
-        Tenant::set((string) $sess['tenant_id']);
-        self::$tenant = ['id' => (string) $sess['tenant_id'], 'name' => (string) $sess['tenant_name']];
+        self::useTenant(['id' => $sess['tenant_id'], 'name' => $sess['tenant_name'], 'config' => $sess['tenant_config']]);
         $user = Store::loadDoc('staff', (string) $sess['user_id']);
         if ($user === null) {
             Db::run('DELETE FROM gd_sessions WHERE token_hash = ?', [$hash]);
@@ -121,15 +138,14 @@ final class Auth
         $slug = $tenantSlug === null || $tenantSlug === '' ? Tenant::defaultSlug() : mb_strtolower(trim($tenantSlug));
         $key = Tenant::valid($slug) ? $slug : '-';
         self::assertNotRateLimited($key, $username);
-        $tenantRow = Tenant::valid($slug) ? Db::one('SELECT id, name FROM gd_tenants WHERE id = ?', [$slug]) : null;
+        $tenantRow = Tenant::valid($slug) ? Db::one('SELECT id, name, config FROM gd_tenants WHERE id = ?', [$slug]) : null;
         if ($tenantRow === null) {
             // Stessa risposta di una password errata: non si rivela quali sedi esistono.
             self::recordFailure($key, $username);
             usleep(250000);
             throw new ApiException(401, 'invalid-credentials', 'Credenziali non valide.');
         }
-        Tenant::set((string) $tenantRow['id']);
-        self::$tenant = ['id' => (string) $tenantRow['id'], 'name' => (string) $tenantRow['name']];
+        self::useTenant($tenantRow);
 
         $needle = mb_strtolower($username);
         $byUsername = [];
@@ -231,7 +247,7 @@ final class Auth
         $since = self::since();
         $byIp = Db::one('SELECT COUNT(*) AS n FROM gd_login_attempts WHERE ip = ? AND ts > ?', [Http::clientIp(), $since]);
         $byUser = Db::one('SELECT COUNT(*) AS n FROM gd_login_attempts WHERE username = ? AND ts > ?', [self::attemptKey($tenantKey, $username), $since]);
-        if ((int) ($byIp['n'] ?? 0) >= self::MAX_ATTEMPTS_PER_IP || (int) ($byUser['n'] ?? 0) >= self::MAX_ATTEMPTS_PER_USER) {
+        if ((int) ($byIp['n'] ?? 0) >= max(1, (int) Config::get('login_max_per_ip', self::MAX_ATTEMPTS_PER_IP)) || (int) ($byUser['n'] ?? 0) >= self::MAX_ATTEMPTS_PER_USER) {
             throw new ApiException(429, 'too-many-attempts', 'Troppi tentativi di accesso. Riprova tra qualche minuto.');
         }
     }

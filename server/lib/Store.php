@@ -38,6 +38,9 @@ final class Store
     /** @return array{data:stdClass,version:int}|null */
     public static function loadDoc(string $c, string $id, bool $lock = false): ?array
     {
+        if (!Modules::isEnabled($c)) {
+            return null;
+        }
         $row = Db::one(
             'SELECT data, version FROM gd_documents WHERE tenant_id = ? AND collection = ? AND doc_id = ?' . ($lock ? Db::forUpdate() : ''),
             [Tenant::id(), $c, $id]
@@ -51,6 +54,9 @@ final class Store
     /** @return array<int,array{id:string,data:stdClass}> */
     public static function loadCollection(string $c): array
     {
+        if (!Modules::isEnabled($c)) {
+            return [];
+        }
         $rows = Db::all('SELECT doc_id, data FROM gd_documents WHERE tenant_id = ? AND collection = ?', [Tenant::id(), $c]);
         $out = [];
         foreach ($rows as $r) {
