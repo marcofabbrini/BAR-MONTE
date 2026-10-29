@@ -39,8 +39,8 @@ final class Store
     public static function loadDoc(string $c, string $id, bool $lock = false): ?array
     {
         $row = Db::one(
-            'SELECT data, version FROM gd_documents WHERE collection = ? AND doc_id = ?' . ($lock ? Db::forUpdate() : ''),
-            [$c, $id]
+            'SELECT data, version FROM gd_documents WHERE tenant_id = ? AND collection = ? AND doc_id = ?' . ($lock ? Db::forUpdate() : ''),
+            [Tenant::id(), $c, $id]
         );
         if ($row === null) {
             return null;
@@ -51,7 +51,7 @@ final class Store
     /** @return array<int,array{id:string,data:stdClass}> */
     public static function loadCollection(string $c): array
     {
-        $rows = Db::all('SELECT doc_id, data FROM gd_documents WHERE collection = ?', [$c]);
+        $rows = Db::all('SELECT doc_id, data FROM gd_documents WHERE tenant_id = ? AND collection = ?', [Tenant::id(), $c]);
         $out = [];
         foreach ($rows as $r) {
             $out[] = ['id' => (string) $r['doc_id'], 'data' => self::decode((string) $r['data'])];
@@ -67,7 +67,7 @@ final class Store
             return [];
         }
         $in = implode(',', array_fill(0, count($collections), '?'));
-        $rows = Db::all("SELECT collection, rev FROM gd_collection_rev WHERE collection IN ($in)", $collections);
+        $rows = Db::all("SELECT collection, rev FROM gd_collection_rev WHERE tenant_id = ? AND collection IN ($in)", array_merge([Tenant::id()], $collections));
         $out = array_fill_keys($collections, 0);
         foreach ($rows as $r) {
             $out[(string) $r['collection']] = (int) $r['rev'];
@@ -429,7 +429,7 @@ final class Store
 
                 if ($new === null) {
                     if ($row !== null) {
-                        Db::run('DELETE FROM gd_documents WHERE collection = ? AND doc_id = ?', [$c, $id]);
+                        Db::run('DELETE FROM gd_documents WHERE tenant_id = ? AND collection = ? AND doc_id = ?', [Tenant::id(), $c, $id]);
                     }
                 } else {
                     $json = json_encode($new, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
@@ -442,13 +442,13 @@ final class Store
                     $now = Db::now();
                     if ($row === null) {
                         Db::run(
-                            'INSERT INTO gd_documents (collection, doc_id, data, version, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)',
-                            [$c, $id, $json, $now, $now]
+                            'INSERT INTO gd_documents (tenant_id, collection, doc_id, data, version, created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?)',
+                            [Tenant::id(), $c, $id, $json, $now, $now]
                         );
                     } else {
                         Db::run(
-                            'UPDATE gd_documents SET data = ?, version = version + 1, updated_at = ? WHERE collection = ? AND doc_id = ?',
-                            [$json, $now, $c, $id]
+                            'UPDATE gd_documents SET data = ?, version = version + 1, updated_at = ? WHERE tenant_id = ? AND collection = ? AND doc_id = ?',
+                            [$json, $now, Tenant::id(), $c, $id]
                         );
                     }
                 }
@@ -475,13 +475,13 @@ final class Store
     {
         if (Db::isMysql()) {
             Db::run(
-                'INSERT INTO gd_collection_rev (collection, rev) VALUES (?, 1) ON DUPLICATE KEY UPDATE rev = rev + 1',
-                [$c]
+                'INSERT INTO gd_collection_rev (tenant_id, collection, rev) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE rev = rev + 1',
+                [Tenant::id(), $c]
             );
         } else {
             Db::run(
-                'INSERT INTO gd_collection_rev (collection, rev) VALUES (?, 1) ON CONFLICT(collection) DO UPDATE SET rev = rev + 1',
-                [$c]
+                'INSERT INTO gd_collection_rev (tenant_id, collection, rev) VALUES (?, ?, 1) ON CONFLICT(tenant_id, collection) DO UPDATE SET rev = rev + 1',
+                [Tenant::id(), $c]
             );
         }
     }

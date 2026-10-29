@@ -26,8 +26,12 @@ function handle(string $action): array
     switch ($action) {
         case 'auth.login': {
             $b = Http::body();
-            $user = Auth::login((string) ($b->username ?? ''), (string) ($b->password ?? ''));
-            return ['user' => Auth::publicUser($user)];
+            $user = Auth::login(
+                (string) ($b->username ?? ''),
+                (string) ($b->password ?? ''),
+                isset($b->tenant) && is_string($b->tenant) ? $b->tenant : null
+            );
+            return ['user' => Auth::publicUser($user), 'tenant' => Auth::tenantInfo()];
         }
 
         case 'auth.logout':
@@ -36,7 +40,7 @@ function handle(string $action): array
 
         case 'auth.me': {
             $u = Auth::currentUser();
-            return ['user' => $u === null ? null : Auth::publicUser($u)];
+            return ['user' => $u === null ? null : Auth::publicUser($u), 'tenant' => $u === null ? null : Auth::tenantInfo()];
         }
 
         case 'sync':

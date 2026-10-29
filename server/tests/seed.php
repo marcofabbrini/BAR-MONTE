@@ -7,6 +7,8 @@ require __DIR__ . '/../lib/Policy.php';
 require __DIR__ . '/../lib/Store.php';
 
 Db::ensureSchema();
+Db::run('DELETE FROM gd_tenants WHERE id <> ?', [Tenant::LEGACY]);
+Tenant::set(Tenant::LEGACY);
 Db::run('DELETE FROM gd_documents');
 Db::run('DELETE FROM gd_collection_rev');
 Db::run('DELETE FROM gd_sessions');
@@ -28,4 +30,14 @@ Db::run(
     'INSERT INTO gd_documents (collection, doc_id, data, version, created_at, updated_at) VALUES (?, ?, ?, 1, ?, ?)',
     ['staff', 'u-plain', json_encode(['name' => 'Vecchio Utente', 'username' => 'vecchio', 'password' => 'plainpw', 'role' => 'standard', 'shift' => 'a']), Db::now(), Db::now()]
 );
+
+// Seconda sede, con un utente OMONIMO (stesso username "mario") ma password e dati diversi.
+Db::run('INSERT INTO gd_tenants (id, name, created_at) VALUES (?, ?, ?)', ['altra', 'Distaccamento VVF Altra Sede', Db::now()]);
+Tenant::set('altra');
+Store::commit([], [
+    $mk('a-super', ['name' => 'Capo Altra', 'username' => 'capo', 'password' => 'altrapw1', 'role' => 'super-admin', 'shift' => 'a']),
+    $mk('a-mario', ['name' => 'Mario Rossi', 'username' => 'mario', 'password' => 'altrapw', 'role' => 'standard', 'shift' => 'b']),
+], null);
+Store::commit([], [(object) ['op' => 'set', 'c' => 'reminders', 'id' => 'r-altra', 'data' => (object) ['text' => 'solo altra sede']]], null);
+Tenant::set(Tenant::LEGACY);
 echo "seed ok\n";

@@ -126,12 +126,15 @@ final class Db
 
     // --- Schema ------------------------------------------------------------
 
+    /** Tabella o colonna mancante: lo schema va creato/aggiornato (ensureSchema). */
     public static function isMissingTable(Throwable $e): bool
     {
         if (!($e instanceof PDOException)) {
             return false;
         }
-        return $e->getCode() === '42S02' || str_contains($e->getMessage(), 'no such table');
+        $m = $e->getMessage();
+        return in_array($e->getCode(), ['42S02', '42S22'], true)
+            || str_contains($m, 'no such table') || str_contains($m, 'no such column');
     }
 
     public static function ensureSchema(): void
@@ -139,9 +142,10 @@ final class Db
         $pdo = self::pdo();
         if (self::$driver === 'sqlite') {
             $ddl = [
-                'CREATE TABLE IF NOT EXISTS gd_documents (collection TEXT NOT NULL, doc_id TEXT NOT NULL, data TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (collection, doc_id))',
-                'CREATE TABLE IF NOT EXISTS gd_collection_rev (collection TEXT NOT NULL PRIMARY KEY, rev INTEGER NOT NULL DEFAULT 0)',
-                'CREATE TABLE IF NOT EXISTS gd_sessions (token_hash TEXT NOT NULL PRIMARY KEY, user_id TEXT NOT NULL, created_at TEXT NOT NULL, last_seen TEXT NOT NULL, expires_at TEXT NOT NULL)',
+                'CREATE TABLE IF NOT EXISTS gd_tenants (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, config TEXT NULL, created_at TEXT NOT NULL)',
+                "CREATE TABLE IF NOT EXISTS gd_documents (tenant_id TEXT NOT NULL DEFAULT 'montepulciano', collection TEXT NOT NULL, doc_id TEXT NOT NULL, data TEXT NOT NULL, version INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (tenant_id, collection, doc_id))",
+                "CREATE TABLE IF NOT EXISTS gd_collection_rev (tenant_id TEXT NOT NULL DEFAULT 'montepulciano', collection TEXT NOT NULL, rev INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (tenant_id, collection))",
+                "CREATE TABLE IF NOT EXISTS gd_sessions (token_hash TEXT NOT NULL PRIMARY KEY, tenant_id TEXT NOT NULL DEFAULT 'montepulciano', user_id TEXT NOT NULL, created_at TEXT NOT NULL, last_seen TEXT NOT NULL, expires_at TEXT NOT NULL)",
                 'CREATE TABLE IF NOT EXISTS gd_login_attempts (id INTEGER PRIMARY KEY AUTOINCREMENT, ip TEXT NOT NULL, username TEXT NOT NULL, ts TEXT NOT NULL)',
             ];
         } else {
@@ -153,8 +157,46 @@ final class Db
                 throw new ApiException(500, 'schema-missing', 'schema.sql mancante sul server.');
             }
         }
-        foreach ($ddl as $stmt) {
-            $pdo->exec($stmt);
+
+        $locked = false;
+        if (self::$driver === 'mysql') {
+            // Una sola richiesta alla volta aggiorna lo schema.
+            $locked = (int) ($pdo->query("SELECT GET_LOCK('gd_schema', 20)")->fetchColumn()) === 1;
+        }
+        try {
+            foreach ($ddl as $stmt) {
+                $pdo->exec($stmt);
+            }
+            if (self::$driver === 'mysql') {
+                self::upgradeToTenants($pdo);
+            }
+            $ins = self::$driver === 'sqlite' ? 'INSERT OR IGNORE' : 'INSERT IGNORE';
+            $st = $pdo->prepare("$ins INTO gd_tenants (id, name, created_at) VALUES (?, ?, ?)");
+            $st->execute([Tenant::LEGACY, 'Distaccamento VVF Montepulciano', self::now()]);
+        } finally {
+            if ($locked) {
+                $pdo->query("SELECT RELEASE_LOCK('gd_schema')");
+            }
+        }
+    }
+
+    /** Aggiorna un database creato prima delle sedi: tutti i dati esistenti passano a "montepulciano". */
+    private static function upgradeToTenants(PDO $pdo): void
+    {
+        $has = static function (string $table) use ($pdo): bool {
+            $st = $pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?');
+            $st->execute([$table, 'tenant_id']);
+            return (int) $st->fetchColumn() > 0;
+        };
+        $col = "tenant_id VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'montepulciano'";
+        if (!$has('gd_documents')) {
+            $pdo->exec("ALTER TABLE gd_documents ADD COLUMN $col FIRST, DROP PRIMARY KEY, ADD PRIMARY KEY (tenant_id, collection, doc_id)");
+        }
+        if (!$has('gd_collection_rev')) {
+            $pdo->exec("ALTER TABLE gd_collection_rev ADD COLUMN $col FIRST, DROP PRIMARY KEY, ADD PRIMARY KEY (tenant_id, collection)");
+        }
+        if (!$has('gd_sessions')) {
+            $pdo->exec("ALTER TABLE gd_sessions ADD COLUMN $col AFTER token_hash");
         }
     }
 }

@@ -446,11 +446,32 @@ export const db = {
 // Autenticazione (sessione lato server)
 // ---------------------------------------------------------------------------
 
+/** Sede (distaccamento) della sessione corrente. */
+export interface TenantInfo { id: string; name: string }
+let currentTenant: TenantInfo | null = null;
+
+/** Codice sede indicato nell'indirizzo (?sede=chiusi); senza, il server usa la sede predefinita. */
+function tenantFromUrl(): string | undefined {
+    try {
+        if (typeof window === 'undefined') return undefined;
+        const v = new URLSearchParams(window.location.search).get('sede');
+        return v ? v.trim().toLowerCase() : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
 export const AuthApi = {
+    /** Sede dell'utente collegato (null se nessuno è collegato). */
+    tenant(): TenantInfo | null {
+        return currentTenant;
+    },
+
     /** Utente della sessione corrente, o null. */
     async me(): Promise<any | null> {
         try {
-            const r = await apiCall<{ user: any | null }>('auth.me');
+            const r = await apiCall<{ user: any | null; tenant?: TenantInfo | null }>('auth.me');
+            currentTenant = r.user ? (r.tenant ?? null) : null;
             if (r.user) engine.resume();
             return r.user;
         } catch {
@@ -459,14 +480,16 @@ export const AuthApi = {
     },
 
     /** Lancia ApiError con status 401 (credenziali errate) o 429 (troppi tentativi). */
-    async login(username: string, password: string): Promise<any> {
-        const r = await apiCall<{ user: any }>('auth.login', { username, password });
+    async login(username: string, password: string, tenant?: string): Promise<any> {
+        const r = await apiCall<{ user: any; tenant?: TenantInfo | null }>('auth.login', { username, password, tenant: tenant ?? tenantFromUrl() });
+        currentTenant = r.tenant ?? null;
         engine.resume();
         return r.user;
     },
 
     async logout(): Promise<void> {
         try { await apiCall('auth.logout'); } catch { /* sessione già scaduta */ }
+        currentTenant = null;
         engine.pause();
     },
 

@@ -16,6 +16,10 @@ return [
         'pass' => 'INSERISCI_LA_PASSWORD_DEL_DATABASE',
     ],
 
+    // Sede (distaccamento) a cui si accede quando l'indirizzo non ne indica una.
+    // Ogni sede ha i suoi dati; si accede a un'altra sede con  ...?sede=<codice>
+    'default_tenant' => 'montepulciano',
+
     // Durata della sessione di login (giorni).
     'session_days' => 30,
 
