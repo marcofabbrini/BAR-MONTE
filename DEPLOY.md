@@ -180,12 +180,37 @@ all'utente collegato, quindi una sede non può leggere né scrivere i dati di un
   Fai comunque un backup prima (phpMyAdmin → Esporta).
 - **Indirizzo di una sede:** `https://www.marcofabbrini.com/vvf/gestionali/?sede=<codice>`. Senza `?sede=` si entra
   nella sede predefinita (`default_tenant` in `config.php`, di base `montepulciano`), quindi l'indirizzo di oggi non cambia.
-- **Creare una sede:** imposta il secret `RESET_TOKEN`, rilancia il deploy, apri `.../api/tools/create_tenant.php`
-  e inserisci token, codice, nome e il primo Super Admin. Poi cancella il secret e rilancia il deploy.
+- **Creare e gestire le sedi (da app):** il Super Admin della **sede principale** (Montepulciano) trova in
+  *Admin → Sedi* l'elenco di tutte le sedi e può crearne di nuove (nome, codice, strumenti attivi, comuni, meteo,
+  email lavanderia, primo Super Admin), modificarle, reimpostare il loro Super Admin e copiare il link di accesso.
+  Nessun altro utente, nemmeno un Super Admin di un'altra sede, vede questa scheda o può chiamare queste funzioni.
+- **Creare una sede da riga di comando (alternativa):** imposta il secret `RESET_TOKEN`, rilancia il deploy, apri
+  `.../api/tools/create_tenant.php` e inserisci token, codice, nome e il primo Super Admin. Poi cancella il secret e rilancia il deploy.
 - **Ripristino del Super Admin:** `reset_superadmin.php` ora chiede anche la sede.
 - **Omonimi:** lo stesso nome utente in due sedi è permesso (sono persone diverse); il limite di tentativi di accesso
   è separato per sede.
 - **Importazione dalla vecchia app:** i file `.sql` generati da `migrate-firestore.mjs` vanno sempre nella sede predefinita.
 
-Limiti di questo passo: l'aspetto (nome nel login, logo, turni, comuni...) e i moduli attivi sono ancora quelli di
-Montepulciano per tutte le sedi; arrivano con i passi successivi.
+### Strumenti (moduli) per sede
+
+| Strumento | Cosa comprende |
+|---|---|
+| Bar e casse | prodotti, ordini, movimenti di cassa, report, stock |
+| Giochi | tombola, analotto, lotteria, dadi (richiede il bar: usano la cassa) |
+| Calendario turni | calendario dei turni |
+| Prenotazione mezzi | mezzi di servizio e prenotazioni |
+| Mezzi operativi e controlli | mezzi operativi e relativi controlli |
+| Lavanderia | capi, consegne, spedizioni |
+| Interventi | interventi, tipologie, ufficiali di servizio |
+
+Presenze, personale, promemoria e impostazioni generali sono sempre attivi. Uno strumento spento sparisce dalla home e
+dall'area Admin, e il **server** lo applica davvero: le sue raccolte risultano vuote e le scritture sono rifiutate
+("Modulo non attivo per questa sede."). I dati non vengono cancellati: riattivando lo strumento ricompaiono.
+
+La sede principale, finché non si salva una sua configurazione, ha tutti gli strumenti, i comuni e il meteo di
+Montepulciano e l'email lavanderia storica. Il nome della sede, i comuni di intervento, il meteo e l'email della lavanderia
+sono per sede; il logo e i colori sono ancora quelli comuni.
+
+Per i test: la chiave facoltativa `login_max_per_ip` in `config.php` alza il limite di tentativi di accesso per indirizzo IP (di base 30).
+
+Il passo successivo (rifinitura) riguarda logo e colori per sede, manifest dell'app per sede ed eventuale eliminazione di una sede.

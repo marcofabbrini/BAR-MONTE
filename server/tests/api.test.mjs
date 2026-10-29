@@ -583,6 +583,18 @@ await test('sedi: reimpostare il Super Admin di una sede (crea o promuove) e chi
     // la sede storica non è stata toccata
     assert.equal((await sup.call('auth.me')).user.id, 'u-super');
 });
+await test('sedi: flag piattaforma e email lavanderia nella configurazione', async () => {
+    const l = await sup.call('auth.me'); assert.equal(l.tenant.platform, true);
+    const o = new Client(); const r = await o.call('auth.login', { username: 'capo.roma', password: 'nuovapass1', tenant: 'roma1' });
+    assert.equal(r.tenant.platform, false); assert.equal(r.tenant.config.laundryEmail, '');
+    const p = await platform();
+    const bad = await p.call('tenants.update', { id: 'roma1', name: 'VVF Roma 1', config: cfgOf({ bar: true, games: false, calendar: true, vehicle_booking: true, operational_vehicles: false, laundry: true, interventions: false }, { laundryEmail: 'non-una-email' }) });
+    assert.equal(bad.status, 422);
+    const ok = await p.call('tenants.update', { id: 'roma1', name: 'VVF Roma 1', config: cfgOf({ bar: true, games: false, calendar: true, vehicle_booking: true, operational_vehicles: false, laundry: true, interventions: false }, { laundryEmail: 'lav@esempio.it' }) });
+    assert.equal(ok.tenant.config.laundryEmail, 'lav@esempio.it');
+    const mp = (await p.call('tenants.list')).tenants.find(t => t.id === 'montepulciano');
+    assert.equal(mp.config.laundryEmail, 'marcofabbrini@gmail.com'); // valore storico della sede principale
+});
 await test('sedi: tenant.public restituisce solo il nome (anche senza accesso)', async () => {
     const r = await new Client().call('tenant.public', { tenant: 'roma1' });
     assert.equal(r.status, 200); assert.equal(r.name, 'VVF Roma 1');

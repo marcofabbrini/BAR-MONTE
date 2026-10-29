@@ -15,7 +15,7 @@ import { OperationalVehicleService } from '../services/operationalVehicleService
 import { InterventionService } from '../services/interventionService';
 import { ReminderService } from '../services/reminderService';
 import { USER_ROLES } from '../constants';
-import { AuthApi, ApiError } from '../lib/db';
+import { AuthApi, ApiError, TenantInfo, ModuleId } from '../lib/db';
 
 interface BarContextType {
     // Data
@@ -46,6 +46,9 @@ interface BarContextType {
     // UI
     activeToast: AppNotification | null;
     isLoading: boolean;
+    /** Sede dell'utente collegato e moduli attivi. */
+    tenant: TenantInfo | null;
+    moduleEnabled: (id: ModuleId) => boolean;
     setActiveToast: (n: AppNotification | null) => void;
     sendNotification: (title: string, body: string, target?: string) => Promise<void>;
 
@@ -171,6 +174,8 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const [activeToast, setActiveToast] = useState<AppNotification | null>(null);
     const [now, setNow] = useState(new Date());
     const [activeBarUser, setActiveBarUser] = useState<StaffMember | null>(null);
+    const [tenant, setTenant] = useState<TenantInfo | null>(null);
+    const moduleEnabled = (id: ModuleId) => (tenant?.config?.modules?.[id] ?? true) !== false;
 
     // --- SUBSCRIPTIONS ---
     useEffect(() => {
@@ -215,10 +220,10 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     useEffect(() => {
         let cancelled = false;
         AuthApi.me()
-            .then(user => { if (!cancelled && user) setActiveBarUser(user); })
+            .then(user => { if (!cancelled && user) { setActiveBarUser(user); setTenant(AuthApi.tenant()); } })
             .finally(() => { if (!cancelled) setIsLoading(false); });
         // Sessione scaduta o chiusa altrove: torna alla schermata di login.
-        const offUnauthorized = AuthApi.onUnauthorized(() => setActiveBarUser(null));
+        const offUnauthorized = AuthApi.onUnauthorized(() => { setActiveBarUser(null); setTenant(null); });
         return () => { cancelled = true; offUnauthorized(); };
     }, []);
 
@@ -381,6 +386,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         try {
             const user = await AuthApi.login(username, pass);
             setActiveBarUser(user);
+            setTenant(AuthApi.tenant());
             return true;
         } catch (e) {
             if (e instanceof ApiError && e.status === 401) return false;
@@ -390,6 +396,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const logoutBarUser = () => {
         setActiveBarUser(null);
+        setTenant(null);
         void AuthApi.logout();
     };
 
@@ -399,7 +406,7 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             vehicles, vehicleBookings, operationalVehicles, vehicleChecks,
             laundryItems, laundryEntries, laundryShipments,
             interventions, interventionTypologies, dutyOfficers, reminders, customRoles, monthlyClosures,
-            activeToast, isLoading, setActiveToast, sendNotification,
+            activeToast, isLoading, tenant, moduleEnabled, setActiveToast, sendNotification,
             addProduct, updateProduct, deleteProduct,
             addStaff, updateStaff, deleteStaff,
             completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,

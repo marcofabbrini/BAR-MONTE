@@ -20,6 +20,9 @@ return [
     // Ogni sede ha i suoi dati; si accede a un'altra sede con  ...?sede=<codice>
     'default_tenant' => 'montepulciano',
 
+    // Tentativi di accesso falliti consentiti per indirizzo IP in 15 minuti (di base 30; si alza solo nei test).
+    // 'login_max_per_ip' => 30,
+
     // Durata della sessione di login (giorni).
     'session_days' => 30,
 

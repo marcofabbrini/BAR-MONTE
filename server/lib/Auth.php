@@ -15,7 +15,7 @@ final class Auth
     /** @var array{id:string,data:stdClass}|null|false */
     private static array|null|false $current = false;
 
-    /** @var array{id:string,name:string,config:array<string,mixed>}|null Sede della sessione corrente. */
+    /** @var array{id:string,name:string,config:array<string,mixed>,platform:bool}|null Sede della sessione corrente. */
     private static ?array $tenant = null;
 
     /** Sede dell'utente collegato (dopo currentUser()/login()). */

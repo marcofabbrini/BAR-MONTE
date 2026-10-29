@@ -447,7 +447,19 @@ export const db = {
 // ---------------------------------------------------------------------------
 
 /** Sede (distaccamento) della sessione corrente. */
-export interface TenantInfo { id: string; name: string }
+export type ModuleId = 'bar' | 'games' | 'calendar' | 'vehicle_booking' | 'operational_vehicles' | 'laundry' | 'interventions';
+export interface TenantConfig {
+    modules: Record<ModuleId, boolean>;
+    displayName: string;
+    municipalities: string[];
+    weather: { label: string; lat: number; lon: number } | null;
+    /** Indirizzo a cui inviare il riepilogo della lavanderia. */
+    laundryEmail: string;
+}
+export interface TenantInfo { id: string; name: string; config: TenantConfig; platform: boolean }
+/** Riga dell'elenco sedi (solo amministratore di piattaforma). */
+export interface TenantSummary { id: string; name: string; createdAt: string; staffCount: number; isDefault: boolean; config: TenantConfig }
+export interface ModuleDef { label: string; requires: ModuleId[] }
 let currentTenant: TenantInfo | null = null;
 
 /** Codice sede indicato nell'indirizzo (?sede=chiusi); senza, il server usa la sede predefinita. */
@@ -487,6 +499,16 @@ export const AuthApi = {
         return r.user;
     },
 
+    /** Nome pubblico della sede per la schermata di login (null se la sede non esiste). */
+    async publicName(tenant?: string): Promise<string | null> {
+        try {
+            const r = await apiCall<{ name: string | null }>('tenant.public', { tenant: tenant ?? tenantFromUrl() });
+            return r.name ?? null;
+        } catch {
+            return null;
+        }
+    },
+
     async logout(): Promise<void> {
         try { await apiCall('auth.logout'); } catch { /* sessione già scaduta */ }
         currentTenant = null;
@@ -498,6 +520,17 @@ export const AuthApi = {
         unauthorizedHandlers.add(handler);
         return () => { unauthorizedHandlers.delete(handler); };
     },
+};
+
+/** Gestione delle sedi: riservata al Super Admin della sede predefinita (controllo sul server). */
+export const TenantApi = {
+    list: () => apiCall<{ tenants: TenantSummary[]; modules: Record<ModuleId, ModuleDef> }>('tenants.list'),
+    create: (b: { id: string; name: string; config: Partial<TenantConfig>; adminUser: string; adminPassword: string }) =>
+        apiCall<{ tenant: TenantSummary }>('tenants.create', b),
+    update: (b: { id: string; name: string; config: Partial<TenantConfig> }) =>
+        apiCall<{ tenant: TenantSummary }>('tenants.update', b),
+    setAdmin: (b: { id: string; username: string; password: string }) =>
+        apiCall<{ created: boolean }>('tenants.setAdmin', b),
 };
 
 /** Solo per i test: ferma il poller. */

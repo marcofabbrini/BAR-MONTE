@@ -1,5 +1,6 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo } from 'react';
+import { sedeFullName } from './utils/tenant';
 import TillSelection from './components/TillSelection';
 import TillView from './components/TillView';
 import ReportsView from './components/ReportsView';
@@ -39,7 +40,7 @@ const AppContent: React.FC = () => {
         addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
         vehicles, vehicleBookings, addBooking, deleteBooking,
         operationalVehicles, vehicleChecks, reminders, toggleReminderCompletion, addVehicleCheck,
-        activeBarUser
+        activeBarUser, tenant, moduleEnabled
     } = useBar();
 
     const { 
@@ -60,6 +61,29 @@ const AppContent: React.FC = () => {
         config: lotteryConfig, tickets: lotteryTickets,
         buyTicket: handleBuyLotteryTicket, updateConfig: handleUpdateLotteryConfig
     } = useLottery();
+
+    // Ogni volta che si apre un modulo (o si torna alla home) la pagina riparte dall'alto.
+    // Lo scorrimento è sul documento/body (vedi index.css), quindi si azzerano entrambi.
+    useLayoutEffect(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+    }, [view, selectedTillId]);
+
+    // Titolo della scheda/app con il nome della sede.
+    useEffect(() => {
+        document.title = tenant ? sedeFullName(tenant) : 'Gestionale VVF';
+    }, [tenant]);
+
+    // Se il modulo aperto non è attivo per questa sede (es. configurazione cambiata), torna alla home.
+    useEffect(() => {
+        const needs: Partial<Record<View, Parameters<typeof moduleEnabled>[0]>> = {
+            till: 'bar', reports: 'bar', tombola: 'games', games: 'games', analotto: 'games', dice: 'games', lottery: 'games', '3d_viewer': 'games',
+            calendar: 'calendar', vehicle_booking: 'vehicle_booking', operational_vehicles: 'operational_vehicles', laundry: 'laundry', interventions: 'interventions',
+        };
+        const m = needs[view];
+        if (m && !moduleEnabled(m)) setView('selection');
+    }, [view, tenant]);
 
     // FIX IPHONE CRASH: Check if 'Notification' exists in window before accessing .permission
     const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {

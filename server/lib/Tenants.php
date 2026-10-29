@@ -13,6 +13,7 @@ final class Tenants
         'MONTEPULCIANO', 'CETONA', 'CHIANCIANO TERME', 'CHIUSI', 'PIENZA', 'SARTEANO', 'SINALUNGA',
         'TORRITA DI SIENA', 'TREQUANDA', 'FOIANO DELLA CHIANA (AR)',
     ];
+    private const LEGACY_LAUNDRY_EMAIL = 'marcofabbrini@gmail.com';
     private const LEGACY_WEATHER = ['label' => 'Montepulciano', 'lat' => 43.1017, 'lon' => 11.7868];
 
     /**
@@ -38,13 +39,20 @@ final class Tenants
                 ? array_values(array_filter($raw['municipalities'], 'is_string'))
                 : ($legacy ? self::LEGACY_MUNICIPALITIES : []),
             'weather' => is_array($weather) && isset($weather['lat'], $weather['lon']) ? $weather : null,
+            'laundryEmail' => isset($raw['laundryEmail']) && is_string($raw['laundryEmail']) ? $raw['laundryEmail'] : ($legacy ? self::LEGACY_LAUNDRY_EMAIL : ''),
         ];
     }
 
-    /** @param array<string,mixed> $row @return array{id:string,name:string,config:array<string,mixed>} */
+    /** @param array<string,mixed> $row @return array{id:string,name:string,config:array<string,mixed>,platform:bool} */
     public static function info(array $row): array
     {
-        return ['id' => (string) $row['id'], 'name' => (string) $row['name'], 'config' => self::effectiveConfig($row)];
+        return [
+            'id' => (string) $row['id'],
+            'name' => (string) $row['name'],
+            'config' => self::effectiveConfig($row),
+            // La sede predefinita ospita l'amministratore di piattaforma (gestione delle sedi).
+            'platform' => (string) $row['id'] === Tenant::defaultSlug(),
+        ];
     }
 
     /** Valida e normalizza la configurazione ricevuta dal browser. @return array<string,mixed> */
@@ -79,6 +87,12 @@ final class Tenants
             $clean[$m] = true;
         }
         $out['municipalities'] = array_keys($clean);
+
+        $mail = $in['laundryEmail'] ?? '';
+        if (!is_string($mail) || ($mail = trim($mail)) !== '' && (mb_strlen($mail) > 150 || !filter_var($mail, FILTER_VALIDATE_EMAIL))) {
+            throw new ApiException(422, 'bad-config', 'Indirizzo email della lavanderia non valido.');
+        }
+        $out['laundryEmail'] = $mail;
 
         $w = $in['weather'] ?? null;
         if ($w !== null && $w !== []) {

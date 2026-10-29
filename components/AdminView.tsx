@@ -1,4 +1,5 @@
 
+import TenantManagement from './TenantManagement';
 import React, { useState, useMemo, useEffect } from 'react';
 import { Order, Till, TillColors, Product, StaffMember, CashMovement, AdminUser, Shift, TombolaConfig, SeasonalityConfig, ShiftSettings, AttendanceRecord, GeneralSettings, AttendanceStatus, Vehicle, LaundryItemDef, Reminder, LotteryConfig, AuthUser } from '../types';
 import { BackArrowIcon, TrashIcon, SaveIcon, EditIcon, ListIcon, BoxIcon, StaffIcon, CashIcon, SettingsIcon, StarIcon, GoogleIcon, UserPlusIcon, GamepadIcon, BanknoteIcon, CalendarIcon, SparklesIcon, ClipboardIcon, MegaphoneIcon, LockOpenIcon, CheckIcon, LockIcon, FilterIcon, SortIcon, PaletteIcon, BellIcon, LogoIcon, CarIcon, ShirtIcon, FireIcon, WrenchIcon, TruckIcon, PinIcon, ShieldCheckIcon, InfoIcon, FirstAidIcon } from './Icons';
@@ -72,7 +73,7 @@ interface AdminViewProps {
     onSendNotification?: (title: string, body: string, target?: string) => Promise<void>;
 }
 
-type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'fleet_hub' | 'control_panel'; 
+type AdminTab = 'movements' | 'stock' | 'products' | 'staff' | 'cash' | 'fleet_hub' | 'control_panel' | 'sedi'; 
 
 const AdminView: React.FC<AdminViewProps> = ({ 
     onGoBack, orders, tills, tillColors, products, staff, cashMovements,
@@ -96,9 +97,12 @@ const AdminView: React.FC<AdminViewProps> = ({
     const { laundryItems, laundryEntries, laundryShipments, addLaundryItem, updateLaundryItem, deleteLaundryItem } = useBar();
     const { interventions, interventionTypologies, dutyOfficers, addInterventionTypology, deleteInterventionTypology, addDutyOfficer, deleteDutyOfficer } = useBar();
     const { reminders, addReminder, updateReminder, deleteReminder } = useBar();
-    const { customRoles, addCustomRole, deleteCustomRole, activeBarUser } = useBar();
+    const { customRoles, addCustomRole, deleteCustomRole, activeBarUser, tenant, moduleEnabled } = useBar();
+    const barOn = moduleEnabled('bar');
+    const canManageSedi = !!tenant?.platform && activeBarUser?.role === 'super-admin';
+    const fleetOn = moduleEnabled('vehicle_booking') || moduleEnabled('operational_vehicles');
 
-    const [activeTab, setActiveTab] = useState<AdminTab>('movements');
+    const [activeTab, setActiveTab] = useState<AdminTab>(moduleEnabled('bar') ? 'movements' : 'staff');
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
     const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<{ total: number, date: string, time: string }>({ total: 0, date: '', time: '' });
@@ -109,7 +113,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [newAdminEmail, setNewAdminEmail] = useState('');
 
     // Fleet Hub State
-    const [fleetTab, setFleetTab] = useState<'service' | 'operational'>('service');
+    const [fleetTab, setFleetTab] = useState<'service' | 'operational'>(moduleEnabled('vehicle_booking') ? 'service' : 'operational');
 
     // Accordion State
     const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -554,13 +558,14 @@ const AdminView: React.FC<AdminViewProps> = ({
                     
                     {/* GRIGLIA NAVIGAZIONE AGGIORNATA */}
                     <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-12 gap-2 w-full overflow-x-auto">
-                        <TabButton tab="movements" label="Movimenti" icon={<ListIcon />} />
-                        <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon />} />
-                        <TabButton tab="stock" label="Stock" icon={<BoxIcon />} />
-                        <TabButton tab="products" label="Prodotti" icon={<LogoIcon />} />
+                        {barOn && <TabButton tab="movements" label="Movimenti" icon={<ListIcon />} />}
+                        {barOn && <TabButton tab="cash" label="Cassa" icon={<BanknoteIcon />} />}
+                        {barOn && <TabButton tab="stock" label="Stock" icon={<BoxIcon />} />}
+                        {barOn && <TabButton tab="products" label="Prodotti" icon={<LogoIcon />} />}
                         <TabButton tab="staff" label="Staff" icon={<StaffIcon />} />
-                        <TabButton tab="fleet_hub" label="Gestione Automezzi" icon={<TruckIcon />} />
+                        {fleetOn && <TabButton tab="fleet_hub" label="Gestione Automezzi" icon={<TruckIcon />} />}
                         <TabButton tab="control_panel" label="Pannello di Controllo" icon={<WrenchIcon className="h-8 w-8" />} />
+                        {canManageSedi && <TabButton tab="sedi" label="Sedi" icon={<span>🏢</span>} />}
                     </div>
                 </div>
             </header>
@@ -620,18 +625,22 @@ const AdminView: React.FC<AdminViewProps> = ({
                 {activeTab === 'fleet_hub' && (
                     <div className="space-y-6">
                         <div className="flex justify-center gap-2 mb-6">
+{moduleEnabled('vehicle_booking') && (
                             <button 
                                 onClick={() => setFleetTab('service')}
                                 className={`px-6 py-2 rounded-full font-bold transition-all shadow-sm ${fleetTab === 'service' ? 'bg-red-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}
                             >
                                 <span className="mr-2">🚗</span> Mezzi di Servizio
                             </button>
+)}
+{moduleEnabled('operational_vehicles') && (
                             <button 
                                 onClick={() => setFleetTab('operational')}
                                 className={`px-6 py-2 rounded-full font-bold transition-all shadow-sm ${fleetTab === 'operational' ? 'bg-red-600 text-white' : 'bg-white text-slate-500 hover:bg-slate-100'}`}
                             >
                                 <span className="mr-2">🚒</span> Mezzi Operativi
                             </button>
+)}
                         </div>
 
                         {fleetTab === 'service' ? (
@@ -840,7 +849,8 @@ const AdminView: React.FC<AdminViewProps> = ({
                         )}
                         
                         {/* 4. TURNARIO */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        {moduleEnabled('calendar') && (
+<div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('calendar')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
                                     <CalendarIcon className="h-5 w-5 text-blue-500" /> Gestione Turnario
@@ -853,9 +863,11 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 </div>
                             )}
                         </div>
+)}
 
                         {/* 5. GESTIONE CAPI LAVANDERIA */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        {moduleEnabled('laundry') && (
+<div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('laundry_items')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
                                     <ShirtIcon className="h-5 w-5 text-blue-500" /> Gestione Capi Lavanderia
@@ -868,6 +880,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 </div>
                             )}
                         </div>
+)}
 
                         {/* 6. GESTIONE PROMEMORIA */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
@@ -974,7 +987,8 @@ const AdminView: React.FC<AdminViewProps> = ({
                         </div>
                         
                         {/* 7. CONFIGURAZIONE INTERVENTI */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        {moduleEnabled('interventions') && (
+<div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('interventions')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
                                     <FireIcon className="h-5 w-5 text-orange-500" /> Configurazione Interventi
@@ -1028,9 +1042,11 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 </div>
                             )}
                         </div>
+)}
 
                         {/* 8. CONFIGURAZIONE COLORI CASSE */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        {moduleEnabled('bar') && (
+<div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('colors')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
                                     <PaletteIcon className="h-5 w-5 text-indigo-500" /> Colori Casse & Temi
@@ -1051,9 +1067,11 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 </div>
                             )}
                         </div>
+)}
 
                         {/* 9. STAGIONALITÀ & EFFETTI */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        {moduleEnabled('bar') && (
+<div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('seasonality')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
                                     <SparklesIcon className="h-5 w-5 text-yellow-500" /> Stagionalità & Effetti
@@ -1074,6 +1092,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 </div>
                             )}
                         </div>
+)}
 
                         {/* 10. CONFIGURAZIONE GENERALE */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
@@ -1143,7 +1162,8 @@ const AdminView: React.FC<AdminViewProps> = ({
                         </div>
 
                         {/* 12. LOTTERIA */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        {moduleEnabled('games') && (
+<div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('lottery')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
                                 <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
                                     <GamepadIcon className="h-5 w-5 text-green-500" /> Configurazione Lotteria
@@ -1195,10 +1215,12 @@ const AdminView: React.FC<AdminViewProps> = ({
                                 </div>
                             )}
                         </div>
+)}
 
                     </div>
                 )}
                 
+                {activeTab === 'sedi' && canManageSedi && <TenantManagement />}
                 {activeTab === 'stock' && <StockControl products={products} onStockPurchase={onStockPurchase} onStockCorrection={onStockCorrection} />}
                 {activeTab === 'products' && <ProductManagement products={products} onAddProduct={onAddProduct} onUpdateProduct={onUpdateProduct} onDeleteProduct={onDeleteProduct} />}
                 {activeTab === 'staff' && <StaffManagement staff={staff} onAddStaff={onAddStaff} onUpdateStaff={onUpdateStaff} onDeleteStaff={onDeleteStaff} />}

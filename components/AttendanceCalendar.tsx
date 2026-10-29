@@ -5,6 +5,7 @@ import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon,
 import { GradeBadge } from './StaffManagement';
 import { VVF_GRADES } from '../constants';
 import { useBar } from '../contexts/BarContext';
+import { sedeFullName, sedeShortName } from '../utils/tenant';
 import { isCashbox } from '../utils/staff';
 
 interface AttendanceCalendarProps {
@@ -36,7 +37,7 @@ const STATUS_CONFIG: Record<AttendanceStatus | 'absent', { label: string, short:
 };
 
 const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecords, staff, tillColors, onDeleteRecord, onSaveAttendance, onReopenAttendance, isSuperAdmin, shiftSettings, readOnly, onGoBack }) => {
-    const { activeBarUser, availableRoles } = useBar();
+    const { activeBarUser, availableRoles, tenant } = useBar();
     const [currentDate, setCurrentDate] = useState(new Date());
     
     // Check permission for Reset Month (Admin Level 3 or higher)
@@ -458,7 +459,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
             message += `👤 *${person.name}*: ${presentCount} Presenze\n`;
         });
         
-        message += `\nGenerato da Bar VVF Montepulciano`;
+        message += `\nGenerato da Bar VVF ${sedeShortName(tenant)}`;
         const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
     };

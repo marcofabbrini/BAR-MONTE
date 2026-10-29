@@ -14,7 +14,7 @@ export const AnalottoService = {
                     rules: "Regolamento Analotto VVF:\n1. Si scelgono da 1 a 10 numeri.\n2. Si sceglie su quali ruote puntare.\n3. L'estrazione avviene settimanalmente.\n4. Il montepremi è costituito dall'80% delle giocate.",
                     extractionSchedule: "Ogni Venerdì sera"
                 };
-                db.collection('analotto').doc('config').set(initialConfig);
+                db.collection('analotto').doc('config').set(initialConfig).catch(() => { /* modulo non attivo per la sede */ });
             }
         });
     },

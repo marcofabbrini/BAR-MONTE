@@ -50,7 +50,7 @@ export const TombolaService = {
                     lastExtraction: new Date().toISOString(), 
                     extractedNumbers: [] 
                 };
-                db.collection('tombola').doc('config').set(initialConfig);
+                db.collection('tombola').doc('config').set(initialConfig).catch(() => { /* modulo non attivo per la sede */ });
             }
         });
     },
