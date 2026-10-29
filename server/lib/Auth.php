@@ -15,6 +15,21 @@ final class Auth
     /** @var array{id:string,data:stdClass}|null|false */
     private static array|null|false $current = false;
 
+    /** @var array{id:string,name:string}|null Sede della sessione corrente. */
+    private static ?array $tenant = null;
+
+    /** Sede dell'utente collegato (dopo currentUser()/login()). */
+    public static function tenantInfo(): ?array
+    {
+        return self::$tenant;
+    }
+
+    /** Chiave per il limite di tentativi: separata per sede. */
+    private static function attemptKey(string $tenantId, string $username): string
+    {
+        return substr($tenantId . ':' . mb_strtolower($username), 0, 100);
+    }
+
     private static function cookiePath(): string
     {
         $configured = Config::get('cookie_path');
@@ -50,13 +65,22 @@ final class Auth
         }
         $hash = hash('sha256', $token);
         $now = Db::now();
-        $sess = Db::one('SELECT user_id, last_seen, expires_at FROM gd_sessions WHERE token_hash = ? AND expires_at > ?', [$hash, $now]);
-        if ($sess === null) {
+        $sess = Db::one(
+            'SELECT s.user_id, s.tenant_id, s.last_seen, s.expires_at, t.name AS tenant_name
+             FROM gd_sessions s JOIN gd_tenants t ON t.id = s.tenant_id
+             WHERE s.token_hash = ? AND s.expires_at > ?',
+            [$hash, $now]
+        );
+        if ($sess === null || !Tenant::valid($sess['tenant_id'])) {
             return null;
         }
+        Tenant::set((string) $sess['tenant_id']);
+        self::$tenant = ['id' => (string) $sess['tenant_id'], 'name' => (string) $sess['tenant_name']];
         $user = Store::loadDoc('staff', (string) $sess['user_id']);
         if ($user === null) {
             Db::run('DELETE FROM gd_sessions WHERE token_hash = ?', [$hash]);
+            Tenant::clear();
+            self::$tenant = null;
             return null;
         }
         // Rinnova la scadenza al massimo una volta all'ora.
@@ -86,13 +110,26 @@ final class Auth
         return $out;
     }
 
-    public static function login(string $username, string $password): array
+    public static function login(string $username, string $password, ?string $tenantSlug = null): array
     {
         $username = trim($username);
         if ($username === '' || strlen($username) > 100 || strlen($password) > 200) {
             throw new ApiException(401, 'invalid-credentials', 'Credenziali non valide.');
         }
-        self::assertNotRateLimited($username);
+
+        // La sede si sceglie al login (link della sede); senza indicazione vale quella predefinita.
+        $slug = $tenantSlug === null || $tenantSlug === '' ? Tenant::defaultSlug() : mb_strtolower(trim($tenantSlug));
+        $key = Tenant::valid($slug) ? $slug : '-';
+        self::assertNotRateLimited($key, $username);
+        $tenantRow = Tenant::valid($slug) ? Db::one('SELECT id, name FROM gd_tenants WHERE id = ?', [$slug]) : null;
+        if ($tenantRow === null) {
+            // Stessa risposta di una password errata: non si rivela quali sedi esistono.
+            self::recordFailure($key, $username);
+            usleep(250000);
+            throw new ApiException(401, 'invalid-credentials', 'Credenziali non valide.');
+        }
+        Tenant::set((string) $tenantRow['id']);
+        self::$tenant = ['id' => (string) $tenantRow['id'], 'name' => (string) $tenantRow['name']];
 
         $needle = mb_strtolower($username);
         $byUsername = [];
@@ -108,12 +145,12 @@ final class Auth
 
         foreach (array_merge($byUsername, $byName) as $row) {
             if (self::passwordAccepted($row['data'], $password)) {
-                self::clearAttempts($username);
+                self::clearAttempts($key, $username);
                 return self::startSession($row);
             }
         }
 
-        self::recordFailure($username);
+        self::recordFailure($key, $username);
         // Piccolo ritardo contro attacchi a raffica.
         usleep(250000);
         throw new ApiException(401, 'invalid-credentials', 'Credenziali non valide.');
@@ -163,8 +200,8 @@ final class Auth
         $exp = time() + $days * 86400;
         $now = Db::now();
         Db::run(
-            'INSERT INTO gd_sessions (token_hash, user_id, created_at, last_seen, expires_at) VALUES (?, ?, ?, ?, ?)',
-            [hash('sha256', $token), $id, $now, $now, gmdate('Y-m-d H:i:s', $exp)]
+            'INSERT INTO gd_sessions (token_hash, tenant_id, user_id, created_at, last_seen, expires_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [hash('sha256', $token), Tenant::id(), $id, $now, $now, gmdate('Y-m-d H:i:s', $exp)]
         );
         Db::run('DELETE FROM gd_sessions WHERE expires_at < ?', [$now]);
         self::setCookie($token, $exp);
@@ -189,27 +226,27 @@ final class Auth
         return gmdate('Y-m-d H:i:s', time() - self::ATTEMPT_WINDOW_MIN * 60);
     }
 
-    private static function assertNotRateLimited(string $username): void
+    private static function assertNotRateLimited(string $tenantKey, string $username): void
     {
         $since = self::since();
         $byIp = Db::one('SELECT COUNT(*) AS n FROM gd_login_attempts WHERE ip = ? AND ts > ?', [Http::clientIp(), $since]);
-        $byUser = Db::one('SELECT COUNT(*) AS n FROM gd_login_attempts WHERE username = ? AND ts > ?', [mb_strtolower($username), $since]);
+        $byUser = Db::one('SELECT COUNT(*) AS n FROM gd_login_attempts WHERE username = ? AND ts > ?', [self::attemptKey($tenantKey, $username), $since]);
         if ((int) ($byIp['n'] ?? 0) >= self::MAX_ATTEMPTS_PER_IP || (int) ($byUser['n'] ?? 0) >= self::MAX_ATTEMPTS_PER_USER) {
             throw new ApiException(429, 'too-many-attempts', 'Troppi tentativi di accesso. Riprova tra qualche minuto.');
         }
     }
 
-    private static function recordFailure(string $username): void
+    private static function recordFailure(string $tenantKey, string $username): void
     {
         Db::run(
             'INSERT INTO gd_login_attempts (ip, username, ts) VALUES (?, ?, ?)',
-            [Http::clientIp(), mb_strtolower(mb_substr($username, 0, 100)), Db::now()]
+            [Http::clientIp(), self::attemptKey($tenantKey, $username), Db::now()]
         );
         Db::run('DELETE FROM gd_login_attempts WHERE ts < ?', [gmdate('Y-m-d H:i:s', time() - 86400)]);
     }
 
-    private static function clearAttempts(string $username): void
+    private static function clearAttempts(string $tenantKey, string $username): void
     {
-        Db::run('DELETE FROM gd_login_attempts WHERE username = ?', [mb_strtolower($username)]);
+        Db::run('DELETE FROM gd_login_attempts WHERE username = ?', [self::attemptKey($tenantKey, $username)]);
     }
 }

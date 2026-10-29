@@ -44,6 +44,7 @@ try {
 
     if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         page('<form method="post"><label>Token (da config.php)<input type="password" name="token" required autocomplete="off"></label>'
+            . '<label>Sede (codice)<input name="sede" value="' . $h(Tenant::defaultSlug()) . '" required></label>'
             . '<label>Nome utente del Super Admin<input name="username" value="admin" required></label>'
             . '<label>Nuova password (almeno 8 caratteri)<input type="password" name="password" required minlength="8" autocomplete="new-password"></label>'
             . '<button type="submit">Ripristina</button></form>'
@@ -55,6 +56,7 @@ try {
         http_response_code(403);
         page('<p class="err">Token errato.</p>');
     }
+    $slug = mb_strtolower(trim((string) ($_POST['sede'] ?? '')));
     $username = trim((string) ($_POST['username'] ?? ''));
     $password = (string) ($_POST['password'] ?? '');
     if ($username === '' || strlen($password) < 8) {
@@ -62,15 +64,13 @@ try {
         page('<p class="err">Inserisci un nome utente e una password di almeno 8 caratteri.</p>');
     }
 
-    try {
-        $rows = Store::loadCollection('staff');
-    } catch (Throwable $e) {
-        if (!Db::isMissingTable($e)) {
-            throw $e;
-        }
-        Db::ensureSchema();
-        $rows = [];
+    Db::ensureSchema(); // crea/aggiorna le tabelle se servono (include le sedi)
+    if (!Tenant::valid($slug) || Db::one('SELECT id FROM gd_tenants WHERE id = ?', [$slug]) === null) {
+        http_response_code(400);
+        page('<p class="err">Sede inesistente. Se è nuova, creala prima con create_tenant.php.</p>');
     }
+    Tenant::set($slug);
+    $rows = Store::loadCollection('staff');
 
     $target = null;
     $needle = mb_strtolower($username);
@@ -96,10 +96,10 @@ try {
         $what = 'creato';
     }
     Store::commit([], [$w], null);
-    // Chiude tutte le sessioni aperte per sicurezza.
-    Db::run('DELETE FROM gd_sessions');
+    // Chiude tutte le sessioni aperte di questa sede, per sicurezza.
+    Db::run('DELETE FROM gd_sessions WHERE tenant_id = ?', [Tenant::id()]);
 
-    page('<p class="ok">Utente <strong>' . $h($username) . '</strong> ' . $what . ' come Super Admin.<br>'
+    page('<p class="ok">Utente <strong>' . $h($username) . '</strong> ' . $what . ' come Super Admin della sede <strong>' . $h($slug) . '</strong>.<br>'
         . 'Ora rimetti <code>reset_token</code> vuoto in <code>config.php</code>.</p>');
 } catch (ApiException $e) {
     http_response_code($e->status);

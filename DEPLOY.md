@@ -168,3 +168,24 @@ Note:
 - I dati nel database non vengono toccati dal deploy (le tabelle si creano da sole alla prima richiesta).
 - Il file `.ftp-deploy-sync-state.json` che l'action lascia sul server serve a caricare solo i file cambiati; è bloccato dal web da `.htaccess`.
 - Il primo deploy carica tutto; se interrotto a metà, rilancialo.
+
+
+## Sedi (più distaccamenti)
+
+I dati sono separati per **sede**: ogni tabella ha il campo `tenant_id`, e il server lo applica da solo in base
+all'utente collegato, quindi una sede non può leggere né scrivere i dati di un'altra.
+
+- **Prima installazione dopo l'aggiornamento:** al primo accesso il database si aggiorna da solo (qualche secondo).
+  Tutti i dati esistenti passano alla sede **`montepulciano`** e nulla va perso; anche le sessioni aperte restano valide.
+  Fai comunque un backup prima (phpMyAdmin → Esporta).
+- **Indirizzo di una sede:** `https://www.marcofabbrini.com/vvf/gestionali/?sede=<codice>`. Senza `?sede=` si entra
+  nella sede predefinita (`default_tenant` in `config.php`, di base `montepulciano`), quindi l'indirizzo di oggi non cambia.
+- **Creare una sede:** imposta il secret `RESET_TOKEN`, rilancia il deploy, apri `.../api/tools/create_tenant.php`
+  e inserisci token, codice, nome e il primo Super Admin. Poi cancella il secret e rilancia il deploy.
+- **Ripristino del Super Admin:** `reset_superadmin.php` ora chiede anche la sede.
+- **Omonimi:** lo stesso nome utente in due sedi è permesso (sono persone diverse); il limite di tentativi di accesso
+  è separato per sede.
+- **Importazione dalla vecchia app:** i file `.sql` generati da `migrate-firestore.mjs` vanno sempre nella sede predefinita.
+
+Limiti di questo passo: l'aspetto (nome nel login, logo, turni, comuni...) e i moduli attivi sono ancora quelli di
+Montepulciano per tutte le sedi; arrivano con i passi successivi.

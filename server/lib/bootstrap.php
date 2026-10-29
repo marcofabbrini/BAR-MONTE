@@ -151,3 +151,51 @@ final class Http
         self::send(['error' => $e->errorCode, 'message' => $e->getMessage()], $e->status);
     }
 }
+
+/**
+ * Sede (distaccamento) in uso per la richiesta corrente.
+ *
+ * Tutti i dati sono separati per sede: ogni lettura/scrittura passa da Tenant::id().
+ * Se la sede non è stata impostata (login o sessione), qualsiasi accesso ai dati FALLISCE:
+ * mai un "valore predefinito" silenzioso, per non mescolare i dati di sedi diverse.
+ */
+final class Tenant
+{
+    /** Sede dei dati già presenti prima dell'arrivo delle sedi (è anche il DEFAULT delle colonne). */
+    public const LEGACY = 'montepulciano';
+
+    private static ?string $id = null;
+
+    public static function valid(mixed $slug): bool
+    {
+        return is_string($slug) && preg_match('/^[a-z0-9][a-z0-9-]{0,30}$/', $slug) === 1;
+    }
+
+    /** Sede usata al login quando non ne viene indicata una (config "default_tenant"). */
+    public static function defaultSlug(): string
+    {
+        $d = Config::get('default_tenant', self::LEGACY);
+        return self::valid($d) ? $d : self::LEGACY;
+    }
+
+    public static function set(string $slug): void
+    {
+        if (!self::valid($slug)) {
+            throw new ApiException(400, 'bad-tenant', 'Sede non valida.');
+        }
+        self::$id = $slug;
+    }
+
+    public static function id(): string
+    {
+        if (self::$id === null) {
+            throw new ApiException(500, 'tenant-missing', 'Sede non impostata: richiesta rifiutata per sicurezza.');
+        }
+        return self::$id;
+    }
+
+    public static function clear(): void
+    {
+        self::$id = null;
+    }
+}

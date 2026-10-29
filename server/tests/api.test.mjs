@@ -417,6 +417,77 @@ await test('operazioni quotidiane restano aperte a tutti (prenotazioni, presenze
     assert.equal(await code(adm, [del('interventions', 'q1')]), 200);
 });
 
+// --- Sedi (multi-tenant) ----------------------------------------------------------------
+await test('sede: senza indicazione si entra nella sede predefinita', async () => {
+    const r = await new Client().login('anna', 'annapw'); assert.equal(r.status, 200);
+    assert.equal(r.tenant.id, 'montepulciano');
+});
+await test('sede: stesso username in un\'altra sede = utente diverso (password della sua sede)', async () => {
+    const a = new Client();
+    let r = await a.call('auth.login', { username: 'mario', password: 'altrapw', tenant: 'altra' });
+    assert.equal(r.status, 200); assert.equal(r.user.id, 'a-mario'); assert.equal(r.tenant.id, 'altra');
+    r = await new Client().call('auth.login', { username: 'mario', password: 'altrapw' }); // sede predefinita
+    assert.equal(r.status, 401);
+    r = await new Client().call('auth.login', { username: 'mario', password: 'mariopw', tenant: 'altra' });
+    assert.equal(r.status, 401);
+});
+await test('sede inesistente o non valida: stessa risposta di credenziali errate', async () => {
+    for (const t of ['nonesiste', '../x', 'A B', 'x'.repeat(50)]) {
+        const r = await new Client().call('auth.login', { username: 'mario', password: 'mariopw', tenant: t });
+        assert.equal(r.status, 401, t);
+    }
+});
+await test('sede: i dati sono separati (lettura, query, sync)', async () => {
+    const a = new Client();
+    await a.call('auth.login', { username: 'mario', password: 'altrapw', tenant: 'altra' });
+    // la sede "altra" vede solo i propri promemoria
+    const rem = await a.query('reminders');
+    assert.deepEqual(rem.map(d => d.id), ['r-altra']);
+    assert.equal((await a.call('getDoc', { c: 'reminders', id: 'r-altra' })).exists, true);
+    // la sede predefinita non vede quel documento
+    assert.equal((await std.call('getDoc', { c: 'reminders', id: 'r-altra' })).exists, false);
+    assert.equal((await std.query('reminders')).some(d => d.id === 'r-altra'), false);
+    const sy = await std.call('sync', { subs: [{ id: 1, kind: 'doc', collection: 'reminders', docId: 'r-altra', rev: null }] });
+    assert.equal(sy.results[0].exists, false);
+});
+await test('sede: una scrittura in una sede non compare nell\'altra (stesso id documento)', async () => {
+    const a = new Client();
+    await a.call('auth.login', { username: 'mario', password: 'altrapw', tenant: 'altra' });
+    assert.equal((await a.commit([set('reminders', 'cond', { v: 'altra' })])).status, 200);
+    assert.equal((await std.commit([set('reminders', 'cond', { v: 'mont' })])).status, 200);
+    assert.equal((await a.call('getDoc', { c: 'reminders', id: 'cond' })).data.v, 'altra');
+    assert.equal((await std.call('getDoc', { c: 'reminders', id: 'cond' })).data.v, 'mont');
+    assert.equal((await a.commit([del('reminders', 'cond')])).status, 200);
+    assert.equal((await std.call('getDoc', { c: 'reminders', id: 'cond' })).exists, true);
+});
+await test('sede: gli utenti (staff) di una sede non compaiono nell\'altra', async () => {
+    const a = new Client();
+    await a.call('auth.login', { username: 'capo', password: 'altrapw1', tenant: 'altra' });
+    const names = (await a.query('staff')).map(d => d.id).sort();
+    assert.deepEqual(names, ['a-mario', 'a-super']);
+    assert.equal((await std.query('staff')).some(d => d.id.startsWith('a-')), false);
+});
+await test('sede: il Super Admin di una sede non ha poteri sull\'altra (id utente altrui)', async () => {
+    const a = new Client();
+    await a.call('auth.login', { username: 'capo', password: 'altrapw1', tenant: 'altra' });
+    // tenta di modificare un utente della sede predefinita: per lui quell\'id non esiste
+    const r = await a.commit([upd('staff', 'u-std', { name: 'Hack' })]);
+    assert.equal(r.status, 404);
+    assert.equal((await std.call('getDoc', { c: 'staff', id: 'u-std' })).data.name, 'Mario Rossi');
+});
+await test('sede: auth.me restituisce la sede della sessione', async () => {
+    const a = new Client();
+    await a.call('auth.login', { username: 'mario', password: 'altrapw', tenant: 'altra' });
+    const me = await a.call('auth.me');
+    assert.equal(me.tenant.id, 'altra'); assert.equal(me.user.id, 'a-mario');
+});
+await test('sede: limite tentativi separato per sede', async () => {
+    for (let i = 0; i < 11; i++) await new Client().call('auth.login', { username: 'capo', password: 'x', tenant: 'altra' });
+    assert.equal((await new Client().call('auth.login', { username: 'capo', password: 'altrapw1', tenant: 'altra' })).status, 429);
+    // lo stesso username nella sede predefinita non è bloccato dagli errori fatti nell'altra
+    assert.equal((await new Client().call('auth.login', { username: 'anna', password: 'annapw' })).status, 200);
+});
+
 console.log(results.join('\n'));
 console.log(`\n${passed}/${results.length} test superati`);
 
