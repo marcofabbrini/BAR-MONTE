@@ -4,6 +4,7 @@ import { LaundryItemDef, LaundryEntry, LaundryShipment, Shift } from '../types';
 import { useBar } from '../contexts/BarContext';
 import { BackArrowIcon, ShirtIcon, ListIcon, CheckIcon, BoxIcon, PrinterIcon, LockIcon, TrashIcon, LockOpenIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
+import { isCashbox } from '../utils/staff';
 
 interface LaundryViewProps {
     onGoBack: () => void;
@@ -109,7 +110,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
     // Filtered Staff List with Rank Sorting
     const filteredStaff = useMemo(() => {
         return staff.filter(s => {
-            if (s.name.toLowerCase().includes('cassa')) return false;
+            if (isCashbox(s)) return false;
             if (staffShiftFilter !== 'all' && s.shift !== staffShiftFilter) return false;
             return true;
         }).sort((a, b) => {

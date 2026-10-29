@@ -8,6 +8,7 @@ import ProductCard from './ProductCard';
 import { BackArrowIcon, UsersIcon, DropletIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 import { GradeBadge } from './StaffManagement';
+import { isCashbox } from '../utils/staff';
 
 interface TillViewProps {
     till: Till;
@@ -116,8 +117,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
 
     const sortedStaffForShift = useMemo(() => {
         return [...staffForShift].sort((a, b) => {
-            const aIsCassa = a.name.toLowerCase().includes('cassa');
-            const bIsCassa = b.name.toLowerCase().includes('cassa');
+            const aIsCassa = isCashbox(a);
+            const bIsCassa = isCashbox(b);
             if (aIsCassa && !bIsCassa) return -1;
             if (!aIsCassa && bIsCassa) return 1;
 
@@ -185,7 +186,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         let totalCount = 0;
 
         const quotas = staffForShift
-            .filter(s => !s.name.toLowerCase().includes('cassa'))
+            .filter(s => !isCashbox(s))
             .map(member => {
                 const count = attendanceRecords.filter(r => {
                     const d = new Date(r.date);
@@ -385,7 +386,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                         <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Chi sei?</h3>
                                         <div className={`grid grid-cols-4 sm:grid-cols-6 gap-4 p-4 rounded-xl ${!selectedStaffId ? 'animate-red-pulse' : ''}`}>
                                             {sortedStaffForShift.map(staff => {
-                                                const isCassa = staff.name.toLowerCase().includes('cassa');
+                                                const isCassa = isCashbox(staff);
                                                 let isVisiblyPresent = false;
                                                 
                                                 if (existingAttendanceRecord?.attendanceDetails) {

@@ -36,6 +36,7 @@ const set = (c, id, data, merge = false) => ({ op: 'set', c, id, data, merge });
 const upd = (c, id, data) => ({ op: 'update', c, id, data });
 const del = (c, id) => ({ op: 'delete', c, id });
 
+// (nei test generici sui documenti si usano collezioni di prova libere: 'gentest_*')
 // --- Autenticazione -----------------------------------------------------------
 const anon = new Client();
 await test('me senza sessione -> user null', async () => {
@@ -93,26 +94,26 @@ await admin.login('anna', 'annapw'); await sup.login('admin', 'superpw');
 
 // --- Scritture ----------------------------------------------------------------
 await test('set / update / lettura documento', async () => {
-    let r = await std.commit([set('products', 'p1', { name: 'Caffè', price: 1.2, stock: 10, tags: ['a'], empty: {}, list: [], note: 'è così ☕' })]);
+    let r = await std.commit([set('gentest_p', 'p1', { name: 'Caffè', price: 1.2, stock: 10, tags: ['a'], empty: {}, list: [], note: 'è così ☕' })]);
     assert.equal(r.status, 200);
-    r = await std.call('getDoc', { c: 'products', id: 'p1' });
+    r = await std.call('getDoc', { c: 'gentest_p', id: 'p1' });
     assert.equal(r.exists, true); assert.equal(r.version, 1);
     assert.deepEqual(r.data, { name: 'Caffè', price: 1.2, stock: 10, tags: ['a'], empty: {}, list: [], note: 'è così ☕' });
-    r = await std.commit([upd('products', 'p1', { price: 1.5 })]);
-    r = await std.call('getDoc', { c: 'products', id: 'p1' });
+    r = await std.commit([upd('gentest_p', 'p1', { price: 1.5 })]);
+    r = await std.call('getDoc', { c: 'gentest_p', id: 'p1' });
     assert.equal(r.data.price, 1.5); assert.equal(r.version, 2); assert.equal(r.data.name, 'Caffè');
 });
 await test('oggetti vuoti {} e array vuoti [] restano distinti', async () => {
-    const r = await std.call('getDoc', { c: 'products', id: 'p1' });
+    const r = await std.call('getDoc', { c: 'gentest_p', id: 'p1' });
     assert.deepEqual(r.data.empty, {}); assert.deepEqual(r.data.list, []);
 });
 await test('update su documento inesistente -> 404', async () => {
-    const r = await std.commit([upd('products', 'nope', { a: 1 })]); assert.equal(r.status, 404);
+    const r = await std.commit([upd('gentest_p', 'nope', { a: 1 })]); assert.equal(r.status, 404);
 });
 await test('increment (anche negativo) e campo mancante', async () => {
-    await std.commit([upd('products', 'p1', { stock: { __op: 'increment', value: -3 } })]);
-    await std.commit([upd('products', 'p1', { sold: { __op: 'increment', value: 2 } })]);
-    const r = await std.call('getDoc', { c: 'products', id: 'p1' });
+    await std.commit([upd('gentest_p', 'p1', { stock: { __op: 'increment', value: -3 } })]);
+    await std.commit([upd('gentest_p', 'p1', { sold: { __op: 'increment', value: 2 } })]);
+    const r = await std.call('getDoc', { c: 'gentest_p', id: 'p1' });
     assert.equal(r.data.stock, 7); assert.equal(r.data.sold, 2);
 });
 await test('arrayUnion / arrayRemove', async () => {
@@ -126,34 +127,34 @@ await test('arrayUnion / arrayRemove', async () => {
     assert.deepEqual(r.data.completedDates, ['2026-10-02']);
 });
 await test('set con merge: unisce anche gli oggetti annidati', async () => {
-    await std.commit([set('settings', 'general', { a: 1, nested: { x: 1, y: 2 } })]);
-    await std.commit([set('settings', 'general', { b: 2, nested: { y: 9, z: 3 } }, true)]);
-    const r = await std.call('getDoc', { c: 'settings', id: 'general' });
+    await std.commit([set('gentest_s', 'general', { a: 1, nested: { x: 1, y: 2 } })]);
+    await std.commit([set('gentest_s', 'general', { b: 2, nested: { y: 9, z: 3 } }, true)]);
+    const r = await std.call('getDoc', { c: 'gentest_s', id: 'general' });
     assert.deepEqual(r.data, { a: 1, b: 2, nested: { x: 1, y: 9, z: 3 } });
 });
 await test('set con merge su documento nuovo lo crea', async () => {
-    await std.commit([set('settings', 'fresh', { k: 1 }, true)]);
-    assert.equal((await std.call('getDoc', { c: 'settings', id: 'fresh' })).data.k, 1);
+    await std.commit([set('gentest_s', 'fresh', { k: 1 }, true)]);
+    assert.equal((await std.call('getDoc', { c: 'gentest_s', id: 'fresh' })).data.k, 1);
 });
 await test('set senza merge sostituisce il documento', async () => {
-    await std.commit([set('settings', 'general', { only: true })]);
-    assert.deepEqual((await std.call('getDoc', { c: 'settings', id: 'general' })).data, { only: true });
+    await std.commit([set('gentest_s', 'general', { only: true })]);
+    assert.deepEqual((await std.call('getDoc', { c: 'gentest_s', id: 'general' })).data, { only: true });
 });
 await test('delete', async () => {
-    await std.commit([del('settings', 'fresh')]);
-    assert.equal((await std.call('getDoc', { c: 'settings', id: 'fresh' })).exists, false);
+    await std.commit([del('gentest_s', 'fresh')]);
+    assert.equal((await std.call('getDoc', { c: 'gentest_s', id: 'fresh' })).exists, false);
 });
 await test('batch atomico: se una scrittura fallisce non viene applicata nessuna', async () => {
-    const before = (await std.call('getDoc', { c: 'products', id: 'p1' })).version;
-    const r = await std.commit([upd('products', 'p1', { price: 99 }), upd('products', 'manca', { a: 1 })]);
+    const before = (await std.call('getDoc', { c: 'gentest_p', id: 'p1' })).version;
+    const r = await std.commit([upd('gentest_p', 'p1', { price: 99 }), upd('gentest_p', 'manca', { a: 1 })]);
     assert.equal(r.status, 404);
-    const after = await std.call('getDoc', { c: 'products', id: 'p1' });
+    const after = await std.call('getDoc', { c: 'gentest_p', id: 'p1' });
     assert.equal(after.version, before); assert.notEqual(after.data.price, 99);
 });
 await test('nomi collezione/id non validi -> 422', async () => {
     assert.equal((await std.commit([set('a/b', 'x', {})])).status, 422);
-    assert.equal((await std.commit([set('products', 'a/b', {})])).status, 422);
-    assert.equal((await std.commit([set('products', '', {})])).status, 422);
+    assert.equal((await std.commit([set('gentest_p', 'a/b', {})])).status, 422);
+    assert.equal((await std.commit([set('gentest_p', '', {})])).status, 422);
 });
 
 // --- Concorrenza (transazioni ottimistiche) ------------------------------------
@@ -182,34 +183,34 @@ await test('incrementi concorrenti non si perdono (30 richieste parallele)', asy
 // --- Interrogazioni --------------------------------------------------------------
 await test('orderBy desc + limit + where; esclude i documenti senza il campo', async () => {
     await std.commit([
-        set('orders', 'o1', { timestamp: '2026-10-01T10:00:00Z', total: 5, who: 'a' }),
-        set('orders', 'o2', { timestamp: '2026-10-03T10:00:00Z', total: 7, who: 'b' }),
-        set('orders', 'o3', { timestamp: '2026-10-02T10:00:00Z', total: 9, who: 'a' }),
-        set('orders', 'o4', { total: 1, who: 'a' }),
+        set('gentest_o', 'o1', { timestamp: '2026-10-01T10:00:00Z', total: 5, who: 'a' }),
+        set('gentest_o', 'o2', { timestamp: '2026-10-03T10:00:00Z', total: 7, who: 'b' }),
+        set('gentest_o', 'o3', { timestamp: '2026-10-02T10:00:00Z', total: 9, who: 'a' }),
+        set('gentest_o', 'o4', { total: 1, who: 'a' }),
     ]);
-    let docs = await std.query('orders', { orderBy: [['timestamp', 'desc']] });
+    let docs = await std.query('gentest_o', { orderBy: [['timestamp', 'desc']] });
     assert.deepEqual(docs.map(d => d.id), ['o2', 'o3', 'o1']);
-    docs = await std.query('orders', { orderBy: [['timestamp', 'desc']], limit: 2 });
+    docs = await std.query('gentest_o', { orderBy: [['timestamp', 'desc']], limit: 2 });
     assert.deepEqual(docs.map(d => d.id), ['o2', 'o3']);
-    docs = await std.query('orders', { where: [['who', '==', 'a']], orderBy: [['timestamp', 'asc']] });
+    docs = await std.query('gentest_o', { where: [['who', '==', 'a']], orderBy: [['timestamp', 'asc']] });
     assert.deepEqual(docs.map(d => d.id), ['o1', 'o3']);
-    docs = await std.query('orders', { where: [['total', '>=', 7]] });
+    docs = await std.query('gentest_o', { where: [['total', '>=', 7]] });
     assert.deepEqual(docs.map(d => d.id).sort(), ['o2', 'o3']);
-    docs = await std.query('orders', { where: [['who', 'in', ['b', 'z']]] });
+    docs = await std.query('gentest_o', { where: [['who', 'in', ['b', 'z']]] });
     assert.deepEqual(docs.map(d => d.id), ['o2']);
-    docs = await std.query('orders');
+    docs = await std.query('gentest_o');
     assert.deepEqual(docs.map(d => d.id), ['o1', 'o2', 'o3', 'o4']);
 });
 
 // --- Sync (polling) -------------------------------------------------------------
 await test('sync: invia i dati la prima volta, poi "unchanged" finché non cambia', async () => {
-    const sub = { id: 1, kind: 'query', collection: 'orders', where: [], orderBy: [['timestamp', 'desc']], limit: null, rev: null };
+    const sub = { id: 1, kind: 'query', collection: 'gentest_o', where: [], orderBy: [['timestamp', 'desc']], limit: null, rev: null };
     let r = await std.call('sync', { subs: [sub] });
     const a = r.results[0];
     assert.equal(a.changed, true); assert.equal(a.docs.length, 3); assert.equal(typeof a.rev, 'number');
     r = await std.call('sync', { subs: [{ ...sub, rev: a.rev }] });
     assert.equal(r.results[0].changed, false);
-    await std.commit([upd('orders', 'o1', { total: 6 })]);
+    await std.commit([upd('gentest_o', 'o1', { total: 6 })]);
     r = await std.call('sync', { subs: [{ ...sub, rev: a.rev }] });
     assert.equal(r.results[0].changed, true); assert.ok(r.results[0].rev > a.rev);
     assert.equal(r.results[0].docs.find(d => d.id === 'o1').data.total, 6);
@@ -357,5 +358,65 @@ await test('limite tentativi: dopo 10 errori sullo stesso utente -> 429', async 
     assert.equal((await new Client().login('anna', 'annapw')).status, 200);
 });
 
+// --- Permessi per collezione (livelli) -----------------------------------------------
+const adm = new Client();
+await test('login admin', async () => { assert.equal((await adm.login('anna', 'annapw')).status, 200); });
+const code = async (c, writes) => (await c.commit(writes)).status;
+
+await test('standard: NON può scrivere impostazioni né creare prodotti', async () => {
+    assert.equal(await code(std, [set('settings', 'general', { x: 1 })]), 403);
+    assert.equal(await code(std, [set('products', 'pz', { name: 'X', price: 1, stock: 1 })]), 403);
+});
+await test('manager: può creare prodotti e impostazioni', async () => {
+    assert.equal(await code(mgr, [set('products', 'pz', { name: 'Acqua', price: 1, stock: 10 })]), 200);
+    assert.equal(await code(mgr, [set('settings', 'general', { waterQuotaPrice: 1 })]), 200);
+});
+await test('standard: vendita = crea ordine + scala le scorte', async () => {
+    const r = await std.commit([
+        set('orders', 'oz', { total: 1, items: [] }),
+        upd('products', 'pz', { stock: { __op: 'increment', value: -2 } }),
+    ]);
+    assert.equal(r.status, 200);
+    assert.equal((await std.call('getDoc', { c: 'products', id: 'pz' })).data.stock, 8);
+});
+await test('standard: NON può cambiare il prezzo di un prodotto', async () => {
+    assert.equal(await code(std, [upd('products', 'pz', { price: 0.01 })]), 403);
+    assert.equal(await code(std, [upd('products', 'pz', { stock: 5, price: 0.01 })]), 403);
+});
+await test('standard: NON può modificare/eliminare ordini né movimenti di cassa esistenti', async () => {
+    assert.equal(await code(std, [upd('orders', 'oz', { total: 0 })]), 403);
+    assert.equal(await code(std, [del('orders', 'oz')]), 403);
+    assert.equal(await code(std, [set('cash_movements', 'mz', { amount: 5 })]), 200);
+    assert.equal(await code(std, [upd('cash_movements', 'mz', { amount: 0 })]), 403);
+    assert.equal(await code(std, [del('cash_movements', 'mz')]), 403);
+});
+await test('manager: modifica ma NON elimina ordini; admin elimina', async () => {
+    assert.equal(await code(mgr, [upd('orders', 'oz', { total: 2 })]), 200);
+    assert.equal(await code(mgr, [del('orders', 'oz')]), 403);
+    assert.equal(await code(adm, [del('orders', 'oz')]), 200);
+});
+await test('mezzi, tipologie, lavanderia (anagrafica): solo dal livello 2', async () => {
+    for (const c of ['vehicles', 'operational_vehicles', 'intervention_typologies', 'duty_officers', 'laundry_items']) {
+        assert.equal(await code(std, [set(c, 'z1', { name: 'n' })]), 403, c);
+        assert.equal(await code(mgr, [set(c, 'z1', { name: 'n' })]), 200, c);
+    }
+});
+await test('chiusure mensili e spedizioni lavanderia: solo dal livello 3', async () => {
+    assert.equal(await code(mgr, [set('monthly_closures', 'c1', { m: 1 })]), 403);
+    assert.equal(await code(adm, [set('monthly_closures', 'c1', { m: 1 })]), 200);
+    assert.equal(await code(mgr, [set('laundry_shipments', 's1', { st: 'a' })]), 403);
+    assert.equal(await code(adm, [set('laundry_shipments', 's1', { st: 'a' })]), 200);
+    assert.equal(await code(std, [upd('laundry_shipments', 's1', { st: 'b' })]), 200);
+});
+await test('operazioni quotidiane restano aperte a tutti (prenotazioni, presenze, interventi, promemoria)', async () => {
+    for (const c of ['vehicle_bookings', 'attendance', 'interventions', 'reminders', 'vehicle_checks', 'laundry_entries', 'tombola_tickets']) {
+        assert.equal(await code(std, [set(c, 'q1', { a: 1 })]), 200, c);
+    }
+    assert.equal(await code(std, [del('attendance', 'q1')]), 403);
+    assert.equal(await code(std, [del('interventions', 'q1')]), 403);
+    assert.equal(await code(adm, [del('interventions', 'q1')]), 200);
+});
+
 console.log(results.join('\n'));
 console.log(`\n${passed}/${results.length} test superati`);
+

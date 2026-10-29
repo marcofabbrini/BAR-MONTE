@@ -5,6 +5,7 @@ import { ClipboardIcon, CalendarIcon, TrashIcon, UsersIcon, CheckIcon, LockIcon,
 import { GradeBadge } from './StaffManagement';
 import { VVF_GRADES } from '../constants';
 import { useBar } from '../contexts/BarContext';
+import { isCashbox } from '../utils/staff';
 
 interface AttendanceCalendarProps {
     attendanceRecords: AttendanceRecord[];
@@ -109,7 +110,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         return tillColors[tillId] || defaultColors[tillId] || '#94a3b8';
     };
 
-    const isRealPerson = (name: string) => !name.toLowerCase().includes('cassa');
+    const isRealPerson = (s: StaffMember) => !isCashbox(s);
 
     const getShiftsForDate = (date: Date) => {
         const shifts = getShiftsForDateSync(date);
@@ -209,7 +210,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                     initialDetails[s.id] = 'absent';
                 }
             } else {
-                if (s.name.toLowerCase().includes('cassa')) {
+                if (isCashbox(s)) {
                     initialDetails[s.id] = 'present';
                 } else {
                     // Virtual rows default to absent
@@ -234,7 +235,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const updateStaffStatus = (id: string, status: AttendanceStatus | 'absent') => {
         const member = staff.find(s => s.id === id);
-        if (member && member.name.toLowerCase().includes('cassa')) return;
+        if (member && isCashbox(member)) return;
 
         setEditingDetails(prev => ({
             ...prev,
@@ -256,7 +257,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const rcGroup = getRestingSubGroup(shift, new Date(editingDate));
 
         editingStaffList.forEach(member => {
-            if (member.name.toLowerCase().includes('cassa')) return;
+            if (isCashbox(member)) return;
 
             const isVirtual = (member as any).isVirtual;
 
@@ -344,8 +345,8 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         
         // 1. Regular Staff sorted (EXCLUDE SUPER ADMIN)
         const regulars = staff.filter(s => s.shift === shift && s.role !== 'super-admin').sort((a,b) => {
-             const aIsCassa = a.name.toLowerCase().includes('cassa');
-             const bIsCassa = b.name.toLowerCase().includes('cassa');
+             const aIsCassa = isCashbox(a);
+             const bIsCassa = isCashbox(b);
              if (aIsCassa && !bIsCassa) return -1;
              if (!aIsCassa && bIsCassa) return 1;
              
@@ -371,7 +372,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
 
     const matrixData = useMemo(() => {
         const realStaff = staff
-            .filter(s => s.shift === matrixShift && isRealPerson(s.name))
+            .filter(s => s.shift === matrixShift && isRealPerson(s))
             .sort((a,b) => {
                 const rankA = getStaffRank(a.grade);
                 const rankB = getStaffRank(b.grade);
@@ -510,7 +511,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                             <div className="space-y-2">
                                 {editingStaffList.map(member => {
                                     const currentStatus = editingDetails[member.id] || 'absent';
-                                    const isCassa = member.name.toLowerCase().includes('cassa');
+                                    const isCassa = isCashbox(member);
                                     const isVirtual = (member as any).isVirtual;
                                     
                                     return (

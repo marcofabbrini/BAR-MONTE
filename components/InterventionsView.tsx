@@ -5,6 +5,7 @@ import { useBar } from '../contexts/BarContext';
 import { BackArrowIcon, CheckIcon, FireIcon, TrashIcon, PlusIcon, CalendarIcon, ChartBarIcon, TrophyIcon, EditIcon, FilterIcon, SortIcon, WrenchIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 import { GradeBadge } from './StaffManagement';
+import { isCashbox } from '../utils/staff';
 
 interface InterventionsViewProps {
     onGoBack: () => void;
@@ -178,7 +179,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
 
         // Se non trova nessuno (es. gradi non settati), ritorna tutto lo staff del turno (esclusa cassa e super admin)
         if (leaders.length === 0) {
-            return staff.filter(s => s.shift === formShift && !s.name.toLowerCase().includes('cassa')).sort((a,b) => a.name.localeCompare(b.name));
+            return staff.filter(s => s.shift === formShift && !isCashbox(s)).sort((a,b) => a.name.localeCompare(b.name));
         }
         return leaders;
     }, [staff, formShift]);

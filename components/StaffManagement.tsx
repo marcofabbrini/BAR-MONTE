@@ -4,6 +4,7 @@ import { StaffMember, Shift, UserRole } from '../types';
 import { EditIcon, TrashIcon, PlusIcon, SaveIcon, UserPlusIcon, LockIcon, ShieldCheckIcon, EyeIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 import { useBar } from '../contexts/BarContext';
+import { isCashbox } from '../utils/staff';
 
 interface StaffManagementProps {
     staff: StaffMember[];
@@ -73,6 +74,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
     // Il server non invia mai le password: il campo si compila solo per cambiarla.
     const [clearPassword, setClearPassword] = useState(false);
     const [hadPassword, setHadPassword] = useState(false);
+    const [cashbox, setCashbox] = useState(false);
     
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -110,6 +112,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         setShowPassword(false);
         setClearPassword(false);
         setHadPassword(false);
+        setCashbox(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -130,6 +133,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         setPassword('');
         setClearPassword(false);
         setHadPassword(!!member.hasPassword);
+        setCashbox(isCashbox(member));
         setRole(member.role || 'standard');
         setIsModalOpen(true);
     };
@@ -209,7 +213,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                 rcSubGroup: finalRcSubGroup, 
                 icon,
                 photoUrl,
-                role
+                role,
+                isCashbox: cashbox
             } as Omit<StaffMember, 'id'>;
             // Password: inviata solo se compilata (o se si chiede di rimuoverla).
             if (password.trim()) dataToSave.password = password.trim();
@@ -390,6 +395,10 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                                 Rimuovi la password (accesso libero)
                                             </label>
                                         )}
+                                        <label className="flex items-center gap-2 mt-3 text-xs text-slate-600 cursor-pointer">
+                                            <input type="checkbox" checked={cashbox} onChange={(e) => setCashbox(e.target.checked)} />
+                                            È una cassa (utente tecnico, non una persona: niente turni, quote acqua o prenotazioni)
+                                        </label>
                                     </div>
                                 </div>
 

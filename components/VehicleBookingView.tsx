@@ -5,6 +5,7 @@ import { BackArrowIcon, CalendarIcon, CheckIcon, TrashIcon, SortIcon, PrinterIco
 import { VVF_GRADES } from '../constants';
 import { GradeBadge } from './StaffManagement';
 import { useBar } from '../contexts/BarContext';
+import { isCashbox } from '../utils/staff';
 
 interface VehicleBookingViewProps {
     onGoBack: () => void;
@@ -164,7 +165,7 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
     const filteredStaff = useMemo(() => {
         return staff.filter(s => {
             // Escludi utenti "Cassa"
-            if (s.name.toLowerCase().includes('cassa')) return false;
+            if (isCashbox(s)) return false;
             
             // Filtra per turno se selezionato
             if (staffShiftFilter !== 'all' && s.shift !== staffShiftFilter) return false;
