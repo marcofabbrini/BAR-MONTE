@@ -595,6 +595,39 @@ await test('sedi: flag piattaforma e email lavanderia nella configurazione', asy
     const mp = (await p.call('tenants.list')).tenants.find(t => t.id === 'montepulciano');
     assert.equal(mp.config.laundryEmail, 'marcofabbrini@gmail.com'); // valore storico della sede principale
 });
+await test('sedi: l\'amministratore di piattaforma lavora su un\'altra sede (X-Sede) e i dati restano separati', async () => {
+    const p = await platform();
+    const me = await p.call('auth.me'); assert.equal(me.tenant.canSwitch, true); assert.equal(me.tenant.home, undefined);
+    const h = { 'X-Sede': 'roma1' };
+    const mv = await p.call('auth.me', {}, { headers: h });
+    assert.equal(mv.tenant.id, 'roma1'); assert.equal(mv.tenant.home.id, 'montepulciano'); assert.equal(mv.user.id, 'u-super');
+    // vede il personale della sede visitata, non quello di Montepulciano
+    const staffRoma = (await p.call('getQuery', { collection: 'staff' }, { headers: h })).docs.map(d => d.id);
+    assert.ok(!staffRoma.includes('u-std'));
+    // scrive nella sede visitata
+    const w = await p.call('commit', { reads: [], writes: [set('laundry_items', 'visita1', { name: 'Da visita' })] }, { headers: h });
+    assert.equal(w.status, 200, JSON.stringify(w));
+    assert.equal((await p.call('getDoc', { c: 'laundry_items', id: 'visita1' }, { headers: h })).exists, true);
+    assert.equal((await p.call('getDoc', { c: 'laundry_items', id: 'visita1' })).exists, false); // non in Montepulciano
+    // anche mentre visita può gestire le sedi
+    assert.equal((await p.call('tenants.list', {}, { headers: h })).status, 200);
+    // moduli della sede visitata rispettati
+    assert.equal((await p.call('commit', { reads: [], writes: [set('interventions', 'x', { a: 1 })] }, { headers: h })).status, 403);
+    // sede inesistente
+    assert.equal((await p.call('auth.me', {}, { headers: { 'X-Sede': 'nonesiste' } })).status, 404);
+    // stessa sede di casa = nessun cambio
+    assert.equal((await p.call('auth.me', {}, { headers: { 'X-Sede': 'montepulciano' } })).tenant.id, 'montepulciano');
+});
+await test('sedi: chi non è amministratore di piattaforma non può usare X-Sede', async () => {
+    const o = new Client(); await o.call('auth.login', { username: 'mario', password: 'altrapw', tenant: 'altra' });
+    assert.equal((await o.call('auth.me', {}, { headers: { 'X-Sede': 'roma1' } })).status, 403);
+    assert.equal((await o.call('auth.me', {}, { headers: { 'X-Sede': 'montepulciano' } })).status, 403);
+    assert.equal((await o.call('auth.me', {}, { headers: { 'X-Sede': 'altra' } })).tenant.id, 'altra');
+    assert.equal((await lib.call('auth.me', {}, { headers: { 'X-Sede': 'roma1' } })).status, 403);
+    const adm = new Client(); await adm.login('anna', 'annapw');
+    assert.equal((await adm.call('auth.me', {}, { headers: { 'X-Sede': 'roma1' } })).status, 403);
+    assert.equal((await adm.call('tenants.list')).status, 403);
+});
 await test('sedi: tenant.public restituisce solo il nome (anche senza accesso)', async () => {
     const r = await new Client().call('tenant.public', { tenant: 'roma1' });
     assert.equal(r.status, 200); assert.equal(r.name, 'VVF Roma 1');

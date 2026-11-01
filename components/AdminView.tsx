@@ -100,7 +100,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     const { reminders, addReminder, updateReminder, deleteReminder } = useBar();
     const { customRoles, addCustomRole, deleteCustomRole, activeBarUser, tenant, moduleEnabled } = useBar();
     const barOn = moduleEnabled('bar');
-    const canManageSedi = !!tenant?.platform && activeBarUser?.role === 'super-admin';
+    const canManageSedi = !!tenant?.canSwitch && activeBarUser?.role === 'super-admin';
     const fleetOn = moduleEnabled('vehicle_booking') || moduleEnabled('operational_vehicles');
 
     const [activeTab, setActiveTab] = useState<AdminTab>(moduleEnabled('bar') ? 'movements' : 'staff');
