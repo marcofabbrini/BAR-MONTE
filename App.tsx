@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useLayoutEffect, useMemo } from 'react';
 import { sedeFullName } from './utils/tenant';
 import { AuthApi } from './lib/db';
+import SedeChooser from './components/SedeChooser';
 import TillSelection from './components/TillSelection';
 import TillView from './components/TillView';
 import ReportsView from './components/ReportsView';
@@ -130,6 +131,11 @@ const AppContent: React.FC = () => {
         return <LoginScreen onLoginSuccess={() => setView('selection')} />;
     }
 
+    // Super Admin della sede principale: prima si sceglie il distaccamento, poi si accede agli strumenti.
+    if (tenant?.canSwitch && !AuthApi.workingSede()) {
+        return <SedeChooser />;
+    }
+
     const renderContent = () => {
         switch (view) {
             case 'till': return <TillView 
@@ -244,11 +250,11 @@ const AppContent: React.FC = () => {
 
     return (
         <div className="min-h-dvh bg-slate-100 text-slate-800 relative safe-area-padding">
-            {tenant?.home && (
+            {tenant?.canSwitch && (
                 <div className="bg-slate-800 text-white text-xs md:text-sm px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
-                    <span>🏢 Stai lavorando su <strong>{sedeFullName(tenant)}</strong></span>
+                    <span>🏢 Distaccamento: <strong>{sedeFullName(tenant)}</strong></span>
                     <button onClick={() => AuthApi.switchSede(null)} className="bg-white/15 hover:bg-white/25 rounded-lg px-3 py-1 font-bold">
-                        Torna a {tenant.home.name}
+                        Cambia distaccamento
                     </button>
                 </div>
             )}
