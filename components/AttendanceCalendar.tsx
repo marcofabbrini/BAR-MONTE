@@ -184,7 +184,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const shift = tillId.replace('T', '').toLowerCase();
         
         // EXCLUDE SUPER ADMIN from editing list
-        const shiftStaff = staff.filter(s => s.shift === shift && s.role !== 'super-admin');
+        const shiftStaff = staff.filter(s => s.shift === shift);
         
         // Add virtual rows to processing list with proper typing
         const virtualStaff = virtualSubRows.map(v => ({
@@ -219,7 +219,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                         initialDetails[s.id] = 'absent';
                     } else {
                         // Real staff logic
-                        if (s.rcSubGroup === rcGroup) {
+                        if ((s.rcSubGroup || 1) === rcGroup) {
                             initialDetails[s.id] = 'rest';
                         } else {
                             initialDetails[s.id] = 'absent';
@@ -266,7 +266,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
                 if (isVirtual) {
                     // Substitutions should remain ABSENT by default when clicking "All Present"
                     newDetails[member.id] = 'absent';
-                } else if (member.rcSubGroup === rcGroup) {
+                } else if ((member.rcSubGroup || 1) === rcGroup) {
                     // Staff on REST should remain on REST
                     newDetails[member.id] = 'rest';
                 } else {
@@ -345,7 +345,7 @@ const AttendanceCalendar: React.FC<AttendanceCalendarProps> = ({ attendanceRecor
         const shift = editingTillId.replace('T', '').toLowerCase();
         
         // 1. Regular Staff sorted (EXCLUDE SUPER ADMIN)
-        const regulars = staff.filter(s => s.shift === shift && s.role !== 'super-admin').sort((a,b) => {
+        const regulars = staff.filter(s => s.shift === shift).sort((a,b) => {
              const aIsCassa = isCashbox(a);
              const bIsCassa = isCashbox(b);
              if (aIsCassa && !bIsCassa) return -1;

@@ -201,9 +201,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         e.preventDefault();
         if (!name.trim()) return;
         try {
-            // Se il ruolo è super-admin, il rcSubGroup non è applicabile (o lo settiamo a 0/default)
-            // Se non è super-admin, usa il valore del form
-            const finalRcSubGroup = role === 'super-admin' ? 0 : rcSubGroup;
+            // Il Super Admin è una persona come le altre: turno e salto vengono salvati normalmente.
+            const finalRcSubGroup = rcSubGroup || 1;
 
             const dataToSave = { 
                 name: name.trim(), 
@@ -322,8 +321,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         </select>
                                     </div>
 
-                                    {/* HIDE SHIFT IF SUPER ADMIN */}
-                                    {role !== 'super-admin' && (
+                                    {(
+
                                         <div>
                                             <label className="text-xs font-bold text-slate-500 uppercase">Turno</label>
                                             <select value={shift} onChange={(e) => setShift(e.target.value as Shift)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 font-bold uppercase">
@@ -335,8 +334,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         </div>
                                     )}
                                     
-                                    {/* HIDE SALTO IF SUPER ADMIN */}
-                                    {role !== 'super-admin' && (
+                                    {(
                                         <div>
                                             <label className="text-xs font-bold text-slate-500 uppercase">Salto (1-8)</label>
                                             <select value={rcSubGroup} onChange={(e) => setRcSubGroup(parseInt(e.target.value))} className="w-full mt-1 bg-purple-50 text-purple-700 font-bold border border-purple-200 rounded-lg px-3 py-2.5">
@@ -464,8 +462,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                     <span className="text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-slate-600 font-mono">
                                         {member.shift.toUpperCase()}
                                     </span>
-                                    {/* HIDE SALTO IF SUPER ADMIN */}
-                                    {member.role !== 'super-admin' && (
+                                    {(
                                         <span className="text-[10px] bg-purple-50 border border-purple-100 px-2 py-0.5 rounded text-purple-700 font-bold">
                                             Salto {member.rcSubGroup || 1}
                                         </span>
