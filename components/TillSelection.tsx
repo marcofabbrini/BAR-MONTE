@@ -1,6 +1,5 @@
 
 import { sedeShortName } from '../utils/tenant';
-import { AuthApi, TenantApi, TenantSummary } from '../lib/db';
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder, OperationalVehicle, VehicleCheck, Vehicle, StaffMember } from '../types';
 import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon, BackArrowIcon, EditIcon, SaveIcon, LockIcon, UserCircleIcon, LogOutIcon, CarIcon } from './Icons';
@@ -45,14 +44,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     const weatherSpot = tenant?.config?.weather ?? null;
     const shortName = sedeShortName(tenant);
 
-    // Amministratore di piattaforma: elenco delle sedi su cui può scegliere di lavorare.
-    const [sedi, setSedi] = useState<TenantSummary[]>([]);
-    useEffect(() => {
-        if (!tenant?.canSwitch) { setSedi([]); return; }
-        let off = false;
-        TenantApi.list().then(r => { if (!off) setSedi([...r.tenants].sort((x, y) => Number(y.isDefault) - Number(x.isDefault) || x.name.localeCompare(y.name))); }).catch(() => { if (!off) setSedi([]); });
-        return () => { off = true; };
-    }, [tenant?.canSwitch, tenant?.id]);
 
     // WEATHER & DATE STATE
     const [currentDateString, setCurrentDateString] = useState<string>('');
@@ -654,38 +645,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         )}
                     </div>
                 </div>
-
-                {/* --- SCELTA DISTACCAMENTO (solo amministratore di piattaforma) --- */}
-                {tenant?.canSwitch && sedi.length > 1 && (
-                    <div className="w-full md:w-3/4 lg:w-2/3 px-4 mb-6">
-                        <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1 tracking-wider">Distaccamenti</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            {sedi.map(t => {
-                                const current = t.id === tenant.id;
-                                const activeModules = Object.values(t.config.modules).filter(Boolean).length;
-                                return (
-                                    <button
-                                        key={t.id}
-                                        onClick={() => { if (!current) AuthApi.switchSede(t.isDefault ? null : t.id); }}
-                                        disabled={current}
-                                        className={`w-full rounded-2xl p-3 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-28 flex items-center justify-center border-2 ${current
-                                            ? 'bg-slate-800 text-white border-slate-800 shadow-lg cursor-default'
-                                            : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-100 shadow-[0_0_15px_rgba(71,85,105,0.25)] hover:shadow-[0_0_25px_rgba(71,85,105,0.45)]'}`}
-                                    >
-                                        <div className="absolute -bottom-5 -right-5 text-6xl opacity-10 pointer-events-none">🏢</div>
-                                        <div className="relative z-10 flex flex-col items-center gap-1">
-                                            <span className="text-3xl md:text-4xl group-hover:scale-110 transition-transform">🏢</span>
-                                            <span className="font-black text-xs md:text-base uppercase tracking-wider leading-tight text-center">{sedeShortName({ ...tenant, name: t.name, config: t.config })}</span>
-                                            <span className={`text-[9px] md:text-xs font-bold uppercase tracking-wider ${current ? 'text-green-300' : 'text-slate-400'}`}>
-                                                {current ? 'Stai lavorando qui' : `${t.staffCount} ${t.staffCount === 1 ? 'persona' : 'persone'} · ${activeModules} strumenti`}
-                                            </span>
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
 
                 {/* --- 1. SEZIONE CASSA ATTIVA (TOP) --- */}
                 {moduleEnabled('bar') && activeTill && (
