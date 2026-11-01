@@ -18,6 +18,9 @@ final class Auth
     /** @var array{id:string,name:string,config:array<string,mixed>,platform:bool}|null Sede della sessione corrente. */
     private static ?array $tenant = null;
 
+    /** Sede a cui appartiene l'utente collegato (può differire da quella su cui sta lavorando). */
+    private static ?string $homeId = null;
+
     /** Sede dell'utente collegato (dopo currentUser()/login()). */
     public static function tenantInfo(): ?array
     {
@@ -32,11 +35,41 @@ final class Auth
         Tenant::setConfig(self::$tenant['config']);
     }
 
-    /** Solo il Super Admin della sede predefinita gestisce le sedi. */
+    /** Amministratore di piattaforma = Super Admin della sede predefinita. */
+    private static function isPlatformAdmin(?string $homeId, stdClass $userData): bool
+    {
+        return $homeId !== null && $homeId === Tenant::defaultSlug() && Policy::userLevel($userData) >= 4;
+    }
+
+    /**
+     * L'amministratore di piattaforma può lavorare su un'altra sede indicandola nell'intestazione X-Sede:
+     * l'utente resta lo stesso (della sua sede), i dati letti e scritti sono quelli della sede scelta.
+     * Per chiunque altro l'intestazione è rifiutata.
+     */
+    private static function applyWorkingSede(string $homeId, array $homeRow, stdClass $userData): void
+    {
+        self::$homeId = $homeId;
+        $platform = self::isPlatformAdmin($homeId, $userData);
+        $want = isset($_SERVER['HTTP_X_SEDE']) ? mb_strtolower(trim((string) $_SERVER['HTTP_X_SEDE'])) : '';
+        if ($want !== '' && $want !== $homeId) {
+            if (!$platform) {
+                throw new ApiException(403, 'forbidden', 'Non puoi lavorare su un\'altra sede.');
+            }
+            $row = Tenant::valid($want) ? Db::one('SELECT id, name, config FROM gd_tenants WHERE id = ?', [$want]) : null;
+            if ($row === null) {
+                throw new ApiException(404, 'tenant-not-found', 'Sede inesistente.');
+            }
+            self::useTenant($row);
+            self::$tenant['home'] = ['id' => $homeId, 'name' => (string) $homeRow['name']];
+        }
+        self::$tenant['canSwitch'] = $platform;
+    }
+
+    /** Solo il Super Admin della sede predefinita gestisce le sedi (anche mentre lavora su un'altra). */
     public static function requirePlatformAdmin(): array
     {
         $u = self::requireUser();
-        if (Tenant::current() !== Tenant::defaultSlug() || Policy::userLevel($u['data']) < 4) {
+        if (!self::isPlatformAdmin(self::$homeId, $u['data'])) {
             throw new ApiException(403, 'forbidden', 'Solo l\'amministratore di piattaforma può gestire le sedi.');
         }
         return $u;
@@ -107,6 +140,7 @@ final class Auth
             Db::run('UPDATE gd_sessions SET last_seen = ?, expires_at = ? WHERE token_hash = ?', [$now, $exp, $hash]);
             self::setCookie($token, time() + $days * 86400);
         }
+        self::applyWorkingSede((string) $sess['tenant_id'], ['name' => $sess['tenant_name']], $user['data']);
         return self::$current = ['id' => (string) $sess['user_id'], 'data' => $user['data']];
     }
 
@@ -222,6 +256,8 @@ final class Auth
         Db::run('DELETE FROM gd_sessions WHERE expires_at < ?', [$now]);
         self::setCookie($token, $exp);
 
+        self::$homeId = Tenant::current();
+        self::$tenant['canSwitch'] = self::isPlatformAdmin(self::$homeId, $user['data'] ?? $staff);
         return self::$current = ['id' => $id, 'data' => $user['data'] ?? $staff];
     }
 

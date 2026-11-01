@@ -45,13 +45,31 @@ export class ApiError extends Error {
     }
 }
 
+const WORKING_SEDE_KEY = 'gd_sede_di_lavoro';
+
+/** Sede su cui l'amministratore di piattaforma sta lavorando (solo per questa scheda del browser). */
+function readWorkingSede(): string | null {
+    try {
+        return typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(WORKING_SEDE_KEY);
+    } catch {
+        return null;
+    }
+}
+function writeWorkingSede(slug: string | null): void {
+    try {
+        if (typeof sessionStorage === 'undefined') return;
+        if (slug) sessionStorage.setItem(WORKING_SEDE_KEY, slug); else sessionStorage.removeItem(WORKING_SEDE_KEY);
+    } catch { /* storage non disponibile */ }
+}
+
 export async function apiCall<T = any>(action: string, body: unknown = {}): Promise<T> {
     const doFetch = apiConfig.fetchImpl ?? fetch;
+    const sede = readWorkingSede();
     let res: Response;
     try {
         res = await doFetch(`${apiConfig.endpoint}?action=${encodeURIComponent(action)}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...(sede ? { 'X-Sede': sede } : {}) },
             body: JSON.stringify(body),
             credentials: 'same-origin',
             cache: 'no-store',
@@ -456,7 +474,13 @@ export interface TenantConfig {
     /** Indirizzo a cui inviare il riepilogo della lavanderia. */
     laundryEmail: string;
 }
-export interface TenantInfo { id: string; name: string; config: TenantConfig; platform: boolean }
+export interface TenantInfo {
+    id: string; name: string; config: TenantConfig; platform: boolean;
+    /** Presente solo quando l'amministratore di piattaforma lavora su un'altra sede: la sua sede di casa. */
+    home?: { id: string; name: string };
+    /** L'utente può scegliere su quale sede lavorare. */
+    canSwitch?: boolean;
+}
 /** Riga dell'elenco sedi (solo amministratore di piattaforma). */
 export interface TenantSummary { id: string; name: string; createdAt: string; staffCount: number; isDefault: boolean; config: TenantConfig }
 export interface ModuleDef { label: string; requires: ModuleId[] }
@@ -486,7 +510,12 @@ export const AuthApi = {
             currentTenant = r.user ? (r.tenant ?? null) : null;
             if (r.user) engine.resume();
             return r.user;
-        } catch {
+        } catch (e) {
+            // Sede di lavoro non più valida (eliminata o permessi cambiati): riparte dalla propria.
+            if (e instanceof ApiError && (e.status === 403 || e.status === 404) && readWorkingSede()) {
+                writeWorkingSede(null);
+                return AuthApi.me();
+            }
             return null;
         }
     },
@@ -494,9 +523,21 @@ export const AuthApi = {
     /** Lancia ApiError con status 401 (credenziali errate) o 429 (troppi tentativi). */
     async login(username: string, password: string, tenant?: string): Promise<any> {
         const r = await apiCall<{ user: any; tenant?: TenantInfo | null }>('auth.login', { username, password, tenant: tenant ?? tenantFromUrl() });
+        writeWorkingSede(null); // un nuovo accesso parte sempre dalla propria sede
         currentTenant = r.tenant ?? null;
         engine.resume();
         return r.user;
+    },
+
+    /** Sede su cui si sta lavorando se diversa da quella di casa (null = la propria). */
+    workingSede(): string | null {
+        return readWorkingSede();
+    },
+
+    /** Cambia sede di lavoro (null = torna alla propria) e ricarica l'app con i dati della sede scelta. */
+    switchSede(slug: string | null): void {
+        writeWorkingSede(slug);
+        if (typeof window !== 'undefined') window.location.reload();
     },
 
     /** Nome pubblico della sede per la schermata di login (null se la sede non esiste). */
@@ -511,6 +552,7 @@ export const AuthApi = {
 
     async logout(): Promise<void> {
         try { await apiCall('auth.logout'); } catch { /* sessione già scaduta */ }
+        writeWorkingSede(null);
         currentTenant = null;
         engine.pause();
     },
