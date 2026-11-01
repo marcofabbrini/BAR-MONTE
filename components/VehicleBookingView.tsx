@@ -5,6 +5,8 @@ import { BackArrowIcon, CalendarIcon, CheckIcon, TrashIcon, SortIcon, PrinterIco
 import { VVF_GRADES } from '../constants';
 import { GradeBadge } from './StaffManagement';
 import { useBar } from '../contexts/BarContext';
+import { sedeFullName, sedeShortName } from '../utils/tenant';
+import { isCashbox } from '../utils/staff';
 
 interface VehicleBookingViewProps {
     onGoBack: () => void;
@@ -128,7 +130,7 @@ const TrafficHeader = () => {
 const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({ 
     onGoBack, vehicles, bookings, staff, onAddBooking, onDeleteBooking, isSuperAdmin, vehicleChecks = [], onAddCheck
 }) => {
-    const { getNow, updateBooking, activeBarUser } = useBar();
+    const { getNow, updateBooking, activeBarUser, tenant } = useBar();
     
     // Edit Mode State
     const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
@@ -164,11 +166,8 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
     const filteredStaff = useMemo(() => {
         return staff.filter(s => {
             // Escludi utenti "Cassa"
-            if (s.name.toLowerCase().includes('cassa')) return false;
+            if (isCashbox(s)) return false;
             
-            // Escludi SUPER ADMIN
-            if (s.role === 'super-admin') return false;
-
             // Filtra per turno se selezionato
             if (staffShiftFilter !== 'all' && s.shift !== staffShiftFilter) return false;
             
@@ -443,7 +442,7 @@ const VehicleBookingView: React.FC<VehicleBookingViewProps> = ({
                 {/* TITOLO STAMPA (VISIBILE SOLO IN STAMPA) */}
                 <div className="hidden print:block mb-6 border-b-2 border-black pb-4 text-center">
                     <h1 className="text-xl font-black uppercase">
-                        Prospetto prenotazioni mezzi distaccamento VVF Montepulciano
+                        Prospetto prenotazioni mezzi {sedeFullName(tenant)}
                     </h1>
                     <p className="text-sm mt-1 font-bold">
                         aggiornato al {new Date().toLocaleDateString('it-IT')}

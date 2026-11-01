@@ -1,6 +1,5 @@
 
-import { db } from '../firebaseConfig';
-import firebase from 'firebase/compat/app';
+import { db, FieldValue } from '../lib/db';
 import { Reminder } from '../types';
 
 export const ReminderService = {
@@ -11,7 +10,7 @@ export const ReminderService = {
     },
 
     addReminder: async (reminder: Omit<Reminder, 'id' | 'createdAt' | 'completedDates'>) => {
-        // Remove undefined fields to prevent Firestore errors
+        // Remove undefined fields to avoid sending undefined values
         const cleanReminder = Object.fromEntries(
             Object.entries(reminder).filter(([_, v]) => v !== undefined)
         );
@@ -40,11 +39,11 @@ export const ReminderService = {
         
         if (isCompleted) {
             await ref.update({
-                completedDates: firebase.firestore.FieldValue.arrayRemove(date)
+                completedDates: FieldValue.arrayRemove(date)
             });
         } else {
             await ref.update({
-                completedDates: firebase.firestore.FieldValue.arrayUnion(date)
+                completedDates: FieldValue.arrayUnion(date)
             });
         }
     }

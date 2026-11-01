@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Order, StaffMember, AttendanceRecord, GeneralSettings } from '../types';
 import { PrinterIcon } from './Icons';
+import { isCashbox } from '../utils/staff';
 
 interface OrderHistoryProps {
     orders: Order[];
@@ -67,10 +68,6 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
         });
     }, [orders, startDate, endDate, filterStaffId]);
 
-    const filteredTotal = useMemo(() => {
-        return filteredOrders.reduce((acc, order) => acc + order.total, 0);
-    }, [filteredOrders]);
-
     // Raggruppamento per dettaglio stampa
     const groupedOrders = useMemo(() => {
         const groups: Record<string, { orders: Order[], total: number, waterQuotas: number, waterCost: number }> = {};
@@ -88,8 +85,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
         if (attendanceRecords && startDate) {
             staff.forEach(member => {
                 if (filterStaffId !== 'all' && member.id !== filterStaffId) return;
-                if (member.name.toLowerCase().includes('cassa')) return;
-                if (member.role === 'super-admin') return; // EXCLUDE SUPER ADMIN
+                if (isCashbox(member)) return;
 
                 // Calcola presenze nel range selezionato
                 const count = attendanceRecords.filter(r => {
@@ -128,6 +124,13 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
         return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
     }, [filteredOrders, attendanceRecords, startDate, endDate, tillId, staff, filterStaffId, generalSettings]);
 
+    // Totale del periodo = consumazioni + quote acqua: coincide con la somma dei "Totale da versare" di ogni persona.
+    const { ordersTotal, waterTotal, filteredTotal } = useMemo(() => {
+        const ordersTotal = groupedOrders.reduce((acc, [, g]) => acc + g.total, 0);
+        const waterTotal = groupedOrders.reduce((acc, [, g]) => acc + g.waterCost, 0);
+        return { ordersTotal, waterTotal, filteredTotal: ordersTotal + waterTotal };
+    }, [groupedOrders]);
+
     const handlePrint = () => {
         window.print();
     };
@@ -163,7 +166,9 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ orders, staff, attendanceRe
                 <div className="mt-4 pt-3 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
                     <span className="text-sm font-medium text-slate-500">{filteredOrders.length} movimenti</span>
                     <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-                        <span className="text-lg font-bold text-slate-800">Totale Bar: <span className="text-primary">€{filteredTotal.toFixed(2)}</span></span>
+                        <span className="text-lg font-bold text-slate-800">Totale Bar: <span className="text-primary">€{filteredTotal.toFixed(2)}</span>
+                            {waterTotal > 0 && <span className="block text-[11px] font-medium text-slate-500">di cui consumazioni €{ordersTotal.toFixed(2)} + quote acqua €{waterTotal.toFixed(2)}</span>}
+                        </span>
                         <button 
                             onClick={handlePrint} 
                             className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg shadow-sm transition-colors flex items-center gap-2"

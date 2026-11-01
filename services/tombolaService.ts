@@ -1,5 +1,5 @@
 
-import { db } from '../firebaseConfig';
+import { db } from '../lib/db';
 import { TombolaConfig, TombolaTicket, TombolaWin } from '../types';
 
 const shuffleArray = (array: any[]) => {
@@ -50,7 +50,7 @@ export const TombolaService = {
                     lastExtraction: new Date().toISOString(), 
                     extractedNumbers: [] 
                 };
-                db.collection('tombola').doc('config').set(initialConfig);
+                db.collection('tombola').doc('config').set(initialConfig).catch(() => { /* modulo non attivo per la sede */ });
             }
         });
     },

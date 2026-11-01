@@ -1,4 +1,5 @@
 
+import { useScrollTop } from '../utils/useScrollTop';
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Order, OrderItem, Till, Product, StaffMember, TillColors, AnalottoBet, TombolaConfig, TombolaTicket, AttendanceRecord, GeneralSettings, AttendanceStatus, LotteryConfig, LotteryTicket } from '../types';
 import { VVF_GRADES } from '../constants';
@@ -8,6 +9,7 @@ import ProductCard from './ProductCard';
 import { BackArrowIcon, UsersIcon, DropletIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 import { GradeBadge } from './StaffManagement';
+import { isCashbox } from '../utils/staff';
 
 interface TillViewProps {
     till: Till;
@@ -34,6 +36,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
     const { getNow } = useBar();
     const [currentOrder, setCurrentOrder] = useState<OrderItem[]>([]);
     const [activeTab, setActiveTab] = useState<'order' | 'history'>('order');
+    useScrollTop(activeTab);
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isAnimatingSelection, setIsAnimatingSelection] = useState(false);
@@ -104,7 +107,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
 
     const themeColor = tillColors ? (tillColors[till.id] || '#f97316') : '#f97316';
 
-    const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift && s.role !== 'super-admin'), [allStaff, till.shift]);
+    const staffForShift = useMemo(() => allStaff.filter(s => s.shift === till.shift), [allStaff, till.shift]);
     
     useEffect(() => {
         if (isShiftValidated && existingAttendanceRecord) {
@@ -116,8 +119,8 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
 
     const sortedStaffForShift = useMemo(() => {
         return [...staffForShift].sort((a, b) => {
-            const aIsCassa = a.name.toLowerCase().includes('cassa');
-            const bIsCassa = b.name.toLowerCase().includes('cassa');
+            const aIsCassa = isCashbox(a);
+            const bIsCassa = isCashbox(b);
             if (aIsCassa && !bIsCassa) return -1;
             if (!aIsCassa && bIsCassa) return 1;
 
@@ -185,7 +188,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
         let totalCount = 0;
 
         const quotas = staffForShift
-            .filter(s => !s.name.toLowerCase().includes('cassa') && s.role !== 'super-admin') // EXCLUDE SUPER ADMIN
+            .filter(s => !isCashbox(s))
             .map(member => {
                 const count = attendanceRecords.filter(r => {
                     const d = new Date(r.date);
@@ -385,7 +388,7 @@ const TillView: React.FC<TillViewProps> = ({ till, onGoBack, onRedirectToAttenda
                                         <h3 className="text-xs font-bold text-slate-400 uppercase mb-2 px-1">Chi sei?</h3>
                                         <div className={`grid grid-cols-4 sm:grid-cols-6 gap-4 p-4 rounded-xl ${!selectedStaffId ? 'animate-red-pulse' : ''}`}>
                                             {sortedStaffForShift.map(staff => {
-                                                const isCassa = staff.name.toLowerCase().includes('cassa');
+                                                const isCassa = isCashbox(staff);
                                                 let isVisiblyPresent = false;
                                                 
                                                 if (existingAttendanceRecord?.attendanceDetails) {

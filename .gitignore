@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# GESDI
+deploy
+server/config.php
+.env
+.env.*

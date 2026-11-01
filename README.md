@@ -1,20 +1,56 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# GESDI – Gestionale distaccamenti VVF
 
-# Run and deploy your AI Studio app
+Applicazione web per la gestione delle attività del distaccamento VVF di Montepulciano
+(casse bar, presenze e turni, interventi, mezzi, lavanderia, giochi, report).
 
-This contains everything you need to run your app locally.
+Pubblicata su **https://marcofabbrini.com/vvf/gestionali/** con database **MySQL `Sql837388_4`**.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1TWc9Pr7p9zTqBK79EfbzaRGYCXHFFbYo
+## Come è fatta
 
-## Run Locally
+```
+ Browser (React + Vite)                 Hosting marcofabbrini.com
+ ┌──────────────────────┐   HTTPS/JSON  ┌────────────────────────────┐
+ │ App  (cartella /)    │ ────────────▶ │ /vvf/gestionali/api/       │      ┌──────────────┐
+ │ lib/db.ts            │ ◀──────────── │ PHP 8.1+  (cartella server)│ ───▶ │ MySQL        │
+ │ (sync ogni ~3 s)     │   sessione    │ login, permessi, scritture │      │ Sql837388_4  │
+ └──────────────────────┘   (cookie)    └────────────────────────────┘      └──────────────┘
+```
 
-**Prerequisites:**  Node.js
+| Cartella / file      | Contenuto |
+|----------------------|-----------|
+| `components/`, `contexts/`, `services/`, `App.tsx` | Interfaccia e logica dell'app (invariati rispetto alla versione su Firebase, salvo login e password) |
+| `lib/db.ts`          | Livello dati: stessa interfaccia di Firestore, ma parla con l'API PHP/MySQL |
+| `server/`            | Backend PHP (API, login, permessi, schema SQL) → va in `/vvf/gestionali/api/` |
+| `tools/migrate-firestore.mjs` | Copia i dati esistenti da Firestore a MySQL |
+| `tools/package-deploy.mjs`    | Prepara il pacchetto da caricare sul sito |
+| `tests/`, `server/tests/`     | Test automatici |
 
+**Installazione sul sito, migrazione dati e sicurezza: leggi [DEPLOY.md](DEPLOY.md).**
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Sviluppo in locale
+
+Servono Node 18+ e PHP 8.1+ con MySQL/MariaDB.
+
+```bash
+npm install
+cp server/config.sample.php server/config.php     # compila host/utente/password del DB di prova
+php -S 127.0.0.1:8099 -t server                    # backend (terminale 1)
+npm run dev                                        # app su http://localhost:5173 (terminale 2)
+```
+
+Le tabelle vengono create in automatico alla prima richiesta. Il primo utente (Super Admin) si crea con
+`server/tools/reset_superadmin.php` (vedi DEPLOY.md, sezione "Primo accesso").
+
+## Test
+
+```bash
+# Backend + database di prova già avviati e con utenti di prova (php server/tests/seed.php)
+GESTIONALE_CONFIG=/percorso/config.php php server/tests/seed.php
+GD_TEST_URL=http://127.0.0.1:8099/index.php npm run test:api     # API, permessi, concorrenza
+GD_TEST_URL=http://127.0.0.1:8099/index.php npm run test:e2e     # servizi reali dell'app via nuovo livello dati
+node tests/migrate.test.mjs                                       # strumento di migrazione
+npx tsc --noEmit                                                  # controllo dei tipi
+```
+
+`tests/ui.smoke.test.tsx` è un test dell'interfaccia completa (opzionale, richiede
+`npm i --no-save vitest jsdom @testing-library/react @testing-library/user-event`).

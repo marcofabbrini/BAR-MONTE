@@ -1,0 +1,13 @@
+# Backend GESDI: blocco dell'accesso diretto ai file interni (configurazione e schema).
+
+<IfModule mod_authz_core.c>
+  <FilesMatch "^(config(\.sample)?\.php|schema\.sql)$">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+<IfModule !mod_authz_core.c>
+  <FilesMatch "^(config(\.sample)?\.php|schema\.sql)$">
+    Order allow,deny
+    Deny from all
+  </FilesMatch>
+</IfModule>

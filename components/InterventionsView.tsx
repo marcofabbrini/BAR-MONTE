@@ -5,6 +5,7 @@ import { useBar } from '../contexts/BarContext';
 import { BackArrowIcon, CheckIcon, FireIcon, TrashIcon, PlusIcon, CalendarIcon, ChartBarIcon, TrophyIcon, EditIcon, FilterIcon, SortIcon, WrenchIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 import { GradeBadge } from './StaffManagement';
+import { isCashbox } from '../utils/staff';
 
 interface InterventionsViewProps {
     onGoBack: () => void;
@@ -14,19 +15,6 @@ interface InterventionsViewProps {
 
 const ADDRESS_TYPES = ['Via', 'Viale', 'Piazza', 'Vicolo', 'Corso', 'S.S.', 'S.R.', 'S.P.', 'Loc.', 'Autostrada'];
 
-const MUNICIPALITIES = [
-    'MONTEPULCIANO',
-    'CETONA',
-    'CHIANCIANO TERME',
-    'CHIUSI',
-    'PIENZA',
-    'SARTEANO',
-    'SINALUNGA',
-    'TORRITA DI SIENA',
-    'TREQUANDA',
-    'FOIANO DELLA CHIANA (AR)',
-    'ALTRO...'
-];
 
 // --- EXTINGUISHER ANIMATION COMPONENT ---
 const ExtinguisherHeader = () => {
@@ -83,7 +71,9 @@ const ExtinguisherHeader = () => {
 };
 
 const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, isSuperAdmin }) => {
-    const { interventions, interventionTypologies, dutyOfficers, addIntervention, updateIntervention, deleteIntervention, permanentDeleteIntervention, getNow } = useBar();
+    const { interventions, interventionTypologies, dutyOfficers, addIntervention, updateIntervention, deleteIntervention, permanentDeleteIntervention, getNow, tenant } = useBar();
+    const MUNICIPALITIES = useMemo(() => [...(tenant?.config?.municipalities ?? []), 'ALTRO...'], [tenant]);
+    const defaultMunicipality = MUNICIPALITIES[0] !== 'ALTRO...' ? MUNICIPALITIES[0] : '';
 
     const [isWizardOpen, setIsWizardOpen] = useState(false);
     const [step, setStep] = useState<number>(1);
@@ -106,7 +96,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
     const [streetName, setStreetName] = useState(''); // "Indirizzo"
     const [civicNumber, setCivicNumber] = useState(''); // "Civico o Km"
     
-    const [municipality, setMunicipality] = useState('MONTEPULCIANO');
+    const [municipality, setMunicipality] = useState(defaultMunicipality);
     const [isCustomMunicipality, setIsCustomMunicipality] = useState(false); // Per gestire "ALTRO..."
     const [locality, setLocality] = useState('');
 
@@ -173,14 +163,12 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         // Prima prova a filtrare per grado
         const leaders = staff.filter(s => {
             const grade = s.grade || '';
-            // Exclude Super Admin from automatic list
-            if (s.role === 'super-admin') return false;
             return ['CS', 'CQE', 'CR', 'CRE'].includes(grade) && s.shift === formShift;
         }).sort((a,b) => a.name.localeCompare(b.name));
 
         // Se non trova nessuno (es. gradi non settati), ritorna tutto lo staff del turno (esclusa cassa e super admin)
         if (leaders.length === 0) {
-            return staff.filter(s => s.shift === formShift && !s.name.toLowerCase().includes('cassa') && s.role !== 'super-admin').sort((a,b) => a.name.localeCompare(b.name));
+            return staff.filter(s => s.shift === formShift && !isCashbox(s)).sort((a,b) => a.name.localeCompare(b.name));
         }
         return leaders;
     }, [staff, formShift]);
@@ -298,7 +286,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
         setIsExternalLeader(false); // Reset External
         setExternalLeaderName('');  // Reset External Name
         setOfficerId('');
-        setMunicipality('MONTEPULCIANO');
+        setMunicipality(defaultMunicipality);
         setIsCustomMunicipality(false);
         setStep(1);
     };
@@ -561,7 +549,7 @@ const InterventionsView: React.FC<InterventionsViewProps> = ({ onGoBack, staff, 
                                             placeholder="Inserisci comune..."
                                             autoFocus
                                         />
-                                        <button onClick={() => { setIsCustomMunicipality(false); setMunicipality('MONTEPULCIANO'); }} className="bg-slate-200 px-2 rounded text-xs">x</button>
+                                        <button onClick={() => { setIsCustomMunicipality(false); setMunicipality(defaultMunicipality); }} className="bg-slate-200 px-2 rounded text-xs">x</button>
                                     </div>
                                 ) : (
                                     <select 

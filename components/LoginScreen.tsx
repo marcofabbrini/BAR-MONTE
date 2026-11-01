@@ -1,61 +1,35 @@
 
-import React, { useState } from 'react';
-import { StaffMember } from '../types';
+import { AuthApi } from '../lib/db';
+import React, { useState, useEffect } from 'react';
 import { useBar } from '../contexts/BarContext';
 import { LockIcon } from './Icons';
 
 interface LoginScreenProps {
-    staff: StaffMember[];
     onLoginSuccess: () => void;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
-    const { loginBarUser, updateStaff, addStaff } = useBar();
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
+    const { loginBarUser } = useBar();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [sedeName, setSedeName] = useState<string | null>(null);
 
+    // Nome della sede indicata nel link (?sede=...); senza, quella predefinita.
+    useEffect(() => {
+        let off = false;
+        AuthApi.publicName().then(n => { if (!off) setSedeName(n ?? ''); });
+        return () => { off = true; };
+    }, []);
+
+    // Il controllo delle credenziali avviene sul server.
+    // (Il vecchio ripristino "RESET / 123456" è stato rimosso: con il database online
+    //  permetteva a chiunque di prendere il controllo. In caso di emergenza si usa
+    //  server/tools/reset_superadmin.php, protetto da un token nel file di configurazione.)
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        
-        // --- MECCANISMO DI RIPRISTINO PASSWORD SUPER ADMIN ---
-        // Se l'utente inserisce "RESET" come nome e "123456" come password:
-        // 1. Se esiste un Super Admin, resetta la password.
-        // 2. Se NON esiste, crea un nuovo utente Super Admin (admin/123456).
-        if (username.toUpperCase() === 'RESET' && password === '123456') {
-            setIsLoggingIn(true);
-            try {
-                const superAdmin = staff.find(s => s.role === 'super-admin');
-                
-                if (superAdmin) {
-                    await updateStaff({ ...superAdmin, password: '123456' });
-                    setError(`✅ Password di ${superAdmin.name} ripristinata a 123456. Ora puoi accedere.`);
-                    setUsername(superAdmin.username || superAdmin.name); 
-                    setPassword('123456');
-                } else {
-                    await addStaff({
-                        name: "Super Admin",
-                        username: "admin",
-                        password: "123456",
-                        role: "super-admin",
-                        shift: "a",
-                        grade: "CS",
-                        icon: "🛡️"
-                    });
-                    setError(`✅ Utente 'Super Admin' mancante: ne è stato creato uno nuovo. Usa: admin / 123456`);
-                    setUsername('admin');
-                    setPassword('123456');
-                }
-            } catch (err) {
-                console.error(err);
-                setError("Errore durante il ripristino/creazione.");
-            }
-            setIsLoggingIn(false);
-            return;
-        }
-        // -----------------------------------------------------
 
         if (!username.trim()) {
             setError('Inserisci il nome utente.');
@@ -63,16 +37,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
         }
 
         setIsLoggingIn(true);
-        // Simuliamo un minimo di delay per feedback utente
-        setTimeout(async () => {
+        try {
             const success = await loginBarUser(username, password);
             if (success) {
                 onLoginSuccess();
-            } else {
-                setError('Credenziali non valide. Riprova.');
-                setIsLoggingIn(false);
+                return;
             }
-        }, 300);
+            setError('Credenziali non valide. Riprova.');
+        } catch (err: any) {
+            setError(err?.message || 'Impossibile effettuare l\'accesso. Riprova.');
+        }
+        setIsLoggingIn(false);
     };
 
     return (
@@ -84,13 +59,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ staff, onLoginSuccess }) => {
                 {/* Logo Area - Clean & Larger */}
                 <div className="absolute -top-16 left-1/2 transform -translate-x-1/2">
                     <div className="w-32 h-32 bg-white rounded-full flex items-center justify-center shadow-xl border-4 border-slate-50 p-2">
-                        <img src="/logo.png" alt="Logo" className="w-full h-full object-contain drop-shadow-sm" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Logo" className="w-full h-full object-contain drop-shadow-sm" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                     </div>
                 </div>
 
                 <div className="pt-20 pb-8 px-8 text-center mt-4">
                     <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tight mb-1">Vigili del Fuoco</h2>
-                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-8">Distaccamento Montepulciano</p>
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-8 min-h-[1rem]">{sedeName ?? ''}</p>
 
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                         <div className="relative group">
