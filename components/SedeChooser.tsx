@@ -3,6 +3,7 @@ import { useBar } from '../contexts/BarContext';
 import { AuthApi, TenantApi, TenantSummary } from '../lib/db';
 import { sedeShortName } from '../utils/tenant';
 import TenantManagement from './TenantManagement';
+import PersonnelManagement from './PersonnelManagement';
 
 /**
  * Prima pagina del Super Admin della sede principale: si sceglie su quale distaccamento lavorare.
@@ -13,6 +14,7 @@ const SedeChooser: React.FC = () => {
     const [sedi, setSedi] = useState<TenantSummary[] | null>(null);
     const [error, setError] = useState('');
     const [managing, setManaging] = useState(false);
+    const [personnel, setPersonnel] = useState(false);
 
     const load = () => {
         setError('');
@@ -20,7 +22,7 @@ const SedeChooser: React.FC = () => {
             .then(r => setSedi([...r.tenants].sort((x, y) => Number(y.isDefault) - Number(x.isDefault) || x.name.localeCompare(y.name))))
             .catch(e => setError(e instanceof Error ? e.message : 'Impossibile caricare i distaccamenti.'));
     };
-    useEffect(load, [managing]);
+    useEffect(load, [managing, personnel]);
 
     return (
         <div className="min-h-dvh bg-slate-100 flex flex-col items-center p-4 pt-8 pb-16">
@@ -38,10 +40,10 @@ const SedeChooser: React.FC = () => {
 
                 {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-4">{error}</div>}
 
-                {managing ? (
+                {managing || personnel ? (
                     <div>
-                        <button onClick={() => setManaging(false)} className="mb-4 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-3 py-2">← Torna alla scelta</button>
-                        <TenantManagement />
+                        <button onClick={() => { setManaging(false); setPersonnel(false); }} className="mb-4 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-lg px-3 py-2">← Torna alla scelta</button>
+                        {managing ? <TenantManagement /> : <PersonnelManagement />}
                     </div>
                 ) : (
                     <>
@@ -67,7 +69,10 @@ const SedeChooser: React.FC = () => {
                                 );
                             })}
                         </div>
-                        <div className="mt-8 text-center">
+                        <div className="mt-8 flex gap-3 justify-center flex-wrap">
+                            <button onClick={() => setPersonnel(true)} className="bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold text-sm rounded-xl px-5 py-3 shadow">
+                                👥 Gestisci personale
+                            </button>
                             <button onClick={() => setManaging(true)} className="bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm rounded-xl px-5 py-3 shadow">
                                 ⚙️ Gestisci distaccamenti
                             </button>

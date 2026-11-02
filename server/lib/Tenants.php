@@ -239,6 +239,107 @@ final class Tenants
         return ['created' => $created];
     }
 
+    /**
+     * Tutto il personale di tutte le sedi (senza password) per la gestione di piattaforma.
+     * `duplicate` = lo stesso nominativo compare più volte (anche in sedi diverse).
+     * @return array<int,array<string,mixed>>
+     */
+    public static function allStaff(): array
+    {
+        $out = [];
+        $count = [];
+        foreach (Db::all('SELECT id, name FROM gd_tenants ORDER BY created_at, id') as $t) {
+            $slug = (string) $t['id'];
+            Tenant::with($slug, static function () use ($slug, $t, &$out, &$count): void {
+                foreach (Store::loadCollection('staff') as $r) {
+                    $d = $r['data'];
+                    $key = Policy::normName($d->name ?? null);
+                    $count[$key] = ($count[$key] ?? 0) + 1;
+                    $out[] = [
+                        'id' => $r['id'],
+                        'tenant' => $slug,
+                        'tenantName' => (string) $t['name'],
+                        'name' => (string) ($d->name ?? ''),
+                        'username' => (string) ($d->username ?? ''),
+                        'role' => (string) ($d->role ?? 'standard'),
+                        'shift' => (string) ($d->shift ?? ''),
+                        'grade' => (string) ($d->grade ?? ''),
+                        'isCashbox' => isset($d->isCashbox) ? (bool) $d->isCashbox : (bool) preg_match('/^\\s*cassa(\\s|$)/i', (string) ($d->name ?? '')),
+                        'key' => $key,
+                    ];
+                }
+            });
+        }
+        foreach ($out as &$p) {
+            $p['duplicate'] = $p['key'] !== '' && ($count[$p['key']] ?? 0) > 1;
+            unset($p['key']);
+        }
+        unset($p);
+        return $out;
+    }
+
+    /**
+     * Sposta una persona da una sede a un'altra (stesso id, stessi dati personali).
+     * Lo storico (ordini, presenze, prenotazioni...) resta nella sede di origine: i nominativi vi sono già scritti.
+     * @return array<string,mixed>
+     */
+    public static function moveStaff(mixed $id, mixed $from, mixed $to): array
+    {
+        $id = Store::checkId($id);
+        $from = self::validSlug($from);
+        $to = self::validSlug($to);
+        if ($from === $to) {
+            throw new ApiException(422, 'same-tenant', 'La sede di destinazione è la stessa di origine.');
+        }
+        foreach ([$from, $to] as $slug) {
+            if (Db::one('SELECT id FROM gd_tenants WHERE id = ?', [$slug]) === null) {
+                throw new ApiException(404, 'tenant-not-found', 'Sede inesistente.');
+            }
+        }
+        $person = Tenant::with($from, static fn() => Store::loadDoc('staff', $id));
+        if ($person === null) {
+            throw new ApiException(404, 'not-found', 'Persona non trovata nella sede di origine.');
+        }
+        $data = $person['data'];
+        if (Policy::userLevel($data) >= 4) {
+            throw new ApiException(422, 'cannot-move-superadmin', 'Un Super Admin non si sposta: imposta il Super Admin della sede di destinazione dalla gestione sedi.');
+        }
+
+        Db::begin();
+        try {
+            $newId = Tenant::with($to, static function () use ($id, $data) {
+                $name = Policy::normName($data->name ?? null);
+                $user = Policy::normName($data->username ?? null);
+                foreach (Store::loadCollection('staff') as $r) {
+                    if ($name !== '' && Policy::normName($r['data']->name ?? null) === $name) {
+                        throw new ApiException(409, 'duplicate-name', 'Nella sede di destinazione esiste già una persona con questo nominativo.');
+                    }
+                    if ($user !== '' && Policy::normName($r['data']->username ?? null) === $user) {
+                        throw new ApiException(409, 'duplicate-username', 'Nella sede di destinazione esiste già un utente con questo nome utente.');
+                    }
+                }
+                $copy = clone $data;
+                // Un ruolo personalizzato esiste solo nella sede d'origine: nella nuova sede la persona diventa "standard".
+                $role = (string) ($copy->role ?? 'standard');
+                if (!in_array($role, ['standard', 'manager', 'admin', 'super-admin'], true)) {
+                    $copy->role = 'standard';
+                }
+                $newId = Store::loadDoc('staff', $id) === null ? $id : bin2hex(random_bytes(10));
+                Store::commit([], [(object) ['op' => 'set', 'c' => 'staff', 'id' => $newId, 'data' => $copy]], null);
+                return $newId;
+            });
+            Tenant::with($from, static function () use ($id, $from): void {
+                Store::commit([], [(object) ['op' => 'delete', 'c' => 'staff', 'id' => $id]], null);
+                Db::run('DELETE FROM gd_sessions WHERE tenant_id = ? AND user_id = ?', [$from, $id]);
+            });
+            Db::commit();
+        } catch (Throwable $e) {
+            Db::rollback();
+            throw $e;
+        }
+        return ['id' => $newId, 'from' => $from, 'to' => $to];
+    }
+
     /** @return array<string,mixed> */
     private static function one(string $slug): array
     {

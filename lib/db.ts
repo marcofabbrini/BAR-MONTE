@@ -483,6 +483,13 @@ export interface TenantInfo {
 }
 /** Riga dell'elenco sedi (solo amministratore di piattaforma). */
 export interface TenantSummary { id: string; name: string; createdAt: string; staffCount: number; isDefault: boolean; config: TenantConfig }
+/** Persona nell'elenco del personale di tutte le sedi (solo amministratore di piattaforma). */
+export interface PlatformStaff {
+    id: string; tenant: string; tenantName: string; name: string; username: string;
+    role: string; shift: string; grade: string; isCashbox: boolean;
+    /** Lo stesso nominativo compare più volte (anche in sedi diverse). */
+    duplicate: boolean;
+}
 export interface ModuleDef { label: string; requires: ModuleId[] }
 let currentTenant: TenantInfo | null = null;
 
@@ -571,6 +578,9 @@ export const TenantApi = {
         apiCall<{ tenant: TenantSummary }>('tenants.create', b),
     update: (b: { id: string; name: string; config: Partial<TenantConfig> }) =>
         apiCall<{ tenant: TenantSummary }>('tenants.update', b),
+    staff: () => apiCall<{ staff: PlatformStaff[] }>('tenants.staff'),
+    moveStaff: (b: { id: string; from: string; to: string }) =>
+        apiCall<{ id: string; from: string; to: string }>('tenants.moveStaff', b),
     setAdmin: (b: { id: string; username: string; password: string }) =>
         apiCall<{ created: boolean }>('tenants.setAdmin', b),
 };

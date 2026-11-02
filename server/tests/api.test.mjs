@@ -628,6 +628,61 @@ await test('sedi: chi non è amministratore di piattaforma non può usare X-Sede
     assert.equal((await adm.call('auth.me', {}, { headers: { 'X-Sede': 'roma1' } })).status, 403);
     assert.equal((await adm.call('tenants.list')).status, 403);
 });
+await test('duplicati: stesso nominativo o nome utente nella stessa sede rifiutato (409)', async () => {
+    const adm = new Client(); await adm.login('anna', 'annapw');
+    let r = await adm.commit([set('staff', 'dup1', { name: '  mario   ROSSI ', role: 'standard', shift: 'a' })]);
+    assert.equal(r.status, 409); assert.equal(r.error, 'duplicate-name');
+    r = await adm.commit([set('staff', 'dup2', { name: 'Persona Nuova', username: 'ANNA', role: 'standard', shift: 'a' })]);
+    assert.equal(r.status, 409); assert.equal(r.error, 'duplicate-username');
+    r = await adm.commit([set('staff', 'dup3', { name: 'Persona Nuova Davvero', username: 'pnd', role: 'standard', shift: 'a' })]);
+    assert.equal(r.status, 200);
+    // rinominare in un nome già usato: no; modificare altri campi di un omonimo storico: sì
+    assert.equal((await adm.commit([upd('staff', 'dup3', { name: 'Anna Admin' })])).error, 'duplicate-name');
+    assert.equal((await adm.commit([upd('staff', 'u-aaa-omonimo', { grade: 'VV' })])).status, 200);
+    assert.equal((await adm.commit([upd('staff', 'dup3', { grade: 'CS' })])).status, 200);
+    // lo stesso nome in un'altra sede è permesso (sono sedi separate)
+    const o = new Client(); await o.call('auth.login', { username: 'capo.roma', password: 'nuovapass1', tenant: 'roma1' });
+    assert.equal((await o.commit([set('staff', 'dupx', { name: 'Persona Nuova Davvero', role: 'standard', shift: 'a' })])).status, 200);
+    await adm.commit([{ op: 'delete', c: 'staff', id: 'dup3' }]);
+});
+await test('personale: elenco di tutte le sedi con segnalazione dei nominativi duplicati', async () => {
+    assert.equal((await lib.call('tenants.staff')).status, 403);
+    const r = await platform().then(p => p.call('tenants.staff'));
+    assert.equal(r.status, 200);
+    const mar = r.staff.filter(x => x.name === 'Mario Rossi');
+    assert.ok(mar.length >= 2 && mar.every(x => x.duplicate), 'Mario Rossi in due sedi = duplicato');
+    assert.ok(r.staff.every(x => x.password === undefined));
+    const tenants = new Set(r.staff.map(x => x.tenant)); assert.ok(tenants.has('montepulciano') && tenants.has('altra'));
+});
+await test('personale: spostamento tra sedi con controllo dei duplicati', async () => {
+    const p = await platform();
+    await p.commit([set('staff', 'mv1', { name: 'Persona Spostabile', username: 'spost', password: 'spostapw1', role: 'cr-inesistente', shift: 'b', rcSubGroup: 3 })]);
+    const l = new Client(); assert.equal((await l.call('auth.login', { username: 'spost', password: 'spostapw1' })).status, 200);
+    // non super admin
+    assert.equal((await lib.call('tenants.moveStaff', { id: 'mv1', from: 'montepulciano', to: 'roma1' })).status, 403);
+    // super admin non spostabile, stessa sede, sede inesistente, persona inesistente
+    assert.equal((await p.call('tenants.moveStaff', { id: 'u-super', from: 'montepulciano', to: 'roma1' })).error, 'cannot-move-superadmin');
+    assert.equal((await p.call('tenants.moveStaff', { id: 'mv1', from: 'montepulciano', to: 'montepulciano' })).status, 422);
+    assert.equal((await p.call('tenants.moveStaff', { id: 'mv1', from: 'montepulciano', to: 'zzz' })).status, 404);
+    assert.equal((await p.call('tenants.moveStaff', { id: 'nonce', from: 'montepulciano', to: 'roma1' })).status, 404);
+    // duplicato nella sede di destinazione: bloccato e nulla cambia
+    const o = new Client(); await o.call('auth.login', { username: 'capo.roma', password: 'nuovapass1', tenant: 'roma1' });
+    await o.commit([set('staff', 'rm-dup', { name: 'persona spostabile', role: 'standard', shift: 'a' })]);
+    let r = await p.call('tenants.moveStaff', { id: 'mv1', from: 'montepulciano', to: 'roma1' });
+    assert.equal(r.status, 409); assert.equal(r.error, 'duplicate-name');
+    assert.equal((await p.call('getDoc', { c: 'staff', id: 'mv1' })).exists, true);
+    await o.commit([{ op: 'delete', c: 'staff', id: 'rm-dup' }]);
+    // spostamento riuscito
+    r = await p.call('tenants.moveStaff', { id: 'mv1', from: 'montepulciano', to: 'roma1' });
+    assert.equal(r.status, 200); assert.equal(r.to, 'roma1');
+    assert.equal((await p.call('getDoc', { c: 'staff', id: 'mv1' })).exists, false);
+    const inRoma = await p.call('getDoc', { c: 'staff', id: r.id }, { headers: { 'X-Sede': 'roma1' } });
+    assert.equal(inRoma.exists, true); assert.equal(inRoma.data.role, 'standard'); assert.equal(inRoma.data.rcSubGroup, 3);
+    // le sessioni nella vecchia sede sono chiuse; l'accesso ora è nella nuova sede
+    assert.equal((await l.call('auth.me')).user, null);
+    assert.equal((await new Client().call('auth.login', { username: 'spost', password: 'spostapw1' })).status, 401);
+    assert.equal((await new Client().call('auth.login', { username: 'spost', password: 'spostapw1', tenant: 'roma1' })).status, 200);
+});
 await test('sedi: tenant.public restituisce solo il nome (anche senza accesso)', async () => {
     const r = await new Client().call('tenant.public', { tenant: 'roma1' });
     assert.equal(r.status, 200); assert.equal(r.name, 'VVF Roma 1');
