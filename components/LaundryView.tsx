@@ -1,5 +1,6 @@
 
 import { useScrollTop } from '../utils/useScrollTop';
+import { GradeBadge } from './StaffManagement';
 import { apiCall } from '../lib/db';
 import { buildLaundryPdfBase64 } from '../utils/laundryPdf';
 import React, { useState, useMemo } from 'react';
@@ -417,8 +418,15 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
                                             const isSelected = selectedStaffId === s.id;
                                             return (
                                                 <div key={s.id} onClick={() => setSelectedStaffId(s.id)} className={`relative flex flex-col items-center p-2 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'bg-blue-50 border-blue-500 shadow-md scale-105' : 'bg-white border-slate-200 hover:border-blue-300'}`}>
-                                                    <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center text-lg">
-                                                        {s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" /> : <span>{s.icon || '👤'}</span>}
+                                                    <div className="relative">
+                                                        <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center text-lg">
+                                                            {s.photoUrl ? <img src={s.photoUrl} className="w-full h-full object-cover" alt={s.name} /> : <span>{s.icon || '👤'}</span>}
+                                                        </div>
+                                                        {s.grade && (
+                                                            <div className="absolute -bottom-1 -right-1 scale-75">
+                                                                <GradeBadge grade={s.grade} />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <span className={`text-[9px] font-bold text-center mt-1 truncate w-full ${isSelected ? 'text-blue-700' : 'text-slate-600'}`}>{s.name.split(' ')[0]}</span>
                                                 </div>
