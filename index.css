@@ -128,7 +128,7 @@ input, select, textarea {
 
 /* Printing Resets */
 @media print {
-  @page { margin: 0.5cm; }
+  @page { size: A4 portrait; margin: 1cm; }
   body { 
     background: white; 
     color: black;
