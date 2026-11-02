@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { StaffMember, Shift, UserRole } from '../types';
+import { ApiError } from '../lib/db';
 import { EditIcon, TrashIcon, PlusIcon, SaveIcon, UserPlusIcon, LockIcon, ShieldCheckIcon, EyeIcon } from './Icons';
 import { VVF_GRADES } from '../constants';
 import { useBar } from '../contexts/BarContext';
@@ -236,7 +237,9 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
             handleCloseModal();
         } catch (error) { 
             console.error(error); 
-            alert("Errore nel salvataggio. L'immagine potrebbe essere troppo grande, prova un'altra foto."); 
+            alert(error instanceof ApiError && error.status === 409
+                ? error.message
+                : "Errore nel salvataggio. L'immagine potrebbe essere troppo grande, prova un'altra foto."); 
         }
     };
     

@@ -76,6 +76,16 @@ function handle(string $action): array
             return Tenants::setSuperAdmin($b->id ?? null, $b->username ?? null, $b->password ?? null);
         }
 
+        case 'tenants.staff':
+            Auth::requirePlatformAdmin();
+            return ['staff' => Tenants::allStaff()];
+
+        case 'tenants.moveStaff': {
+            Auth::requirePlatformAdmin();
+            $b = Http::body();
+            return Tenants::moveStaff($b->id ?? null, $b->from ?? null, $b->to ?? null);
+        }
+
         case 'sync':
             Auth::requireUser();
             return actionSync(Http::body());

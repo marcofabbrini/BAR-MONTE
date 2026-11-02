@@ -120,6 +120,7 @@ final class Policy
 
             case 'staff':
                 self::authorizeStaff($actor, $myLevel, $id, $op, $existing, $new);
+                self::assertUniqueStaff($id, $existing, $new);
                 return;
 
             default:
@@ -239,6 +240,42 @@ final class Policy
         }
 
         self::deny('Permessi insufficienti per modificare questo utente.');
+    }
+
+    /** Nominativo normalizzato per il confronto (senza maiuscole né spazi doppi). */
+    public static function normName(mixed $v): string
+    {
+        return is_string($v) ? mb_strtolower(trim((string) preg_replace('/\s+/u', ' ', $v))) : '';
+    }
+
+    /**
+     * Nella stessa sede non possono esistere due persone con lo stesso nominativo né con lo stesso nome utente.
+     * Il controllo scatta solo quando il nominativo o il nome utente vengono creati o cambiati,
+     * così i dati storici con omonimi restano modificabili.
+     */
+    public static function assertUniqueStaff(string $id, ?stdClass $existing, ?stdClass $new): void
+    {
+        if ($new === null) {
+            return;
+        }
+        $name = self::normName($new->name ?? null);
+        $user = self::normName($new->username ?? null);
+        $nameChanged = $existing === null || self::normName($existing->name ?? null) !== $name;
+        $userChanged = $existing === null || self::normName($existing->username ?? null) !== $user;
+        if (!($nameChanged && $name !== '') && !($userChanged && $user !== '')) {
+            return;
+        }
+        foreach (Store::loadCollection('staff') as $r) {
+            if ($r['id'] === $id) {
+                continue;
+            }
+            if ($nameChanged && $name !== '' && self::normName($r['data']->name ?? null) === $name) {
+                throw new ApiException(409, 'duplicate-name', 'Esiste già una persona con questo nominativo in questa sede.');
+            }
+            if ($userChanged && $user !== '' && self::normName($r['data']->username ?? null) === $user) {
+                throw new ApiException(409, 'duplicate-username', 'Esiste già un utente con questo nome utente in questa sede.');
+            }
+        }
     }
 
     private static function deny(string $msg): never
