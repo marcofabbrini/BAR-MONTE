@@ -165,12 +165,34 @@ function handle(string $action): array
             $host = preg_replace('/:\d+$/', '', $host);
             $from = (string) Config::get('mail_from', 'noreply@' . $host);
             $subject = '=?UTF-8?B?' . base64_encode('Ritiro Lavanderia ' . $name . ' - ' . $when) . '?=';
-            $headers = "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nFrom: GESDI <" . $from . ">\r\nReply-To: " . $from;
+            $pdfRaw = null;
+            if (isset($b->pdf) && is_string($b->pdf) && $b->pdf !== '') {
+                if (strlen($b->pdf) > 3000000) {
+                    throw new ApiException(413, 'pdf-too-large', 'Il PDF è troppo grande.');
+                }
+                $pdfRaw = base64_decode($b->pdf, true);
+                if ($pdfRaw === false || strncmp($pdfRaw, '%PDF', 4) !== 0) {
+                    throw new ApiException(400, 'pdf-invalid', 'Il PDF allegato non è valido.');
+                }
+            }
+            $headers = "MIME-Version: 1.0\r\nFrom: GESDI <" . $from . ">\r\nReply-To: " . $from;
+            if ($pdfRaw !== null) {
+                $bnd = 'gd_' . bin2hex(random_bytes(8));
+                $headers .= "\r\nContent-Type: multipart/mixed; boundary=\"" . $bnd . "\"";
+                $fname = 'distinta-lavanderia-' . date('Y-m-d') . '.pdf';
+                $html = '--' . $bnd . "\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
+                    . chunk_split(base64_encode($html))
+                    . '--' . $bnd . "\r\nContent-Type: application/pdf; name=\"" . $fname . "\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"" . $fname . "\"\r\n\r\n"
+                    . chunk_split(base64_encode($pdfRaw))
+                    . '--' . $bnd . "--\r\n";
+            } else {
+                $headers .= "\r\nContent-Type: text/html; charset=UTF-8";
+            }
             $sent = Config::get('mail_disabled', false) ? true : @mail($to, $subject, $html, $headers, '-f' . $from);
             if (!$sent) {
                 throw new ApiException(502, 'mail-failed', 'Il server non è riuscito a inviare la mail.');
             }
-            return ['ok' => true, 'to' => $to];
+            return ['ok' => true, 'to' => $to, 'attached' => $pdfRaw !== null];
         }
 
         case 'analyze': {

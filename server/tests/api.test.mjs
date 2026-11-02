@@ -599,6 +599,9 @@ await test('lavanderia: invio mail dal server (solo admin, destinatario dalla se
     const items = [{ staffName: 'Mario Rossi', name: 'Pantalone', totalQuantity: 2 }];
     const r = await sup.call('laundry.sendMail', { items });
     assert.equal(r.status === undefined || r.status === 200, true); assert.equal(r.to, 'marcofabbrini@gmail.com');
+    const pdf = Buffer.from('%PDF-1.4 test').toString('base64');
+    assert.equal((await sup.call('laundry.sendMail', { items, pdf })).attached, true);
+    assert.equal((await sup.call('laundry.sendMail', { items, pdf: Buffer.from('non un pdf').toString('base64') })).status, 400);
     assert.equal((await sup.call('laundry.sendMail', { items: [] })).status, 400);
     assert.equal((await std.call('laundry.sendMail', { items })).status, 403);
 });
