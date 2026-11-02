@@ -890,7 +890,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
 
                 {/* --- 3. SEZIONE BASSA --- */}
-                <div className={`grid gap-3 w-full md:w-3/4 lg:w-2/3 px-4 mb-6 ${canAccessAdmin ? 'grid-cols-3 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'}`}>
+                <div className={`grid gap-3 w-full md:w-3/4 lg:w-2/3 px-4 mb-6 ${({ 2: 'grid-cols-2', 3: 'grid-cols-3', 4: 'grid-cols-4' } as Record<number, string>)[1 + (moduleEnabled('bar') ? 1 : 0) + 1 + (canAccessAdmin ? 1 : 0)]}`}>
                     <button onClick={onSelectAttendance} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
                         <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
                             📋
@@ -907,13 +907,6 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                     </button>
                     )}
 
-                    <button onClick={() => setIsProfileOpen(true)} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
-                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
-                            <UserCircleIcon className="h-8 w-8 text-slate-800" />
-                        </div>
-                        <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Profilo</span>
-                    </button>
-                    
                     <button onClick={shareApp} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24" title="Condividi il link dell'app">
                         <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
                             {linkCopied ? '✅' : '🔗'}
