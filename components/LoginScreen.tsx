@@ -120,7 +120,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             </div>
             
             <div className="absolute bottom-6 text-center text-slate-400 text-[10px] font-bold opacity-60">
-                Gestionale V4.3 • Accesso Riservato
+                Gestionale V5.0 • Accesso Riservato
             </div>
         </div>
     );
