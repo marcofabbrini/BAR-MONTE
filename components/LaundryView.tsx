@@ -191,6 +191,9 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
         }).sort((a, b) => a.staffName.localeCompare(b.staffName) || a.name.localeCompare(b.name));
     }, [pendingEntries]);
 
+    // Copia della distinta da stampare: dopo l'invio la cesta si svuota, quindi la stampa non può leggerla dalla lista in attesa.
+    const [printItems, setPrintItems] = useState<typeof shipmentSummary | null>(null);
+
     const handleCreateShipment = async () => {
         if (pendingEntries.length === 0) return alert("Nessun capo da inviare.");
         
@@ -214,8 +217,13 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
                 const body = encodeURIComponent(`In allegato il riepilogo dei capi consegnati in data odierna.\n\n${sedeFullName(tenant)}`);
                 window.open(`mailto:${tenant?.config?.laundryEmail ?? ''}?subject=${subject}&body=${body}`);
 
-                // 2. Apri Stampa (PDF)
-                setTimeout(() => window.print(), 1000);
+                // 2. Apri Stampa (PDF) dalla copia della distinta
+                setPrintItems(shipmentSummary);
+                setTimeout(() => {
+                    const done = () => { setPrintItems(null); window.removeEventListener('afterprint', done); };
+                    window.addEventListener('afterprint', done);
+                    window.print();
+                }, 1000);
 
             } catch (e) {
                 console.error(e);
@@ -268,6 +276,45 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
+
+            {/* DISTINTA DA STAMPARE (solo in stampa, dopo l'invio) */}
+            {printItems && (
+                <div className="hidden print:block p-4">
+                    <div className="mb-8 text-center border-b-2 border-black pb-4">
+                        <h1 className="text-2xl font-black uppercase">{sedeFullName(tenant)}</h1>
+                        <h2 className="text-xl font-bold uppercase mt-2">Distinta Spedizione Lavanderia</h2>
+                        <p className="text-sm mt-4">Data Invio: <b>{new Date().toLocaleDateString('it-IT')}</b></p>
+                    </div>
+                    <table className="w-full text-left text-sm border-collapse">
+                        <thead>
+                            <tr className="border-b border-black">
+                                <th className="p-2">Personale</th>
+                                <th className="p-2">Descrizione Capo</th>
+                                <th className="p-2 text-right">Quantità</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {printItems.map((item, idx) => (
+                                <tr key={idx} className="border-b border-slate-300">
+                                    <td className="p-2">{item.staffName}</td>
+                                    <td className="p-2">{item.name}</td>
+                                    <td className="p-2 text-right font-bold">{item.totalQuantity}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                        <tfoot>
+                            <tr className="border-t border-black">
+                                <td className="p-2 font-black uppercase" colSpan={2}>Totale pezzi</td>
+                                <td className="p-2 text-right font-black">{printItems.reduce((a, b) => a + b.totalQuantity, 0)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div className="flex justify-between mt-20 px-8">
+                        <div className="text-center w-1/3 border-t border-black pt-2"><p className="text-xs font-bold uppercase">Firma VVF (Consegna)</p></div>
+                        <div className="text-center w-1/3 border-t border-black pt-2"><p className="text-xs font-bold uppercase">Firma Lavanderia (Ritiro)</p></div>
+                    </div>
+                </div>
+            )}
             
             {/* HEADER (Hidden in Print) */}
             <header className="bg-blue-600 text-white p-4 shadow-lg sticky top-0 z-50 flex items-center justify-between mt-[env(safe-area-inset-top)] print:hidden relative overflow-hidden">
@@ -310,7 +357,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
                 </div>
             </div>
 
-            <main className="flex-grow p-4 md:p-8 max-w-5xl mx-auto w-full flex flex-col gap-6 print:p-0 print:max-w-none">
+            <main className={`flex-grow p-4 md:p-8 max-w-5xl mx-auto w-full flex flex-col gap-6 print:p-0 print:max-w-none ${printItems ? 'print:hidden' : ''}`}>
 
                 {/* --- TAB 1: NUOVA CONSEGNA --- */}
                 {activeTab === 'entry' && (
