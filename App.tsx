@@ -252,7 +252,7 @@ const AppContent: React.FC = () => {
         <div className="min-h-dvh bg-slate-100 text-slate-800 relative safe-area-padding">
             {tenant?.canSwitch && (
                 <div className="bg-slate-800 text-white text-xs md:text-sm px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
-                    <span>🏢 Distaccamento: <strong>{sedeFullName(tenant)}</strong></span>
+                    <span>🧑‍🚒 Distaccamento: <strong>{sedeFullName(tenant)}</strong></span>
                     <button onClick={() => AuthApi.switchSede(null)} className="bg-white/15 hover:bg-white/25 rounded-lg px-3 py-1 font-bold">
                         Cambia distaccamento
                     </button>
