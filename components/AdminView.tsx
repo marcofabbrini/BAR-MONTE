@@ -562,7 +562,7 @@ const AdminView: React.FC<AdminViewProps> = ({
                         <TabButton tab="staff" label="Staff" icon={<StaffIcon />} />
                         {fleetOn && <TabButton tab="fleet_hub" label="Gestione Automezzi" icon={<TruckIcon />} />}
                         <TabButton tab="control_panel" label="Pannello di Controllo" icon={<WrenchIcon className="h-8 w-8" />} />
-                        {canManageSedi && <TabButton tab="sedi" label="Sedi" icon={<span>🧑‍🚒</span>} />}
+                        {canManageSedi && <TabButton tab="sedi" label="Sedi" icon={<span>🏢</span>} />}
                     </div>
                 </div>
             </header>
