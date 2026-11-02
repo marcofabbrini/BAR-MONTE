@@ -485,7 +485,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                     <span className="text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded text-slate-600 font-mono">
                                         {member.shift.toUpperCase()}
                                     </span>
-                                    {(
+                                    {!isCashbox(member) && (
                                         <span className="text-[10px] bg-purple-50 border border-purple-100 px-2 py-0.5 rounded text-purple-700 font-bold">
                                             Salto {member.rcSubGroup || 1}
                                         </span>
