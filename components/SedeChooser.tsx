@@ -57,9 +57,9 @@ const SedeChooser: React.FC = () => {
                                         onClick={() => AuthApi.switchSede(t.id)}
                                         className="w-full bg-white hover:bg-slate-50 text-slate-800 rounded-2xl border-2 border-slate-100 shadow-[0_0_15px_rgba(71,85,105,0.25)] hover:shadow-[0_0_25px_rgba(71,85,105,0.45)] p-4 relative overflow-hidden transition-all duration-300 group transform active:scale-95 h-36 flex items-center justify-center"
                                     >
-                                        <div className="absolute -bottom-6 -right-6 text-7xl opacity-10 group-hover:opacity-20 pointer-events-none">🧑‍🚒</div>
+                                        <div className="absolute -bottom-6 -right-6 text-7xl opacity-10 group-hover:opacity-20 pointer-events-none">🏢</div>
                                         <div className="relative z-10 flex flex-col items-center gap-1">
-                                            <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform">🧑‍🚒</span>
+                                            <span className="text-4xl md:text-5xl group-hover:scale-110 transition-transform">🏢</span>
                                             <span className="font-black text-sm md:text-lg uppercase tracking-wider leading-tight text-center">{sedeShortName({ id: t.id, name: t.name, config: t.config, platform: t.isDefault })}</span>
                                             <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-slate-400">
                                                 {t.staffCount} {t.staffCount === 1 ? 'persona' : 'persone'} · {activeModules} strumenti
