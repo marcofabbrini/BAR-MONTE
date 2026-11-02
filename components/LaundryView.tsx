@@ -1,6 +1,7 @@
 
 import { useScrollTop } from '../utils/useScrollTop';
 import { apiCall } from '../lib/db';
+import { buildLaundryPdfBase64 } from '../utils/laundryPdf';
 import React, { useState, useMemo } from 'react';
 import { LaundryItemDef, LaundryEntry, LaundryShipment, Shift } from '../types';
 import { useBar } from '../contexts/BarContext';
@@ -195,48 +196,56 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
     // Copia della distinta da stampare: dopo l'invio la cesta si svuota, quindi la stampa non può leggerla dalla lista in attesa.
     const [printItems, setPrintItems] = useState<typeof shipmentSummary | null>(null);
 
-    const handleCreateShipment = async () => {
-        if (pendingEntries.length === 0) return alert("Nessun capo da inviare.");
-        
-        if (confirm("Creare la spedizione? La distinta verrà inviata per email e stampata.")) {
-            try {
-                const now = new Date();
-                const shipmentData = {
-                    sentDate: now.toISOString().split('T')[0],
-                    timestamp: now.toISOString(),
-                    items: shipmentSummary,
-                    status: 'in_transit' as const,
-                    notes: `Spedizione del ${now.toLocaleDateString()}`
-                };
+    const [shipChoiceOpen, setShipChoiceOpen] = useState(false);
+    const [shipBusy, setShipBusy] = useState(false);
 
-                const entryIds = pendingEntries.map(e => e.id);
-                
-                await createLaundryShipment(shipmentData, entryIds);
-                
-                // 1. Invio mail direttamente dal server (nessun login alla casella); se fallisce, ripiego sul client di posta
+    const handleCreateShipment = async (mode: 'email' | 'print') => {
+        if (pendingEntries.length === 0) return alert("Nessun capo da inviare.");
+        setShipBusy(true);
+        try {
+            const now = new Date();
+            const summary = shipmentSummary;
+            const shipmentData = {
+                sentDate: now.toISOString().split('T')[0],
+                timestamp: now.toISOString(),
+                items: summary,
+                status: 'in_transit' as const,
+                notes: `Spedizione del ${now.toLocaleDateString()}`
+            };
+            const entryIds = pendingEntries.map(e => e.id);
+
+            // Il PDF si genera prima di creare la spedizione, così se fallisce non si perde nulla
+            const pdf = mode === 'email' ? await buildLaundryPdfBase64(sedeFullName(tenant), summary, now) : null;
+
+            await createLaundryShipment(shipmentData, entryIds);
+            setShipChoiceOpen(false);
+
+            if (mode === 'email') {
+                // Invio dal server con PDF allegato (nessun login alla casella); se fallisce, ripiego sul client di posta
                 try {
-                    const r = await apiCall<{ to: string }>('laundry.sendMail', { items: shipmentSummary });
-                    alert(`Mail inviata a ${r.to}.`);
+                    const r = await apiCall<{ to: string }>('laundry.sendMail', { items: summary, pdf });
+                    alert(`Mail con PDF allegato inviata a ${r.to}.`);
                 } catch (mailErr) {
                     const motivo = mailErr instanceof Error ? mailErr.message : 'errore sconosciuto';
-                    alert(`Spedizione creata, ma la mail non è partita dal server (${motivo}). Si aprirà il programma di posta del dispositivo.`);
+                    alert(`Spedizione creata, ma la mail non è partita dal server (${motivo}). Si aprirà il programma di posta del dispositivo: allega il PDF stampando la distinta.`);
                     const subject = encodeURIComponent(`Ritiro Lavanderia ${sedeFullName(tenant)} - ${now.toLocaleDateString()}`);
-                    const body = encodeURIComponent(`In allegato il riepilogo dei capi consegnati in data odierna.\n\n${sedeFullName(tenant)}`);
+                    const body = encodeURIComponent(`Riepilogo dei capi consegnati in data odierna.\n\n${sedeFullName(tenant)}`);
                     window.open(`mailto:${tenant?.config?.laundryEmail ?? ''}?subject=${subject}&body=${body}`);
                 }
-
-                // 2. Apri Stampa (PDF) dalla copia della distinta
-                setPrintItems(shipmentSummary);
+            } else {
+                // Stampa (PDF) dalla copia della distinta
+                setPrintItems(summary);
                 setTimeout(() => {
                     const done = () => { setPrintItems(null); window.removeEventListener('afterprint', done); };
                     window.addEventListener('afterprint', done);
                     window.print();
                 }, 1000);
-
-            } catch (e) {
-                console.error(e);
-                alert("Errore creazione spedizione.");
             }
+        } catch (e) {
+            console.error(e);
+            alert("Errore creazione spedizione.");
+        } finally {
+            setShipBusy(false);
         }
     };
 
@@ -284,6 +293,19 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
 
     return (
         <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
+
+            {/* SCELTA: EMAIL O STAMPA */}
+            {shipChoiceOpen && (
+                <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4 print:hidden" onClick={() => !shipBusy && setShipChoiceOpen(false)}>
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-3" onClick={e => e.stopPropagation()}>
+                        <h3 className="text-lg font-black text-slate-800 uppercase text-center">Invia a lavanderia</h3>
+                        <p className="text-xs text-slate-500 text-center">I capi passeranno "In transito". Come vuoi consegnare la distinta?</p>
+                        <button disabled={shipBusy} onClick={() => handleCreateShipment('email')} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl">✉️ Invia per email (PDF allegato)</button>
+                        <button disabled={shipBusy} onClick={() => handleCreateShipment('print')} className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white font-bold py-3 rounded-xl">🖨️ Stampa il PDF</button>
+                        <button disabled={shipBusy} onClick={() => setShipChoiceOpen(false)} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 rounded-xl">Annulla</button>
+                    </div>
+                </div>
+            )}
 
             {/* DISTINTA DA STAMPARE (solo in stampa, dopo l'invio) */}
             {printItems && (
@@ -498,10 +520,10 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
                                 <div className="p-6 bg-slate-50 border-t border-slate-200 print:hidden">
                                     {canSendShipment ? (
                                         <button 
-                                            onClick={handleCreateShipment}
+                                            onClick={() => setShipChoiceOpen(true)}
                                             className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-lg transition-transform active:scale-95"
                                         >
-                                            <PrinterIcon className="h-6 w-6" /> Invia a Lavanderia & Genera PDF
+                                            <PrinterIcon className="h-6 w-6" /> Invia a Lavanderia
                                         </button>
                                     ) : (
                                         <div className="w-full bg-slate-200 text-slate-500 font-bold py-4 rounded-xl shadow-inner flex items-center justify-center gap-2 text-sm uppercase">
@@ -510,7 +532,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
                                     )}
                                     <p className="text-[10px] text-center text-slate-400 mt-2">
                                         {canSendShipment 
-                                            ? 'Cliccando, i capi verranno segnati come "In Transito", la distinta verrà inviata per email dal server e si aprirà la stampa.'
+                                            ? 'Cliccando, i capi verranno segnati come "In Transito", potrai scegliere se inviare la distinta per email (con PDF allegato) oppure stamparla.'
                                             : 'Contatta un amministratore o il capo distaccamento per inviare la spedizione.'}
                                     </p>
                                 </div>
