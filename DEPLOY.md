@@ -9,8 +9,8 @@ Tempo stimato: 20–30 minuti. Cosa serve:
 ## 1. Preparare il pacchetto
 
 ```bash
-git clone https://github.com/marcofabbrini/bar-monte.git   # (o aggiorna la tua copia)
-cd bar-monte
+git clone https://github.com/marcofabbrini/GESDI.git   # (o aggiorna la tua copia)
+cd GESDI
 npm install
 npm run package:deploy
 ```
