@@ -80,7 +80,7 @@ const AppContent: React.FC = () => {
     // Se il modulo aperto non è attivo per questa sede (es. configurazione cambiata), torna alla home.
     useEffect(() => {
         const needs: Partial<Record<View, Parameters<typeof moduleEnabled>[0]>> = {
-            till: 'bar', reports: 'bar', tombola: 'games', games: 'games', analotto: 'games', dice: 'games', lottery: 'games', '3d_viewer': 'games',
+            till: 'bar', reports: 'bar', attendance_view: 'bar', tombola: 'games', games: 'games', analotto: 'games', dice: 'games', lottery: 'games', '3d_viewer': 'games',
             calendar: 'calendar', vehicle_booking: 'vehicle_booking', operational_vehicles: 'operational_vehicles', laundry: 'laundry', interventions: 'interventions',
         };
         const m = needs[view];

@@ -12,7 +12,7 @@ final class Modules
 {
     /** id => [etichetta, collezioni, moduli richiesti] */
     public const DEFS = [
-        'bar'                  => ['Bar e casse', ['products', 'orders', 'cash_movements'], []],
+        'bar'                  => ['Bar e casse', ['products', 'orders', 'cash_movements', 'attendance'], []],
         'games'                => ['Giochi (tombola, analotto, lotteria, dadi)', ['tombola', 'tombola_tickets', 'tombola_wins', 'analotto', 'analotto_bets', 'analotto_extractions', 'lottery_tickets'], ['bar']],
         'calendar'             => ['Calendario turni', [], []],
         'vehicle_booking'      => ['Prenotazione mezzi', ['vehicles', 'vehicle_bookings'], []],
