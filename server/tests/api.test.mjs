@@ -595,6 +595,13 @@ await test('sedi: flag piattaforma e email lavanderia nella configurazione', asy
     const mp = (await p.call('tenants.list')).tenants.find(t => t.id === 'montepulciano');
     assert.equal(mp.config.laundryEmail, 'marcofabbrini@gmail.com'); // valore storico della sede principale
 });
+await test('lavanderia: invio mail dal server (solo admin, destinatario dalla sede, richiede capi)', async () => {
+    const items = [{ staffName: 'Mario Rossi', name: 'Pantalone', totalQuantity: 2 }];
+    const r = await sup.call('laundry.sendMail', { items });
+    assert.equal(r.status === undefined || r.status === 200, true); assert.equal(r.to, 'marcofabbrini@gmail.com');
+    assert.equal((await sup.call('laundry.sendMail', { items: [] })).status, 400);
+    assert.equal((await std.call('laundry.sendMail', { items })).status, 403);
+});
 await test('sedi: l\'amministratore di piattaforma lavora su un\'altra sede (X-Sede) e i dati restano separati', async () => {
     const p = await platform();
     const me = await p.call('auth.me'); assert.equal(me.tenant.canSwitch, true); assert.equal(me.tenant.home, undefined);

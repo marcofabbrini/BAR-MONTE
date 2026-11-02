@@ -1,5 +1,6 @@
 
 import { useScrollTop } from '../utils/useScrollTop';
+import { apiCall } from '../lib/db';
 import React, { useState, useMemo } from 'react';
 import { LaundryItemDef, LaundryEntry, LaundryShipment, Shift } from '../types';
 import { useBar } from '../contexts/BarContext';
@@ -197,7 +198,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
     const handleCreateShipment = async () => {
         if (pendingEntries.length === 0) return alert("Nessun capo da inviare.");
         
-        if (confirm("Creare la spedizione? Verrà generato il PDF da inviare per email.")) {
+        if (confirm("Creare la spedizione? La distinta verrà inviata per email e stampata.")) {
             try {
                 const now = new Date();
                 const shipmentData = {
@@ -212,10 +213,17 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
                 
                 await createLaundryShipment(shipmentData, entryIds);
                 
-                // 1. Apri Client Posta
-                const subject = encodeURIComponent(`Ritiro Lavanderia ${sedeFullName(tenant)} - ${now.toLocaleDateString()}`);
-                const body = encodeURIComponent(`In allegato il riepilogo dei capi consegnati in data odierna.\n\n${sedeFullName(tenant)}`);
-                window.open(`mailto:${tenant?.config?.laundryEmail ?? ''}?subject=${subject}&body=${body}`);
+                // 1. Invio mail direttamente dal server (nessun login alla casella); se fallisce, ripiego sul client di posta
+                try {
+                    const r = await apiCall<{ to: string }>('laundry.sendMail', { items: shipmentSummary });
+                    alert(`Mail inviata a ${r.to}.`);
+                } catch (mailErr) {
+                    const motivo = mailErr instanceof Error ? mailErr.message : 'errore sconosciuto';
+                    alert(`Spedizione creata, ma la mail non è partita dal server (${motivo}). Si aprirà il programma di posta del dispositivo.`);
+                    const subject = encodeURIComponent(`Ritiro Lavanderia ${sedeFullName(tenant)} - ${now.toLocaleDateString()}`);
+                    const body = encodeURIComponent(`In allegato il riepilogo dei capi consegnati in data odierna.\n\n${sedeFullName(tenant)}`);
+                    window.open(`mailto:${tenant?.config?.laundryEmail ?? ''}?subject=${subject}&body=${body}`);
+                }
 
                 // 2. Apri Stampa (PDF) dalla copia della distinta
                 setPrintItems(shipmentSummary);
@@ -502,7 +510,7 @@ const LaundryView: React.FC<LaundryViewProps> = ({ onGoBack }) => {
                                     )}
                                     <p className="text-[10px] text-center text-slate-400 mt-2">
                                         {canSendShipment 
-                                            ? 'Cliccando, i capi verranno segnati come "In Transito", verrà generato il PDF e si aprirà il client di posta.'
+                                            ? 'Cliccando, i capi verranno segnati come "In Transito", la distinta verrà inviata per email dal server e si aprirà la stampa.'
                                             : 'Contatta un amministratore o il capo distaccamento per inviare la spedizione.'}
                                     </p>
                                 </div>

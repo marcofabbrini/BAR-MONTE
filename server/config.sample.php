@@ -32,6 +32,9 @@ return [
     'allow_passwordless' => true,
     'passwordless_max_level' => 1,
 
+    // Mittente delle mail inviate dal server (distinta lavanderia). Vuoto = noreply@<dominio del sito>.
+    // 'mail_from' => 'noreply@marcofabbrini.com',
+
     // Analisi AI (scheda Insights). Chiave API Google Gemini: lascia vuoto per disattivare.
     'gemini_api_key' => '',
     'gemini_model' => 'gemini-3-flash-preview',

@@ -124,6 +124,55 @@ function handle(string $action): array
             return ['ok' => true];
         }
 
+        case 'laundry.sendMail': {
+            $u = Auth::requireUser();
+            if (Policy::roleLevel($u['data']->role ?? 'standard') < 3) {
+                throw new ApiException(403, 'forbidden', 'Funzione riservata agli amministratori.');
+            }
+            if (!Modules::isEnabled('laundry_items')) {
+                throw new ApiException(403, 'module-disabled', 'Modulo non attivo per questa sede.');
+            }
+            $b = Http::body();
+            $info = Auth::tenantInfo();
+            $to = (string) (($info['config']['laundryEmail'] ?? ''));
+            if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+                throw new ApiException(400, 'no-recipient', 'Nessun indirizzo email della lavanderia impostato per questa sede.');
+            }
+            $items = is_array($b->items ?? null) ? $b->items : [];
+            if (count($items) === 0 || count($items) > 500) {
+                throw new ApiException(400, 'no-items', 'Nessun capo da inviare.');
+            }
+            $esc = static fn($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+            $name = (string) ($info['name'] ?? 'VVF');
+            $when = date('d/m/Y');
+            $rows = '';
+            $tot = 0;
+            foreach ($items as $it) {
+                $q = (int) ($it->totalQuantity ?? 0);
+                $tot += $q;
+                $rows .= '<tr><td style="padding:4px 8px;border-bottom:1px solid #ccc">' . $esc($it->staffName ?? '') . '</td>'
+                    . '<td style="padding:4px 8px;border-bottom:1px solid #ccc">' . $esc($it->name ?? '') . '</td>'
+                    . '<td style="padding:4px 8px;border-bottom:1px solid #ccc;text-align:right"><b>' . $q . '</b></td></tr>';
+            }
+            $html = '<html><body style="font-family:Arial,sans-serif"><h2>' . $esc($name) . '</h2>'
+                . '<h3>Distinta spedizione lavanderia - ' . $esc($when) . '</h3>'
+                . '<table style="border-collapse:collapse;min-width:420px"><thead><tr style="background:#eee">'
+                . '<th style="padding:4px 8px;text-align:left">Personale</th><th style="padding:4px 8px;text-align:left">Capo</th>'
+                . '<th style="padding:4px 8px;text-align:right">Quantit&agrave;</th></tr></thead><tbody>' . $rows . '</tbody>'
+                . '<tfoot><tr><td colspan="2" style="padding:4px 8px"><b>TOTALE PEZZI</b></td><td style="padding:4px 8px;text-align:right"><b>' . $tot . '</b></td></tr></tfoot></table>'
+                . '<p style="color:#666;font-size:12px">Messaggio inviato automaticamente dal gestionale GESDI.</p></body></html>';
+            $host = preg_replace('/^www\./', '', (string) ($_SERVER['HTTP_HOST'] ?? 'localhost'));
+            $host = preg_replace('/:\d+$/', '', $host);
+            $from = (string) Config::get('mail_from', 'noreply@' . $host);
+            $subject = '=?UTF-8?B?' . base64_encode('Ritiro Lavanderia ' . $name . ' - ' . $when) . '?=';
+            $headers = "MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nFrom: GESDI <" . $from . ">\r\nReply-To: " . $from;
+            $sent = Config::get('mail_disabled', false) ? true : @mail($to, $subject, $html, $headers, '-f' . $from);
+            if (!$sent) {
+                throw new ApiException(502, 'mail-failed', 'Il server non è riuscito a inviare la mail.');
+            }
+            return ['ok' => true, 'to' => $to];
+        }
+
         case 'analyze': {
             Auth::requireUser();
             $b = Http::body();
