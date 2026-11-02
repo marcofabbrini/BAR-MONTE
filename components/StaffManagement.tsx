@@ -211,16 +211,17 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         try {
             // Il Super Admin è una persona come le altre: turno e salto vengono salvati normalmente.
             const finalRcSubGroup = rcSubGroup || 1;
+            // Una cassa è un utente tecnico: niente nome utente, qualifica, salto; accesso sempre standard.
 
             const dataToSave = { 
                 name: name.trim(), 
-                username: username.trim(),
-                grade: grade.trim(), 
+                username: cashbox ? '' : username.trim(),
+                grade: cashbox ? '' : grade.trim(), 
                 shift, 
-                rcSubGroup: finalRcSubGroup, 
+                rcSubGroup: cashbox ? 1 : finalRcSubGroup, 
                 icon,
                 photoUrl,
-                role,
+                role: cashbox ? 'standard' : role,
                 isCashbox: cashbox
             } as Omit<StaffMember, 'id'>;
             // Password: inviata solo se compilata (o se si chiede di rimuoverla).
@@ -293,7 +294,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         </div>
                                         
                                         {/* LIVE PREVIEW BADGE */}
-                                        {grade && <div className="scale-150 origin-center absolute top-[-4px] right-[-4px] z-20"><GradeBadge grade={grade} /></div>}
+                                        {!cashbox && grade && <div className="scale-150 origin-center absolute top-[-4px] right-[-4px] z-20"><GradeBadge grade={grade} /></div>}
                                     </div>
                                     
                                     <input 
@@ -315,13 +316,16 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Es. Rossi Mario" required />
                                     </div>
 
-                                    <div className="col-span-2">
+                                    {!cashbox && (
+<div className="col-span-2">
                                         <label className="text-xs font-bold text-slate-500 uppercase">Username (Opzionale)</label>
                                         <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Se diverso dal nome" />
                                         <p className="text-[9px] text-slate-400 mt-1">Se impostato, usare questo per il login.</p>
                                     </div>
+)}
 
-                                    <div className="col-span-2">
+                                    {!cashbox && (
+<div className="col-span-2">
                                         <label className="text-xs font-bold text-slate-500 uppercase">Qualifica / Grado</label>
                                         <select value={grade} onChange={(e) => setGrade(e.target.value)} className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                             <option value="">-- Seleziona Grado --</option>
@@ -330,6 +334,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                             ))}
                                         </select>
                                     </div>
+)}
 
                                     {(
 
@@ -344,7 +349,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         </div>
                                     )}
                                     
-                                    {(
+                                    {!cashbox && (
                                         <div>
                                             <label className="text-xs font-bold text-slate-500 uppercase">Salto (1-8)</label>
                                             <select value={rcSubGroup} onChange={(e) => setRcSubGroup(parseInt(e.target.value))} className="w-full mt-1 bg-purple-50 text-purple-700 font-bold border border-purple-200 rounded-lg px-3 py-2.5">
@@ -355,7 +360,8 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         </div>
                                     )}
 
-                                    <div className="col-span-2">
+                                    {!cashbox && (
+<div className="col-span-2">
                                         <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
                                             <ShieldCheckIcon className="h-3 w-3" /> Livello Accesso
                                         </label>
@@ -370,6 +376,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                                         </select>
                                         <p className="text-[10px] text-slate-400 mt-1">Puoi assegnare ruoli fino al tuo livello ({activeBarUser?.role || 'Standard'}).</p>
                                     </div>
+)}
 
                                     <div className="col-span-2 border-t pt-4 mt-2">
                                         <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
