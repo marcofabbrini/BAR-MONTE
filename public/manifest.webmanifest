@@ -1,7 +1,7 @@
 {
   "name": "GESDI - Gestionale Distaccamento VVF",
   "short_name": "GESDI",
-  "description": "Gestionale del distaccamento VVF Montepulciano: bar, cassa, mezzi, interventi.",
+  "description": "Gestionale dei distaccamenti VVF: bar, cassa, mezzi, interventi.",
   "lang": "it",
   "start_url": "./",
   "scope": "./",
