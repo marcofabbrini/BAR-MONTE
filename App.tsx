@@ -250,14 +250,6 @@ const AppContent: React.FC = () => {
 
     return (
         <div className="min-h-dvh bg-slate-100 text-slate-800 relative safe-area-padding">
-            {tenant?.canSwitch && (
-                <div className="bg-slate-800 text-white text-xs md:text-sm px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
-                    <span>🏢 Distaccamento: <strong>{sedeFullName(tenant)}</strong></span>
-                    <button onClick={() => AuthApi.switchSede(null)} className="bg-white/15 hover:bg-white/25 rounded-lg px-3 py-1 font-bold">
-                        Cambia distaccamento
-                    </button>
-                </div>
-            )}
             {activeToast && (
                 <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[1000] w-[90%] max-w-md animate-slide-up mt-[env(safe-area-inset-top)]">
                     <div className="bg-white rounded-xl shadow-2xl border-l-8 border-yellow-400 p-4 flex items-start gap-4">
