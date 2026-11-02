@@ -3,6 +3,7 @@ import { sedeShortName } from '../utils/tenant';
 import { APP_VERSION } from '../utils/version';
 import React, { useMemo, useEffect, useState } from 'react';
 import { Till, TillColors, SeasonalityConfig, ShiftSettings, TombolaConfig, Reminder, OperationalVehicle, VehicleCheck, Vehicle, StaffMember } from '../types';
+import { AuthApi } from '../lib/db';
 import { BellIcon, TruckIcon, ShirtIcon, FireIcon, PinIcon, CheckIcon, BackArrowIcon, EditIcon, SaveIcon, LockIcon, UserCircleIcon, LogOutIcon, CarIcon } from './Icons';
 import { useBar } from '../contexts/BarContext';
 import { GradeBadge } from './StaffManagement';
@@ -526,6 +527,17 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         {otherOnlineUsers.length + 1} Online
                     </span>
                 </div>
+
+                {/* Cambia distaccamento (solo amministratore di piattaforma) */}
+                {tenant?.canSwitch && (
+                    <button
+                        onClick={() => AuthApi.switchSede(null)}
+                        className="bg-slate-700 hover:bg-slate-800 text-white px-3 py-2 rounded-full shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 border-2 border-white/20 text-xs font-bold"
+                        title="Cambia distaccamento"
+                    >
+                        🏢 <span className="hidden sm:inline">Cambia distaccamento</span>
+                    </button>
+                )}
 
                 {/* Logout Button (Red Door Open) */}
                 <button 
