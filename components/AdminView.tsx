@@ -48,8 +48,6 @@ interface AdminViewProps {
     onLogin: () => void;
     onLogout: () => void;
     adminList: AdminUser[];
-    onAddAdmin: (email: string) => Promise<void>;
-    onRemoveAdmin: (id: string) => Promise<void>;
 
     tombolaConfig?: TombolaConfig;
     onNavigateToTombola: () => void;
@@ -83,7 +81,7 @@ const AdminView: React.FC<AdminViewProps> = ({
     onAddStaff, onUpdateStaff, onDeleteStaff,
     onAddCashMovement, onUpdateMovement, onDeleteMovement, onPermanentDeleteMovement,
     onStockPurchase, onStockCorrection, onResetCash, onMassDelete,
-    isAuthenticated, currentUser, onLogin, onLogout, adminList, onAddAdmin, onRemoveAdmin,
+    isAuthenticated, currentUser, onLogin, onLogout, adminList,
     tombolaConfig, onNavigateToTombola,
     lotteryConfig, onUpdateLotteryConfig,
     seasonalityConfig, onUpdateSeasonality,
@@ -111,7 +109,6 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [movFilterShift, setMovFilterShift] = useState<Shift | 'all'>('all');
     const [massDeleteDate, setMassDeleteDate] = useState('');
     const [colors, setColors] = useState<TillColors>(tillColors);
-    const [newAdminEmail, setNewAdminEmail] = useState('');
 
     // Fleet Hub State
     const [fleetTab, setFleetTab] = useState<'service' | 'operational'>(moduleEnabled('vehicle_booking') ? 'service' : 'operational');
@@ -159,13 +156,12 @@ const AdminView: React.FC<AdminViewProps> = ({
     const [lotteryPrizes, setLotteryPrizes] = useState(lotteryConfig?.prizes || []);
     const [lotteryNumbers, setLotteryNumbers] = useState(lotteryConfig?.extractedNumbers?.join(', ') || '');
 
-    const sortedAdmins = useMemo(() => [...adminList].sort((a,b) => a.timestamp.localeCompare(b.timestamp)), [adminList]);
     
     // Super Admin Check: ruolo dell'utente con cui si è fatto login
     const isSuperAdmin = useMemo(() => {
         if (activeBarUser?.role === 'super-admin') return true;
         return false;
-    }, [activeBarUser, currentUser, sortedAdmins]);
+    }, [activeBarUser]);
 
     const isLocalSuperAdmin = activeBarUser?.role === 'super-admin';
 
@@ -266,7 +262,6 @@ const AdminView: React.FC<AdminViewProps> = ({
 
     const handleColorChange = (tillId: string, color: string) => setColors(prev => ({ ...prev, [tillId]: color }));
     const saveSettings = async () => { await onUpdateTillColors(colors); alert('Impostazioni colori salvate!'); };
-    const handleAddAdminSubmit = async (e: React.FormEvent) => { e.preventDefault(); if(!newAdminEmail.trim()) return; await onAddAdmin(newAdminEmail.trim()); setNewAdminEmail(''); };
     const handleMassDelete = async (type: 'orders' | 'movements') => { if (!massDeleteDate) return alert("Seleziona data."); if (window.confirm(`ATTENZIONE: Eliminazione DEFINITIVA antecedenti a ${massDeleteDate}. Confermi?`)) await onMassDelete(massDeleteDate, type); };
     
     const handleSaveSeasonality = async () => {
@@ -655,38 +650,6 @@ const AdminView: React.FC<AdminViewProps> = ({
                 
                 {activeTab === 'control_panel' && (
                     <div className="max-w-4xl mx-auto space-y-6">
-                        {/* 1. ADMINS (EMAIL GOOGLE) */}
-                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                            <button onClick={() => toggleSection('admins')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">
-                                <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wide flex items-center gap-2">
-                                    <LockIcon className="h-5 w-5 text-slate-600" /> Gestione Amministratori (Google)
-                                </h2>
-                                <span>{expandedSection === 'admins' ? '−' : '+'}</span>
-                            </button>
-                            {expandedSection === 'admins' && (
-                                <div className="p-6 animate-fade-in border-t border-slate-100">
-                                    <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-4">
-                                        <h2 className="text-lg font-bold text-slate-800 mb-4">Nuovo Admin</h2>
-                                        <form onSubmit={handleAddAdminSubmit} className="flex gap-2">
-                                            <input type="email" value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="email@gmail.com" className="flex-grow border rounded-lg p-2 bg-slate-50" required />
-                                            <button type="submit" className="bg-green-500 text-white font-bold px-4 rounded-lg">Aggiungi</button>
-                                        </form>
-                                    </div>
-                                    <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                                        <h3 className="font-bold text-slate-800 p-4 bg-slate-50 border-b">Lista Amministratori</h3>
-                                        <ul>
-                                            {sortedAdmins.map((admin, idx) => (
-                                                <li key={admin.id} className="p-4 flex justify-between items-center border-b last:border-0">
-                                                    <div><p className="font-bold text-slate-700">{admin.email} {idx === 0 && <span className="text-red-500 text-xs ml-2">(SUPER)</span>}</p></div>
-                                                    {(isSuperAdmin || isLocalSuperAdmin) && idx !== 0 && (<button onClick={() => onRemoveAdmin(admin.id)} className="text-red-500 hover:bg-red-50 p-2 rounded text-xs font-bold">Rimuovi</button>)}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
                         {/* 2. DIAGNOSTICS */}
                         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                             <button onClick={() => toggleSection('diagnostics')} className="w-full p-4 flex justify-between items-center text-left bg-slate-50 hover:bg-slate-100 transition-colors">

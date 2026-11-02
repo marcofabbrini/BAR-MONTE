@@ -84,6 +84,7 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
 
     // Filtri
     const [filterShifts, setFilterShifts] = useState<Set<Shift>>(new Set(['a', 'b', 'c', 'd']));
+    const [filterRole, setFilterRole] = useState<string>('all'); // 'all' | 'privileged' | id ruolo
 
     // Determine current user's max promotion level
     const currentUserRoleLevel = availableRoles.find(r => r.id === (activeBarUser?.role || 'standard'))?.level || 1;
@@ -150,7 +151,13 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
         setFilterShifts(newFilters);
     };
 
-    const filteredStaff = staff.filter(m => filterShifts.has(m.shift));
+    const levelOf = (m: StaffMember) => availableRoles.find(r => r.id === (m.role || 'standard'))?.level || 1;
+    const filteredStaff = staff.filter(m => {
+        if (!filterShifts.has(m.shift)) return false;
+        if (filterRole === 'all') return true;
+        if (filterRole === 'privileged') return levelOf(m) >= 3; // Admin e Super Admin
+        return (m.role || 'standard') === filterRole;
+    });
 
     // --- FUNZIONE COMPRESSIONE IMMAGINE ---
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -426,6 +433,12 @@ const StaffManagement: React.FC<StaffManagementProps> = ({ staff, onAddStaff, on
                         Turno {s.toUpperCase()}
                     </button>
                 ))}
+                <span className="text-xs font-bold text-slate-400 uppercase ml-2">Ruolo:</span>
+                <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} className="bg-white border border-slate-300 rounded-full px-3 py-1.5 text-xs font-bold text-slate-700">
+                    <option value="all">Tutti</option>
+                    <option value="privileged">Con privilegi (Admin e Super Admin)</option>
+                    {availableRoles.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                </select>
             </div>
 
             {/* Lista Griglia */}
