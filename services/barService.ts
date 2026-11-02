@@ -135,8 +135,6 @@ export const BarService = {
     permanentDeleteMovement: async (id: string) => db.collection('cash_movements').doc(id).delete(),
     
     // Admins
-    addAdmin: async (email: string) => db.collection('admins').add({ email, timestamp: new Date().toISOString() }),
-    removeAdmin: async (id: string) => db.collection('admins').doc(id).delete(),
 
     // Roles
     addCustomRole: async (role: Omit<CustomRole, 'id'>) => db.collection('custom_roles').add(role),

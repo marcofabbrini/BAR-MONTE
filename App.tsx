@@ -39,7 +39,7 @@ const AppContent: React.FC = () => {
         products, staff, orders, cashMovements, adminList, tillColors, seasonalityConfig, shiftSettings, generalSettings, attendanceRecords, activeToast, isLoading, setActiveToast,
         addProduct, updateProduct, deleteProduct, addStaff, updateStaff, deleteStaff, completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
         addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash, stockPurchase, stockCorrection,
-        addAdmin, removeAdmin, saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
+        saveAttendance, reopenAttendance, deleteAttendance, updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, sendNotification, massDelete,
         vehicles, vehicleBookings, addBooking, deleteBooking,
         operationalVehicles, vehicleChecks, reminders, toggleReminderCompletion, addVehicleCheck,
         activeBarUser, tenant, moduleEnabled
@@ -211,7 +211,7 @@ const AppContent: React.FC = () => {
                 onAddCashMovement={addCashMovement} onUpdateMovement={updateCashMovement} onDeleteMovement={deleteCashMovement} onPermanentDeleteMovement={permanentDeleteMovement}
                 onStockPurchase={stockPurchase} onStockCorrection={stockCorrection} onResetCash={resetCash} onMassDelete={massDelete}
                 isAuthenticated={true} currentUser={currentUser} onLogin={() => {}} onLogout={() => setView('selection')}
-                adminList={adminList} onAddAdmin={(e) => addAdmin(e, currentUser?.email||'')} onRemoveAdmin={removeAdmin}
+                adminList={adminList}
                 tombolaConfig={tombolaConfig} onNavigateToTombola={() => setView('tombola')}
                 lotteryConfig={lotteryConfig} onUpdateLotteryConfig={handleUpdateLotteryConfig}
                 seasonalityConfig={seasonalityConfig} onUpdateSeasonality={updateSeasonality}

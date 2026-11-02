@@ -1,5 +1,6 @@
 
 import { AuthApi } from '../lib/db';
+import { APP_VERSION } from '../utils/version';
 import React, { useState, useEffect } from 'react';
 import { useBar } from '../contexts/BarContext';
 import { LockIcon } from './Icons';
@@ -120,7 +121,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             </div>
             
             <div className="absolute bottom-6 text-center text-slate-400 text-[10px] font-bold opacity-60">
-                Gestionale V5.0 • Accesso Riservato
+                Gestionale v{APP_VERSION} • Accesso Riservato
             </div>
         </div>
     );

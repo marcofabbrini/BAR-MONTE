@@ -76,8 +76,6 @@ interface BarContextType {
     stockCorrection: (prodId: string, newStock: number) => Promise<void>;
     massDelete: (date: string, type: 'orders' | 'movements') => Promise<void>;
 
-    addAdmin: (email: string, user: string) => Promise<void>;
-    removeAdmin: (id: string) => Promise<void>;
 
     updateTillColors: (c: TillColors) => Promise<void>;
     updateSeasonality: (cfg: SeasonalityConfig) => Promise<void>;
@@ -291,8 +289,6 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         console.warn("Mass delete logic needs careful implementation.");
     };
 
-    const addAdmin = async (email: string, user: string) => { await BarService.addAdmin(email); };
-    const removeAdmin = (id: string) => BarService.removeAdmin(id);
 
     // Settings Wrappers
     const updateTillColors = async (c: TillColors) => { await BarService.updateTillColors(c); };
@@ -412,7 +408,6 @@ export const BarProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             completeOrder, updateOrder, deleteOrders, permanentDeleteOrder,
             addCashMovement, updateCashMovement, deleteCashMovement, permanentDeleteMovement, resetCash,
             stockPurchase, stockCorrection, massDelete,
-            addAdmin, removeAdmin,
             updateTillColors, updateSeasonality, updateShiftSettings, updateGeneralSettings, updateMonthlyClosure,
             saveAttendance, reopenAttendance, deleteAttendance,
             addVehicle, updateVehicle, deleteVehicle, addBooking, deleteBooking, updateBooking,
