@@ -45,6 +45,29 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
     const weatherSpot = tenant?.config?.weather ?? null;
     const shortName = sedeShortName(tenant);
 
+    // Link da condividere con i colleghi: apre la pagina di accesso di questa sede.
+    const [linkCopied, setLinkCopied] = useState(false);
+    const shareApp = async () => {
+        const base = `${window.location.origin}${window.location.pathname}`;
+        const url = tenant && !tenant.platform ? `${base}?sede=${encodeURIComponent(tenant.id)}` : base;
+        try {
+            if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+                await navigator.share({ title: `Gestionale VVF ${shortName}`, text: `Gestionale VVF ${shortName}`, url });
+                return;
+            }
+        } catch (e) {
+            if ((e as Error)?.name === 'AbortError') return; // l'utente ha chiuso il menu di condivisione
+        }
+        try {
+            await navigator.clipboard.writeText(url);
+        } catch {
+            window.prompt('Copia il link da condividere:', url);
+            return;
+        }
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 2500);
+    };
+
 
     // WEATHER & DATE STATE
     const [currentDateString, setCurrentDateString] = useState<string>('');
@@ -867,7 +890,7 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                 </div>
 
                 {/* --- 3. SEZIONE BASSA --- */}
-                <div className={`grid gap-3 w-full md:w-3/4 lg:w-2/3 px-4 mb-6 ${canAccessAdmin ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-3'}`}>
+                <div className={`grid gap-3 w-full md:w-3/4 lg:w-2/3 px-4 mb-6 ${canAccessAdmin ? 'grid-cols-3 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'}`}>
                     <button onClick={onSelectAttendance} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
                         <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
                             📋
@@ -891,6 +914,13 @@ const TillSelection: React.FC<TillSelectionProps> = ({ tills, onSelectTill, onSe
                         <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">Profilo</span>
                     </button>
                     
+                    <button onClick={shareApp} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24" title="Condividi il link dell'app">
+                        <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
+                            {linkCopied ? '✅' : '🔗'}
+                        </div>
+                        <span className="block font-bold text-slate-700 text-[10px] md:text-xs uppercase tracking-wider group-hover:text-slate-900 transition-colors">{linkCopied ? 'Link copiato' : 'Condividi'}</span>
+                    </button>
+
                     {canAccessAdmin && (
                         <button onClick={onSelectAdmin} className="bg-white/90 hover:bg-white backdrop-blur-sm rounded-2xl shadow-slate-500/20 hover:shadow-[0_0_15px_rgba(71,85,105,0.4)] border border-slate-200 p-2 flex flex-col items-center justify-center gap-2 transition-all duration-300 group h-24">
                             <div className="text-2xl md:text-3xl filter drop-shadow-sm group-hover:scale-110 transition-transform">
