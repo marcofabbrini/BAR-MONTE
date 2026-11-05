@@ -66,6 +66,9 @@ export async function apiCall<T = any>(action: string, body: unknown = {}): Prom
     const doFetch = apiConfig.fetchImpl ?? fetch;
     const sede = readWorkingSede();
     let res: Response;
+    // Se il server non risponde entro 30 secondi si interrompe, invece di restare in attesa per sempre.
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), 30000) : null;
     try {
         res = await doFetch(`${apiConfig.endpoint}?action=${encodeURIComponent(action)}`, {
             method: 'POST',
@@ -73,9 +76,14 @@ export async function apiCall<T = any>(action: string, body: unknown = {}): Prom
             body: JSON.stringify(body),
             credentials: 'same-origin',
             cache: 'no-store',
+            ...(ctrl ? { signal: ctrl.signal } : {}),
         });
     } catch {
-        throw new ApiError(0, 'network', 'Server non raggiungibile. Controlla la connessione.');
+        throw new ApiError(0, 'network', ctrl?.signal.aborted
+            ? 'Il server non risponde. Riprova tra qualche minuto.'
+            : 'Server non raggiungibile. Controlla la connessione.');
+    } finally {
+        if (timer) clearTimeout(timer);
     }
     let json: any = {};
     try {
